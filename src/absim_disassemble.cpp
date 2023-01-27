@@ -71,7 +71,7 @@ static char const* get_instr_name(avr_instr_t const& i)
         case INSTR_LDD_STD :
             return (i.word & 0x200) ? "std" : "ldd";
         case INSTR_LD_ST   :
-            return i.word ? "ld" : "st";
+            return i.word ? "st" : "ld";
         case INSTR_PUSH_POP:
             return i.word ? "push" : "pop";
         default: return nullptr;
