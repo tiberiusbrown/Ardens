@@ -9,6 +9,8 @@ extern int profiler_selected_hotspot;
 extern int disassembly_scroll_addr;
 extern bool profiler_cycle_counts;
 
+static bool scroll_addr_to_top;
+
 static void register_tooltip(int reg, bool pointer = false)
 {
     if(reg < 0 || reg > 31) return;
@@ -72,7 +74,10 @@ static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
     Text("0x%04x", addr);
     PopStyleColor();
     if(IsItemClicked())
+    {
+        scroll_addr_to_top = true;
         do_scroll = addr;
+    }
 }
 
 static void disassembly_arg(
@@ -357,7 +362,9 @@ void window_disassembly(bool& open)
             {
                 int index = find_index_of_addr(do_scroll);
                 int num_display = clipper.DisplayEnd - clipper.DisplayStart;
-                SetScrollY(clipper.ItemsHeight * (index - num_display / 2));
+                if(!scroll_addr_to_top) index -= num_display / 2;
+                SetScrollY(clipper.ItemsHeight * index);
+                scroll_addr_to_top = false;
             }
 
             EndTable();

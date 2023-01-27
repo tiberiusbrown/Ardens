@@ -58,6 +58,8 @@ void atmega32u4_t::advance_cycle()
     cycle_spi();
     cycle_pll();
     cycle_timer0();
+    //cycle_timer1();
+    cycle_timer3();
     cycle_eeprom();
 
     if(cycles_till_next_instr == 0 && wakeup_cycles == 0 && (prev_sreg & SREG_I))
@@ -65,14 +67,34 @@ void atmega32u4_t::advance_cycle()
         // handle interrupts here
         uint8_t i;
 
+        i = tifr1() & timsk1();
+        if(i)
+        {
+            check_interrupt(0x22, i & 0x02, tifr1()); // TIMER1 COMPA
+            check_interrupt(0x24, i & 0x04, tifr1()); // TIMER1 COMPB
+            check_interrupt(0x26, i & 0x08, tifr1()); // TIMER1 COMPC
+            check_interrupt(0x28, i & 0x01, tifr1()); // TIMER1 OVF
+        }
+
         i = tifr0() & timsk0();
         if(i)
         {
-            check_interrupt(0x2e, i & 0x01, tifr0()); // TIMER0 OVF
             check_interrupt(0x2a, i & 0x02, tifr0()); // TIMER0 COMPA
             check_interrupt(0x2c, i & 0x04, tifr0()); // TIMER0 COMPB
+            check_interrupt(0x2e, i & 0x01, tifr0()); // TIMER0 OVF
+        }
+
+        i = tifr3() & timsk3();
+        if(i)
+        {
+            check_interrupt(0x40, i & 0x02, tifr3()); // TIMER3 COMPA
+            check_interrupt(0x42, i & 0x04, tifr3()); // TIMER3 COMPB
+            check_interrupt(0x44, i & 0x08, tifr3()); // TIMER3 COMPC
+            check_interrupt(0x46, i & 0x01, tifr3()); // TIMER3 OVF
         }
     }
+
+    ++cycle_count;
 }
 
 }

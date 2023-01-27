@@ -90,6 +90,7 @@ void ssd1306_t::send_command(uint8_t byte)
         if(command_byte_index == 1)
         {
             col_start = byte & 0x7f;
+            data_col = col_start;
         }
         if(command_byte_index == 2)
         {
@@ -102,6 +103,7 @@ void ssd1306_t::send_command(uint8_t byte)
         if(command_byte_index == 1)
         {
             page_start = byte & 0x7;
+            data_page = page_start;
         }
         if(command_byte_index == 2)
         {
@@ -216,12 +218,24 @@ void ssd1306_t::update_pixels_row()
     size_t rindex = (row / 8) * 128;
     for(int i = 0; i < 128; ++i, ++index, ++rindex)
     {
-        auto p = pixels[index];
-        constexpr double F = 0.5;
-        p *= (1.0 - F);
+        uint8_t p = 0;
         if(ram[rindex] & mask)
-            p += F;
+            p = contrast;
         pixels[index] = p;
+    }
+}
+
+void ssd1306_t::filter_pixels(uint64_t ps, double ratio)
+{
+    double cutoff_hz = 45.0;
+    double tau = 1.0 / (6.28318530718 * cutoff_hz);
+    double dt = double(ps) * 1e-12 / ratio;
+    double alpha = dt / (tau + dt);
+    double beta = 1.0 - alpha;
+    for(int i = 0; i < 8192; ++i)
+    {
+        double p = (1.0 / 255) * pixels[i];
+        filtered_pixels[i] = alpha * p + beta * filtered_pixels[i];
     }
 }
 
@@ -264,6 +278,7 @@ void ssd1306_t::reset()
 {
     memset(&ram, 0, sizeof(ram));
     memset(&pixels, 0, sizeof(pixels));
+    memset(&filtered_pixels, 0, sizeof(filtered_pixels));
 
     contrast = 0x7f;
     entire_display_on = false;
@@ -295,6 +310,20 @@ void ssd1306_t::reset()
     phase_1 = 2;
     phase_2 = 2;
     vcomh_deselect = 2;
+
+    row = 0;
+    row_cycle = 0;
+    cycles_per_row = 0;
+    ps_per_clk = 0;
+
+    ps_rem = 0;
+    
+    processing_command = false;
+    current_command = 0;
+    command_byte_index = 0;
+
+    data_page = 0;
+    data_col = 0;
 
     update_internals();
 }

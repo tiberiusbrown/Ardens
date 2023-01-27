@@ -11,6 +11,7 @@ void atmega32u4_t::cycle_eeprom()
     constexpr uint8_t EERIE = (1 << 3);
     constexpr uint8_t EEMPE = (1 << 2);
     constexpr uint8_t EEPE  = (1 << 1);
+    constexpr uint8_t EERE  = (1 << 0);
 
     if(just_written == 0x3f && (eecr & EEMPE) != 0)
         eeprom_clear_eempe_cycles = 5;
@@ -34,6 +35,10 @@ void atmega32u4_t::cycle_eeprom()
         return;
     }
 
+    uint8_t eearl = data[0x41];
+    uint8_t eearh = data[0x42];
+    uint16_t addr = (eearl | (eearh << 8)) & 0x3ff;
+
     if(eecr & EEPE)
     {
         if(!(eecr & EEMPE))
@@ -43,10 +48,6 @@ void atmega32u4_t::cycle_eeprom()
         }
 
         uint8_t eepm = (eecr >> 4) & 0x3;
-        uint8_t eearl = data[0x41];
-        uint8_t eearh = data[0x42];
-        uint16_t addr = (eearl | (eearh << 8)) & 0x3ff;
-
         if(eepm == 0)
         {
             // erase and write
@@ -68,6 +69,14 @@ void atmega32u4_t::cycle_eeprom()
             eeprom_write_addr = addr;
             eeprom_write_data = eedr & eeprom[addr];
         }
+    }
+
+    if(eecr & EERE)
+    {
+        eecr &= ~EERE;
+        eedr = eeprom[addr];
+        wakeup_cycles = 4;
+        active = false;
     }
 }
 

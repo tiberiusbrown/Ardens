@@ -135,23 +135,34 @@ void arduboy_t::profiler_build_hotspots()
                 h.count += profiler_counts[addr / 2];
             }
             if(h.count == 0) --num_hotspots;
+
+            constexpr int LOW_COUNT_NUM = 1;
+            constexpr int LOW_COUNT_DENOM = 256;
             
-            // trim from beginning
+            // trim low-counts from beginning
             for(int32_t i = h.begin; i <= h.end; ++i)
             {
                 uint16_t addr = cpu.disassembled_prog[i].addr;
-                if(profiler_counts[addr / 2] == 0)
+                uint64_t c = h.count * LOW_COUNT_NUM / LOW_COUNT_DENOM;
+                if(profiler_counts[addr / 2] <= c)
+                {
                     ++h.begin;
+                    h.count -= profiler_counts[addr / 2];
+                }
                 else
                     break;
             }
 
-            // trim from end
+            // trim low-counts from end
             for(int32_t i = h.end; i >= h.begin; --i)
             {
                 uint16_t addr = cpu.disassembled_prog[i].addr;
-                if(profiler_counts[addr / 2] == 0)
+                uint64_t c = h.count * LOW_COUNT_NUM / LOW_COUNT_DENOM;
+                if(profiler_counts[addr / 2] <= c)
+                {
                     --h.end;
+                    h.count -= profiler_counts[addr / 2];
+                }
                 else
                     break;
             }
@@ -242,7 +253,7 @@ void arduboy_t::advance_instr()
     } while(++n < 65536 && (!cpu.active || cpu.cycles_till_next_instr != 0));
 }
 
-void arduboy_t::advance(uint64_t ps)
+void arduboy_t::advance(uint64_t ps, double ratio)
 {
     ps += ps_rem;
     ps_rem = 0;
@@ -256,12 +267,23 @@ void arduboy_t::advance(uint64_t ps)
         
         ps -= CYCLE_PS;
 
+        // 1 ms
+        constexpr uint64_t FILTER_EVERY_PS = 1 * 1000 * 1000 * 1000;
+
+        ps_filter_count += CYCLE_PS;
+        if(ps_filter_count >= FILTER_EVERY_PS)
+        {
+            ps_filter_count -= FILTER_EVERY_PS;
+            display.filter_pixels(FILTER_EVERY_PS, ratio);
+        }
+
         if(cpu.pc < cpu.breakpoints.size() &&
             cpu.breakpoints.test(cpu.pc))
         {
             paused = true;
             return;
         }
+
     }
 
     // track remainder

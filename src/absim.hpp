@@ -137,7 +137,18 @@ struct atmega32u4_t
 
     // timer0
     uint16_t timer0_divider_cycle;
+    bool timer0_count_down;
     void cycle_timer0();
+
+    // timer1
+    uint16_t timer1_divider_cycle;
+    bool timer1_count_down;
+    void cycle_timer1();
+
+    // timer3
+    uint16_t timer3_divider_cycle;
+    bool timer3_count_down;
+    void cycle_timer3();
 
     // PLL
     uint64_t pll_lock_cycle;
@@ -165,6 +176,8 @@ struct atmega32u4_t
     // breakpoints
     std::bitset<PROG_SIZE_BYTES / 2> breakpoints;
 
+    uint64_t cycle_count;
+
     // set all registers to initial value
     void reset();
 
@@ -175,7 +188,8 @@ struct atmega32u4_t
 struct ssd1306_t
 {
     // filtered display output (not physically real -- for rendering only)
-    std::array<double, 8192> pixels;
+    std::array<double, 8192> filtered_pixels;
+    std::array<uint8_t, 8192> pixels;
 
     // physical display RAM
     std::array<uint8_t, 1024> ram;
@@ -219,7 +233,6 @@ struct ssd1306_t
     uint8_t divide_ratio;
     uint8_t phase_1;
     uint8_t phase_2;
-
     uint8_t vcomh_deselect;
 
     double fosc() const;
@@ -236,6 +249,7 @@ struct ssd1306_t
     uint64_t ps_per_clk;
 
     void update_pixels_row();
+    void filter_pixels(uint64_t ps, double ratio);
 
     uint64_t ps_rem;
 
@@ -277,8 +291,8 @@ struct arduboy_t
     void profiler_build_hotspots();
     void profiler_reset();
 
-    // half nanoseconds remaining
     uint64_t ps_rem;
+    uint64_t ps_filter_count; // for calls to display filter
 
     // paused at breakpoint
     bool paused;
@@ -290,7 +304,9 @@ struct arduboy_t
     void advance_instr();
 
     // advance by specified number of picoseconds
-    void advance(uint64_t ps);
+    // ratio is for display filtering: 1.0 means real time,
+    // 0.1 means 10x slower
+    void advance(uint64_t ps, double ratio = 1.0);
 
     // returns an error string on error or nullptr on success
     char const* load_file(char const* filename);

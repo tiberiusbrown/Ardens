@@ -47,6 +47,8 @@ void atmega32u4_t::reset()
     eeprom_write_addr = 0;
     eeprom_write_data = 0;
     eeprom_program_cycles = 0;
+
+    cycle_count = 0;
 }
 
 }

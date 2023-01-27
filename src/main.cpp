@@ -162,7 +162,8 @@ int main(int, char**)
             }
 
             arduboy.advance(dt * 1000000000);
-            //arduboy.advance(dt * 1000000);
+            //arduboy.advance(dt * 10000000, 0.01);
+            //arduboy.advance(dt * 1000000, 0.001);
             //arduboy.advance(dt * 1000);
         }
 
@@ -177,7 +178,7 @@ int main(int, char**)
             {
                 for(int j = 0; j < 128; ++j)
                 {
-                    double p = arduboy.display.pixels[i * 128 + j];
+                    double p = arduboy.display.filtered_pixels[i * 128 + j];
                     if(p < 0.0) p = 0.0;
                     if(p > 1.0) p = 1.0;
                     uint8_t pi = (uint8_t)std::round(p * 255.0);
