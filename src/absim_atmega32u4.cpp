@@ -58,9 +58,10 @@ void atmega32u4_t::advance_cycle()
     cycle_spi();
     cycle_pll();
     cycle_timer0();
-    //cycle_timer1();
+    cycle_timer1();
     cycle_timer3();
     cycle_eeprom();
+    cycle_adc();
 
     if(cycles_till_next_instr == 0 && wakeup_cycles == 0 && (prev_sreg & SREG_I))
     {

@@ -46,18 +46,20 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim.hpp
     src/absim_instructions.hpp
 
+    src/absim_arduboy.cpp
     src/absim_ssd1306.cpp
     src/absim_atmega32u4.cpp
-    src/absim_timer.cpp
-    src/absim_pll.cpp
-    src/absim_spi.cpp
-    src/absim_eeprom.cpp
-    src/absim_reset.cpp
     src/absim_decode.cpp
     src/absim_execute.cpp
     src/absim_disassemble.cpp
-    src/absim_arduboy.cpp
     src/absim_load_file.cpp
+    src/absim_reset.cpp
+
+    src/absim_timer.cpp
+    src/absim_adc.cpp
+    src/absim_pll.cpp
+    src/absim_spi.cpp
+    src/absim_eeprom.cpp
     
     src/imgui_impl_sdl.h
     src/imgui_impl_sdl.cpp

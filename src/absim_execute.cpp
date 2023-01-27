@@ -592,6 +592,11 @@ uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     if(cpu.ld_ior(i.dst) & (1 << i.src))
     {
+        if(next_instr_is_two_words(cpu))
+        {
+            cpu.pc += 3;
+            return 3;
+        }
         cpu.pc += 2;
         return 2;
     }
@@ -603,6 +608,11 @@ uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     if(!(cpu.ld_ior(i.dst) & (1 << i.src)))
     {
+        if(next_instr_is_two_words(cpu))
+        {
+            cpu.pc += 3;
+            return 3;
+        }
         cpu.pc += 2;
         return 2;
     }
@@ -614,6 +624,11 @@ uint32_t instr_sbrs(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     if(cpu.gpr(i.dst) & (1 << i.src))
     {
+        if(next_instr_is_two_words(cpu))
+        {
+            cpu.pc += 3;
+            return 3;
+        }
         cpu.pc += 2;
         return 2;
     }
@@ -625,6 +640,11 @@ uint32_t instr_sbrc(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     if(!(cpu.gpr(i.dst) & (1 << i.src)))
     {
+        if(next_instr_is_two_words(cpu))
+        {
+            cpu.pc += 3;
+            return 3;
+        }
         cpu.pc += 2;
         return 2;
     }

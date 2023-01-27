@@ -36,6 +36,7 @@ void arduboy_t::profiler_build_hotspots()
     //
 
     std::bitset<NUM_INSTRS> starts;
+    starts.set(cpu.num_instrs - 1);
 
     num_hotspots = 0;
 
@@ -96,8 +97,10 @@ void arduboy_t::profiler_build_hotspots()
         case INSTR_RCALL:
         case INSTR_BRBS:
         case INSTR_BRBC:
-            //target = d.addr / 2 + 1 + (int16_t)i.word;
-            target = 0;
+            if(i.func == INSTR_RCALL)
+                target = d.addr / 2 + 1 + (int16_t)i.word;
+            else
+                target = 0;
             break;
         case INSTR_IJMP:
         case INSTR_RET:

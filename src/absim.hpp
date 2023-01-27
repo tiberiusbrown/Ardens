@@ -170,6 +170,13 @@ struct atmega32u4_t
     uint32_t eeprom_program_cycles;
     void cycle_eeprom();
 
+    // ADC
+    uint8_t adc_prescaler_cycle;
+    uint8_t adc_cycle;
+    uint8_t adc_ref;
+    uint16_t adc_result;
+    void cycle_adc();
+
     bool interrupting;
     void check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
