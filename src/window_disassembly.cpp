@@ -2,7 +2,12 @@
 
 #include "absim.hpp"
 
+#include <inttypes.h>
+
 extern absim::arduboy_t arduboy;
+extern int profiler_selected_hotspot;
+extern int disassembly_scroll_addr;
+extern bool profiler_cycle_counts;
 
 static void register_tooltip(int reg, bool pointer = false)
 {
@@ -67,7 +72,7 @@ static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
     Text("0x%04x", addr);
     PopStyleColor();
     if(IsItemClicked())
-        do_scroll = find_index_of_addr(addr);
+        do_scroll = addr;
 }
 
 static void disassembly_arg(
@@ -213,12 +218,28 @@ static void draw_breakpoint(int row, ImVec2 p)
     if(bp) draw_breakpoint_color(p, BP_COLOR);
 }
 
-void disassembly_window()
+static void profiler_count(absim::disassembled_instr_t const& d)
 {
     using namespace ImGui;
-    if(Begin("Disassembly") && arduboy.cpu.decoded)
+    if(arduboy.profiler_total == 0) return;
+    uint64_t count = arduboy.profiler_counts[d.addr / 2];
+    if(count == 0) return;
+    double f = double(count) * 100 / arduboy.profiler_total;
+    if(profiler_cycle_counts)
+        Text("%12" PRIu64 "%8.4f%%", count, f);
+    else
+        Text("%8.4f%%", f);
+}
+
+void window_disassembly(bool& open)
+{
+    using namespace ImGui;
+    if(!open) return;
+    SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
+    int do_scroll = disassembly_scroll_addr;
+    disassembly_scroll_addr = -1;
+    if(Begin("Disassembly", &open) && arduboy.cpu.decoded)
     {
-        int do_scroll = -1;
 
         if(Button("Reset"))
         {
@@ -234,7 +255,7 @@ void disassembly_window()
             if(Button("Step"))
             {
                 arduboy.advance_instr();
-                do_scroll = find_index_of_addr(arduboy.cpu.pc * 2);
+                do_scroll = arduboy.cpu.pc * 2;
             }
         }
         else
@@ -244,18 +265,24 @@ void disassembly_window()
                 arduboy.paused = true;
                 while(arduboy.cpu.cycles_till_next_instr != 0)
                     arduboy.cpu.advance_cycle();
-                do_scroll = find_index_of_addr(arduboy.cpu.pc * 2);
+                do_scroll = arduboy.cpu.pc * 2;
             }
         }
 
         ImGuiTableFlags flags = 0;
         flags |= ImGuiTableFlags_ScrollY;
         flags |= ImGuiTableFlags_RowBg;
-        flags |= ImGuiTableFlags_SizingFixedFit;
-        if(BeginTable("##ScrollingRegion", 2, flags))
+        //flags |= ImGuiTableFlags_SizingFixedFit;
+        if(BeginTable("##ScrollingRegion", 3, flags))
         {
-            TableSetupColumn("Address", 0, 60.f);
-            TableSetupColumn("Instruction");
+            TableSetupColumn("Address",
+                ImGuiTableColumnFlags_WidthFixed,
+                65.f);
+            TableSetupColumn("Instruction",
+                ImGuiTableColumnFlags_WidthStretch);
+            TableSetupColumn("Profiling",
+                ImGuiTableColumnFlags_WidthFixed,
+                CalcTextSize(profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
             ImGuiListClipper clipper;
             clipper.Begin((int)arduboy.cpu.num_instrs);
             while(clipper.Step())
@@ -264,12 +291,24 @@ void disassembly_window()
                 {
                     auto const& d = arduboy.cpu.disassembled_prog[i];
                     TableNextRow();
-                    if(d.addr / 2 == arduboy.cpu.pc)
+                    uint16_t instr_index = d.addr / 2;
+                    if(instr_index == arduboy.cpu.pc)
                     {
                         auto color = arduboy.paused ?
                             IM_COL32(80, 0, 0, 255) :
                             IM_COL32(60, 60, 60, 255);
                         TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
+                    }
+                    else if(profiler_selected_hotspot >= 0)
+                    {
+                        auto color = i % 2 ?
+                            IM_COL32(65, 0, 0, 255) :
+                            IM_COL32(50, 0, 0, 255);
+                        auto const& h = arduboy.profiler_hotspots[profiler_selected_hotspot];
+                        uint16_t instr_begin = arduboy.cpu.disassembled_prog[h.begin].addr / 2;
+                        uint16_t instr_end   = arduboy.cpu.disassembled_prog[h.end].addr / 2;
+                        if(instr_index >= instr_begin && instr_index <= instr_end)
+                            TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
                     }
                     TableSetColumnIndex(0);
                     auto bp_pos = GetCursorScreenPos();
@@ -308,13 +347,17 @@ void disassembly_window()
                         SameLine();
                         disassembly_arg(d, d.arg1, i, do_scroll);
                     }
+
+                    TableSetColumnIndex(2);
+                    profiler_count(d);
                 }
             }
 
             if(do_scroll >= 0)
             {
+                int index = find_index_of_addr(do_scroll);
                 int num_display = clipper.DisplayEnd - clipper.DisplayStart;
-                SetScrollY(clipper.ItemsHeight * (do_scroll - num_display / 2));
+                SetScrollY(clipper.ItemsHeight * (index - num_display / 2));
             }
 
             EndTable();

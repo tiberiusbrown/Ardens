@@ -36,9 +36,12 @@ if(MSVC)
     set(EXEFLAG WIN32)
 endif()
 add_executable(arduboy_sim ${EXEFLAG}
-    .editorconfig
     src/main.cpp
-    src/disassembly_window.cpp
+    src/window_disassembly.cpp
+    src/window_profiler.cpp
+    src/window_display.cpp
+    src/window_display_internals.cpp
+    src/window_data_space.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp

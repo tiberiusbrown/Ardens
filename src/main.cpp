@@ -19,8 +19,6 @@
 
 #include <fmt/format.h>
 
-#include "imgui_memory_editor.h"
-
 #include "absim.hpp"
 #include "absim_instructions.hpp"
 
@@ -31,11 +29,21 @@
 static SDL_Texture* framebuffer_texture;
 absim::arduboy_t arduboy;
 
-static MemoryEditor memed_data;
-static MemoryEditor memed_prog;
-static MemoryEditor memed_display_ram;
+int profiler_selected_hotspot = -1;
+int disassembly_scroll_addr = -1;
+bool profiler_cycle_counts = false;
 
-void disassembly_window();
+void window_disassembly(bool& open);
+void window_profiler(bool& open);
+void window_display(bool& open, void* tex);
+void window_display_internals(bool& open);
+void window_data_space(bool& open);
+
+static bool open_disassembly = true;
+static bool open_display = true;
+static bool open_display_internals = true;
+static bool open_data_space = true;
+static bool open_profiler = true;
 
 // Main code
 int main(int, char**)
@@ -236,25 +244,26 @@ int main(int, char**)
             ImGui::End();
         }
 
-        memed_data.DrawWindow(
-            "CPU Data Space",
-            arduboy.cpu.data.data(),
-            arduboy.cpu.data.size());
-        memed_display_ram.DrawWindow(
-            "Display RAM",
-            arduboy.display.ram.data(),
-            arduboy.display.ram.size());
-        memed_prog.DrawWindow(
-            "CPU Program Memory",
-            arduboy.cpu.prog.data(),
-            arduboy.cpu.prog.size());
+        if(ImGui::BeginMainMenuBar())
+        {
+            if(ImGui::MenuItem("Display", nullptr, open_display))
+                open_display = !open_display;
+            if(ImGui::MenuItem("Disassembly", nullptr, open_disassembly))
+                open_disassembly = !open_disassembly;
+            if(ImGui::MenuItem("CPU Data Space", nullptr, open_data_space))
+                open_data_space = !open_data_space;
+            if(ImGui::MenuItem("Profiler", nullptr, open_profiler))
+                open_profiler = !open_profiler;
+            if(ImGui::MenuItem("Display Internals", nullptr, open_display_internals))
+                open_display_internals = !open_display_internals;
+            ImGui::EndMainMenuBar();
+        }
 
-        disassembly_window();
-
-        ImGui::Begin("Display");
-        constexpr int ZOOM = 4;
-        ImGui::Image((void*)framebuffer_texture, { 128 * ZOOM, 64 * ZOOM });
-        ImGui::End();
+        window_disassembly(open_disassembly);
+        window_display(open_display, (void*)framebuffer_texture);
+        window_display_internals(open_display_internals);
+        window_profiler(open_profiler);
+        window_data_space(open_data_space);
 
         if(dferr)
         {

@@ -96,7 +96,6 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
     case INSTR_EOR:
     case INSTR_OR:
     case INSTR_MOV:
-    case INSTR_MOVW:
     case INSTR_MUL:
     case INSTR_MULS:
     case INSTR_MULSU:
@@ -107,6 +106,12 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
         d.arg1.type = disassembled_instr_arg_t::type::REG;
         d.arg0.val = i.dst;
         d.arg1.val = i.src;
+        break;
+    case INSTR_MOVW:
+        d.arg0.type = disassembled_instr_arg_t::type::REG;
+        d.arg1.type = disassembled_instr_arg_t::type::REG;
+        d.arg0.val = i.dst * 2;
+        d.arg1.val = i.src * 2;
         break;
     case INSTR_LDI:
     case INSTR_CPI:

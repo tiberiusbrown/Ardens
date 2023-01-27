@@ -125,6 +125,7 @@ struct atmega32u4_t
 
     uint16_t pc;                       // program counter
 
+    uint16_t executing_instr_pc;
     uint8_t cycles_till_next_instr;
 
     uint16_t last_addr;
@@ -257,6 +258,24 @@ struct arduboy_t
 {
     atmega32u4_t cpu;
     ssd1306_t display;
+
+    static constexpr size_t NUM_INSTRS = atmega32u4_t::PROG_SIZE_BYTES / 2;
+
+    std::array<uint64_t, NUM_INSTRS> profiler_counts;
+    uint64_t profiler_total;
+    uint64_t profiler_total_with_sleep;
+    bool profiler_enabled;
+    
+    struct hotspot_t
+    {
+        uint64_t count;
+        uint16_t begin, end;
+    };
+    std::array<hotspot_t, NUM_INSTRS> profiler_hotspots;
+    uint32_t num_hotspots;
+
+    void profiler_build_hotspots();
+    void profiler_reset();
 
     // half nanoseconds remaining
     uint64_t ps_rem;

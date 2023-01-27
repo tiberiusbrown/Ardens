@@ -25,16 +25,6 @@ static int get_hex_byte(std::istream& f)
     return lo + hi * 16;
 }
 
-void arduboy_t::reset()
-{
-    cpu.reset();
-    display.reset();
-    paused = false;
-
-    if(cpu.breakpoints.test(0))
-        paused = true;
-}
-
 char const* arduboy_t::load_file(char const* filename)
 {
     reset();

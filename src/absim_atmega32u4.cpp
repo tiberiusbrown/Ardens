@@ -29,6 +29,11 @@ void atmega32u4_t::advance_cycle()
     just_written = 0xffff;
     if(!active && wakeup_cycles > 0)
     {
+        // set this here so we don't steal profiler cycle from
+        // instruction that was running when interrupt hit
+        if(wakeup_cycles == 4)
+            executing_instr_pc = pc;
+
         if(--wakeup_cycles == 0)
             active = true;
     }
@@ -41,6 +46,7 @@ void atmega32u4_t::advance_cycle()
             auto const& i = decoded_prog[pc];
             if(i.func == INSTR_UNKNOWN)
                 return;
+            executing_instr_pc = pc;
             prev_sreg = sreg();
             cycles_till_next_instr = INSTR_MAP[i.func](*this, i);
         }
@@ -54,7 +60,7 @@ void atmega32u4_t::advance_cycle()
     cycle_timer0();
     cycle_eeprom();
 
-    if(wakeup_cycles == 0 && (prev_sreg & SREG_I))
+    if(cycles_till_next_instr == 0 && wakeup_cycles == 0 && (prev_sreg & SREG_I))
     {
         // handle interrupts here
         uint8_t i;
