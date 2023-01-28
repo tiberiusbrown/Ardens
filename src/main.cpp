@@ -171,6 +171,8 @@ int main(int, char**)
         {
             void* pixels = nullptr;
             int pitch = 0;
+            arduboy.display.filter_pixels();
+
             SDL_LockTexture(framebuffer_texture, nullptr, &pixels, &pitch);
             
             uint8_t* bpixels = (uint8_t*)pixels;
@@ -178,10 +180,7 @@ int main(int, char**)
             {
                 for(int j = 0; j < 128; ++j)
                 {
-                    double p = arduboy.display.filtered_pixels[i * 128 + j];
-                    if(p < 0.0) p = 0.0;
-                    if(p > 1.0) p = 1.0;
-                    uint8_t pi = (uint8_t)std::round(p * 255.0);
+                    auto pi = arduboy.display.filtered_pixels[i * 128 + j];
                     *bpixels++ = pi;
                     *bpixels++ = pi;
                     *bpixels++ = pi;
@@ -280,6 +279,7 @@ int main(int, char**)
             ImGui::EndPopup();
         }
 
+        ImGui::ShowMetricsWindow();
         //ImGui::ShowDemoWindow();
 
         // Rendering

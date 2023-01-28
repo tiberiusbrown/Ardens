@@ -9,6 +9,10 @@
 
 #include "absim_instructions.hpp"
 
+#if defined(_MSC_VER)
+#define FORCEINLINE __forceinline
+#endif
+
 namespace absim
 {
 
@@ -35,22 +39,22 @@ struct atmega32u4_t
     uint16_t just_read;
     uint16_t just_written;
 
-    uint8_t ld(uint16_t ptr)
+    FORCEINLINE uint8_t ld(uint16_t ptr)
     {
         just_read = ptr;
         return ptr < data.size() ? data[ptr] : 0x00;
     }
-    void st(uint16_t ptr, uint8_t x)
+    FORCEINLINE void st(uint16_t ptr, uint8_t x)
     {
         just_written = ptr;
         if(ptr < data.size()) data[ptr] = x;
     }
 
-    uint8_t ld_ior(uint8_t n)
+    FORCEINLINE uint8_t ld_ior(uint8_t n)
     {
         return ld(n + 32);
     }
-    void st_ior(uint8_t n, uint8_t x)
+    FORCEINLINE void st_ior(uint8_t n, uint8_t x)
     {
         st(n + 32, x);
     }
@@ -137,16 +141,25 @@ struct atmega32u4_t
 
     // timer0
     uint16_t timer0_divider_cycle;
+    uint16_t timer0_divider;
     bool timer0_count_down;
     void cycle_timer0();
 
     // timer1
     uint16_t timer1_divider_cycle;
+    uint16_t timer1_divider;
+    uint16_t timer1_top;
+    uint16_t timer1_tov;
+    bool timer1_phase_correct;
     bool timer1_count_down;
     void cycle_timer1();
 
     // timer3
     uint16_t timer3_divider_cycle;
+    uint16_t timer3_divider;
+    uint16_t timer3_top;
+    uint16_t timer3_tov;
+    bool timer3_phase_correct;
     bool timer3_count_down;
     void cycle_timer3();
 
@@ -194,9 +207,14 @@ struct atmega32u4_t
 
 struct ssd1306_t
 {
-    // filtered display output (not physically real -- for rendering only)
-    std::array<double, 8192> filtered_pixels;
-    std::array<uint8_t, 8192> pixels;
+    std::array<uint8_t, 8192> filtered_pixels;
+    std::array<uint16_t, 8192> filtered_pixel_counts;
+
+    // moving average
+    static constexpr int MAX_PIXEL_HISTORY = 3;
+    std::array<std::array<uint8_t, 8192>, MAX_PIXEL_HISTORY> pixels;
+    int pixel_history_index;
+    int num_pixel_history;
 
     // physical display RAM
     std::array<uint8_t, 1024> ram;
@@ -247,7 +265,7 @@ struct ssd1306_t
 
     void reset();
 
-    void update_internals();
+    void update_clocking();
 
     // display refresh state
     uint8_t row;
@@ -256,7 +274,7 @@ struct ssd1306_t
     uint64_t ps_per_clk;
 
     void update_pixels_row();
-    void filter_pixels(uint64_t ps, double ratio);
+    void filter_pixels();
 
     uint64_t ps_rem;
 
@@ -299,7 +317,6 @@ struct arduboy_t
     void profiler_reset();
 
     uint64_t ps_rem;
-    uint64_t ps_filter_count; // for calls to display filter
 
     // paused at breakpoint
     bool paused;
@@ -313,7 +330,7 @@ struct arduboy_t
     // advance by specified number of picoseconds
     // ratio is for display filtering: 1.0 means real time,
     // 0.1 means 10x slower
-    void advance(uint64_t ps, double ratio = 1.0);
+    void advance(uint64_t ps);
 
     // returns an error string on error or nullptr on success
     char const* load_file(char const* filename);

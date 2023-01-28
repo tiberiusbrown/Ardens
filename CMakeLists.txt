@@ -30,6 +30,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(fmt)
 
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+
 project(arduboy_sim)
 set(EXEFLAG)
 if(MSVC)

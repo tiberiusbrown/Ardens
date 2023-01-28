@@ -5,16 +5,13 @@ namespace absim
 
 void atmega32u4_t::cycle_eeprom()
 {
-    uint8_t& eecr = data[0x3f];
-    uint8_t& eedr = data[0x40];
+#define eecr data[0x3f]
+#define eedr data[0x40]
 
     constexpr uint8_t EERIE = (1 << 3);
     constexpr uint8_t EEMPE = (1 << 2);
     constexpr uint8_t EEPE  = (1 << 1);
     constexpr uint8_t EERE  = (1 << 0);
-
-    if(just_written == 0x3f && (eecr & EEMPE) != 0)
-        eeprom_clear_eempe_cycles = 5;
 
     if(eeprom_clear_eempe_cycles != 0)
     {
@@ -22,6 +19,12 @@ void atmega32u4_t::cycle_eeprom()
         if(eeprom_clear_eempe_cycles == 0)
             eecr &= ~EEMPE;
     }
+
+    if((eecr & (EERE | EEPE | EEMPE)) == 0)
+        return;
+
+    if(just_written == 0x3f && (eecr & EEMPE) != 0)
+        eeprom_clear_eempe_cycles = 4;
 
     if(eeprom_program_cycles != 0)
     {

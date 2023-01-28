@@ -83,6 +83,9 @@ void arduboy_t::profiler_build_hotspots()
         if(i.func == INSTR_BRBS || i.func == INSTR_BRBC)
             conditional = true;
 
+        if((i.func == INSTR_RJMP || i.func == INSTR_JMP) && i.word <= 4)
+            conditional = true;
+
         int size = 1;
         int32_t target = -1;
 
@@ -256,7 +259,7 @@ void arduboy_t::advance_instr()
     } while(++n < 65536 && (!cpu.active || cpu.cycles_till_next_instr != 0));
 }
 
-void arduboy_t::advance(uint64_t ps, double ratio)
+void arduboy_t::advance(uint64_t ps)
 {
     ps += ps_rem;
     ps_rem = 0;
@@ -272,13 +275,6 @@ void arduboy_t::advance(uint64_t ps, double ratio)
 
         // 1 ms
         constexpr uint64_t FILTER_EVERY_PS = 1 * 1000 * 1000 * 1000;
-
-        ps_filter_count += CYCLE_PS;
-        if(ps_filter_count >= FILTER_EVERY_PS)
-        {
-            ps_filter_count -= FILTER_EVERY_PS;
-            display.filter_pixels(FILTER_EVERY_PS, ratio);
-        }
 
         if(cpu.pc < cpu.breakpoints.size() &&
             cpu.breakpoints.test(cpu.pc))

@@ -24,10 +24,7 @@ void atmega32u4_t::cycle_spi()
         spi_busy = false;
         return;
     }
-
-    if(just_read == 0x4d)
-        spsr_read_after_transmit = true;
-
+    
     if(just_written == 0x4e)
     {
         if(spi_busy)
@@ -42,6 +39,8 @@ void atmega32u4_t::cycle_spi()
             spi_busy = true;
         }
     }
+    else if(just_read == 0x4d)
+        spsr_read_after_transmit = true;
 
     if(!spi_busy)
         return;

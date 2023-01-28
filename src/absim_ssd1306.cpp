@@ -33,44 +33,6 @@ void ssd1306_t::send_command(uint8_t byte)
         processing_command = false;
         break;
 
-    case 0x81:
-        if(command_byte_index == 1)
-        {
-            contrast = byte;
-            processing_command = false;
-        }
-        break;
-
-    case 0xa4:
-        entire_display_on = true;
-        processing_command = false;
-        break;
-
-    case 0xa5:
-        entire_display_on = false;
-        processing_command = false;
-        break;
-
-    case 0xa6:
-        inverse_display = true;
-        processing_command = false;
-        break;
-
-    case 0xa7:
-        inverse_display = false;
-        processing_command = false;
-        break;
-
-    case 0xae:
-        display_on = false;
-        processing_command = false;
-        break;
-
-    case 0xaf:
-        display_on = true;
-        processing_command = false;
-        break;
-
     case 0x20:
         if(command_byte_index == 1)
         {
@@ -112,6 +74,14 @@ void ssd1306_t::send_command(uint8_t byte)
         }
         break;
 
+    case 0x81:
+        if(command_byte_index == 1)
+        {
+            contrast = byte;
+            processing_command = false;
+        }
+        break;
+
     case 0xb0: case 0xb1 : case 0xb2 : case 0xb3:
     case 0xb4: case 0xb5 : case 0xb6 : case 0xb7:
         page_page_start = byte & 0x7;
@@ -128,12 +98,42 @@ void ssd1306_t::send_command(uint8_t byte)
         processing_command = false;
         break;
 
+    case 0xa4:
+        entire_display_on = true;
+        processing_command = false;
+        break;
+
+    case 0xa5:
+        entire_display_on = false;
+        processing_command = false;
+        break;
+
+    case 0xa6:
+        inverse_display = true;
+        processing_command = false;
+        break;
+
+    case 0xa7:
+        inverse_display = false;
+        processing_command = false;
+        break;
+
     case 0xa8:
         if(command_byte_index == 1)
         {
             mux_ratio = byte & 0x3f;
             processing_command = false;
         }
+        break;
+
+    case 0xae:
+        display_on = false;
+        processing_command = false;
+        break;
+
+    case 0xaf:
+        display_on = true;
+        processing_command = false;
         break;
 
     case 0xc0:
@@ -154,6 +154,16 @@ void ssd1306_t::send_command(uint8_t byte)
         }
         break;
 
+    case 0xd5:
+        if(command_byte_index == 1)
+        {
+            divide_ratio = byte & 0xf;
+            fosc_index = byte >> 4;
+            update_clocking();
+            processing_command = false;
+        }
+        break;
+
     case 0xda:
         if(command_byte_index == 1)
         {
@@ -163,7 +173,26 @@ void ssd1306_t::send_command(uint8_t byte)
         }
         break;
 
+    case 0xd9:
+        if(command_byte_index == 1)
+        {
+            phase_1 = byte & 0xf;
+            phase_2 = byte >> 4;
+            processing_command = false;
+        }
+        break;
 
+    case 0xdb:
+        if(command_byte_index == 1)
+        {
+            vcomh_deselect = (byte >> 4) & 0x7;
+            processing_command = false;
+        }
+        break;
+
+    case 0xe3:
+        processing_command = false;
+        break;
 
     default:
 
@@ -182,7 +211,9 @@ void ssd1306_t::send_command(uint8_t byte)
 
 void ssd1306_t::send_data(uint8_t byte)
 {
-    size_t i = data_page * 128 + data_col;
+    uint8_t mapped_col = segment_remap ? 127 - data_col : data_col;
+    size_t i = data_page * 128 + mapped_col;
+
     ram[i] = byte;
 
     switch(addressing_mode)
@@ -214,29 +245,45 @@ void ssd1306_t::send_data(uint8_t byte)
 void ssd1306_t::update_pixels_row()
 {
     uint8_t mask = 1 << (row % 8);
-    size_t index = row * 128;
     size_t rindex = (row / 8) * 128;
-    for(int i = 0; i < 128; ++i, ++index, ++rindex)
+
+    uint8_t out_row = com_scan_direction ? 63 - row : row;
+
+    // the Arduboy's display is upside-down
+    size_t pindex = (63 - out_row) * 128 + 128;
+
+    auto& parray = pixels[pixel_history_index];
+
+    if(row == 63)
+    {
+        if(num_pixel_history > MAX_PIXEL_HISTORY)
+            num_pixel_history = MAX_PIXEL_HISTORY;
+        if(++pixel_history_index >= num_pixel_history)
+            pixel_history_index = 0;
+    }
+
+    for(int i = 0; i < 128; ++i)
     {
         uint8_t p = 0;
-        if(ram[rindex] & mask)
+        if(ram[rindex++] & mask)
             p = contrast;
-        pixels[index] = p;
+        parray[--pindex] = p;
     }
 }
 
-void ssd1306_t::filter_pixels(uint64_t ps, double ratio)
+void ssd1306_t::filter_pixels()
 {
-    double cutoff_hz = 45.0;
-    double tau = 1.0 / (6.28318530718 * cutoff_hz);
-    double dt = double(ps) * 1e-12 / ratio;
-    double alpha = dt / (tau + dt);
-    double beta = 1.0 - alpha;
-    for(int i = 0; i < 8192; ++i)
+    if(num_pixel_history <= 1)
     {
-        double p = (1.0 / 255) * pixels[i];
-        filtered_pixels[i] = alpha * p + beta * filtered_pixels[i];
+        memcpy(&filtered_pixels, &pixels, sizeof(filtered_pixels));
+        return;
     }
+    memset(&filtered_pixel_counts, 0, sizeof(filtered_pixel_counts));
+    for(auto const& parray : pixels)
+        for(int i = 0; i < 8192; ++i)
+            filtered_pixel_counts[i] += parray[i];
+    for(int i = 0; i < 8192; ++i)
+        filtered_pixels[i] = filtered_pixel_counts[i] / num_pixel_history;
 }
 
 void ssd1306_t::advance(uint64_t ps)
@@ -264,14 +311,14 @@ void ssd1306_t::advance(uint64_t ps)
 constexpr std::array<double, 16> FOSC =
 {
     // mostly made up
-    175.00, 199.38, 223.75, 248.12, 272.50, 296.88, 321.25, 345.62,
-    370.00, 394.29, 418.57, 442.86, 467.14, 491.43, 515.71, 540.00,
+    200, 224, 248, 272, 296, 320, 344, 368,
+    392, 416, 440, 464, 488, 512, 536, 700,
 };
 
-void ssd1306_t::update_internals()
+void ssd1306_t::update_clocking()
 {
     cycles_per_row = phase_1 + phase_2 + 50;
-    ps_per_clk = (uint64_t)std::round(1e12 / fosc());
+    ps_per_clk = (uint64_t)std::round(1e12 * (divide_ratio + 1) / fosc());
 }
 
 void ssd1306_t::reset()
@@ -325,7 +372,7 @@ void ssd1306_t::reset()
     data_page = 0;
     data_col = 0;
 
-    update_internals();
+    update_clocking();
 }
 
 double ssd1306_t::fosc() const
