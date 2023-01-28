@@ -360,6 +360,7 @@ void window_disassembly(bool& open)
 
             if(do_scroll >= 0)
             {
+                // TODO: don't scroll unless necessary?
                 int index = find_index_of_addr(do_scroll);
                 int num_display = clipper.DisplayEnd - clipper.DisplayStart;
                 if(!scroll_addr_to_top) index -= num_display / 2;

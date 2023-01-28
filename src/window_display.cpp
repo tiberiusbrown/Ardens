@@ -14,6 +14,11 @@ void window_display(bool& open, void* tex)
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse))
         {
+            auto t = GetContentRegionAvail();
+            float w = 128, h = 64;
+            while(w + 128 < t.x && h + 64 < t.y)
+                w += 128, h += 64;
+            Image(tex, { w, h });
             AlignTextToFramePadding();
             TextUnformatted("Filter for:");
             int& num = arduboy.display.num_pixel_history;
@@ -23,14 +28,21 @@ void window_display(bool& open, void* tex)
             SameLine();
             if(RadioButton("3-Level", num == 2))
                 num = 2;
+            if(IsItemHovered())
+            {
+                BeginTooltip();
+                TextUnformatted("Average the last 2 display frames");
+                EndTooltip();
+            }
             SameLine();
             if(RadioButton("4-Level", num == 3))
                 num = 3;
-            auto t = GetContentRegionAvail();
-            float w = 128, h = 64;
-            while(w + 128 < t.x && h + 64 < t.y)
-                w += 128, h += 64;
-            Image(tex, { w, h });
+            if(IsItemHovered())
+            {
+                BeginTooltip();
+                TextUnformatted("Average the last 3 display frames");
+                EndTooltip();
+            }
         }
         End();
     }

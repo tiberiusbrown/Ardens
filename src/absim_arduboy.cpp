@@ -276,8 +276,9 @@ void arduboy_t::advance(uint64_t ps)
         // 1 ms
         constexpr uint64_t FILTER_EVERY_PS = 1 * 1000 * 1000 * 1000;
 
-        if(cpu.pc < cpu.breakpoints.size() &&
-            cpu.breakpoints.test(cpu.pc))
+        if(cpu.pc < cpu.breakpoints.size() && cpu.breakpoints.test(cpu.pc) ||
+            cpu.just_read < cpu.breakpoints_rd.size() && cpu.breakpoints_rd.test(cpu.just_read) ||
+            cpu.just_written < cpu.breakpoints_wr.size() && cpu.breakpoints_wr.test(cpu.just_written))
         {
             paused = true;
             return;

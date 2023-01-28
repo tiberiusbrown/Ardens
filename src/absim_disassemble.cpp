@@ -39,8 +39,6 @@ static char const* get_instr_name(avr_instr_t const& i)
         case INSTR_ANDI    : return "andi";
         case INSTR_ADIW    : return "adiw";
         case INSTR_SBIW    : return "sbiw";
-        case INSTR_BSET    : return "bset";
-        case INSTR_BCLR    : return "bclr";
         case INSTR_SBI     : return "sbi";
         case INSTR_CBI     : return "cbi";
         case INSTR_SBIS    : return "sbis";
@@ -68,6 +66,22 @@ static char const* get_instr_name(avr_instr_t const& i)
         case INSTR_RJMP    : return "rjmp";
         case INSTR_JMP     : return "jmp";
         case INSTR_IJMP    : return "ijmp";
+        case INSTR_BSET    :
+        {
+            static char const* const NAMES[] =
+            {
+                "sec", "sez", "sen", "sev", "ses", "seh" ,"set", "sei"
+            };
+            return NAMES[i.src & 0x7];
+        }
+        case INSTR_BCLR    :
+        {
+            static char const* const NAMES[] =
+            {
+                "clc", "clz", "cln", "clv", "cls", "clh" ,"clt", "cli"
+            };
+            return NAMES[i.src & 0x7];
+        }
         case INSTR_LDD_STD :
             return (i.word & 0x200) ? "std" : "ldd";
         case INSTR_LD_ST   :

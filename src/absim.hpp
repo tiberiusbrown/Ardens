@@ -26,9 +26,10 @@ struct avr_instr_t
 
 struct atmega32u4_t
 {
-    std::array<uint8_t, 2560 + 256> data;
-
     static constexpr size_t PROG_SIZE_BYTES = 29 * 1024;
+    static constexpr size_t DATA_SIZE_BYTES = 2560 + 256;
+
+    std::array<uint8_t, DATA_SIZE_BYTES> data;
 
     uint8_t& gpr(uint8_t n)
     {
@@ -195,6 +196,8 @@ struct atmega32u4_t
 
     // breakpoints
     std::bitset<PROG_SIZE_BYTES / 2> breakpoints;
+    std::bitset<DATA_SIZE_BYTES> breakpoints_rd;
+    std::bitset<DATA_SIZE_BYTES> breakpoints_wr;
 
     uint64_t cycle_count;
 
