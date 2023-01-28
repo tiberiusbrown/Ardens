@@ -31,10 +31,11 @@ struct disassembled_instr_arg_t
 };
 struct disassembled_instr_t
 {
-    char const* name;
+    char const* name; // if nullptr, display as raw bytes
     uint16_t addr;
     disassembled_instr_arg_t arg0;
     disassembled_instr_arg_t arg1;
+    bool object;
 };
 void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d);
 bool instr_is_two_words(avr_instr_t const& i);

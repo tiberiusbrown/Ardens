@@ -43,18 +43,7 @@ static void register_tooltip(int reg, bool pointer = false)
 
 static int find_index_of_addr(uint16_t addr)
 {
-    absim::disassembled_instr_t temp;
-    temp.addr = addr;
-    auto it = std::lower_bound(
-        arduboy.cpu.disassembled_prog.begin(),
-        arduboy.cpu.disassembled_prog.begin() + arduboy.cpu.num_instrs,
-        temp,
-        [](auto const& a, auto const& b) { return a.addr < b.addr; }
-    );
-
-    auto index = std::distance(arduboy.cpu.disassembled_prog.begin(), it);
-
-    return (int)index;
+    return (int)arduboy.cpu.addr_to_disassembled_index(addr);
 }
 
 static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
@@ -307,27 +296,27 @@ void window_disassembly(bool& open)
                         toggle_breakpoint(i);
                     }
                     TableSetColumnIndex(1);
-                    if(!d.name)
+                    if(!d.name || d.object)
                     {
-                        TextDisabled("%02x%02x",
-                            arduboy.cpu.prog[i * 2 + 1],
-                            arduboy.cpu.prog[i * 2 + 0]);
+                        TextDisabled("%02x %02x",
+                            arduboy.cpu.prog[i * 2 + 0],
+                            arduboy.cpu.prog[i * 2 + 1]);
                     }
                     else
                     {
                         TextUnformatted(d.name);
-                    }
-                    if(d.arg0.type != absim::disassembled_instr_arg_t::type::NONE)
-                    {
-                        SameLine();
-                        disassembly_arg(d, d.arg0, i, do_scroll);
-                    }
-                    if(d.arg1.type != absim::disassembled_instr_arg_t::type::NONE)
-                    {
-                        SameLine(0.f, 0.f);
-                        TextUnformatted(",");
-                        SameLine();
-                        disassembly_arg(d, d.arg1, i, do_scroll);
+                        if(d.arg0.type != absim::disassembled_instr_arg_t::type::NONE)
+                        {
+                            SameLine();
+                            disassembly_arg(d, d.arg0, i, do_scroll);
+                        }
+                        if(d.arg1.type != absim::disassembled_instr_arg_t::type::NONE)
+                        {
+                            SameLine(0.f, 0.f);
+                            TextUnformatted(",");
+                            SameLine();
+                            disassembly_arg(d, d.arg1, i, do_scroll);
+                        }
                     }
 
                     TableSetColumnIndex(2);

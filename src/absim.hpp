@@ -3,6 +3,9 @@
 #include <vector>
 #include <array>
 #include <bitset>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include <stdint.h>
 #include <assert.h>
@@ -139,6 +142,7 @@ struct atmega32u4_t
     std::array<disassembled_instr_t, PROG_SIZE_BYTES / 2> disassembled_prog;
     bool decoded;
     void decode();
+    size_t addr_to_disassembled_index(uint16_t addr);
 
     // timer0
     uint16_t timer0_divider_cycle;
@@ -296,10 +300,30 @@ struct ssd1306_t
     void advance(uint64_t ps);
 };
 
+struct elf_data_symbol_t
+{
+    std::string name;
+    uint16_t addr;
+    uint16_t size;
+    bool object;
+};
+
+struct elf_data_t
+{
+    uint16_t data_begin;
+    uint16_t data_end;
+    uint16_t bss_begin;
+    uint16_t bss_end;
+    std::vector<elf_data_symbol_t> text_symbols;
+    std::vector<elf_data_symbol_t> data_symbols;
+};
+
 struct arduboy_t
 {
     atmega32u4_t cpu;
     ssd1306_t display;
+
+    std::unique_ptr<elf_data_t> elf;
 
     static constexpr size_t NUM_INSTRS = atmega32u4_t::PROG_SIZE_BYTES / 2;
 

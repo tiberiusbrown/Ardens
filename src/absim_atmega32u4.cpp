@@ -2,6 +2,8 @@
 
 #include "absim_instructions.hpp"
 
+#include <algorithm>
+
 namespace absim
 {
 
@@ -20,6 +22,22 @@ void atmega32u4_t::check_interrupt(
     if(!active)
         wakeup_cycles += 4;
     active = false;
+}
+
+size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
+{
+    absim::disassembled_instr_t temp;
+    temp.addr = addr;
+    auto it = std::lower_bound(
+        disassembled_prog.begin(),
+        disassembled_prog.begin() + num_instrs,
+        temp,
+        [](auto const& a, auto const& b) { return a.addr < b.addr; }
+    );
+
+    auto index = std::distance(disassembled_prog.begin(), it);
+
+    return (size_t)index;
 }
 
 void atmega32u4_t::advance_cycle()

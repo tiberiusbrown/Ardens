@@ -36,6 +36,24 @@ set(EXEFLAG)
 if(MSVC)
     set(EXEFLAG WIN32)
 endif()
+set(IMGUI_SOURCES
+    src/imgui/imgui_impl_sdl.h
+    src/imgui/imgui_impl_sdl.cpp
+    src/imgui/imgui_impl_sdlrenderer.h
+    src/imgui/imgui_impl_sdlrenderer.cpp
+    src/imgui/imconfig.h
+    src/imgui/imgui_internal.h
+    src/imgui/imgui.h
+    src/imgui/imgui.cpp
+    src/imgui/imgui_demo.cpp
+    src/imgui/imgui_draw.cpp
+    src/imgui/imgui_tables.cpp
+    src/imgui/imgui_widgets.cpp
+    src/imgui/imstb_rectpack.h
+    src/imgui/imstb_textedit.h
+    src/imgui/imstb_truetype.h
+    src/imgui/imgui_memory_editor.h
+    )
 add_executable(arduboy_sim ${EXEFLAG}
     src/main.cpp
     src/window_disassembly.cpp
@@ -63,23 +81,8 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim_spi.cpp
     src/absim_eeprom.cpp
     
-    src/imgui_impl_sdl.h
-    src/imgui_impl_sdl.cpp
-    src/imgui_impl_sdlrenderer.h
-    src/imgui_impl_sdlrenderer.cpp
-    
-    src/imconfig.h
-    src/imgui_internal.h
-    src/imgui.h
-    src/imgui.cpp
-    src/imgui_demo.cpp
-    src/imgui_draw.cpp
-    src/imgui_tables.cpp
-    src/imgui_widgets.cpp
-    src/imstb_rectpack.h
-    src/imstb_textedit.h
-    src/imstb_truetype.h
-
-    src/imgui_memory_editor.h
+    ${IMGUI_SOURCES}
     )
 target_link_libraries(arduboy_sim SDL2-static SDL2main elfio)
+target_include_directories(arduboy_sim PUBLIC src/imgui src/libelfin)
+source_group("imgui" ${IMGUI_SOURCES})
