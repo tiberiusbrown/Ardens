@@ -3,6 +3,8 @@
 #include <string>
 #include <fstream>
 
+#include <elfio/elfio.hpp>
+
 namespace absim
 {
 
@@ -96,6 +98,36 @@ static char const* load_hex(atmega32u4_t& cpu, std::string const& fname)
 
 static char const* load_elf(arduboy_t& arduboy, std::string const& fname)
 {
+    using namespace ELFIO;
+    elfio reader;
+
+    if(!reader.load(fname))
+        return "ELF: Unable to load file";
+
+    auto& cpu = arduboy.cpu;
+
+    memset(&cpu.prog, 0, sizeof(cpu.prog));
+    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
+    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
+    memset(&cpu.breakpoints, 0, sizeof(cpu.breakpoints));
+    memset(&cpu.breakpoints_rd, 0, sizeof(cpu.breakpoints_rd));
+    memset(&cpu.breakpoints_wr, 0, sizeof(cpu.breakpoints_wr));
+
+    for(auto const& section : reader.sections)
+    {
+        auto name = section->get_name();
+        auto size = section->get_size();
+        auto data = section->get_data();
+
+        if(name == ".text")
+        {
+            if(size > cpu.PROG_SIZE_BYTES)
+                return "ELF: Section .text too large";
+            memcpy(&cpu.prog, data, size);
+            cpu.decode();
+        }
+    }
+
     return nullptr;
 }
 
