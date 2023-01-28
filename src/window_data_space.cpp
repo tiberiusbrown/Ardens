@@ -64,7 +64,6 @@ void window_data_space(bool& open)
         {
             memed_data_space.OptShowDataPreview = true;
             memed_data_space.PreviewDataType = ImGuiDataType_U8;
-            //memed_data_space.HighlightColor = IM_COL32(200, 50, 50, 255);
             memed_data_space.OptFooterExtraHeight = GetFrameHeightWithSpacing();
             memed_data_space.HighlightFn = highlight_func;
             first = false;
@@ -73,7 +72,8 @@ void window_data_space(bool& open)
 
     if(open)
     {
-        if(Begin("CPU Data Space", &open))
+        SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
+        if(Begin("CPU Data Space", &open) && arduboy.cpu.decoded)
         {
             memed_data_space.DrawContents(
                 arduboy.cpu.data.data(),

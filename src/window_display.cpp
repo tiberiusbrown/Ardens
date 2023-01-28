@@ -10,6 +10,7 @@ void window_display(bool& open, void* tex)
 
     if(open)
     {
+        SetNextWindowSize({ 400, 200 }, ImGuiCond_FirstUseEver);
         if(Begin("Display", &open,
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse))

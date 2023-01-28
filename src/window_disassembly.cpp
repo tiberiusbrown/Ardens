@@ -246,37 +246,9 @@ void window_disassembly(bool& open)
     if(Begin("Disassembly", &open) && arduboy.cpu.decoded)
     {
 
-        if(Button("Reset"))
-        {
-            arduboy.paused = false;
-            arduboy.reset();
-        }
-        SameLine();
         if(Button("Jump to PC"))
         {
             do_scroll = arduboy.cpu.pc * 2;
-        }
-        SameLine();
-        if(arduboy.paused)
-        {
-            if(Button("Continue"))
-                arduboy.paused = false;
-            SameLine();
-            if(Button("Step"))
-            {
-                arduboy.advance_instr();
-                do_scroll = arduboy.cpu.pc * 2;
-            }
-        }
-        else
-        {
-            if(Button("Pause"))
-            {
-                arduboy.paused = true;
-                while(arduboy.cpu.cycles_till_next_instr != 0)
-                    arduboy.cpu.advance_cycle();
-                do_scroll = arduboy.cpu.pc * 2;
-            }
         }
 
         ImGuiTableFlags flags = 0;

@@ -9,12 +9,14 @@ static MemoryEditor memed_display_ram;
 void window_display_internals(bool& open)
 {
 	using namespace ImGui;
-    if(open)
+    if(!open) return;
+
+    SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
+    if(Begin("Display Internals", &open) && arduboy.cpu.decoded)
     {
-        memed_display_ram.DrawWindow(
-            "Display Internals",
+        memed_display_ram.DrawContents(
             arduboy.display.ram.data(),
             arduboy.display.ram.size());
-        open = memed_display_ram.Open;
     }
+    End();
 }

@@ -25,21 +25,19 @@ static int get_hex_byte(std::istream& f)
     return lo + hi * 16;
 }
 
-char const* arduboy_t::load_file(char const* filename)
+static char const* load_hex(atmega32u4_t& cpu, std::string const& fname)
 {
-    reset();
-    memset(&cpu.prog, 0, sizeof(cpu.prog));
-    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
-    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-
-    std::string fname(filename);
-    if(fname.substr(fname.size() - 4) != ".hex")
-        return "Not a hex file";
-
     std::ifstream f(fname, std::ios::in);
 
     if(f.fail())
         return "Unable to open file";
+
+    memset(&cpu.prog, 0, sizeof(cpu.prog));
+    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
+    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
+    memset(&cpu.breakpoints, 0, sizeof(cpu.breakpoints));
+    memset(&cpu.breakpoints_rd, 0, sizeof(cpu.breakpoints_rd));
+    memset(&cpu.breakpoints_wr, 0, sizeof(cpu.breakpoints_wr));
 
     while(!f.eof())
     {
@@ -92,6 +90,30 @@ char const* arduboy_t::load_file(char const* filename)
     }
 
     cpu.decode();
+
+    return nullptr;
+}
+
+static char const* load_elf(arduboy_t& arduboy, std::string const& fname)
+{
+    return nullptr;
+}
+
+char const* arduboy_t::load_file(char const* filename)
+{
+    std::string fname(filename);
+
+    if(fname.substr(fname.size() - 4) == ".hex")
+    {
+        reset();
+        return load_hex(cpu, fname);
+    }
+
+    if(fname.substr(fname.size() - 4) == ".elf")
+    {
+        reset();
+        return load_elf(*this, fname);
+    }
 
     return nullptr;
 }

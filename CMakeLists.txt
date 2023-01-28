@@ -23,14 +23,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(SDL2)
 
 FetchContent_Declare(
-    fmt
-    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    GIT_TAG        9.1.0
+    ELFIO
+    GIT_REPOSITORY https://github.com/serge1/ELFIO.git
+    GIT_TAG        Release_3.11
     GIT_PROGRESS   TRUE
 )
-FetchContent_MakeAvailable(fmt)
-
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+set(ELFIO_BUILD_EXAMPLES OFF)
+FetchContent_MakeAvailable(ELFIO)
 
 project(arduboy_sim)
 set(EXEFLAG)
@@ -44,6 +43,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_display.cpp
     src/window_display_internals.cpp
     src/window_data_space.cpp
+    src/window_simulation.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp
@@ -82,4 +82,4 @@ add_executable(arduboy_sim ${EXEFLAG}
 
     src/imgui_memory_editor.h
     )
-target_link_libraries(arduboy_sim SDL2-static SDL2main fmt::fmt)
+target_link_libraries(arduboy_sim SDL2-static SDL2main elfio)

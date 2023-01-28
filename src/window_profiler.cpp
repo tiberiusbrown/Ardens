@@ -87,7 +87,8 @@ void window_profiler(bool& open)
     using namespace ImGui;
     if(!open) return;
     
-    if(Begin("Profiler"))
+    SetNextWindowSize({ 150, 300 }, ImGuiCond_FirstUseEver);
+    if(Begin("Profiler") && arduboy.cpu.decoded)
     {
         if(arduboy.profiler_enabled)
         {
