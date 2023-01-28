@@ -90,7 +90,7 @@ struct MemoryEditor
     ImU32           HighlightColor;                             //          // background color of highlighted bytes.
     ImU8            (*ReadFn)(const ImU8* data, size_t off);    // = 0      // optional handler to read bytes.
     void            (*WriteFn)(ImU8* data, size_t off, ImU8 d); // = 0      // optional handler to write bytes.
-    bool            (*HighlightFn)(const ImU8* data, size_t off);//= 0      // optional handler to return Highlight property (to support non-contiguous highlighting).
+    bool            (*HighlightFn)(const ImU8* data, size_t off, ImU32& color);//= 0      // optional handler to return Highlight property (to support non-contiguous highlighting).
 
     // [Internal State]
     bool            ContentsWidthChanged;
@@ -283,21 +283,22 @@ struct MemoryEditor
                     ImGui::SameLine(byte_pos_x);
 
                     // Draw highlight
+                    ImU32 hcolor = HighlightColor;
                     bool is_highlight_from_user_range = (addr >= HighlightMin && addr < HighlightMax);
-                    bool is_highlight_from_user_func = (HighlightFn && HighlightFn(mem_data, addr));
+                    bool is_highlight_from_user_func = (HighlightFn && HighlightFn(mem_data, addr, hcolor));
                     bool is_highlight_from_preview = (addr >= DataPreviewAddr && addr < DataPreviewAddr + preview_data_type_size);
                     if (is_highlight_from_user_range || is_highlight_from_user_func || is_highlight_from_preview)
                     {
                         ImVec2 pos = ImGui::GetCursorScreenPos();
                         float highlight_width = s.GlyphWidth * 2;
-                        bool is_next_byte_highlighted = (addr + 1 < mem_size) && ((HighlightMax != (size_t)-1 && addr + 1 < HighlightMax) || (HighlightFn && HighlightFn(mem_data, addr + 1)));
-                        if (is_next_byte_highlighted || (n + 1 == Cols))
-                        {
-                            highlight_width = s.HexCellWidth;
-                            if (OptMidColsCount > 0 && n > 0 && (n + 1) < Cols && ((n + 1) % OptMidColsCount) == 0)
-                                highlight_width += s.SpacingBetweenMidCols;
-                        }
-                        draw_list->AddRectFilled(pos, ImVec2(pos.x + highlight_width, pos.y + s.LineHeight), HighlightColor);
+                        //bool is_next_byte_highlighted = (addr + 1 < mem_size) && ((HighlightMax != (size_t)-1 && addr + 1 < HighlightMax) || (HighlightFn && HighlightFn(mem_data, addr + 1)));
+                        //if (is_next_byte_highlighted || (n + 1 == Cols))
+                        //{
+                        //    highlight_width = s.HexCellWidth;
+                        //    if (OptMidColsCount > 0 && n > 0 && (n + 1) < Cols && ((n + 1) % OptMidColsCount) == 0)
+                        //        highlight_width += s.SpacingBetweenMidCols;
+                        //}
+                        draw_list->AddRectFilled(pos, ImVec2(pos.x + highlight_width, pos.y + s.LineHeight), hcolor);
                     }
 
                     if (DataEditingAddr == addr)

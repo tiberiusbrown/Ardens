@@ -252,6 +252,11 @@ void window_disassembly(bool& open)
             arduboy.reset();
         }
         SameLine();
+        if(Button("Jump to PC"))
+        {
+            do_scroll = arduboy.cpu.pc * 2;
+        }
+        SameLine();
         if(arduboy.paused)
         {
             if(Button("Continue"))

@@ -3,6 +3,14 @@
 namespace absim
 {
 
+static uint8_t bit_from_mask(uint8_t m)
+{
+    uint8_t r = 0;
+    while(!(m & 1))
+        ++r, m >>= 1;
+    return r;
+}
+
 static char const* get_instr_name(avr_instr_t const& i)
 {
     switch(i.func)
@@ -174,7 +182,7 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
         d.arg0.type = disassembled_instr_arg_t::type::REG;
         d.arg1.type = disassembled_instr_arg_t::type::BIT;
         d.arg0.val = i.dst;
-        d.arg1.val = i.src;
+        d.arg1.val = bit_from_mask(i.src);
         break;
 
     case INSTR_CALL:
@@ -277,7 +285,7 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
         d.arg0.type = disassembled_instr_arg_t::type::IO_REG;
         d.arg1.type = disassembled_instr_arg_t::type::BIT;
         d.arg0.val = i.dst;
-        d.arg1.val = i.src;
+        d.arg1.val = bit_from_mask(i.src);
         break;
 
 

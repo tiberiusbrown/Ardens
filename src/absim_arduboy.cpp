@@ -31,6 +31,9 @@ void arduboy_t::profiler_reset()
 
 void arduboy_t::profiler_build_hotspots()
 {
+    if(!cpu.decoded) return;
+    if(cpu.num_instrs <= 0) return;
+
     //
     // WARNING: extremely messy hacky heuristics here
     //

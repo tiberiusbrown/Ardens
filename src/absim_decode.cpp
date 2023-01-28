@@ -12,11 +12,16 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
     i.dst = 0;
     i.word = 0;
 
+    if(w0 == 0x9588) i.func = INSTR_SLEEP;
+    if(w0 == 0x9508) i.func = INSTR_RET;
+    if(w0 == 0x9509) i.func = INSTR_ICALL;
+    if(w0 == 0x9518) i.func = INSTR_RETI;
+    if(w0 == 0x9409) i.func = INSTR_IJMP;
+    if(w0 == 0x0000) i.func = INSTR_NOP;
+    if(i.func != INSTR_UNKNOWN) return;
+
     uint8_t imm8 = ((w0 >> 4) & 0xf0) | (w0 & 0xf);
     uint8_t rd_upper = ((w0 >> 4) & 0xf) + 16;
-
-    if(w0 == 0)
-        i.func = INSTR_NOP;
 
     // rjmp and rcall
     if((w0 & 0xe000) == 0xc000)
@@ -25,6 +30,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         if(off & 0x800) off |= 0xf000;
         i.word = off;
         i.func = (w0 & 0x1000) ? INSTR_RCALL : INSTR_RJMP;
+        return;
     }
 
     // direct register addressing
@@ -32,33 +38,36 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
     {
         uint8_t src = uint8_t(((w0 >> 5) & 0x10) | (w0 & 0xf));
         uint8_t dst = uint8_t((w0 >> 4) & 0x1f);
+        bool found = false;
         switch((w0 >> 10) & 0xf)
         {
         case 0x0:
             if((w0 & 0x0300) == 0x0100)
             {
+                found = true;
                 dst &= 0xf;
                 i.func = INSTR_MOVW;
             }
             break;
-        case 0x1: i.func = INSTR_CPC;  break;
-        case 0x2: i.func = INSTR_SBC;  break;
-        case 0x3: i.func = INSTR_ADD;  break;
-        case 0x4: i.func = INSTR_CPSE; break;
-        case 0x5: i.func = INSTR_CP;   break;
-        case 0x6: i.func = INSTR_SUB;  break;
-        case 0x7: i.func = INSTR_ADC;  break;
-        case 0x8: i.func = INSTR_AND;  break;
-        case 0x9: i.func = INSTR_EOR;  break;
-        case 0xa: i.func = INSTR_OR;   break;
-        case 0xb: i.func = INSTR_MOV;  break;
+        case 0x1: i.func = INSTR_CPC;  found = true; break;
+        case 0x2: i.func = INSTR_SBC;  found = true; break;
+        case 0x3: i.func = INSTR_ADD;  found = true; break;
+        case 0x4: i.func = INSTR_CPSE; found = true; break;
+        case 0x5: i.func = INSTR_CP;   found = true; break;
+        case 0x6: i.func = INSTR_SUB;  found = true; break;
+        case 0x7: i.func = INSTR_ADC;  found = true; break;
+        case 0x8: i.func = INSTR_AND;  found = true; break;
+        case 0x9: i.func = INSTR_EOR;  found = true; break;
+        case 0xa: i.func = INSTR_OR;   found = true; break;
+        case 0xb: i.func = INSTR_MOV;  found = true; break;
         default:
             break;
         }
-        if(i.func)
+        if(found)
         {
             i.src = src;
             i.dst = dst;
+            return;
         }
     }
 
@@ -71,6 +80,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
             i.dst = io, i.src = reg, i.func = INSTR_OUT;
         else
             i.src = io, i.dst = reg, i.func = INSTR_IN;
+        return;
     }
 
     // ldi
@@ -79,6 +89,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.dst = rd_upper;
         i.src = imm8;
         i.func = INSTR_LDI;
+        return;
     }
 
     // cpi
@@ -87,6 +98,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.dst = rd_upper;
         i.src = imm8;
         i.func = INSTR_CPI;
+        return;
     }
 
     // lpm (simple)
@@ -95,6 +107,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.func = INSTR_LPM;
         i.dst = 0;
         i.word = 2; // signifies simple
+        return;
     }
 
     // lpm
@@ -103,6 +116,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.func = INSTR_LPM;
         i.dst = (w0 >> 4) & 0x1f;
         i.word = w0 & 1; // post-increment bit
+        return;
     }
 
     uint16_t branch = (w0 >> 3) & 0x7f;
@@ -114,6 +128,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.src = uint8_t(w0 & 0x7);
         i.word = branch;
         i.func = INSTR_BRBS;
+        return;
     }
 
     // brbc
@@ -122,6 +137,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.src = uint8_t(w0 & 0x7);
         i.word = branch;
         i.func = INSTR_BRBC;
+        return;
     }
 
     // lds
@@ -130,6 +146,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.dst = uint8_t(w0 >> 4) & 0x1f;
         i.word = w1;
         i.func = INSTR_LDS;
+        return;
     }
 
     // sts
@@ -138,6 +155,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.src = uint8_t(w0 >> 4) & 0x1f;
         i.word = w1;
         i.func = INSTR_STS;
+        return;
     }
 
     // ldd and std
@@ -150,6 +168,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.dst = q;
         i.word = w0 & 0x0208;
         i.func = INSTR_LDD_STD;
+        return;
     }
 
     // ld and st (with post-inc/pre-dec) and push/pop
@@ -163,6 +182,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
             i.dst = n;
             i.word = w0 & 0x0200;
             i.func = (n == 0xf ? INSTR_PUSH_POP : INSTR_LD_ST);
+            return;
         }
     }
 
@@ -171,6 +191,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
     {
         i.word = w1 & 0x3fff;
         i.func = (w0 & 0x2) ? INSTR_CALL : INSTR_JMP;
+        return;
     }
 
     // adiw and sbiw
@@ -179,6 +200,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.dst = 24 + ((w0 >> 3) & 0x6);
         i.src = uint8_t((w0 & 0xf) | ((w0 >> 2) & 0x30));
         i.func = (w0 & 0x0100) ? INSTR_SBIW : INSTR_ADIW;
+        return;
     }
 
     if((w0 & 0xc000) == 0x4000)
@@ -190,66 +212,75 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         if(n == 1) i.func = INSTR_SUBI;
         if(n == 2) i.func = INSTR_ORI;
         if(n == 3) i.func = INSTR_ANDI;
+        return;
     }
 
     if((w0 & 0xff0f) == 0x9408)
     {
         i.src = uint8_t((w0 >> 4) & 0x7);
+        i.dst = (1 << i.src);
+        i.func = INSTR_BSET;
+        if(w0 & 0x80)
+        {
+            i.func = INSTR_BCLR;
+            i.dst = ~i.dst;
+        }
         i.func = (w0 & 0x80) ? INSTR_BCLR : INSTR_BSET;
+        return;
     }
 
     if((w0 & 0xfc00) == 0x9800)
     {
         uint8_t n = uint8_t((w0 >> 8) & 0x3);
         i.dst = uint8_t((w0 >> 3) & 0x1f);
-        i.src = uint8_t(w0 & 0x7);
+        i.src = 1 << uint8_t(w0 & 0x7);
         if(n == 0) i.func = INSTR_CBI;
         if(n == 1) i.func = INSTR_SBIC;
         if(n == 2) i.func = INSTR_SBI;
         if(n == 3) i.func = INSTR_SBIS;
+        return;
     }
 
     if((w0 & 0xf808) == 0xf800)
     {
         uint8_t n = uint8_t((w0 >> 9) & 0x3);
         i.dst = uint8_t((w0 >> 4) & 0x1f);
-        i.src = uint8_t(w0 & 0x7);
+        i.src = 1 << uint8_t(w0 & 0x7);
         if(n == 0) i.func = INSTR_BLD;
         if(n == 1) i.func = INSTR_BST;
         if(n == 2) i.func = INSTR_SBRC;
         if(n == 3) i.func = INSTR_SBRS;
+        return;
     }
-
-    if(w0 == 0x9508) i.func = INSTR_RET;
-    if(w0 == 0x9509) i.func = INSTR_ICALL;
-    if(w0 == 0x9518) i.func = INSTR_RETI;
-    if(w0 == 0x9409) i.func = INSTR_IJMP;
 
     if((w0 & 0xfe00) == 0x9400)
     {
+        bool found = false;
         switch(w0 & 0xf)
         {
-        case 0x0: i.func = INSTR_COM;  break;
-        case 0x1: i.func = INSTR_NEG;  break;
-        case 0x2: i.func = INSTR_SWAP; break;
-        case 0x3: i.func = INSTR_INC;  break;
-        case 0x5: i.func = INSTR_ASR;  break;
-        case 0x6: i.func = INSTR_LSR;  break;
-        case 0x7: i.func = INSTR_ROR;  break;
-        case 0xa: i.func = INSTR_DEC;  break;
+        case 0x0: i.func = INSTR_COM;  found = true; break;
+        case 0x1: i.func = INSTR_NEG;  found = true; break;
+        case 0x2: i.func = INSTR_SWAP; found = true; break;
+        case 0x3: i.func = INSTR_INC;  found = true; break;
+        case 0x5: i.func = INSTR_ASR;  found = true; break;
+        case 0x6: i.func = INSTR_LSR;  found = true; break;
+        case 0x7: i.func = INSTR_ROR;  found = true; break;
+        case 0xa: i.func = INSTR_DEC;  found = true; break;
         default: break;
         }
-        if(i.func)
+        if(found)
+        {
             i.dst = uint8_t((w0 >> 4) & 0x1f);
+            return;
+        }
     }
-
-    if(w0 == 0x9588) i.func = INSTR_SLEEP;
 
     if((w0 & 0xfc00) == 0x9c00)
     {
         i.dst = uint8_t((w0 >> 4) & 0x1f);
         i.src = uint8_t((w0 & 0xf) | ((w0 >> 5) & 0x10));
         i.func = INSTR_MUL;
+        return;
     }
 
     if((w0 & 0xff00) == 0x0200)
@@ -257,6 +288,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.dst = uint8_t(16 + ((w0 >> 4) & 0xf));
         i.src = uint8_t(16 + ((w0 >> 0) & 0xf));
         i.func = INSTR_MULS;
+        return;
     }
 
     if((w0 & 0xff00) == 0x0300)
@@ -268,6 +300,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         if(n == 1) i.func = INSTR_FMUL;
         if(n == 2) i.func = INSTR_FMULS;
         if(n == 3) i.func = INSTR_FMULSU;
+        return;
     }
 }
 

@@ -126,14 +126,12 @@ static void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
 uint32_t instr_rjmp(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     cpu.pc += (int16_t)i.word + 1;
-    assert(cpu.pc < 16384);
     return 2;
 }
 
 uint32_t instr_jmp(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     cpu.pc = i.word;
-    assert(cpu.pc < 16384);
     return 3;
 }
 
@@ -141,7 +139,6 @@ uint32_t instr_ijmp(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     (void)i;
     cpu.pc = cpu.z_word();
-    assert(cpu.pc < 16384);
     return 3;
 }
 
@@ -149,7 +146,6 @@ uint32_t instr_rcall(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint16_t ret_addr = cpu.pc + 1;
     cpu.pc += (int16_t)i.word + 1;
-    assert(cpu.pc < 16384);
     cpu.push(uint8_t(ret_addr >> 0));
     cpu.push(uint8_t(ret_addr >> 8));
     return 3;
@@ -159,7 +155,6 @@ uint32_t instr_call(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint16_t ret_addr = cpu.pc + 2;
     cpu.pc = i.word;
-    assert(cpu.pc < 16384);
     cpu.push(uint8_t(ret_addr >> 0));
     cpu.push(uint8_t(ret_addr >> 8));
     return 4;
@@ -169,7 +164,6 @@ uint32_t instr_icall(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint16_t ret_addr = cpu.pc + 1;
     cpu.pc = cpu.z_word();
-    assert(cpu.pc < 16384);
     cpu.push(uint8_t(ret_addr >> 0));
     cpu.push(uint8_t(ret_addr >> 8));
     return 3;
@@ -562,35 +556,37 @@ uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_bset(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.sreg() |= (1 << i.src);
+    // src: bit, dst: mask
+    cpu.sreg() |= i.dst;
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_bclr(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.sreg() &= ~(1 << i.src);
+    // src: bit, dst: mask
+    cpu.sreg() &= i.dst;
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_sbi(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.st_ior(i.dst, cpu.ld_ior(i.dst) | (1 << i.src));
+    cpu.st_ior(i.dst, cpu.ld_ior(i.dst) | i.src);
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_cbi(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.st_ior(i.dst, cpu.ld_ior(i.dst) & ~(1 << i.src));
+    cpu.st_ior(i.dst, cpu.ld_ior(i.dst) & ~i.src);
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    if(cpu.ld_ior(i.dst) & (1 << i.src))
+    if(cpu.ld_ior(i.dst) & i.src)
     {
         if(next_instr_is_two_words(cpu))
         {
@@ -606,7 +602,7 @@ uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    if(!(cpu.ld_ior(i.dst) & (1 << i.src)))
+    if(!(cpu.ld_ior(i.dst) & i.src))
     {
         if(next_instr_is_two_words(cpu))
         {
@@ -622,7 +618,7 @@ uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_sbrs(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    if(cpu.gpr(i.dst) & (1 << i.src))
+    if(cpu.gpr(i.dst) & i.src)
     {
         if(next_instr_is_two_words(cpu))
         {
@@ -638,7 +634,7 @@ uint32_t instr_sbrs(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_sbrc(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    if(!(cpu.gpr(i.dst) & (1 << i.src)))
+    if(!(cpu.gpr(i.dst) & i.src))
     {
         if(next_instr_is_two_words(cpu))
         {
@@ -655,26 +651,28 @@ uint32_t instr_sbrc(atmega32u4_t& cpu, avr_instr_t const& i)
 uint32_t instr_bld(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     if(cpu.sreg() & SREG_T)
-        cpu.gpr(i.dst) |= (1 << i.src);
+        cpu.gpr(i.dst) |= i.src;
     else
-        cpu.gpr(i.dst) &= ~(1 << i.src);
+        cpu.gpr(i.dst) &= ~i.src;
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_bst(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    set_flag(cpu, SREG_T, cpu.gpr(i.dst) & (1 << i.src));
+    set_flag(cpu, SREG_T, cpu.gpr(i.dst) & i.src);
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_com(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.gpr(i.dst) = ~cpu.gpr(i.dst);
+    uint8_t src = cpu.gpr(i.dst);
+    uint8_t res = ~src;
+    cpu.gpr(i.dst) = res;
     set_flag(cpu, SREG_V, 0);
     set_flag(cpu, SREG_C, 1);
-    set_flags_nzs(cpu, cpu.gpr(i.dst));
+    set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
 }
