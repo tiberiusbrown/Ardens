@@ -546,10 +546,14 @@ uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t const& i)
     cpu.gpr(i.dst + 0) = uint8_t(res >> 0);
     cpu.gpr(i.dst + 1) = uint8_t(res >> 8);
     set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_V, res & ~dst & 0x8000);
+
+    // in the AVR instruction set manual (seemingly a typo):
+    //set_flag(cpu, SREG_V, res & ~dst & 0x8000);
+
+    set_flag(cpu, SREG_V, dst & ~res & 0x8000);
     set_flag(cpu, SREG_C, res & ~dst & 0x8000);
     set_flag(cpu, SREG_N, res & 0x8000);
-    set_flag(cpu, SREG_S, (int16_t)dst < (int16_t)src);
+    set_flag_s(cpu);
     cpu.pc += 1;
     return 2;
 }
