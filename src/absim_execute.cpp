@@ -549,7 +549,7 @@ uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t const& i)
     set_flag(cpu, SREG_V, res & ~dst & 0x8000);
     set_flag(cpu, SREG_C, res & ~dst & 0x8000);
     set_flag(cpu, SREG_N, res & 0x8000);
-    set_flag_s(cpu);
+    set_flag(cpu, SREG_S, (int16_t)dst < (int16_t)src);
     cpu.pc += 1;
     return 2;
 }
