@@ -2,9 +2,12 @@
 
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 
 #include <elfio/elfio.hpp>
+#include <nlohmann/json.hpp>
+#include <zip_file.hpp>
 
 extern "C" char* __cxa_demangle(const char* MangledName, char* Buf, size_t * N, int* Status);
 
@@ -42,13 +45,8 @@ static int get_hex_byte(std::istream& f)
     return lo + hi * 16;
 }
 
-static char const* load_hex(atmega32u4_t& cpu, std::string const& fname)
+static char const* load_hex(atmega32u4_t& cpu, std::istream& f)
 {
-    std::ifstream f(fname, std::ios::in);
-
-    if(f.fail())
-        return "Unable to open file";
-
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
@@ -109,6 +107,16 @@ static char const* load_hex(atmega32u4_t& cpu, std::string const& fname)
     cpu.decode();
 
     return nullptr;
+}
+
+static char const* load_hex(atmega32u4_t& cpu, std::string const& fname)
+{
+    std::ifstream f(fname, std::ios::in);
+
+    if(f.fail())
+        return "Unable to open file";
+
+    return load_hex(cpu, f);
 }
 
 struct Elf32_Sym
@@ -271,20 +279,68 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
     return nullptr;
 }
 
+static char const* load_arduboy(arduboy_t& a, std::string const& fname)
+{
+    miniz_cpp::zip_file z(fname);
+    miniz_cpp::zip_info f;
+    if(!z.has_file("info.json"))
+        return "ARDUBOY: No info.json file";
+    std::string info = z.read("info.json");
+
+    auto j = nlohmann::json::parse(info);
+    if(!j.contains("binaries"))
+        return "ARDUBOY: info.json missing 'binaries'";
+    auto const& bins = j["binaries"];
+    if(!bins.is_array())
+        return "ARDUBOY: 'binaries' not array";
+    auto const& bin = bins[0];
+    if(!bin.contains("filename"))
+        return "ARDUBOY: primary binary missing 'filename'";
+    auto const hexfile = bin["filename"];
+    if(!hexfile.is_string())
+        return "ARDUBOY: primary binary filename not string type";
+
+    if(!z.has_file(hexfile))
+        return "ARDUBOY: missing hex file indicated in info.json";
+
+    {
+        std::string hexdata = z.read(hexfile);
+        std::stringstream ss(hexdata);
+        char const* err = load_hex(a.cpu, ss);
+        if(err) return err;
+    }
+
+    // TODO: bin file
+
+    return nullptr;
+}
+
+static bool ends_with(std::string const& str, std::string const& end)
+{
+    if(str.size() < end.size()) return false;
+    return str.substr(str.size() - end.size()) == end;
+}
+
 char const* arduboy_t::load_file(char const* filename)
 {
     std::string fname(filename);
 
-    if(fname.substr(fname.size() - 4) == ".hex")
+    if(ends_with(fname, ".hex"))
     {
         reset();
         return load_hex(cpu, fname);
     }
 
-    if(fname.substr(fname.size() - 4) == ".elf")
+    if(ends_with(fname, ".elf"))
     {
         reset();
         return load_elf(*this, fname);
+    }
+
+    if(ends_with(fname, ".arduboy"))
+    {
+        reset();
+        return load_arduboy(*this, fname);
     }
 
     return nullptr;

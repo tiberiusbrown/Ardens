@@ -35,6 +35,14 @@ FetchContent_Declare(
 set(ELFIO_BUILD_EXAMPLES OFF)
 FetchContent_MakeAvailable(ELFIO)
 
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.2
+    GIT_PROGRESS   TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 set(EXEFLAG)
 if(MSVC)
     set(EXEFLAG WIN32)
@@ -97,11 +105,17 @@ add_executable(arduboy_sim ${EXEFLAG}
     ${IMGUI_SOURCES}
     ${LLVM_DEMANGLER_SOURCES}
     )
-target_link_libraries(arduboy_sim SDL2-static SDL2main elfio)
-target_include_directories(arduboy_sim PUBLIC
+target_link_libraries(arduboy_sim PRIVATE
+    SDL2-static
+    SDL2main
+    elfio
+    nlohmann_json::nlohmann_json
+    )
+target_include_directories(arduboy_sim PRIVATE
     src/imgui
     src/libelfin
     src/llvm_demangler
+    src/miniz-cpp
     )
 target_compile_definitions(arduboy_sim PRIVATE -D_LIBCXXABI_DISABLE_VISIBILITY_ANNOTATIONS)
 source_group("ImGui" FILES ${IMGUI_SOURCES})
