@@ -381,4 +381,6 @@ constexpr uint8_t SREG_N = 1 << 2;
 constexpr uint8_t SREG_Z = 1 << 1;
 constexpr uint8_t SREG_C = 1 << 0;
 
+constexpr uint8_t SREG_HSVNZC = 0x3f;
+
 }

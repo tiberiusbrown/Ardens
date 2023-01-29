@@ -261,7 +261,7 @@ void arduboy_t::profiler_build_hotspots()
     );
 }
 
-void arduboy_t::cycle()
+void FORCEINLINE arduboy_t::cycle()
 {
     if(!cpu.decoded) return;
 

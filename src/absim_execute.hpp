@@ -228,33 +228,50 @@ uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
+static FORCEINLINE void flag_nzs(uint32_t& sreg, uint32_t res)
+{
+    if(res == 0)   sreg |= SREG_Z;
+    if(res & 0x80) sreg |= SREG_N;
+    sreg |= ((sreg << 1) ^ (sreg << 2)) & SREG_S;
+}
+
 uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    uint8_t dst = cpu.gpr(i.dst);
-    uint8_t src = cpu.gpr(i.src);
-    uint8_t res = dst + src;
+    unsigned dst = cpu.gpr(i.dst);
+    unsigned src = cpu.gpr(i.src);
+    unsigned res = dst + src;
     cpu.gpr(i.dst) = (uint8_t)res;
-    set_flags_hcv(cpu,
-        ((dst & src) | (src & ~res) | (~res & dst)) & 0x08,
-        ((dst & src) | (src & ~res) | (~res & dst)) & 0x80,
-        ((dst & src & ~res) | (~dst & ~src & res)) & 0x80);
-    set_flags_nzs(cpu, (uint8_t)res);
+
+    unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
+    unsigned v = (dst & src & ~res) | (~dst & ~src & res);
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    sreg |= (hc & 0x08) << 2;    // H flag
+    sreg |= hc >> 7;             // C flag
+    sreg |= (v & 0x80) >> 4;     // V flag
+    flag_nzs(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    uint8_t dst = cpu.gpr(i.dst);
-    uint8_t src = cpu.gpr(i.src);
-    uint8_t c = cpu.sreg() & 1;
-    uint8_t res = dst + src + c;
+    unsigned dst = cpu.gpr(i.dst);
+    unsigned src = cpu.gpr(i.src);
+    unsigned c = cpu.sreg() & 1;
+    unsigned res = dst + src + c;
     cpu.gpr(i.dst) = (uint8_t)res;
-    set_flags_hcv(cpu,
-        ((dst & src) | (src & ~res) | (~res & dst)) & 0x08,
-        ((dst & src) | (src & ~res) | (~res & dst)) & 0x80,
-        ((dst & src & ~res) | (~dst & ~src & res)) & 0x80);
-    set_flags_nzs(cpu, (uint8_t)res);
+
+    unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
+    unsigned v = (dst & src & ~res) | (~dst & ~src & res);
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    sreg |= (hc & 0x08) << 2;    // H flag
+    sreg |= hc >> 7;             // C flag
+    sreg |= (v & 0x80) >> 4;     // V flag
+    flag_nzs(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
     cpu.pc += 1;
     return 1;
 }
