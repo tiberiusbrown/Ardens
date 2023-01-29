@@ -359,6 +359,9 @@ struct arduboy_t
 
     void advance_instr();
 
+    // each cycle is 62.5 ns
+    static constexpr uint64_t CYCLE_PS = 62500;
+
     // advance by specified number of picoseconds
     // ratio is for display filtering: 1.0 means real time,
     // 0.1 means 10x slower

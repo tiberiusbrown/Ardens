@@ -3,7 +3,7 @@
 namespace absim
 {
 
-void atmega32u4_t::cycle_eeprom()
+void FORCEINLINE atmega32u4_t::cycle_eeprom()
 {
 #define eecr data[0x3f]
 #define eedr data[0x40]

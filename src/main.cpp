@@ -119,6 +119,7 @@ int main(int, char**)
                 arduboy.cpu.data[0x2f] = pinf;
             }
 
+            dt *= 4;
             arduboy.advance(dt * 1000000000 / simulation_slowdown);
         }
 

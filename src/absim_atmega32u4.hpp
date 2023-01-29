@@ -1,13 +1,19 @@
 #include "absim.hpp"
 
 #include "absim_instructions.hpp"
+#include "absim_execute.hpp"
+#include "absim_timer.hpp"
+#include "absim_adc.hpp"
+#include "absim_pll.hpp"
+#include "absim_spi.hpp"
+#include "absim_eeprom.hpp"
 
 #include <algorithm>
 
 namespace absim
 {
 
-void atmega32u4_t::check_interrupt(
+void FORCEINLINE atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
     if(interrupting) return;
@@ -40,7 +46,7 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
     return (size_t)index;
 }
 
-void atmega32u4_t::advance_cycle()
+void FORCEINLINE atmega32u4_t::advance_cycle()
 {
     interrupting = false;
     just_read = 0xffff;

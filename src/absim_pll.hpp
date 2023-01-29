@@ -3,7 +3,7 @@
 namespace absim
 {
 
-void atmega32u4_t::cycle_pll()
+void FORCEINLINE atmega32u4_t::cycle_pll()
 {
     uint8_t& csr = data[0x49];
     uint8_t frq = data[0x52];

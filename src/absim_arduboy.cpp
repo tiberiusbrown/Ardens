@@ -2,11 +2,11 @@
 
 #include <algorithm>
 
+#include "absim_atmega32u4.hpp"
+#include "absim_ssd1306.hpp"
+
 namespace absim
 {
-
-// each cycle is 62.5 ns
-constexpr uint64_t CYCLE_PS = 62500;
 
 void arduboy_t::reset()
 {
@@ -303,9 +303,10 @@ void arduboy_t::advance_instr()
 {
     if(!cpu.decoded) return;
     int n = 0;
+    ps_rem = 0;
     do
     {
-        cpu.advance_cycle();
+        advance(CYCLE_PS);
     } while(++n < 65536 && (!cpu.active || cpu.cycles_till_next_instr != 0));
 }
 

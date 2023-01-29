@@ -44,7 +44,10 @@ void window_simulation(bool& open)
             {
                 arduboy.paused = true;
                 while(arduboy.cpu.cycles_till_next_instr != 0)
-                    arduboy.cpu.advance_cycle();
+                {
+                    arduboy.ps_rem = 0;
+                    arduboy.advance(arduboy.CYCLE_PS);
+                }
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
         }

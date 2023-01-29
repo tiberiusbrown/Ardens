@@ -20,7 +20,7 @@ static FORCEINLINE int get_divider(int cs)
     return DIVIDERS[cs];
 }
 
-void atmega32u4_t::cycle_timer0()
+void FORCEINLINE atmega32u4_t::cycle_timer0()
 {
     int cs = tccr0b() & 0x7;
     int divider = get_divider(cs);
@@ -224,7 +224,7 @@ static inline FORCEINLINE void cycle_timer1_or_timer3(atmega32u4_t& cpu,
     cpu.data[tcntN_addr + 1] = uint8_t(t >> 8);
 }
 
-void atmega32u4_t::cycle_timer1()
+void FORCEINLINE atmega32u4_t::cycle_timer1()
 {
     if(just_written == 0x81)
     {
@@ -261,7 +261,7 @@ void atmega32u4_t::cycle_timer1()
         timer1_tov);
 }
 
-void atmega32u4_t::cycle_timer3()
+void FORCEINLINE atmega32u4_t::cycle_timer3()
 {
     if(just_written == 0x91)
     {

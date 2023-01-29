@@ -3,7 +3,7 @@
 namespace absim
 {
 
-void atmega32u4_t::cycle_spi()
+void FORCEINLINE atmega32u4_t::cycle_spi()
 {
     uint8_t  spcr = data[0x4c];
     uint8_t& spsr = data[0x4d];
