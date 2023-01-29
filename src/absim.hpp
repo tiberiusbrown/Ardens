@@ -146,57 +146,56 @@ struct atmega32u4_t
     size_t addr_to_disassembled_index(uint16_t addr);
 
     // timer0
-    uint16_t timer0_divider_cycle;
-    uint16_t timer0_divider;
+    uint32_t timer0_divider_cycle;
+    uint32_t timer0_divider;
     bool timer0_count_down;
-    void cycle_timer0();
+    void cycle_timer0(uint32_t cycles);
 
     // timer1
-    uint16_t timer1_divider_cycle;
-    uint16_t timer1_divider;
-    uint16_t timer1_top;
-    uint16_t timer1_tov;
+    uint32_t timer1_divider_cycle;
+    uint32_t timer1_divider;
+    uint32_t timer1_top;
+    uint32_t timer1_tov;
     bool timer1_phase_correct;
     bool timer1_count_down;
-    void cycle_timer1();
+    void cycle_timer1(uint32_t cycles);
 
     // timer3
-    uint16_t timer3_divider_cycle;
-    uint16_t timer3_divider;
-    uint16_t timer3_top;
-    uint16_t timer3_tov;
+    uint32_t timer3_divider_cycle;
+    uint32_t timer3_divider;
+    uint32_t timer3_top;
+    uint32_t timer3_tov;
     bool timer3_phase_correct;
     bool timer3_count_down;
-    void cycle_timer3();
+    void cycle_timer3(uint32_t cycles);
 
     // PLL
     uint64_t pll_lock_cycle;
-    void cycle_pll();
+    void cycle_pll(uint32_t cycles);
 
     // SPI
     bool spsr_read_after_transmit;
     bool spi_busy;
     bool spi_done;
-    uint8_t spi_data_byte;
-    uint8_t spi_clock_cycle;
-    uint8_t spi_bit_progress;
-    void cycle_spi();
+    uint32_t spi_data_byte;
+    uint32_t spi_clock_cycle;
+    uint32_t spi_bit_progress;
+    void cycle_spi(uint32_t cycles);
 
     // EEPROM
-    uint8_t eeprom_clear_eempe_cycles;
-    uint16_t eeprom_write_addr;
-    uint8_t eeprom_write_data;
+    uint32_t eeprom_clear_eempe_cycles;
+    uint32_t eeprom_write_addr;
+    uint32_t eeprom_write_data;
     uint32_t eeprom_program_cycles;
-    void cycle_eeprom();
+    void cycle_eeprom(uint32_t cycles);
 
     // ADC
-    uint8_t adc_prescaler_cycle;
-    uint8_t adc_cycle;
-    uint8_t adc_ref;
-    uint16_t adc_result;
-    void cycle_adc();
+    uint32_t adc_prescaler_cycle;
+    uint32_t adc_cycle;
+    uint32_t adc_ref;
+    uint32_t adc_result;
+    void cycle_adc(uint32_t cycles);
 
-    bool interrupting;
     void check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
     // breakpoints
@@ -209,8 +208,8 @@ struct atmega32u4_t
     // set all registers to initial value
     void reset();
 
-    // execute one cycle
-    void advance_cycle();
+    // execute at least one cycle (return how many cycles were executed)
+    uint32_t advance_cycle();
 };
 
 struct ssd1306_t
@@ -355,7 +354,8 @@ struct arduboy_t
 
     void reset();
 
-    void cycle();
+    // advance at least one cycle (returns how many cycles were advanced)
+    uint32_t cycle();
 
     void advance_instr();
 

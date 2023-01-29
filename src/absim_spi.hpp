@@ -3,7 +3,7 @@
 namespace absim
 {
 
-void FORCEINLINE atmega32u4_t::cycle_spi()
+void FORCEINLINE atmega32u4_t::cycle_spi(uint32_t cycles)
 {
     uint8_t  spcr = data[0x4c];
     uint8_t& spsr = data[0x4d];
@@ -69,31 +69,36 @@ void FORCEINLINE atmega32u4_t::cycle_spi()
             return;
     }
 
-    if(++spi_clock_cycle < clock_cycles)
-        return;
+    uint32_t iters = 0;
 
-    spi_clock_cycle = 0;
-
-    if(spcr & DORD)
+    spi_clock_cycle += cycles;
+    while(spi_clock_cycle >= clock_cycles)
+        ++iters, spi_clock_cycle -= clock_cycles;
+    
+    while(iters-- != 0)
     {
-        uint8_t b = spdr & 0x1;
-        spdr >>= 1;
-        spi_data_byte = (spi_data_byte << 1) | b;
-    }
-    else
-    {
-        uint8_t b = spdr >> 7;
-        spdr <<= 1;
-        spi_data_byte = (spi_data_byte << 1) | b;
-    }
+        if(spcr & DORD)
+        {
+            uint8_t b = spdr & 0x1;
+            spdr >>= 1;
+            spi_data_byte = (spi_data_byte << 1) | b;
+        }
+        else
+        {
+            uint8_t b = spdr >> 7;
+            spdr <<= 1;
+            spi_data_byte = (spi_data_byte << 1) | b;
+        }
 
-    ++spi_bit_progress;
+        ++spi_bit_progress;
 
-    if(spi_bit_progress == 8)
-    {
-        spi_done = true;
-        spi_busy = false;
-        spsr |= SPIF;
+        if(spi_bit_progress == 8)
+        {
+            spi_done = true;
+            spi_busy = false;
+            spsr |= SPIF;
+            break;
+        }
     }
 }
 

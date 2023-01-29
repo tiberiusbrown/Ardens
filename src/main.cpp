@@ -11,6 +11,8 @@
 #include "absim.hpp"
 #include "absim_instructions.hpp"
 
+#define PROFILING 0
+
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
 #endif
@@ -45,6 +47,10 @@ int main(int, char**)
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
+
+#if PROFILING
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
+#endif
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -119,7 +125,9 @@ int main(int, char**)
                 arduboy.cpu.data[0x2f] = pinf;
             }
 
-            dt *= 4;
+#if PROFILING
+            dt = 16;
+#endif
             arduboy.advance(dt * 1000000000 / simulation_slowdown);
         }
 

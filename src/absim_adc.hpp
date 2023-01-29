@@ -5,11 +5,11 @@
 namespace absim
 {
 
-void atmega32u4_t::cycle_adc()
+void atmega32u4_t::cycle_adc(uint32_t cycles)
 {
 	// check if adc is powered down
-	uint8_t prr0 = data[0x64];
-	constexpr uint8_t pradc = 1 << 0;
+	uint32_t prr0 = data[0x64];
+	constexpr uint32_t pradc = 1 << 0;
 	if(prr0 & pradc)
 		return;
 
@@ -23,9 +23,9 @@ void atmega32u4_t::cycle_adc()
 		return;
 	}
 
-	uint8_t adps  = adcsra & 0x7;
+	uint32_t adps  = adcsra & 0x7;
 
-	uint8_t prescaler = 1 << adps;
+	uint32_t prescaler = 1 << adps;
 	if(prescaler <= 1)
 		prescaler = 2;
 
@@ -33,22 +33,26 @@ void atmega32u4_t::cycle_adc()
 		return;
 	adc_prescaler_cycle = 0;
 
-	if(++adc_cycle < 13)
-		return;
-	adc_cycle = 0;
-
-	constexpr uint8_t ADSC = 1 << 6;
-	adcsra &= ~ADSC;
-
-	adc_result = 500;
-
 	uint8_t& adcsrb = data[0x7b];
-	uint8_t& admux  = data[0x7c];
+	uint8_t& admux = data[0x7c];
 
-	uint8_t adts  = adcsrb & 0xf;
-	uint8_t mux   = admux & 0x1f;
+	uint32_t adts = adcsrb & 0xf;
+	uint32_t mux = admux & 0x1f;
 
-	uint16_t adc = adc_result;
+	for(uint32_t i = 0; i < cycles; ++i)
+	{
+		if(++adc_cycle < 13)
+			continue;
+		adc_cycle = 0;
+
+		constexpr uint8_t ADSC = 1 << 6;
+		adcsra &= ~ADSC;
+
+		adc_result = 500;
+		break;
+	}
+
+	uint32_t adc = adc_result;
 
 	// ADLAR
 	if(admux & 0x20)

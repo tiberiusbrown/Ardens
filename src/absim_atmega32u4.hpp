@@ -13,17 +13,17 @@
 namespace absim
 {
 
-void FORCEINLINE atmega32u4_t::check_interrupt(
+FORCEINLINE void atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
-    if(interrupting) return;
     if(!flag) return;
+    if(wakeup_cycles != 0) return;
+    if(!(prev_sreg & SREG_I)) return;
     push(uint8_t(pc >> 0));
     push(uint8_t(pc >> 8));
     pc = vector;
     tifr &= ~flag;
     sreg() &= ~SREG_I;
-    interrupting = true;
     wakeup_cycles = 4;
     if(!active)
         wakeup_cycles += 4;
@@ -46,13 +46,15 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
     return (size_t)index;
 }
 
-void FORCEINLINE atmega32u4_t::advance_cycle()
+FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 {
-    interrupting = false;
+    uint32_t cycles = 1;
     just_read = 0xffff;
     just_written = 0xffff;
     if(!active && wakeup_cycles > 0)
     {
+        // sleeping but waking up from an interrupt
+
         // set this here so we don't steal profiler cycle from
         // instruction that was running when interrupt hit
         if(wakeup_cycles == 4)
@@ -61,33 +63,43 @@ void FORCEINLINE atmega32u4_t::advance_cycle()
         if(--wakeup_cycles == 0)
             active = true;
     }
+    else if(!active)
+    {
+        // sleeping and not waking up from an interrupt
+
+        // boost executed cycles to speed up timer code
+        cycles = 8;
+    }
+    
     if(active)
     {
+        // not sleeping: try to execute instruction if one isn't still executing
         if(cycles_till_next_instr == 0)
         {
             if(pc >= decoded_prog.size())
-                return;
+                return cycles;
             auto const& i = decoded_prog[pc];
             if(i.func == INSTR_UNKNOWN)
-                return;
+                return cycles;
             executing_instr_pc = pc;
             prev_sreg = sreg();
             cycles_till_next_instr = INSTR_MAP[i.func](*this, i);
         }
         --cycles_till_next_instr;
     }
-    spi_done = false;
 
     // peripheral updates
-    cycle_spi();
-    cycle_pll();
-    cycle_timer0();
-    cycle_timer1();
-    cycle_timer3();
-    cycle_eeprom();
-    cycle_adc();
+    spi_done = false;
+    cycle_spi(cycles);
+    cycle_pll(cycles);
+    cycle_timer0(cycles);
+    cycle_timer1(cycles);
+    cycle_timer3(cycles);
+    cycle_eeprom(cycles);
+    cycle_adc(cycles);
 
-    if(cycles_till_next_instr == 0 && wakeup_cycles == 0 && (prev_sreg & SREG_I))
+    // don't interrupt in the middle of a multi-cycle instruction
+    if(cycles_till_next_instr == 0)
     {
         // handle interrupts here
         uint8_t i;
@@ -119,7 +131,8 @@ void FORCEINLINE atmega32u4_t::advance_cycle()
         }
     }
 
-    ++cycle_count;
+    cycle_count += cycles;
+    return cycles;
 }
 
 }

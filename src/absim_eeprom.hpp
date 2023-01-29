@@ -3,7 +3,7 @@
 namespace absim
 {
 
-void FORCEINLINE atmega32u4_t::cycle_eeprom()
+void FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
 {
 #define eecr data[0x3f]
 #define eedr data[0x40]
@@ -15,9 +15,13 @@ void FORCEINLINE atmega32u4_t::cycle_eeprom()
 
     if(eeprom_clear_eempe_cycles != 0)
     {
-        --eeprom_clear_eempe_cycles;
-        if(eeprom_clear_eempe_cycles == 0)
+        if(eeprom_clear_eempe_cycles <= cycles)
+        {
+            eeprom_clear_eempe_cycles = 0;
             eecr &= ~EEMPE;
+        }
+        else
+            eeprom_clear_eempe_cycles -= cycles;
     }
 
     if((eecr & (EERE | EEPE | EEMPE)) == 0)
@@ -29,12 +33,15 @@ void FORCEINLINE atmega32u4_t::cycle_eeprom()
     if(eeprom_program_cycles != 0)
     {
         eecr |= EEPE;
-        --eeprom_program_cycles;
-        if(eeprom_program_cycles == 0)
+
+        if(eeprom_program_cycles <= cycles)
         {
+            eeprom_program_cycles = 0;
             eecr &= ~EEPE;
             eeprom[eeprom_write_addr] = eeprom_write_data;
         }
+        else
+            eeprom_program_cycles -= cycles;
         return;
     }
 

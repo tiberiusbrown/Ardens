@@ -31,15 +31,6 @@ static elf_data_symbol_t const* symbol_for_addr_helper(
     auto it = syms.find(addr);
     if(it != syms.end()) return &it->second;
     return nullptr;
-#if 0
-    auto it = syms.lower_bound(addr);
-    if(it == syms.end())
-        return nullptr;
-    auto const& sym = it->second;
-    if(addr == sym.addr || addr < sym.addr + sym.size)
-        return &sym;
-    return nullptr;
-#endif
 }
 
 elf_data_symbol_t const* arduboy_t::symbol_for_prog_addr(uint16_t addr)
@@ -261,11 +252,11 @@ void arduboy_t::profiler_build_hotspots()
     );
 }
 
-void FORCEINLINE arduboy_t::cycle()
+FORCEINLINE uint32_t arduboy_t::cycle()
 {
-    if(!cpu.decoded) return;
+    assert(cpu.decoded);
 
-    cpu.advance_cycle();
+    uint32_t cycles = cpu.advance_cycle();
 
     // TODO: model SPI connection more precisely?
     // send SPI commands and data to display
@@ -282,21 +273,20 @@ void FORCEINLINE arduboy_t::cycle()
         }
     }
 
-    // each cycle is 62.5 ns
-    constexpr uint64_t dps = 62500;
-
-    display.advance(CYCLE_PS);
+    display.advance(cycles * CYCLE_PS);
 
     if(profiler_enabled)
-        ++profiler_total_with_sleep;
+        profiler_total_with_sleep += cycles;
     if(profiler_enabled && (cpu.active || cpu.wakeup_cycles != 0))
     {
         if(cpu.executing_instr_pc < profiler_counts.size())
         {
-            ++profiler_total;
-            profiler_counts[cpu.executing_instr_pc] += 1;
+            profiler_total += cycles;
+            profiler_counts[cpu.executing_instr_pc] += cycles;
         }
     }
+
+    return cycles;
 }
 
 void arduboy_t::advance_instr()
@@ -318,18 +308,22 @@ void arduboy_t::advance(uint64_t ps)
     if(!cpu.decoded) return;
     if(paused) return;
 
-    while(ps >= CYCLE_PS)
+    bool any_breakpoints =
+        cpu.breakpoints.any() ||
+        cpu.breakpoints_rd.any() ||
+        cpu.breakpoints_wr.any();
+
+    // leave a 256-cycle buffer
+    while(ps >= CYCLE_PS * 256)
     {
-        cycle();
+        uint32_t cycles = cycle();
         
-        ps -= CYCLE_PS;
+        ps -= cycles * CYCLE_PS;
 
-        // 1 ms
-        constexpr uint64_t FILTER_EVERY_PS = 1 * 1000 * 1000 * 1000;
-
-        if(cpu.pc < cpu.breakpoints.size() && cpu.breakpoints.test(cpu.pc) ||
+        if(any_breakpoints && (
+            cpu.pc < cpu.breakpoints.size() && cpu.breakpoints.test(cpu.pc) ||
             cpu.just_read < cpu.breakpoints_rd.size() && cpu.breakpoints_rd.test(cpu.just_read) ||
-            cpu.just_written < cpu.breakpoints_wr.size() && cpu.breakpoints_wr.test(cpu.just_written))
+            cpu.just_written < cpu.breakpoints_wr.size() && cpu.breakpoints_wr.test(cpu.just_written)))
         {
             paused = true;
             return;
