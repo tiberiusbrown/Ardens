@@ -141,12 +141,12 @@ void ssd1306_t::send_command(uint8_t byte)
         break;
 
     case 0xa6:
-        inverse_display = true;
+        inverse_display = false;
         processing_command = false;
         break;
 
     case 0xa7:
-        inverse_display = false;
+        inverse_display = true;
         processing_command = false;
         break;
 
@@ -290,17 +290,24 @@ void ssd1306_t::send_data(uint8_t byte)
 
 void FORCEINLINE ssd1306_t::update_pixels_row()
 {
-    uint8_t mask = 1 << (row % 8);
-    size_t rindex = (row / 8) * 128;
+    uint8_t ram_row = row;
+    ram_row += display_start;
+    ram_row &= 63;
 
-    uint8_t out_row = com_scan_direction ? 63 - row : row;
+    uint8_t mask = 1 << (ram_row % 8);
+    size_t rindex = (ram_row / 8) * 128;
+
+    uint8_t out_row = row;
+    out_row -= display_offset;
+    if(com_scan_direction) out_row = mux_ratio - out_row;
+    out_row &= 63;
 
     // the Arduboy's display is upside-down
     size_t pindex = (63 - out_row) * 128 + 128;
 
     auto& parray = pixels[pixel_history_index];
 
-    if(row == 63)
+    if((mux_ratio >= 16 && row == mux_ratio) || row >= 63)
     {
         if(num_pixel_history > MAX_PIXEL_HISTORY)
             num_pixel_history = MAX_PIXEL_HISTORY;
@@ -308,13 +315,16 @@ void FORCEINLINE ssd1306_t::update_pixels_row()
             pixel_history_index = 0;
     }
 
-    uint8_t pval = enable_charge_pump ? contrast : contrast >> 4;
+    uint8_t p0 = 0;
+    uint8_t p1 = enable_charge_pump ? contrast : contrast >> 4;
+    if(inverse_display) std::swap(p0, p1);
 
     for(int i = 0; i < 128; ++i)
     {
-        uint8_t p = 0;
+        uint8_t p = p0;
         if(ram[rindex++] & mask)
-            p = pval;
+            p = p1;
+        // decrement because the Arduboy's display is upside-down
         parray[--pindex] = p;
     }
 }
