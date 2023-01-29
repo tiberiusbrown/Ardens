@@ -74,10 +74,42 @@ void ssd1306_t::send_command(uint8_t byte)
         }
         break;
 
+    case 0x26:
+    case 0x27:
+        // TODO: continuous horizontal scroll setup
+        if(command_byte_index == 6)
+            processing_command = false;
+        break;
+
+    case 0x29:
+    case 0x2a:
+        // TODO: continuous vertical and horizontal scroll setup
+        if(command_byte_index == 5)
+            processing_command = false;
+        break;
+
+    case 0x2e:
+        // TODO: deactivate scroll
+        processing_command = false;
+        break;
+
+    case 0x2f:
+        // TODO: activate scroll
+        processing_command = false;
+        break;
+
     case 0x81:
         if(command_byte_index == 1)
         {
             contrast = byte;
+            processing_command = false;
+        }
+        break;
+
+    case 0x8d:
+        if(command_byte_index == 1)
+        {
+            enable_charge_pump = (byte == 0x14);
             processing_command = false;
         }
         break;
@@ -232,9 +264,23 @@ void ssd1306_t::send_data(uint8_t byte)
         break;
 
     case addr_mode::VERTICAL:
+        if(data_page >= page_end)
+        {
+            data_page = page_start;
+            if(data_col >= col_end)
+                data_col = col_start;
+            else
+                data_col = (data_col + 1) & 0x7f;
+        }
+        else
+            data_page = (data_page + 1) & 0x7;
         break;
         
     case addr_mode::PAGE:
+        if(data_col >= col_end)
+            data_col = col_start;
+        else
+            data_col = (data_col + 1) & 0x7f;
         break;
 
     default:
@@ -262,11 +308,13 @@ void FORCEINLINE ssd1306_t::update_pixels_row()
             pixel_history_index = 0;
     }
 
+    uint8_t pval = enable_charge_pump ? contrast : contrast >> 4;
+
     for(int i = 0; i < 128; ++i)
     {
         uint8_t p = 0;
         if(ram[rindex++] & mask)
-            p = contrast;
+            p = pval;
         parray[--pindex] = p;
     }
 }
@@ -331,6 +379,7 @@ void ssd1306_t::reset()
     entire_display_on = false;
     inverse_display = false;
     display_on = false;
+    enable_charge_pump = false;
 
     addressing_mode = addr_mode::PAGE;
 

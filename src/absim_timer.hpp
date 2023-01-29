@@ -46,7 +46,7 @@ FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
         update_sleep_min_cycles();
         if(cs == 0) return;
     }
-    if(timer1_divider == 0) return;
+    if(timer0_divider == 0) return;
 
     uint32_t wgm = (tccr0a() & 0x3) | ((tccr0b() >> 1) & 0x4);
 
@@ -61,7 +61,7 @@ FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
         return;
 
     uint32_t timer_cycles = increase_counter(
-        timer0_divider_cycle, cycles, timer1_divider);
+        timer0_divider_cycle, cycles, timer0_divider);
     if(timer_cycles == 0) return;
 
     uint32_t top = 0xff;
@@ -251,7 +251,7 @@ static inline FORCEINLINE void cycle_timer1_or_timer3(atmega32u4_t& cpu, uint32_
 
 void FORCEINLINE atmega32u4_t::cycle_timer1(uint32_t cycles)
 {
-    if(just_written == 0x81)
+    if(just_written >= 0x80 && just_written <= 0x8d)
     {
         uint32_t cs = data[0x81] & 0x7;
         timer1_divider = get_divider(cs);
@@ -291,7 +291,7 @@ void FORCEINLINE atmega32u4_t::cycle_timer1(uint32_t cycles)
 
 void FORCEINLINE atmega32u4_t::cycle_timer3(uint32_t cycles)
 {
-    if(just_written == 0x91)
+    if(just_written >= 0x90 && just_written <= 0x9d)
     {
         uint32_t cs = data[0x91] & 0x7;
         timer3_divider = get_divider(cs);

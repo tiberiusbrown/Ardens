@@ -238,6 +238,7 @@ struct ssd1306_t
     bool entire_display_on;
     bool inverse_display;
     bool display_on;
+    bool enable_charge_pump;
 
     // memory addressing mode
     enum class addr_mode
