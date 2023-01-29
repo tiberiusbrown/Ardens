@@ -239,7 +239,7 @@ uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
-    unsigned res = dst + src;
+    unsigned res = (dst + src) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
     unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
@@ -260,7 +260,7 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t const& i)
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
     unsigned c = cpu.sreg() & 1;
-    unsigned res = dst + src + c;
+    unsigned res = (dst + src + c) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
     unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
@@ -276,17 +276,25 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-static void sub_imm(atmega32u4_t& cpu, uint8_t rdst, uint8_t imm, uint8_t c)
+static FORCEINLINE void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst, unsigned src)
 {
-    uint8_t dst = cpu.gpr(rdst);
-    uint8_t src = imm;
-    uint8_t res = dst - src - c;
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    sreg |= (hc & 0x08) << 2;    // H flag
+    sreg |= hc >> 7;             // C flag
+    sreg |= (v & 0x80) >> 4;     // V flag
+    flag_nzs(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+}
+
+static FORCEINLINE void sub_imm(atmega32u4_t& cpu, unsigned rdst, unsigned imm, unsigned c)
+{
+    unsigned dst = cpu.gpr(rdst);
+    unsigned src = imm;
+    unsigned res = (dst - src - c) & 0xff;
     cpu.gpr(rdst) = (uint8_t)res;
-    set_flags_hcv(cpu,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x08,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x80,
-        ((dst & ~src & ~res) | (~dst & src & res)) & 0x80);
-    set_flags_nzs(cpu, (uint8_t)res);
+    sub_flags(cpu, res, dst, src);
 }
 
 uint32_t instr_sub(atmega32u4_t& cpu, avr_instr_t const& i)
@@ -305,44 +313,41 @@ uint32_t instr_sbc(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_cpi(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    uint8_t dst = cpu.gpr(i.dst);
-    uint8_t src = i.src;
-    uint8_t res = dst - src;
-    set_flags_hcv(cpu,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x08,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x80,
-        ((dst & ~src & ~res) | (~dst & src & res)) & 0x80);
-    set_flags_nzs(cpu, (uint8_t)res);
+    unsigned dst = cpu.gpr(i.dst);
+    unsigned src = i.src;
+    unsigned res = (dst - src) & 0xff;
+    sub_flags(cpu, res, dst, src);
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_cp(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    uint8_t dst = cpu.gpr(i.dst);
-    uint8_t src = cpu.gpr(i.src);
-    uint8_t res = dst - src;
-    set_flags_hcv(cpu,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x08,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x80,
-        ((dst & ~src & ~res) | (~dst & src & res)) & 0x80);
-    set_flags_nzs(cpu, (uint8_t)res);
+    unsigned dst = cpu.gpr(i.dst);
+    unsigned src = cpu.gpr(i.src);
+    unsigned res = (dst - src) & 0xff;
+    sub_flags(cpu, res, dst, src);
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    uint8_t dst = cpu.gpr(i.dst);
-    uint8_t src = cpu.gpr(i.src);
-    uint8_t c = cpu.sreg() & 1;
-    uint8_t res = dst - src - c;
-    set_flags_hcv(cpu,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x08,
-        ((~dst & src) | (src & res) | (res & ~dst)) & 0x80,
-        ((dst & ~src & ~res) | (~dst & src & res)) & 0x80);
+    unsigned dst = cpu.gpr(i.dst);
+    unsigned src = cpu.gpr(i.src);
+    unsigned c = cpu.sreg() & 1;
+    unsigned res = (dst - src - c) & 0xff;
+
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    sreg |= (hc & 0x08) << 2;    // H flag
+    sreg |= hc >> 7;             // C flag
+    sreg |= (v & 0x80) >> 4;     // V flag
     res |= (~cpu.sreg() & SREG_Z);
-    set_flags_nzs(cpu, (uint8_t)res);
+    flag_nzs(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
     cpu.pc += 1;
     return 1;
 }
