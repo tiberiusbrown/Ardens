@@ -13,6 +13,16 @@
 namespace absim
 {
 
+void atmega32u4_t::update_sleep_min_cycles()
+{
+    // TODO: incorporate ADC conversion / EEPROM program cycles
+    uint32_t d = 1024;
+    if(timer0_divider != 0) d = std::min(d, timer0_divider);
+    if(timer1_divider != 0) d = std::min(d, timer1_divider);
+    if(timer3_divider != 0) d = std::min(d, timer3_divider);
+    sleep_min_cycles = d;
+}
+
 FORCEINLINE void atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
@@ -68,7 +78,7 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         // sleeping and not waking up from an interrupt
 
         // boost executed cycles to speed up timer code
-        cycles = 8;
+        cycles = sleep_min_cycles;
     }
     
     if(active)
@@ -88,8 +98,8 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         --cycles_till_next_instr;
     }
 
-    // peripheral updates
     spi_done = false;
+    // peripheral updates
     cycle_spi(cycles);
     cycle_pll(cycles);
     cycle_timer0(cycles);

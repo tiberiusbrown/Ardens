@@ -39,12 +39,14 @@ static FORCEINLINE uint32_t get_divider(uint32_t cs)
 
 FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
 {
-    uint32_t cs = tccr0b() & 0x7;
-    uint32_t divider = get_divider(cs);
-
-    // invalid prescaler setting
-    if(divider == 0)
-        return;
+    if(just_written == 0x45)
+    {
+        uint32_t cs = data[0x45] & 0x7;
+        timer0_divider = get_divider(cs);
+        update_sleep_min_cycles();
+        if(cs == 0) return;
+    }
+    if(timer1_divider == 0) return;
 
     uint32_t wgm = (tccr0a() & 0x3) | ((tccr0b() >> 1) & 0x4);
 
@@ -59,7 +61,7 @@ FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
         return;
 
     uint32_t timer_cycles = increase_counter(
-        timer0_divider_cycle, cycles, divider);
+        timer0_divider_cycle, cycles, timer1_divider);
     if(timer_cycles == 0) return;
 
     uint32_t top = 0xff;
@@ -252,8 +254,9 @@ void FORCEINLINE atmega32u4_t::cycle_timer1(uint32_t cycles)
     if(just_written == 0x81)
     {
         uint32_t cs = data[0x81] & 0x7;
-        if(cs == 0) return;
         timer1_divider = get_divider(cs);
+        update_sleep_min_cycles();
+        if(cs == 0) return;
 
         uint32_t icrN = word(*this, 0x86);
         uint32_t ocrNa = word(*this, 0x88);
@@ -291,8 +294,9 @@ void FORCEINLINE atmega32u4_t::cycle_timer3(uint32_t cycles)
     if(just_written == 0x91)
     {
         uint32_t cs = data[0x91] & 0x7;
-        if(cs == 0) return;
         timer3_divider = get_divider(cs);
+        update_sleep_min_cycles();
+        if(cs == 0) return;
 
         uint32_t icrN = word(*this, 0x96);
         uint32_t ocrNa = word(*this, 0x98);

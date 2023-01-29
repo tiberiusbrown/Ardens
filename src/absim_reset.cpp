@@ -33,6 +33,21 @@ void atmega32u4_t::reset()
     cycles_till_next_instr = 0;
 
     timer0_divider_cycle = 0;
+    timer0_divider = 0;
+
+    timer1_divider_cycle = 0;
+    timer1_divider = 0;
+    timer1_top = 0;
+    timer1_tov = 0;
+    timer1_phase_correct = false;
+    timer1_count_down = false;
+
+    timer3_divider_cycle = 0;
+    timer3_divider = 0;
+    timer3_top = 0;
+    timer3_tov = 0;
+    timer3_phase_correct = false;
+    timer3_count_down = false;
 
     pll_lock_cycle = 0;
 
@@ -48,7 +63,14 @@ void atmega32u4_t::reset()
     eeprom_write_data = 0;
     eeprom_program_cycles = 0;
 
+    adc_prescaler_cycle = 0;
+    adc_cycle = 0;
+    adc_ref = 0;
+    adc_result = 0;
+
     cycle_count = 0;
+
+    update_sleep_min_cycles();
 }
 
 }

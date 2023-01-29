@@ -145,6 +145,9 @@ struct atmega32u4_t
     void decode();
     size_t addr_to_disassembled_index(uint16_t addr);
 
+    uint32_t sleep_min_cycles;
+    void update_sleep_min_cycles();
+
     // timer0
     uint32_t timer0_divider_cycle;
     uint32_t timer0_divider;
