@@ -22,10 +22,15 @@ namespace absim
 
 struct avr_instr_t
 {
-    uint16_t func;
     uint16_t word;
     uint8_t src;
     uint8_t dst;
+    uint8_t func;
+
+    // merged instructions for increased speed
+    uint8_t mfunc;
+    uint8_t m0;
+    uint8_t m1;
 };
 
 struct atmega32u4_t

@@ -9,6 +9,7 @@ struct avr_instr_t;
 using instr_func_t = uint32_t(*)(atmega32u4_t& cpu, avr_instr_t const& i);
 
 extern instr_func_t const INSTR_MAP[];
+extern instr_func_t const INSTR_MAP_MERGED[];
 
 struct disassembled_instr_arg_t
 {

@@ -5,7 +5,7 @@
 namespace absim
 {
 
-void atmega32u4_t::cycle_adc(uint32_t cycles)
+FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
 {
 	// check if adc is powered down
 	uint32_t prr0 = data[0x64];

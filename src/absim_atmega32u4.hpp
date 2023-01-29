@@ -1,7 +1,6 @@
 #include "absim.hpp"
 
 #include "absim_instructions.hpp"
-#include "absim_execute.hpp"
 #include "absim_timer.hpp"
 #include "absim_adc.hpp"
 #include "absim_pll.hpp"
@@ -93,9 +92,10 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 return cycles;
             executing_instr_pc = pc;
             prev_sreg = sreg();
-            cycles_till_next_instr = INSTR_MAP[i.func](*this, i);
+            //cycles_till_next_instr = INSTR_MAP[i.func](*this, i);
+            cycles = INSTR_MAP[i.func](*this, i);
         }
-        --cycles_till_next_instr;
+        //--cycles_till_next_instr;
     }
 
     spi_done = false;
