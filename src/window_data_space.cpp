@@ -54,6 +54,19 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
     return r;
 }
 
+static void hover_func(ImU8 const* data, size_t off)
+{
+    using namespace ImGui;
+    auto const* sym = arduboy.symbol_for_data_addr((uint16_t)off);
+    if(!sym) return;
+    BeginTooltip();
+    if(sym->size > 1)
+        Text("%s [byte %d]", sym->name.c_str(), int(off - sym->addr));
+    else
+        TextUnformatted(sym->name.c_str());
+    EndTooltip();
+}
+
 void window_data_space(bool& open)
 {
     using namespace ImGui;
@@ -66,6 +79,7 @@ void window_data_space(bool& open)
             memed_data_space.PreviewDataType = ImGuiDataType_U8;
             memed_data_space.OptFooterExtraHeight = GetFrameHeightWithSpacing();
             memed_data_space.HighlightFn = highlight_func;
+            memed_data_space.HoverFn = hover_func;
             first = false;
         }
     }

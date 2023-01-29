@@ -19,6 +19,41 @@ void arduboy_t::reset()
         paused = true;
 }
 
+static elf_data_symbol_t const* symbol_for_addr_helper(
+    elf_data_t::map_type const& syms, uint16_t addr)
+{
+    for(auto const& kv : syms)
+    {
+        auto const& sym = kv.second;
+        if(addr >= sym.addr && addr < sym.addr + sym.size)
+            return &sym;
+    }
+    auto it = syms.find(addr);
+    if(it != syms.end()) return &it->second;
+    return nullptr;
+#if 0
+    auto it = syms.lower_bound(addr);
+    if(it == syms.end())
+        return nullptr;
+    auto const& sym = it->second;
+    if(addr == sym.addr || addr < sym.addr + sym.size)
+        return &sym;
+    return nullptr;
+#endif
+}
+
+elf_data_symbol_t const* arduboy_t::symbol_for_prog_addr(uint16_t addr)
+{
+    if(!elf) return nullptr;
+    return symbol_for_addr_helper(elf->text_symbols, addr);
+}
+
+elf_data_symbol_t const* arduboy_t::symbol_for_data_addr(uint16_t addr)
+{
+    if(!elf) return nullptr;
+    return symbol_for_addr_helper(elf->data_symbols, addr);
+}
+
 void arduboy_t::profiler_reset()
 {
     memset(&profiler_counts, 0, sizeof(profiler_counts));
@@ -40,6 +75,18 @@ void arduboy_t::profiler_build_hotspots()
 
     std::bitset<NUM_INSTRS> starts;
     starts.set(cpu.num_instrs - 1);
+
+    // set starts at beginning of each func symbol
+    if(elf)
+    {
+        for(auto const& kv : elf->text_symbols)
+        {
+            auto const& sym = kv.second;
+            if(sym.type == 1) continue;
+            auto i = cpu.addr_to_disassembled_index(sym.addr);
+            if(i < starts.size()) starts.set(i);
+        }
+    }
 
     num_hotspots = 0;
 

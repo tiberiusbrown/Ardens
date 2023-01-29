@@ -39,6 +39,12 @@ static void hotspot_row(int i)
     Text("%6.2f%%", double(h.count) * 100 / arduboy.profiler_total);
     SameLine();
     Text("0x%04x-0x%04x", addr_begin, addr_end);
+    
+    if(!arduboy.elf) return;
+    auto const* sym = arduboy.symbol_for_prog_addr(addr_begin);
+    if(!sym) return;
+    SameLine();
+    TextUnformatted(sym->name.c_str()); 
 }
 
 static void show_hotspots()

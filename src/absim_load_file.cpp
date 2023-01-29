@@ -6,8 +6,22 @@
 
 #include <elfio/elfio.hpp>
 
+extern "C" char* __cxa_demangle(const char* MangledName, char* Buf, size_t * N, int* Status);
+
 namespace absim
 {
+
+static std::string demangle(char const* sym)
+{
+    size_t size = 0;
+    int status = -1;
+    char* t = __cxa_demangle(sym, nullptr, &size, &status);
+    if(status != 0)
+        return sym;
+    std::string r(t);
+    std::free(t);
+    return r;
+}
 
 static int convert_hex_char(int c)
 {
@@ -107,6 +121,24 @@ struct Elf32_Sym
     uint16_t  st_shndx;
 };
 
+static void try_insert_symbol(elf_data_t::map_type& m, elf_data_symbol_t& sym)
+{
+    auto it = m.find(sym.addr);
+    if(it == m.end())
+    {
+        m[sym.addr] = std::move(sym);
+        return;
+    }
+    // if new is WEAK don't replace old with it
+    if(sym.bind == 2) return;
+    auto& oldsym = it->second;
+    // if new is NOTYPE and old is not NOTYPE don't replace
+    if(sym.type == 0 && oldsym.type != 0) return;
+    // if old is GLOBAL don't replace it
+    if(oldsym.bind == 1) return;
+    m[sym.addr] = std::move(sym);
+}
+
 static char const* load_elf(arduboy_t& a, std::string const& fname)
 {
     using namespace ELFIO;
@@ -192,37 +224,38 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
         for(int i = 0; i < num_syms; ++i, ++ptr)
         {
             uint8_t sym_type = ptr->st_info & 0xf;
-            // limit to OBJECT or FUNC
-            if(sym_type != 1 && sym_type != 2) continue;
-            bool object = (sym_type == 1);
+            uint8_t sym_bind = ptr->st_info >> 4;
+            // limit to OBJECT or FUNC or NOTYPE
+            if(sym_type > 2)
+                continue;
             auto sec_index = ptr->st_shndx;
             bool text = false;
             if(sec_index == sec_index_text)
                 text = true;
             else if(sec_index != sec_index_data && sec_index != sec_index_bss)
                 continue;
+            if(sym_type == 0 && !text)
+                continue;
             char const* name = &str[ptr->st_name];
+            elf_data_symbol_t sym;
+            sym.name = demangle(name);
             auto addr = ptr->st_value;
             if(!text) addr -= ram_offset;
-            if(text)
-                elf.text_symbols.push_back({ name, (uint16_t)addr, (uint16_t)ptr->st_size, object });
-            else
-                elf.data_symbols.push_back({ name, (uint16_t)addr, (uint16_t)ptr->st_size, object });
+            sym.addr = (uint16_t)addr;
+            sym.size = (uint16_t)ptr->st_size;
+            sym.type = sym_type;
+            sym.bind = sym_bind;
+            try_insert_symbol(text ? elf.text_symbols : elf.data_symbols, sym);
         }
     }
 
-    std::sort(elf.text_symbols.begin(), elf.text_symbols.end(),
-        [](auto const& a, auto const& b) { return a.addr < b.addr; });
-    std::sort(elf.data_symbols.begin(), elf.data_symbols.end(),
-        [](auto const& a, auto const& b) { return a.addr < b.addr; });
-
-    a.elf.swap(elf_ptr);
     cpu.decode();
 
-    // convert object text symbols to raw
-    for(auto const& sym : elf.text_symbols)
+    // note object text symbols in disassembly
+    for(auto const& kv : elf.text_symbols)
     {
-        if(!sym.object) continue;
+        auto const& sym = kv.second;
+        if(sym.type != 1) continue;
         auto addr = sym.addr;
         auto addr_end = addr + sym.size;
         while(addr < addr_end)
@@ -232,6 +265,8 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
             addr += 2;
         }
     }
+
+    a.elf.swap(elf_ptr);
 
     return nullptr;
 }

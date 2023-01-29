@@ -46,6 +46,21 @@ static int find_index_of_addr(uint16_t addr)
     return (int)arduboy.cpu.addr_to_disassembled_index(addr);
 }
 
+static void prog_addr_tooltip(uint16_t addr)
+{
+    using namespace ImGui;
+    auto const* sym = arduboy.symbol_for_prog_addr(addr);
+    if(sym)
+    {
+        BeginTooltip();
+        if(addr == sym->addr)
+            TextUnformatted(sym->name.c_str());
+        else
+            Text("%s [%+d]", sym->name.c_str(), addr - sym->addr);
+        EndTooltip();
+    }
+}
+
 static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
 {
     using namespace ImGui;
@@ -57,6 +72,7 @@ static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
     {
         color = IM_COL32(80, 255, 150, 255);
         SetMouseCursor(ImGuiMouseCursor_Hand);
+        prog_addr_tooltip(addr);
     }
     SetCursorPos(saved);
     PushStyleColor(ImGuiCol_Text, color);
@@ -97,8 +113,19 @@ static void disassembly_arg(
         Text("0x%04x", a.val);
         if(IsItemHovered())
         {
+            auto const* sym = arduboy.symbol_for_data_addr(a.val);
             BeginTooltip();
-            Text("Data Space: 0x%04x", a.val);
+            if(sym)
+            {
+                if(sym->size > 1)
+                    Text("%s [byte %d]", sym->name.c_str(), int(a.val - sym->addr));
+                else
+                    TextUnformatted(sym->name.c_str());
+            }
+            else
+            {
+                Text("Data Space: 0x%04x", a.val);
+            }
             Separator();
             if(a.val < arduboy.cpu.data.size())
             {
@@ -290,6 +317,7 @@ void window_disassembly(bool& open)
                         SetMouseCursor(ImGuiMouseCursor_Hand);
                         TableSetColumnIndex(0);
                         draw_breakpoint_hovered(i, bp_pos);
+                        prog_addr_tooltip(d.addr);
                     }
                     if(IsItemClicked())
                     {

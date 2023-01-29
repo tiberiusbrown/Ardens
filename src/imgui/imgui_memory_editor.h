@@ -91,6 +91,7 @@ struct MemoryEditor
     ImU8            (*ReadFn)(const ImU8* data, size_t off);    // = 0      // optional handler to read bytes.
     void            (*WriteFn)(ImU8* data, size_t off, ImU8 d); // = 0      // optional handler to write bytes.
     bool            (*HighlightFn)(const ImU8* data, size_t off, ImU32& color);//= 0      // optional handler to return Highlight property (to support non-contiguous highlighting).
+    void            (*HoverFn)(const ImU8* data, size_t off);//= 0      // optional handler to return Highlight property (to support non-contiguous highlighting).
 
     // [Internal State]
     bool            ContentsWidthChanged;
@@ -123,6 +124,7 @@ struct MemoryEditor
         ReadFn = NULL;
         WriteFn = NULL;
         HighlightFn = NULL;
+        HoverFn = NULL;
 
         // State/Internals
         ContentsWidthChanged = false;
@@ -212,6 +214,7 @@ struct MemoryEditor
         if (Cols < 1)
             Cols = 1;
 
+        bool hover_done = false;
         ImU8* mem_data = (ImU8*)mem_data_void;
         Sizes s;
         CalcSizes(s, mem_size, base_display_addr);
@@ -386,6 +389,11 @@ struct MemoryEditor
                                 ImGui::TextDisabled("00 ");
                             else
                                 ImGui::Text(format_byte_space, b);
+                        }
+                        if(HoverFn && !hover_done && ImGui::IsItemHovered())
+                        {
+                            hover_done = true;
+                            HoverFn(mem_data, addr);
                         }
                         if (!ReadOnly && ImGui::IsItemHovered() && ImGui::IsMouseClicked(0))
                         {

@@ -11,6 +11,10 @@ if(MSVC)
     endforeach()
 endif()
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+project(arduboy_sim)
+
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
 
@@ -31,7 +35,6 @@ FetchContent_Declare(
 set(ELFIO_BUILD_EXAMPLES OFF)
 FetchContent_MakeAvailable(ELFIO)
 
-project(arduboy_sim)
 set(EXEFLAG)
 if(MSVC)
     set(EXEFLAG WIN32)
@@ -53,6 +56,15 @@ set(IMGUI_SOURCES
     src/imgui/imstb_textedit.h
     src/imgui/imstb_truetype.h
     src/imgui/imgui_memory_editor.h
+    )
+set(LLVM_DEMANGLER_SOURCES
+    src/llvm_demangler/cxa_demangle.cpp
+    src/llvm_demangler/__cxxabi_config.h
+    src/llvm_demangler/cxa_demangle.cpp
+    src/llvm_demangler/demangle/DemangleConfig.h
+    src/llvm_demangler/demangle/ItaniumDemangle.h
+    src/llvm_demangler/demangle/StringView.h
+    src/llvm_demangler/demangle/Utility.h
     )
 add_executable(arduboy_sim ${EXEFLAG}
     src/main.cpp
@@ -82,7 +94,14 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim_eeprom.cpp
     
     ${IMGUI_SOURCES}
+    ${LLVM_DEMANGLER_SOURCES}
     )
 target_link_libraries(arduboy_sim SDL2-static SDL2main elfio)
-target_include_directories(arduboy_sim PUBLIC src/imgui src/libelfin)
-source_group("imgui" ${IMGUI_SOURCES})
+target_include_directories(arduboy_sim PUBLIC
+    src/imgui
+    src/libelfin
+    src/llvm_demangler
+    )
+target_compile_definitions(arduboy_sim PRIVATE -D_LIBCXXABI_DISABLE_VISIBILITY_ANNOTATIONS)
+source_group("ImGui" FILES ${IMGUI_SOURCES})
+source_group("LLVM Demangler" FILES ${LLVM_DEMANGLER_SOURCES})

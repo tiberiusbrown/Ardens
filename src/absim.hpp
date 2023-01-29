@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <map>
 
 #include <stdint.h>
 #include <assert.h>
@@ -305,7 +306,8 @@ struct elf_data_symbol_t
     std::string name;
     uint16_t addr;
     uint16_t size;
-    bool object;
+    uint8_t type;
+    uint8_t bind;
 };
 
 struct elf_data_t
@@ -314,8 +316,9 @@ struct elf_data_t
     uint16_t data_end;
     uint16_t bss_begin;
     uint16_t bss_end;
-    std::vector<elf_data_symbol_t> text_symbols;
-    std::vector<elf_data_symbol_t> data_symbols;
+    using map_type = std::map<uint16_t, elf_data_symbol_t>;
+    map_type text_symbols;
+    map_type data_symbols;
 };
 
 struct arduboy_t
@@ -324,6 +327,8 @@ struct arduboy_t
     ssd1306_t display;
 
     std::unique_ptr<elf_data_t> elf;
+    elf_data_symbol_t const* symbol_for_prog_addr(uint16_t addr);
+    elf_data_symbol_t const* symbol_for_data_addr(uint16_t addr);
 
     static constexpr size_t NUM_INSTRS = atmega32u4_t::PROG_SIZE_BYTES / 2;
 
