@@ -30,8 +30,6 @@ void atmega32u4_t::reset()
 
     prev_sreg = 0;
 
-    cycles_till_next_instr = 0;
-
     timer0_divider_cycle = 0;
     timer0_divider = 0;
 

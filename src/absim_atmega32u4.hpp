@@ -83,20 +83,15 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     
     if(active)
     {
-        // not sleeping: try to execute instruction if one isn't still executing
-        if(cycles_till_next_instr == 0)
-        {
-            if(pc >= decoded_prog.size())
-                return cycles;
-            auto const& i = decoded_prog[pc];
-            if(i.func == INSTR_UNKNOWN)
-                return cycles;
-            executing_instr_pc = pc;
-            prev_sreg = sreg();
-            //cycles_till_next_instr = INSTR_MAP[i.func](*this, i);
-            cycles = INSTR_MAP[i.func](*this, i);
-        }
-        //--cycles_till_next_instr;
+        // not sleeping: execute instruction
+        if(pc >= decoded_prog.size())
+            return cycles;
+        auto const& i = decoded_prog[pc];
+        if(i.func == INSTR_UNKNOWN)
+            return cycles;
+        executing_instr_pc = pc;
+        prev_sreg = sreg();
+        cycles = INSTR_MAP[i.func](*this, i);
     }
 
     spi_done = false;
@@ -109,8 +104,6 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     cycle_eeprom(cycles);
     cycle_adc(cycles);
 
-    // don't interrupt in the middle of a multi-cycle instruction
-    if(cycles_till_next_instr == 0)
     {
         // handle interrupts here
         uint8_t i;

@@ -140,7 +140,6 @@ struct atmega32u4_t
     uint16_t pc;                       // program counter
 
     uint16_t executing_instr_pc;
-    uint8_t cycles_till_next_instr;
 
     uint16_t last_addr;
     uint16_t num_instrs;
