@@ -45,8 +45,9 @@ static int get_hex_byte(std::istream& f)
     return lo + hi * 16;
 }
 
-static char const* load_hex(atmega32u4_t& cpu, std::istream& f)
+static char const* load_hex(arduboy_t& a, std::istream& f)
 {
+    auto& cpu = a.cpu;
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
@@ -58,29 +59,29 @@ static char const* load_hex(atmega32u4_t& cpu, std::istream& f)
     {
         while(f.get() != ':')
             if(f.eof())
-                return "Intel HEX: unexpected EOF";
+                return "HEX: unexpected EOF";
         uint8_t checksum = 0;
         int count = get_hex_byte(f);
         if(count < 0)
-            return "Intel HEX bad byte count";
+            return "HEX bad byte count";
         checksum += (uint8_t)count;
         int addr_hi = get_hex_byte(f);
         int addr_lo = get_hex_byte(f);
         if(addr_lo < 0 || addr_hi < 0)
-            return "Intel HEX: bad address";
+            return "HEX: bad address";
         checksum += (uint8_t)addr_lo;
         checksum += (uint8_t)addr_hi;
         int addr = addr_lo + addr_hi * 256;
         int type = get_hex_byte(f);
         checksum += (uint8_t)type;
         if(type < 0)
-            return "Intel HEX: bad type";
+            return "HEX: bad type";
         if(type > 1)
-            return "Intel HEX: unsupported type";
+            return "HEX: unsupported type";
         if(type == 1)
         {
             if(count != 0)
-                return "Intel HEX: non-zero byte count at end-of-file record";
+                return "HEX: non-zero byte count at end-of-file record";
             break;
         }
         if(type == 0)
@@ -89,7 +90,7 @@ static char const* load_hex(atmega32u4_t& cpu, std::istream& f)
             {
                 int data = get_hex_byte(f);
                 if(data < 0)
-                    return "Intel HEX: bad data";
+                    return "HEX: bad data";
                 checksum += (uint8_t)data;
                 if(addr + i >= cpu.prog.size())
                     return "Too many instructions!";
@@ -101,7 +102,7 @@ static char const* load_hex(atmega32u4_t& cpu, std::istream& f)
         checksum = uint8_t(-checksum);
         int check = get_hex_byte(f);
         if(checksum != check)
-            return "Intel HEX: bad checksum";
+            return "HEX: bad checksum";
     }
 
     cpu.decode();
@@ -109,14 +110,14 @@ static char const* load_hex(atmega32u4_t& cpu, std::istream& f)
     return nullptr;
 }
 
-static char const* load_hex(atmega32u4_t& cpu, std::string const& fname)
+static char const* load_hex(arduboy_t& a, std::string const& fname)
 {
     std::ifstream f(fname, std::ios::in);
 
     if(f.fail())
-        return "Unable to open file";
+        return "HEX: Unable to open file";
 
-    return load_hex(cpu, f);
+    return load_hex(a, f);
 }
 
 struct Elf32_Sym
@@ -279,10 +280,37 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
     return nullptr;
 }
 
+static char const* load_bin(arduboy_t& a, std::istream& f)
+{
+    std::vector<uint8_t> data(
+        (std::istreambuf_iterator<char>(f)),
+        std::istreambuf_iterator<char>());
+    size_t n = data.size();
+    n = (n + 255) & 0x1ffff00;
+    data.resize(n);
+    if(n > a.fx.data.size())
+        return "BIN: FX data too large";
+
+    a.fx.erase_all_data();
+    if(n != 0)
+        memcpy(&a.fx.data[a.fx.data.size() - n], &data[0], n);
+
+    return nullptr;
+}
+
+static char const* load_bin(arduboy_t& a, std::string const& fname)
+{
+    std::ifstream f(fname, std::ios::in | std::ios::binary);
+
+    if(f.fail())
+        return "BIN: Unable to open file";
+
+    return load_bin(a, f);
+}
+
 static char const* load_arduboy(arduboy_t& a, std::string const& fname)
 {
     miniz_cpp::zip_file z(fname);
-    miniz_cpp::zip_info f;
     if(!z.has_file("info.json"))
         return "ARDUBOY: No info.json file";
     std::string info = z.read("info.json");
@@ -306,7 +334,21 @@ static char const* load_arduboy(arduboy_t& a, std::string const& fname)
     {
         std::string hexdata = z.read(hexfile);
         std::stringstream ss(hexdata);
-        char const* err = load_hex(a.cpu, ss);
+        char const* err = load_hex(a, ss);
+        if(err) return err;
+    }
+
+    if(bin.contains("flashdata"))
+    {
+        auto const& binfile = bin["flashdata"];
+        if(!binfile.is_string())
+            return "ARDUBOY: FX data filename not string type";
+        if(!z.has_file(binfile))
+            return "ARDUBOY: missing FX data file indicated in info.json";
+
+        std::string bindata = z.read(binfile);
+        std::stringstream ss(bindata);
+        char const* err = load_bin(a, ss);
         if(err) return err;
     }
 
@@ -328,7 +370,12 @@ char const* arduboy_t::load_file(char const* filename)
     if(ends_with(fname, ".hex"))
     {
         reset();
-        return load_hex(cpu, fname);
+        return load_hex(*this, fname);
+    }
+
+    if(ends_with(fname, ".bin"))
+    {
+        return load_bin(*this, fname);
     }
 
     if(ends_with(fname, ".elf"))

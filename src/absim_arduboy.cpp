@@ -13,6 +13,7 @@ void arduboy_t::reset()
     profiler_reset();
     cpu.reset();
     display.reset();
+    fx.reset();
     paused = false;
 
     if(cpu.breakpoints.test(0))
@@ -260,10 +261,15 @@ FORCEINLINE uint32_t arduboy_t::cycle()
 
     // TODO: model SPI connection more precisely?
     // send SPI commands and data to display
+    uint8_t portd = cpu.data[0x2b];
+
+    fx.set_enabled((portd & (1 << 1)) == 0);
+
     if(cpu.spi_done)
     {
         uint8_t byte = cpu.spi_data_byte;
-        uint8_t portd = cpu.data[0x2b];
+
+        // display enabled?
         if(!(portd & (1 << 6)))
         {
             if(portd & (1 << 4))
@@ -271,9 +277,12 @@ FORCEINLINE uint32_t arduboy_t::cycle()
             else
                 display.send_command(byte);
         }
+
+        cpu.spi_datain_byte = fx.spi_transceive(byte);
     }
 
     display.advance(cycles * CYCLE_PS);
+    fx.advance(cycles * CYCLE_PS);
 
     if(profiler_enabled)
         profiler_total_with_sleep += cycles;
@@ -293,11 +302,14 @@ void arduboy_t::advance_instr()
 {
     if(!cpu.decoded) return;
     int n = 0;
-    ps_rem = 0;
+    auto oldpc = cpu.pc;
+    ps_rem = PS_BUFFER - CYCLE_PS;
     do
     {
+        paused = false;
         advance(CYCLE_PS);
-    } while(++n < 65536 && (!cpu.active || cpu.cycles_till_next_instr != 0));
+        paused = true;
+    } while(++n < 65536 && cpu.pc == oldpc);
 }
 
 void arduboy_t::advance(uint64_t ps)
@@ -314,7 +326,7 @@ void arduboy_t::advance(uint64_t ps)
         cpu.breakpoints_wr.any();
 
     // leave a 256-cycle buffer
-    while(ps >= CYCLE_PS * 256)
+    while(ps >= PS_BUFFER)
     {
         uint32_t cycles = cycle();
         

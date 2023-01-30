@@ -333,23 +333,25 @@ uint32_t instr_cp(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t const& i)
 {
+    unsigned sreg = cpu.sreg();
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
-    unsigned c = cpu.sreg() & 1;
-    unsigned res = (dst - src - c) & 0xff;
+    unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
 
     unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
     unsigned v = (dst & ~src & ~res) | (~dst & src & res);
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned z = ~sreg & SREG_Z;
+    sreg &= ~SREG_HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
-    res |= (~cpu.sreg() & SREG_Z);
+    res |= z;
     flag_nzs(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 1;
     return 1;
+
 }
 
 uint32_t instr_out(atmega32u4_t& cpu, avr_instr_t const& i)
@@ -521,7 +523,23 @@ uint32_t instr_subi(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    sub_imm(cpu, i.dst, i.src, cpu.sreg() & 0x1);
+    unsigned sreg = cpu.sreg();
+    unsigned dst = cpu.gpr(i.dst);
+    unsigned src = i.src;
+    unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
+    cpu.gpr(i.dst) = (uint8_t)res;
+
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned z = ~sreg & SREG_Z;
+    sreg &= ~SREG_HSVNZC;
+    sreg |= (hc & 0x08) << 2;    // H flag
+    sreg |= hc >> 7;             // C flag
+    sreg |= (v & 0x80) >> 4;     // V flag
+    res |= z;
+    flag_nzs(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
     cpu.pc += 1;
     return 1;
 }
@@ -762,7 +780,7 @@ uint32_t instr_asr(atmega32u4_t& cpu, avr_instr_t const& i)
 uint32_t instr_lsr(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint8_t dst = cpu.gpr(i.dst);
-    uint8_t res = (dst >> 1) | (dst & 0x80);
+    uint8_t res = (dst >> 1);
     cpu.gpr(i.dst) = res;
     set_flag(cpu, SREG_C, dst & 0x1);
     set_flag(cpu, SREG_V, dst & 0x1);

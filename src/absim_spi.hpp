@@ -81,12 +81,16 @@ void FORCEINLINE atmega32u4_t::cycle_spi(uint32_t cycles)
         {
             uint8_t b = spdr & 0x1;
             spdr >>= 1;
+            spdr |= (spi_datain_byte & 0x80);
+            spi_datain_byte <<= 1;
             spi_data_byte = (spi_data_byte << 1) | b;
         }
         else
         {
             uint8_t b = spdr >> 7;
             spdr <<= 1;
+            spdr |= (spi_datain_byte >> 7);
+            spi_datain_byte <<= 1;
             spi_data_byte = (spi_data_byte << 1) | b;
         }
 

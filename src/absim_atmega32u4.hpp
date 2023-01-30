@@ -6,6 +6,7 @@
 #include "absim_pll.hpp"
 #include "absim_spi.hpp"
 #include "absim_eeprom.hpp"
+#include "absim_w25q128.hpp"
 
 #include <algorithm>
 

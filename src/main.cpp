@@ -90,6 +90,7 @@ int main(int, char**)
 
     uint64_t pt = SDL_GetTicks64();
 
+    arduboy.fx.erase_all_data();
     arduboy.reset();
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);

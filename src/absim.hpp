@@ -185,7 +185,8 @@ struct atmega32u4_t
     bool spsr_read_after_transmit;
     bool spi_busy;
     bool spi_done;
-    uint32_t spi_data_byte;
+    uint8_t spi_data_byte;
+    uint8_t spi_datain_byte;
     uint32_t spi_clock_cycle;
     uint32_t spi_bit_progress;
     void cycle_spi(uint32_t cycles);
@@ -309,6 +310,30 @@ struct ssd1306_t
     void advance(uint64_t ps);
 };
 
+struct w25q128_t
+{
+    static constexpr size_t DATA_BYTES = 16 * 1024 * 1024;
+    std::array<uint8_t, DATA_BYTES> data;
+
+    bool enabled;
+    bool write_enabled;
+    bool reading_status;
+    bool processing_command;
+    uint8_t reading;
+    uint8_t programming;
+    uint8_t erasing_sector;
+    uint64_t busy_ps_rem;
+    uint32_t current_addr;
+
+    void reset();
+    void erase_all_data();
+
+    void advance(uint64_t ps);
+
+    void set_enabled(bool e);
+    uint8_t spi_transceive(uint8_t byte);
+};
+
 struct elf_data_symbol_t
 {
     std::string name;
@@ -333,6 +358,7 @@ struct arduboy_t
 {
     atmega32u4_t cpu;
     ssd1306_t display;
+    w25q128_t fx;
 
     std::unique_ptr<elf_data_t> elf;
     elf_data_symbol_t const* symbol_for_prog_addr(uint16_t addr);
@@ -370,6 +396,7 @@ struct arduboy_t
 
     // each cycle is 62.5 ns
     static constexpr uint64_t CYCLE_PS = 62500;
+    static constexpr uint64_t PS_BUFFER = CYCLE_PS * 256;
 
     // advance by specified number of picoseconds
     // ratio is for display filtering: 1.0 means real time,
