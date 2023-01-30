@@ -252,6 +252,16 @@ static void profiler_count(absim::disassembled_instr_t const& d)
         Text("%8.4f%%", f);
 }
 
+static char jump_buf[5];
+
+static int hex_value(char c)
+{
+    if(c >= '0' && c <= '9') return c - '0';
+    if(c >= 'a' && c <= 'f') return c - 'a';
+    if(c >= 'A' && c <= 'F') return c - 'A';
+    return 0;
+}
+
 void window_disassembly(bool& open)
 {
     using namespace ImGui;
@@ -261,7 +271,26 @@ void window_disassembly(bool& open)
     disassembly_scroll_addr = -1;
     if(Begin("Disassembly", &open) && arduboy.cpu.decoded)
     {
-
+        AlignTextToFramePadding();
+        TextUnformatted("Jump: 0x");
+        SameLine(0.f, 0.f);
+        SetNextItemWidth(
+            CalcTextSize("FFFF").x +
+            GetStyle().FramePadding.x * 2);
+        if(InputText(
+            "##jump",
+            jump_buf, sizeof(jump_buf),
+            ImGuiInputTextFlags_CharsHexadecimal |
+            ImGuiInputTextFlags_EnterReturnsTrue |
+            ImGuiInputTextFlags_AutoSelectAll))
+        {
+            do_scroll = 0;
+            do_scroll += hex_value(jump_buf[0]) << 12;
+            do_scroll += hex_value(jump_buf[1]) << 8;
+            do_scroll += hex_value(jump_buf[2]) << 4;
+            do_scroll += hex_value(jump_buf[3]) << 0;
+        }
+        SameLine();
         if(Button("Jump to PC"))
         {
             do_scroll = arduboy.cpu.pc * 2;
