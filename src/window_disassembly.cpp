@@ -50,6 +50,19 @@ static void prog_addr_tooltip(uint16_t addr)
 {
     using namespace ImGui;
     auto const* sym = arduboy.symbol_for_prog_addr(addr);
+    if(addr / 4 < absim::INT_VECTOR_INFO.size())
+    {
+        auto const& info = absim::INT_VECTOR_INFO[addr / 4];
+        if(info.name && info.desc)
+        {
+            BeginTooltip();
+            TextUnformatted(info.name);
+            Separator();
+            TextUnformatted(info.desc);
+            EndTooltip();
+            return;
+        }
+    }
     if(sym)
     {
         BeginTooltip();

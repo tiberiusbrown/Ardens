@@ -58,13 +58,55 @@ static void hover_func(ImU8 const* data, size_t off)
 {
     using namespace ImGui;
     auto const* sym = arduboy.symbol_for_data_addr((uint16_t)off);
-    if(!sym) return;
-    BeginTooltip();
-    if(sym->size > 1)
-        Text("%s [byte %d]", sym->name.c_str(), int(off - sym->addr));
-    else
-        TextUnformatted(sym->name.c_str());
-    EndTooltip();
+    if(off < 256)
+    {
+        auto const& r = absim::REG_INFO[off];
+        BeginTooltip();
+        if(r.name)
+        {
+            constexpr auto UNUSED = IM_COL32(50, 50, 50, 255);
+            constexpr auto BIT_SET = IM_COL32(30, 30, 100, 255);
+            TextUnformatted(r.name);
+            if(off >= 32)
+            {
+                Separator();
+                Dummy({ 1.f, 4.f });
+                if(BeginTable("##bits", 8,
+                    ImGuiTableFlags_Borders |
+                    ImGuiTableFlags_SizingStretchSame))
+                {
+                    TableNextRow();
+                    for(int i = 0; i < 8; ++i)
+                    {
+                        TableSetColumnIndex(i);
+                        char const* bit = r.bits[7 - i];
+                        if(bit)
+                        {
+                            uint8_t mask = 0x80 >> i;
+                            if(arduboy.cpu.data[off] & mask)
+                                TableSetBgColor(ImGuiTableBgTarget_CellBg, BIT_SET);
+                            TextUnformatted(bit);
+                        }
+                        else
+                            TableSetBgColor(ImGuiTableBgTarget_CellBg, UNUSED);
+                    }
+                    EndTable();
+                }
+            }
+        }
+        else
+            TextUnformatted("Reserved");
+        EndTooltip();
+    }
+    else if(sym)
+    {
+        BeginTooltip();
+        if(sym->size > 1)
+            Text("%s [byte %d]", sym->name.c_str(), int(off - sym->addr));
+        else
+            TextUnformatted(sym->name.c_str());
+        EndTooltip();
+    }
 }
 
 void window_data_space(bool& open)

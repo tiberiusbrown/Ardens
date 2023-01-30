@@ -1,8 +1,11 @@
-#include "absim.hpp
+#include "absim.hpp"
 
-int_vector_info_t const INT_VECTOR_INFO[] =
+namespace absim
 {
-    { nullptr, nullptr },
+
+std::array<int_vector_info_t, 43> const INT_VECTOR_INFO =
+{ {
+    { "RESET", "Reset Vector" },
     { "INT0", "External Interrupt Request 0" },
     { "INT1", "External Interrupt Request 1" },
     { "INT2", "External Interrupt Request 2" },
@@ -45,10 +48,10 @@ int_vector_info_t const INT_VECTOR_INFO[] =
     { "TIMER4_COMPD", "Timer/Counter4 Compare Match D" },
     { "TIMER4_OVF", "Timer/Counter4 Overflow" },
     { "TIMER4_FPF", "Timer/Counter4 Fault Protection Interrupt" },
-};
+} };
 
-reg_info_t const REG_INFO[] =
-{
+std::array<reg_info_t, 256> const REG_INFO =
+{ {
     { "r0", { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, }, },
     { "r1", { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, }, },
     { "r2", { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, }, },
@@ -305,4 +308,6 @@ reg_info_t const REG_INFO[] =
     { nullptr, { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, }, },
     { nullptr, { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, }, },
     { nullptr, { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, }, },
-};
+} };
+
+}

@@ -20,6 +20,20 @@
 namespace absim
 {
 
+struct int_vector_info_t
+{
+    char const* name;
+    char const* desc;
+};
+extern std::array<int_vector_info_t, 43> const INT_VECTOR_INFO;
+
+struct reg_info_t
+{
+    char const* name;
+    std::array<char const*, 8> bits;
+};
+extern std::array<reg_info_t, 256> const REG_INFO;
+
 struct avr_instr_t
 {
     uint16_t word;

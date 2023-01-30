@@ -85,6 +85,7 @@ add_executable(arduboy_sim ${EXEFLAG}
 
     src/absim.hpp
     src/absim_instructions.hpp
+    src/absim_cpu_data.cpp
 
     src/absim_arduboy.cpp
     src/absim_ssd1306.hpp
