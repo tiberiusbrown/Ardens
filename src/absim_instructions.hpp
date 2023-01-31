@@ -13,7 +13,7 @@ extern instr_func_t const INSTR_MAP_MERGED[];
 
 struct disassembled_instr_arg_t
 {
-    enum class type
+    enum class type : uint8_t
     {
         NONE,
         REG,
@@ -34,9 +34,9 @@ struct disassembled_instr_t
 {
     char const* name; // if nullptr, display as raw bytes
     uint16_t addr;
+    enum { INSTR, OBJECT, SOURCE} type;
     disassembled_instr_arg_t arg0;
     disassembled_instr_arg_t arg1;
-    bool object;
 };
 void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d);
 bool instr_is_two_words(avr_instr_t const& i);
@@ -108,6 +108,7 @@ enum
     INSTR_RJMP,
     INSTR_JMP,
     INSTR_IJMP,
+    INSTR_WDR,
 };
 
 uint32_t instr_rcall   (atmega32u4_t& cpu, avr_instr_t const& i);
@@ -174,5 +175,6 @@ uint32_t instr_nop     (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_rjmp    (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_jmp     (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_ijmp    (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_wdr     (atmega32u4_t& cpu, avr_instr_t const& i);
 
 }

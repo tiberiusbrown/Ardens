@@ -3,13 +3,88 @@
 #include <string>
 #include <fstream>
 #include <sstream>
+#include <iterator>
 #include <algorithm>
+#include <cctype>
 
 #include <elfio/elfio.hpp>
 #include <nlohmann/json.hpp>
 #include <zip_file.hpp>
 
-extern "C" char* __cxa_demangle(const char* MangledName, char* Buf, size_t * N, int* Status);
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#pragma warning(disable: 4624)
+#endif
+
+#include <llvm/DebugInfo/DWARF/DWARFContext.h>
+#include <llvm/DebugInfo/DWARF/DWARFCompileUnit.h>
+#include <llvm/Demangle/Demangle.h>
+
+#ifdef _MSC_VER
+#pragma warning(pop) 
+#endif
+
+// trim from start (in place)
+static inline void ltrim(std::string& s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+        }));
+}
+
+// trim from end (in place)
+static inline void rtrim(std::string& s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+        }).base(), s.end());
+}
+
+// trim from both ends (in place)
+static inline void trim(std::string& s)
+{
+    rtrim(s);
+    ltrim(s);
+}
+
+struct MyDWARFObject : public llvm::DWARFObject
+{
+    llvm::StringRef    d_aranges;
+    llvm::DWARFSection d_info;
+    llvm::StringRef    d_abbrev;
+    llvm::DWARFSection d_line;
+    llvm::DWARFSection d_frame;
+    llvm::StringRef    d_str;
+    llvm::DWARFSection d_loc;
+    llvm::DWARFSection d_ranges;
+
+    // TODO: set this from ELF file
+    bool isLittleEndian() const { return true; }
+
+    void forEachInfoSections(
+        llvm::function_ref<void(llvm::DWARFSection const&)> F) const override
+    {
+        F(d_info);
+    }
+
+    llvm::StringRef getArangesSection() const override { return d_aranges; }
+    llvm::StringRef getAbbrevSection() const override { return d_abbrev; }
+    llvm::StringRef getStrSection() const override { return d_str; }
+    llvm::DWARFSection const& getLineSection() const override { return d_line; }
+    llvm::DWARFSection const& getFrameSection() const override { return d_frame; }
+    llvm::DWARFSection const& getLocSection() const override { return d_loc; }
+    llvm::DWARFSection const& getRangesSection() const override { return d_ranges; }
+
+    llvm::Optional<llvm::RelocAddrEntry> find(
+        llvm::DWARFSection const& sec, uint64_t Pos) const override
+    {
+        return {};
+    }
+
+    virtual ~MyDWARFObject() = default;
+};
+
+//extern "C" char* __cxa_demangle(const char* MangledName, char* Buf, size_t * N, int* Status);
 
 namespace absim
 {
@@ -18,7 +93,7 @@ static std::string demangle(char const* sym)
 {
     size_t size = 0;
     int status = -1;
-    char* t = __cxa_demangle(sym, nullptr, &size, &status);
+    char* t = llvm::itaniumDemangle(sym, nullptr, &size, &status);
     if(status != 0)
         return sym;
     std::string r(t);
@@ -148,6 +223,31 @@ static void try_insert_symbol(elf_data_t::map_type& m, elf_data_symbol_t& sym)
     m[sym.addr] = std::move(sym);
 }
 
+static void add_file_to_elf(elf_data_t& elf,
+    uint16_t addr, std::string const& filename, int line)
+{
+    if(elf.source_lines.count(addr) != 0) return;
+    if(elf.source_file_names.count(filename) == 0)
+    {
+        // load file contents
+        std::ifstream f(filename);
+        if(f.fail()) return;
+        int i = (int)elf.source_files.size();
+        elf.source_files.resize(i + 1);
+        auto& v = elf.source_files.back();
+        elf.source_file_names[filename] = i;
+        std::string linestr;
+        while(std::getline(f, linestr))
+        {
+            trim(linestr);
+            v.push_back(linestr);
+        }
+        elf.source_lines[addr] = { i, line };
+    }
+    else
+        elf.source_lines[addr] = { elf.source_file_names[filename], line };
+}
+
 static char const* load_elf(arduboy_t& a, std::string const& fname)
 {
     using namespace ELFIO;
@@ -186,6 +286,8 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
 
     constexpr uint32_t ram_offset = 0x800000;
 
+    auto dwarf = std::make_unique<MyDWARFObject>();
+
     for(unsigned i = 0; i < reader.sections.size(); ++i)
     {
         auto const* sec = reader.sections[i];
@@ -220,6 +322,16 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
 
         if(name == ".symtab") sec_symtab = sec;
         if(name == ".strtab") sec_strtab = sec;
+
+        if(name == ".debug_info"  ) dwarf->d_info   = { { data, size }, addr };
+        if(name == ".debug_line"  ) dwarf->d_line   = { { data, size }, addr };
+        if(name == ".debug_frame" ) dwarf->d_frame  = { { data, size }, addr };
+        if(name == ".debug_loc"   ) dwarf->d_loc    = { { data, size }, addr };
+        if(name == ".debug_ranges") dwarf->d_ranges = { { data, size }, addr };
+
+        if(name == ".debug_aranges") dwarf->d_aranges = { data, size };
+        if(name == ".debug_abbrev" ) dwarf->d_abbrev  = { data, size };
+        if(name == ".debug_str"    ) dwarf->d_str     = { data, size };
     }
 
     if(!found_text)
@@ -270,8 +382,52 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
         while(addr < addr_end)
         {
             auto i = cpu.addr_to_disassembled_index(addr);
-            cpu.disassembled_prog[i].object = true;
+            cpu.disassembled_prog[i].type = disassembled_instr_t::OBJECT;
             addr += 2;
+        }
+    }
+
+    auto dwarf_ctx = std::make_unique<llvm::DWARFContext>(std::move(dwarf));
+
+    // find source lines for each address
+    for(size_t a = 0; a < cpu.last_addr; a += 2)
+    {
+        if(a == 0x2708) __debugbreak();
+        auto* cu = dwarf_ctx->getCompileUnitForAddress(a);
+        if(!cu) continue;
+        auto* tab = dwarf_ctx->getLineTableForUnit(cu);
+        if(!tab) continue;
+        auto& rows = tab->Rows;
+        auto r = llvm::DWARFDebugLine::Row();
+        r.Address = { a };
+        auto it = std::lower_bound(rows.begin(), rows.end(), r,
+            [](auto const& a, auto const& b) { return a.Address.Address < b.Address.Address; });
+        if(it == rows.end() || it->Address.Address != a)
+            continue;
+        if(!it->IsStmt) __debugbreak();
+        std::string source_file;
+        if(!tab->getFileNameByIndex(it->File, cu->getCompilationDir(),
+            llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath,
+            source_file))
+            continue;
+        add_file_to_elf(elf, (uint16_t)a, source_file, (int)it->Line - 1);
+    }
+
+    // create intermixed asm with source
+    {
+        auto& v = elf.asm_with_source;
+        for(uint16_t i = 0; i < cpu.num_instrs; ++i)
+        {
+            uint16_t addr = cpu.disassembled_prog[i].addr;
+            auto it = elf.source_lines.find(addr);
+            if(it != elf.source_lines.end())
+            {
+                disassembled_instr_t instr;
+                instr.addr = addr;
+                instr.type = disassembled_instr_t::SOURCE;
+                v.push_back(instr);
+            }
+            v.push_back(cpu.disassembled_prog[i]);
         }
     }
 

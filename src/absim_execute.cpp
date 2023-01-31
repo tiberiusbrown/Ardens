@@ -72,6 +72,7 @@ instr_func_t const INSTR_MAP[] =
     instr_rjmp    ,
     instr_jmp     ,
     instr_ijmp    ,
+    instr_wdr     ,
 };
 
 bool instr_is_two_words(avr_instr_t const& i)
@@ -92,6 +93,14 @@ static bool next_instr_is_two_words(atmega32u4_t const& cpu)
 
 uint32_t instr_nop(atmega32u4_t& cpu, avr_instr_t const& i)
 {
+    (void)i;
+    cpu.pc += 1;
+    return 1;
+}
+
+uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    // TODO
     (void)i;
     cpu.pc += 1;
     return 1;

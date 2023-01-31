@@ -17,6 +17,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
     if(w0 == 0x9509) i.func = INSTR_ICALL;
     if(w0 == 0x9518) i.func = INSTR_RETI;
     if(w0 == 0x9409) i.func = INSTR_IJMP;
+    if(w0 == 0x95a8) i.func = INSTR_WDR;
     if(w0 == 0x0000) i.func = INSTR_NOP;
     if(i.func != INSTR_UNKNOWN) return;
 

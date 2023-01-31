@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 #include <stdint.h>
 #include <assert.h>
@@ -365,6 +366,15 @@ struct elf_data_t
     using map_type = std::map<uint16_t, elf_data_symbol_t>;
     map_type text_symbols;
     map_type data_symbols;
+
+    using source_file = std::vector<std::string>;
+    std::vector<source_file> source_files;
+    std::unordered_map<std::string, int> source_file_names;
+    using source_line = std::pair<int, int>; // file index, line
+    std::unordered_map<uint16_t, source_line> source_lines;
+
+    std::vector<disassembled_instr_t> asm_with_source;
+    size_t addr_to_disassembled_index(uint16_t addr);
 };
 
 struct arduboy_t

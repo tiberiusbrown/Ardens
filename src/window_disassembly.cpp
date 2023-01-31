@@ -43,7 +43,29 @@ static void register_tooltip(int reg, bool pointer = false)
 
 static int find_index_of_addr(uint16_t addr)
 {
-    return (int)arduboy.cpu.addr_to_disassembled_index(addr);
+    return arduboy.elf ?
+        (int)arduboy.elf->addr_to_disassembled_index(addr) :
+        (int)arduboy.cpu.addr_to_disassembled_index(addr);
+}
+
+static void prog_addr_source_line(uint16_t addr)
+{
+    if(!arduboy.elf)
+        return;
+    auto const& elf = *arduboy.elf;
+    auto it = elf.source_lines.find(addr);
+    if(it == elf.source_lines.end())
+        return;
+    int file = it->second.first;
+    int line = it->second.second;
+    if(file >= elf.source_files.size())
+        return;
+    auto const& f = elf.source_files[file];
+    if(line >= f.size())
+        return;
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.f, 1.f));
+    ImGui::TextUnformatted(f[line].c_str());
+    ImGui::PopStyleColor();
 }
 
 static void prog_addr_tooltip(uint16_t addr)
@@ -72,6 +94,9 @@ static void prog_addr_tooltip(uint16_t addr)
             Text("%s [%+d]", sym->name.c_str(), addr - sym->addr);
         EndTooltip();
     }
+    BeginTooltip();
+    prog_addr_source_line(addr);
+    EndTooltip();
 }
 
 static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
@@ -312,6 +337,7 @@ void window_disassembly(bool& open)
         ImGuiTableFlags flags = 0;
         flags |= ImGuiTableFlags_ScrollY;
         flags |= ImGuiTableFlags_RowBg;
+        flags |= ImGuiTableFlags_NoClip;
         //flags |= ImGuiTableFlags_SizingFixedFit;
         if(BeginTable("##ScrollingRegion", 3, flags))
         {
@@ -324,13 +350,23 @@ void window_disassembly(bool& open)
                 ImGuiTableColumnFlags_WidthFixed,
                 CalcTextSize(profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
             ImGuiListClipper clipper;
-            clipper.Begin((int)arduboy.cpu.num_instrs);
+            clipper.Begin(arduboy.elf ?
+                (int)arduboy.elf->asm_with_source.size() :
+                (int)arduboy.cpu.num_instrs);
             while(clipper.Step())
             {
                 for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                 {
-                    auto const& d = arduboy.cpu.disassembled_prog[i];
+                    auto const& d = arduboy.elf ?
+                        arduboy.elf->asm_with_source[i] :
+                        arduboy.cpu.disassembled_prog[i];
                     TableNextRow();
+                    TableSetColumnIndex(0);
+                    if(d.type == absim::disassembled_instr_t::SOURCE)
+                    {
+                        prog_addr_source_line(d.addr);
+                        continue;
+                    }
                     uint16_t instr_index = d.addr / 2;
                     if(instr_index == arduboy.cpu.pc)
                     {
@@ -346,11 +382,10 @@ void window_disassembly(bool& open)
                             IM_COL32(50, 0, 0, 255);
                         auto const& h = arduboy.profiler_hotspots[profiler_selected_hotspot];
                         uint16_t instr_begin = arduboy.cpu.disassembled_prog[h.begin].addr / 2;
-                        uint16_t instr_end   = arduboy.cpu.disassembled_prog[h.end].addr / 2;
+                        uint16_t instr_end = arduboy.cpu.disassembled_prog[h.end].addr / 2;
                         if(instr_index >= instr_begin && instr_index <= instr_end)
                             TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
                     }
-                    TableSetColumnIndex(0);
                     auto bp_pos = GetCursorScreenPos();
                     draw_breakpoint(i, bp_pos);
                     TextDisabled("   0x%04x", d.addr);
@@ -366,7 +401,7 @@ void window_disassembly(bool& open)
                         toggle_breakpoint(i);
                     }
                     TableSetColumnIndex(1);
-                    if(!d.name || d.object)
+                    if(d.type == absim::disassembled_instr_t::OBJECT)
                     {
                         TextDisabled("%02x %02x",
                             arduboy.cpu.prog[i * 2 + 0],

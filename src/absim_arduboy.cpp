@@ -8,6 +8,22 @@
 namespace absim
 {
 
+size_t elf_data_t::addr_to_disassembled_index(uint16_t addr)
+{
+    absim::disassembled_instr_t temp;
+    temp.addr = addr;
+    auto it = std::lower_bound(
+        asm_with_source.begin(),
+        asm_with_source.end(),
+        temp,
+        [](auto const& a, auto const& b) { return a.addr < b.addr; }
+    );
+
+    auto index = std::distance(asm_with_source.begin(), it);
+
+    return (size_t)index;
+}
+
 void arduboy_t::reset()
 {
     profiler_reset();

@@ -96,6 +96,8 @@ static char const* get_instr_name(avr_instr_t const& i)
             return i.word ? "st" : "ld";
         case INSTR_PUSH_POP:
             return i.word ? "push" : "pop";
+        case INSTR_WDR:
+            return "wdr";
         default: return nullptr;
     }
 }
@@ -104,6 +106,7 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
 {
     memset(&d, 0, sizeof(disassembled_instr_t));
     d.name = get_instr_name(i);
+    d.type = disassembled_instr_t::INSTR;
 
     switch(i.func)
     {

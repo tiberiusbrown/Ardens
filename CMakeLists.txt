@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.18)
 
 if(MSVC)
     foreach(flag
@@ -43,6 +43,32 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+FetchContent_Declare(
+    llvm
+    GIT_REPOSITORY https://github.com/llvm/llvm-project.git
+    GIT_TAG        llvmorg-15.0.7
+    GIT_PROGRESS   TRUE
+    SOURCE_SUBDIR  llvm
+)
+set(LLVM_USE_CRT_DEBUG          "MTd")
+set(LLVM_USE_CRT_MINSIZEREL     "MT")
+set(LLVM_USE_CRT_RELEASE        "MT")
+set(LLVM_USE_CRT_RELWITHDEBINFO "MT")
+set(LLVM_BUILD_TESTS            OFF)
+set(LLVM_BUILD_TOOLS            OFF)
+set(LLVM_BUILD_UTILS            OFF)
+set(LLVM_INCLUDE_TESTS          OFF)
+set(LLVM_INCLUDE_TOOLS          OFF)
+set(LLVM_INCLUDE_UTILS          OFF)
+set(LLVM_INCLUDE_BENCHMARKS     OFF)
+set(LLVM_INCLUDE_DOCS           OFF)
+set(LLVM_INCLUDE_EXAMPLES       OFF)
+set(LLVM_INCLUDE_RUNTIMES       OFF)
+# hack to reduce the amount of stuff to build
+set(LLVM_TARGETS_TO_BUILD ";")
+set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD ";")
+FetchContent_MakeAvailable(llvm)
+
 set(EXEFLAG)
 if(MSVC)
     set(EXEFLAG WIN32)
@@ -64,15 +90,6 @@ set(IMGUI_SOURCES
     src/imgui/imstb_textedit.h
     src/imgui/imstb_truetype.h
     src/imgui/imgui_memory_editor.h
-    )
-set(LLVM_DEMANGLER_SOURCES
-    src/llvm_demangler/cxa_demangle.cpp
-    src/llvm_demangler/__cxxabi_config.h
-    src/llvm_demangler/cxa_demangle.cpp
-    src/llvm_demangler/demangle/DemangleConfig.h
-    src/llvm_demangler/demangle/ItaniumDemangle.h
-    src/llvm_demangler/demangle/StringView.h
-    src/llvm_demangler/demangle/Utility.h
     )
 add_executable(arduboy_sim ${EXEFLAG}
     src/main.cpp
@@ -113,13 +130,14 @@ target_link_libraries(arduboy_sim PRIVATE
     SDL2main
     elfio
     nlohmann_json::nlohmann_json
+    LLVMDebugInfoDWARF
+    LLVMDemangle
     )
 target_include_directories(arduboy_sim PRIVATE
     src/imgui
     src/libelfin
-    src/llvm_demangler
     src/miniz-cpp
+    "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
+    "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
     )
-target_compile_definitions(arduboy_sim PRIVATE -D_LIBCXXABI_DISABLE_VISIBILITY_ANNOTATIONS)
 source_group("ImGui" FILES ${IMGUI_SOURCES})
-source_group("LLVM Demangler" FILES ${LLVM_DEMANGLER_SOURCES})
