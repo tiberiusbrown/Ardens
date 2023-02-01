@@ -20,35 +20,27 @@ set(FETCHCONTENT_QUIET FALSE)
 
 FetchContent_Declare(
     SDL2
-    GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG        a1d1946dcba6509f0679f507b57e7b228d32e6f8 # 2.24.1
-    GIT_PROGRESS   TRUE
+    URL https://github.com/libsdl-org/SDL/releases/download/release-2.26.2/SDL2-2.26.2.tar.gz
 )
 FetchContent_MakeAvailable(SDL2)
+set_property(DIRECTORY ${SDL2_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
 
 FetchContent_Declare(
     ELFIO
-    GIT_REPOSITORY https://github.com/serge1/ELFIO.git
-    GIT_TAG        Release_3.11
-    GIT_PROGRESS   TRUE
+    URL https://github.com/serge1/ELFIO/releases/download/Release_3.11/elfio-3.11.tar.gz
 )
 set(ELFIO_BUILD_EXAMPLES OFF)
 FetchContent_MakeAvailable(ELFIO)
 
 FetchContent_Declare(
     nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.2
-    GIT_PROGRESS   TRUE
+    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
 FetchContent_Declare(
     llvm
-    GIT_REPOSITORY https://github.com/llvm/llvm-project.git
-    GIT_TAG        llvmorg-15.0.7
-    GIT_PROGRESS   TRUE
-    SOURCE_SUBDIR  llvm
+    URL            https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-15.0.7.src.tar.xz
 )
 set(LLVM_USE_CRT_DEBUG          "MTd")
 set(LLVM_USE_CRT_MINSIZEREL     "MT")
@@ -64,10 +56,11 @@ set(LLVM_INCLUDE_BENCHMARKS     OFF)
 set(LLVM_INCLUDE_DOCS           OFF)
 set(LLVM_INCLUDE_EXAMPLES       OFF)
 set(LLVM_INCLUDE_RUNTIMES       OFF)
-# hack to reduce the amount of stuff to build
-set(LLVM_TARGETS_TO_BUILD ";")
-set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD ";")
+set(LLVM_TARGETS_TO_BUILD ";" CACHE STRING "" FORCE)
+set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD ";" CACHE STRING "" FORCE)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 FetchContent_MakeAvailable(llvm)
+set_property(DIRECTORY ${llvm_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
 
 set(EXEFLAG)
 if(MSVC)

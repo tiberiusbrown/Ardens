@@ -392,7 +392,6 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
     // find source lines for each address
     for(size_t a = 0; a < cpu.last_addr; a += 2)
     {
-        if(a == 0x2708) __debugbreak();
         auto* cu = dwarf_ctx->getCompileUnitForAddress(a);
         if(!cu) continue;
         auto* tab = dwarf_ctx->getLineTableForUnit(cu);
