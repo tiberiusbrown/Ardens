@@ -249,7 +249,7 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
         d.arg1.val = i.src;
 
         // ld
-        if(i.word)
+        if(!i.word)
             std::swap(d.arg0, d.arg1);
 
         break;

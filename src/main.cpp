@@ -11,7 +11,7 @@
 #include "absim.hpp"
 #include "absim_instructions.hpp"
 
-#define PROFILING 1
+#define PROFILING 0
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function

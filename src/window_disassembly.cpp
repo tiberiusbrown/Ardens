@@ -11,6 +11,13 @@ extern bool profiler_cycle_counts;
 
 static bool scroll_addr_to_top;
 
+static absim::disassembled_instr_t const& dis_instr(int row)
+{
+    return arduboy.elf ?
+        arduboy.elf->asm_with_source[row] :
+        arduboy.cpu.disassembled_prog[row];
+}
+
 static void register_tooltip(int reg, bool pointer = false)
 {
     if(reg < 0 || reg > 31) return;
@@ -278,8 +285,8 @@ static void disassembly_arg(
 
 static void toggle_breakpoint(int row)
 {
-    auto addr = arduboy.cpu.disassembled_prog[row].addr / 2;
-    arduboy.cpu.breakpoints.flip(addr);
+    auto addr = dis_instr(row).addr;
+    arduboy.cpu.breakpoints.flip(addr / 2);
 }
 
 static void draw_breakpoint_color(ImVec2 p, ImU32 color)
@@ -295,7 +302,7 @@ static void draw_breakpoint_color(ImVec2 p, ImU32 color)
 static void draw_breakpoint_hovered(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR_HOVERED = IM_COL32(150, 40, 40, 255);
-    auto addr = arduboy.cpu.disassembled_prog[row].addr / 2;
+    auto addr = dis_instr(row).addr / 2;
     bool bp = arduboy.cpu.breakpoints.test(addr);
     if(!bp) draw_breakpoint_color(p, BP_COLOR_HOVERED);
 }
@@ -303,7 +310,7 @@ static void draw_breakpoint_hovered(int row, ImVec2 p)
 static void draw_breakpoint(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR = IM_COL32(255, 40, 40, 255);
-    auto addr = arduboy.cpu.disassembled_prog[row].addr / 2;
+    auto addr = dis_instr(row).addr / 2;
     bool bp = arduboy.cpu.breakpoints.test(addr);
     if(bp) draw_breakpoint_color(p, BP_COLOR);
 }
@@ -326,8 +333,8 @@ static char jump_buf[5];
 static int hex_value(char c)
 {
     if(c >= '0' && c <= '9') return c - '0';
-    if(c >= 'a' && c <= 'f') return c - 'a';
-    if(c >= 'A' && c <= 'F') return c - 'A';
+    if(c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if(c >= 'A' && c <= 'F') return c - 'A' + 10;
     return 0;
 }
 
@@ -354,10 +361,9 @@ void window_disassembly(bool& open)
             ImGuiInputTextFlags_AutoSelectAll))
         {
             do_scroll = 0;
-            do_scroll += hex_value(jump_buf[0]) << 12;
-            do_scroll += hex_value(jump_buf[1]) << 8;
-            do_scroll += hex_value(jump_buf[2]) << 4;
-            do_scroll += hex_value(jump_buf[3]) << 0;
+            char* b = jump_buf;
+            while(*b != 0)
+                do_scroll = (do_scroll << 4) + hex_value(*b++);
         }
         SameLine();
         if(Button("Jump to PC"))
@@ -388,9 +394,7 @@ void window_disassembly(bool& open)
             {
                 for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
                 {
-                    auto const& d = arduboy.elf ?
-                        arduboy.elf->asm_with_source[i] :
-                        arduboy.cpu.disassembled_prog[i];
+                    auto const& d = dis_instr(i);
                     TableNextRow();
                     TableSetColumnIndex(0);
                     if(d.type == absim::disassembled_instr_t::SOURCE)

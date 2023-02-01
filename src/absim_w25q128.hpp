@@ -73,7 +73,6 @@ FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 			current_addr = page | (current_addr & 0xff);
 			data_to_send = 0;
 			busy_ps_rem = 700ull * 1000 * 1000; // 0.7 ms
-			programming = 0;
 		}
 		else
 		{
@@ -101,31 +100,36 @@ FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 			erasing_sector = 0;
 		}
 	}
-	else if(!processing_command && busy_ps_rem == 0)
+	else if(!processing_command)
 	{
 		processing_command = true;
 		switch(byte)
 		{
 		case 0x02: // program page
-			if(!write_enabled) break;
+			if(!write_enabled || busy_ps_rem != 0) break;
 			programming = 1;
 			current_addr = 0;
 			break;
 		case 0x03: // read data
+			if(busy_ps_rem != 0) break;
 			reading = 1;
 			current_addr = 0;
 			break;
 		case 0x04: // write disable
+			if(busy_ps_rem != 0) break;
 			write_enabled = false;
 			break;
 		case 0x05: // read status register 1
 			reading_status = true;
+			if(busy_ps_rem != 0)
+				data_to_send = 0x1;
 			break;
 		case 0x06: // write enable
+			if(busy_ps_rem != 0) break;
 			write_enabled = true;
 			break;
 		case 0x20: // sector erase
-			if(!write_enabled) break;
+			if(!write_enabled || busy_ps_rem != 0) break;
 			erasing_sector = 1;
 			current_addr = 0;
 			break;
