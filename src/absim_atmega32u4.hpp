@@ -18,8 +18,8 @@ void atmega32u4_t::update_sleep_min_cycles()
     // TODO: incorporate ADC conversion / EEPROM program cycles
     uint32_t d = 1024;
     if(timer0_divider != 0) d = std::min(d, timer0_divider);
-    if(timer1_divider != 0) d = std::min(d, timer1_divider);
-    if(timer3_divider != 0) d = std::min(d, timer3_divider);
+    if(timer1.divider != 0) d = std::min(d, timer1.divider);
+    if(timer3.divider != 0) d = std::min(d, timer3.divider);
     sleep_min_cycles = d;
 }
 

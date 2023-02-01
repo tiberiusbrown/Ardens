@@ -123,7 +123,6 @@ FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
     }
 }
 
-// TODO: cache this stuff
 static FORCEINLINE void process_wgm16(
     uint32_t wgm, uint32_t& top, uint32_t& tov, uint32_t ocr, uint32_t icr)
 {
@@ -190,143 +189,125 @@ static FORCEINLINE void process_wgm16(
     }
 }
 
-static inline FORCEINLINE void cycle_timer1_or_timer3(atmega32u4_t& cpu, uint32_t cycles,
-    uint32_t   tccrNa_addr,
-    uint32_t   tccrNb_addr,
-    uint32_t   tccrNc_addr,
-    uint32_t   tifrN_addr,
-    uint32_t   icrN_addr,
-    uint32_t   ocrNa_addr,
-    uint32_t   ocrNb_addr,
-    uint32_t   ocrNc_addr,
-    uint32_t   tcntN_addr,
-    bool&      count_down,
-    bool       phase_correct,
-    uint32_t   top,
-    uint32_t   tov
-)
+static inline FORCEINLINE void timer16_update_ocrN(
+    atmega32u4_t& cpu,
+    atmega32u4_t::timer16_t& timer,
+    uint32_t addr)
 {
+    timer.ocrNa = word(cpu, addr + 0x8);
+    timer.ocrNb = word(cpu, addr + 0xa);
+    timer.ocrNc = word(cpu, addr + 0xc);
+}
+
+static inline FORCEINLINE void cycle_timer16(
+    atmega32u4_t& cpu,
+    atmega32u4_t::timer16_t& timer,
+    uint32_t addr,
+    uint32_t tifrN_addr,
+    uint32_t powered_down,
+    uint32_t cycles)
+{
+    if(powered_down) return;
+
+    if(cpu.just_written >= addr && cpu.just_written <= addr + 0x0d)
+    {
+        uint32_t cs = cpu.data[addr + 0x1] & 0x7;
+        timer.divider = get_divider(cs);
+        cpu.update_sleep_min_cycles();
+        if(cs == 0) return;
+
+        uint32_t icrN = word(cpu, addr + 0x6);
+        uint32_t tccrNa = cpu.data[addr + 0x0];
+        uint32_t tccrNb = cpu.data[addr + 0x1];
+        uint32_t wgm = (tccrNa & 0x3) | ((tccrNb >> 1) & 0xc);
+
+        uint32_t wgm_mask = 1 << wgm;
+        if(wgm_mask & 0x1011) // update ocrN immediately
+            timer16_update_ocrN(cpu, timer, addr);
+        timer.update_ocrN_at_bottom = ((wgm_mask & 0x0300) != 0);
+        timer.update_ocrN_at_top    = ((wgm_mask & 0xccee) != 0);
+
+        process_wgm16(wgm, timer.top, timer.tov, timer.ocrNa, icrN);
+        timer.phase_correct = (1 << wgm) & 0x0f0e;
+        if(!timer.phase_correct)
+            timer.count_down = false;
+    }
+
+    if(timer.divider == 0) return;
+
+    uint32_t timer_cycles = increase_counter(
+        timer.divider_cycle, cycles, timer.divider);
+    if(timer_cycles == 0) return;
+
     uint8_t& tifrN = cpu.data[tifrN_addr];
 
     // writing a logic 1 to TOV1 clears it
     if(cpu.just_written == tifrN_addr && (tifrN & 0x1))
         tifrN &= ~0x1;
 
-    uint32_t ocrNa = word(cpu, ocrNa_addr);
-    uint32_t ocrNb = word(cpu, ocrNb_addr);
-    uint32_t ocrNc = word(cpu, ocrNc_addr);
+    uint32_t t = word(cpu, addr + 0x4);
 
-    uint32_t t = word(cpu, tcntN_addr);
+    uint32_t ocrNa = word(cpu, addr + 0x8);
+    uint32_t ocrNb = word(cpu, addr + 0xa);
+    uint32_t ocrNc = word(cpu, addr + 0xc);
 
-    for(uint32_t i = 0; i < cycles; ++i)
+    for(uint32_t i = 0; i < timer_cycles; ++i)
     {
-        if(t == tov)
+        if(t == timer.tov)
             tifrN |= (1 << 0);
-        if(t == ocrNa)
+        if(t == timer.ocrNa)
             tifrN |= (1 << 1);
-        if(t == ocrNb)
+        if(t == timer.ocrNb)
             tifrN |= (1 << 2);
-        if(t == ocrNc)
+        if(t == timer.ocrNc)
             tifrN |= (1 << 3);
 
-        if(t == top)
+        if(timer.count_down)
         {
-            if(phase_correct)
+            if(t == 0)
             {
-                count_down = !count_down;
-                t = count_down ? t - 1 : t + 1;
+                if(timer.update_ocrN_at_bottom)
+                    timer16_update_ocrN(cpu, timer, addr);
+                t = 1;
+                timer.count_down = false;
             }
             else
-                t = 0;
+                --t;
         }
         else
         {
-            t = count_down ? t - 1 : t + 1;
+            if(t == timer.top)
+            {
+                if(timer.update_ocrN_at_top)
+                    timer16_update_ocrN(cpu, timer, addr);
+                if(timer.phase_correct)
+                    timer.count_down = true;
+                else
+                    t = 0;
+            }
+            else
+                ++t;
         }
     }
 
-    cpu.data[tcntN_addr + 0] = uint8_t(t >> 0);
-    cpu.data[tcntN_addr + 1] = uint8_t(t >> 8);
+    cpu.data[addr + 0x4 + 0] = uint8_t(t >> 0);
+    cpu.data[addr + 0x4 + 1] = uint8_t(t >> 8);
 }
 
 void FORCEINLINE atmega32u4_t::cycle_timer1(uint32_t cycles)
 {
-    if(just_written >= 0x80 && just_written <= 0x8d)
-    {
-        uint32_t cs = data[0x81] & 0x7;
-        timer1_divider = get_divider(cs);
-        update_sleep_min_cycles();
-        if(cs == 0) return;
-
-        uint32_t icrN = word(*this, 0x86);
-        uint32_t ocrNa = word(*this, 0x88);
-        uint32_t tccrNa = data[0x80];
-        uint32_t tccrNb = data[0x81];
-        uint32_t wgm = (tccrNa & 0x3) | ((tccrNb >> 1) & 0xc);
-        process_wgm16(wgm, timer1_top, timer1_tov, ocrNa, icrN);
-        timer1_phase_correct = ((wgm & 0x3) == 1);
-        if(!timer1_phase_correct)
-            timer1_count_down = false;
-    }
-    if(timer1_divider == 0) return;
-
-    uint32_t timer_cycles = increase_counter(
-        timer1_divider_cycle, cycles, timer1_divider);
-    if(timer_cycles == 0) return;
-
     uint32_t prr0 = data[0x64];
     constexpr uint32_t prtim1 = 1 << 3;
-    if(prr0 & prtim1) return;
 
-    cycle_timer1_or_timer3(*this, timer_cycles,
-        0x80, 0x81, 0x82,
-        0x36, 0x86,
-        0x88, 0x8a, 0x8c,
-        0x84,
-        timer1_count_down,
-        timer1_phase_correct,
-        timer1_top,
-        timer1_tov);
+    cycle_timer16(*this, timer1, 0x80, 0x36, prr0 & prtim1, cycles);
 }
 
 void FORCEINLINE atmega32u4_t::cycle_timer3(uint32_t cycles)
 {
-    if(just_written >= 0x90 && just_written <= 0x9d)
-    {
-        uint32_t cs = data[0x91] & 0x7;
-        timer3_divider = get_divider(cs);
-        update_sleep_min_cycles();
-        if(cs == 0) return;
-
-        uint32_t icrN = word(*this, 0x96);
-        uint32_t ocrNa = word(*this, 0x98);
-        uint32_t tccrNa = data[0x90];
-        uint32_t tccrNb = data[0x91];
-        uint32_t wgm = (tccrNa & 0x3) | ((tccrNb >> 1) & 0xc);
-        process_wgm16(wgm, timer3_top, timer3_tov, ocrNa, icrN);
-        timer3_phase_correct = ((wgm & 0x3) == 1);
-        if(!timer3_phase_correct)
-            timer3_count_down = false;
-    }
-    if(timer3_divider == 0) return;
-
-    uint32_t timer_cycles = increase_counter(
-        timer3_divider_cycle, cycles, timer3_divider);
-    if(timer_cycles == 0) return;
-
     uint32_t prr1 = data[0x65];
     constexpr uint32_t prtim3 = 1 << 3;
-    if(prr1 & prtim3) return;
 
-    cycle_timer1_or_timer3(*this, timer_cycles,
-        0x90, 0x91, 0x92,
-        0x38, 0x96,
-        0x98, 0x9a, 0x9c,
-        0x94,
-        timer3_count_down,
-        timer3_phase_correct,
-        timer3_top,
-        timer3_tov);
+    cycle_timer16(*this, timer3, 0x90, 0x38, prr1 & prtim3, cycles);
 }
 
 }

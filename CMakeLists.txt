@@ -1,15 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-if(MSVC)
-    foreach(flag
-        CMAKE_C_FLAGS_RELEASE CMAKE_C_FLAGS_RELWITHDEBINFO
-        CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_DEBUG_INIT
-        CMAKE_CXX_FLAGS_RELEASE  CMAKE_CXX_FLAGS_RELWITHDEBINFO
-        CMAKE_CXX_FLAGS_DEBUG  CMAKE_CXX_FLAGS_DEBUG_INIT)
-        string(REPLACE "/MD"  "/MT" "${flag}" "${${flag}}")
-        set("${flag}" "${${flag}} /EHsc")
-    endforeach()
-endif()
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -21,6 +12,7 @@ set(FETCHCONTENT_QUIET FALSE)
 FetchContent_Declare(
     SDL2
     URL https://github.com/libsdl-org/SDL/releases/download/release-2.26.2/SDL2-2.26.2.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(SDL2)
 set_property(DIRECTORY ${SDL2_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
@@ -28,6 +20,7 @@ set_property(DIRECTORY ${SDL2_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
 FetchContent_Declare(
     ELFIO
     URL https://github.com/serge1/ELFIO/releases/download/Release_3.11/elfio-3.11.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 set(ELFIO_BUILD_EXAMPLES OFF)
 FetchContent_MakeAvailable(ELFIO)
@@ -35,17 +28,19 @@ FetchContent_MakeAvailable(ELFIO)
 FetchContent_Declare(
     nlohmann_json
     URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
 FetchContent_Declare(
     llvm
-    URL            https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-15.0.7.src.tar.xz
+    URL https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-15.0.7.src.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
-set(LLVM_USE_CRT_DEBUG          "MTd")
-set(LLVM_USE_CRT_MINSIZEREL     "MT")
-set(LLVM_USE_CRT_RELEASE        "MT")
-set(LLVM_USE_CRT_RELWITHDEBINFO "MT")
+set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
+set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
+set(LLVM_USE_CRT_RELEASE        "MT"  CACHE STRING "" FORCE)
+set(LLVM_USE_CRT_RELWITHDEBINFO "MT"  CACHE STRING "" FORCE)
 set(LLVM_BUILD_TESTS            OFF)
 set(LLVM_BUILD_TOOLS            OFF)
 set(LLVM_BUILD_UTILS            OFF)

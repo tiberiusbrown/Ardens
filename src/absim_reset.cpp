@@ -33,19 +33,8 @@ void atmega32u4_t::reset()
     timer0_divider_cycle = 0;
     timer0_divider = 0;
 
-    timer1_divider_cycle = 0;
-    timer1_divider = 0;
-    timer1_top = 0;
-    timer1_tov = 0;
-    timer1_phase_correct = false;
-    timer1_count_down = false;
-
-    timer3_divider_cycle = 0;
-    timer3_divider = 0;
-    timer3_top = 0;
-    timer3_tov = 0;
-    timer3_phase_correct = false;
-    timer3_count_down = false;
+    memset(&timer1, 0, sizeof(timer1));
+    memset(&timer3, 0, sizeof(timer3));
 
     pll_lock_cycle = 0;
 

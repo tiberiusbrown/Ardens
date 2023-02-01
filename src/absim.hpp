@@ -173,22 +173,27 @@ struct atmega32u4_t
     bool timer0_count_down;
     void cycle_timer0(uint32_t cycles);
 
-    // timer1
-    uint32_t timer1_divider_cycle;
-    uint32_t timer1_divider;
-    uint32_t timer1_top;
-    uint32_t timer1_tov;
-    bool timer1_phase_correct;
-    bool timer1_count_down;
-    void cycle_timer1(uint32_t cycles);
+    // timer 1 or 3
+    struct timer16_t
+    {
+        uint32_t divider_cycle;
+        uint32_t divider;
+        uint32_t top;
+        uint32_t tov;
+        uint32_t tupdate;
+        uint16_t ocrNa;
+        uint16_t ocrNb;
+        uint16_t ocrNc;
+        bool phase_correct;
+        bool count_down;
+        bool update_ocrN_at_top;
+        bool update_ocrN_at_bottom;
+    };
 
-    // timer3
-    uint32_t timer3_divider_cycle;
-    uint32_t timer3_divider;
-    uint32_t timer3_top;
-    uint32_t timer3_tov;
-    bool timer3_phase_correct;
-    bool timer3_count_down;
+    timer16_t timer1;
+    timer16_t timer3;
+
+    void cycle_timer1(uint32_t cycles);
     void cycle_timer3(uint32_t cycles);
 
     // PLL
