@@ -48,8 +48,23 @@ static int find_index_of_addr(uint16_t addr)
         (int)arduboy.cpu.addr_to_disassembled_index(addr);
 }
 
+static void prog_addr_symbol_line(uint16_t addr)
+{
+    using namespace ImGui;
+    if(!arduboy.elf)
+        return;
+    auto const& elf = *arduboy.elf;
+    auto it = elf.text_symbols.find(addr);
+    if(it == elf.text_symbols.end())
+        return;
+    PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.f, 1.f));
+    TextUnformatted(it->second.name.c_str());
+    PopStyleColor();
+}
+
 static void prog_addr_source_line(uint16_t addr)
 {
+    using namespace ImGui;
     if(!arduboy.elf)
         return;
     auto const& elf = *arduboy.elf;
@@ -60,12 +75,28 @@ static void prog_addr_source_line(uint16_t addr)
     int line = it->second.second;
     if(file >= elf.source_files.size())
         return;
-    auto const& f = elf.source_files[file];
-    if(line >= f.size())
+    auto const& sf = elf.source_files[file];
+    if(line >= sf.lines.size())
         return;
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.f, 1.f));
-    ImGui::TextUnformatted(f[line].c_str());
-    ImGui::PopStyleColor();
+    TextDisabled("%s", sf.lines[line].c_str());
+    if(IsItemHovered())
+    {
+        BeginTooltip();
+        TextUnformatted(sf.filename.c_str());
+        Separator();
+        constexpr int N = 7;
+        for(int i = line - N; i <= line + N; ++i)
+        {
+            if(i < 0) continue;
+            if(i > sf.lines.size()) continue;
+            if(i == line) PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.f, 1.f));
+            Text("%5d  ", i);
+            SameLine();
+            TextUnformatted(sf.lines[i].c_str());
+            if(i == line) PopStyleColor();
+        }
+        EndTooltip();
+    }
 }
 
 static void prog_addr_tooltip(uint16_t addr)
@@ -365,6 +396,11 @@ void window_disassembly(bool& open)
                     if(d.type == absim::disassembled_instr_t::SOURCE)
                     {
                         prog_addr_source_line(d.addr);
+                        continue;
+                    }
+                    else if(d.type == absim::disassembled_instr_t::SYMBOL)
+                    {
+                        prog_addr_symbol_line(d.addr);
                         continue;
                     }
                     uint16_t instr_index = d.addr / 2;

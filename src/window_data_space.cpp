@@ -36,7 +36,9 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
     bool r = false;
     if(off < 0x100)
     {
-        color = IM_COL32(50, 50, 20, 255);
+        color = absim::REG_INFO[off].name ?
+            IM_COL32(50, 50, 20, 255) :
+            IM_COL32(0, 0, 0, 255);
         r = true;
     }
     if(off < 0x20)

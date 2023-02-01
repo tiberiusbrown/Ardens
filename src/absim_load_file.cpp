@@ -234,13 +234,14 @@ static void add_file_to_elf(elf_data_t& elf,
         if(f.fail()) return;
         int i = (int)elf.source_files.size();
         elf.source_files.resize(i + 1);
-        auto& v = elf.source_files.back();
+        auto& sf = elf.source_files.back();
+        sf.filename = filename;
         elf.source_file_names[filename] = i;
         std::string linestr;
         while(std::getline(f, linestr))
         {
-            trim(linestr);
-            v.push_back(linestr);
+            //trim(linestr);
+            sf.lines.push_back(linestr);
         }
         elf.source_lines[addr] = { i, line };
     }
@@ -412,17 +413,23 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
         add_file_to_elf(elf, (uint16_t)a, source_file, (int)it->Line - 1);
     }
 
-    // create intermixed asm with source
+    // create intermixed asm with source/symbols
     {
         auto& v = elf.asm_with_source;
         for(uint16_t i = 0; i < cpu.num_instrs; ++i)
         {
             uint16_t addr = cpu.disassembled_prog[i].addr;
+            disassembled_instr_t instr;
+            instr.addr = addr;
+            auto its = elf.text_symbols.find(addr);
+            if(its != elf.text_symbols.end())
+            {
+                instr.type = disassembled_instr_t::SYMBOL;
+                v.push_back(instr);
+            }
             auto it = elf.source_lines.find(addr);
             if(it != elf.source_lines.end())
             {
-                disassembled_instr_t instr;
-                instr.addr = addr;
                 instr.type = disassembled_instr_t::SOURCE;
                 v.push_back(instr);
             }

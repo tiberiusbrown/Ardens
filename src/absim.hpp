@@ -367,8 +367,13 @@ struct elf_data_t
     map_type text_symbols;
     map_type data_symbols;
 
-    using source_file = std::vector<std::string>;
-    std::vector<source_file> source_files;
+    struct source_file_t
+    {
+        std::string filename;
+        std::vector<std::string> lines;
+    };
+
+    std::vector<source_file_t> source_files;
     std::unordered_map<std::string, int> source_file_names;
     using source_line = std::pair<int, int>; // file index, line
     std::unordered_map<uint16_t, source_line> source_lines;
