@@ -18,6 +18,7 @@
 #include <llvm/DebugInfo/DWARF/DWARFContext.h>
 #include <llvm/DebugInfo/DWARF/DWARFCompileUnit.h>
 #include <llvm/DebugInfo/DWARF/DWARFDebugFrame.h>
+#include <llvm/DebugInfo/DWARF/DWARFDebugAbbrev.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/Object/ELFObjectFile.h>
 
@@ -205,18 +206,56 @@ static void load_elf_debug(
 
     auto& cpu = a.cpu;
 
-    // get frame info
-    //if(auto frame_or_err = dwarf_ctx->getDebugFrame())
-    //{
-    //    auto frame = frame_or_err.get();
-    //    for(auto const& e : *frame)
-    //    {
-    //        for(auto const& i : e.cfis())
-    //        {
-    //            auto n = e.cfis().callFrameString(i.Opcode);
-    //        }
-    //    }
-    //}
+    // get frame unwind info
+    if(auto frame_or_err = dwarf_ctx->getDebugFrame())
+    {
+        auto frame = frame_or_err.get();
+        for(auto const& e : *frame)
+        {
+            auto* fde = dyn_cast<dwarf::FDE>(&e);
+            if(!fde) continue;
+            auto pc_start = fde->getInitialLocation();
+            auto pc_size = fde->getAddressRange();
+            auto rows_or_err = dwarf::UnwindTable::create(fde);
+            if(!rows_or_err) continue;
+
+            absim::elf_data_t::frame_info_t fi;
+            fi.addr_lo = uint16_t(pc_start);
+            fi.addr_hi = uint16_t(pc_start + pc_size);
+
+            for(auto const& row : rows_or_err.get())
+            {
+                if(!row.hasAddress()) continue;
+                auto addr = row.getAddress();
+                auto const& cfa = row.getCFAValue();
+                auto reg = cfa.getRegister();
+                auto off = cfa.getOffset();
+                auto reglocs = row.getRegisterLocations();
+                absim::elf_data_t::frame_info_t::unwind_t u;
+                u.addr = (uint16_t)addr;
+                u.cfa_reg = (uint8_t)reg;
+                u.cfa_offset = (int16_t)off;
+                for(uint32_t i = 0; i < 32; ++i)
+                {
+                    auto loc = reglocs.getRegisterLocation(i);
+                    u.reg_offsets[i] = loc ? (int16_t)loc.getValue().getOffset() : INT16_MAX;
+                }
+                auto loc = reglocs.getRegisterLocation(36);
+                if(!loc) continue;
+                u.ra_offset = (int16_t)loc.getValue().getOffset();
+                fi.unwinds.push_back(u);
+            }
+            if(fi.unwinds.empty())
+                continue;
+            std::sort(fi.unwinds.begin(), fi.unwinds.end(),
+                [](auto const& a, auto const& b) { return a.addr < b.addr; });
+            if(fi.unwinds[0].addr != fi.addr_lo)
+                continue;
+            elf.frames.push_back(fi);
+        }
+    }
+    std::sort(elf.frames.begin(), elf.frames.end(),
+        [](auto const& a, auto const& b) { return a.addr_lo < b.addr_lo; });
 
     // find source lines for each address
     for(size_t a = 0; a < cpu.last_addr; a += 2)

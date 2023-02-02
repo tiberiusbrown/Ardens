@@ -32,7 +32,7 @@ struct disassembled_instr_arg_t
 };
 struct disassembled_instr_t
 {
-    char const* name; // if nullptr, display as raw bytes
+    char const* name;
     uint16_t addr;
     enum { INSTR, OBJECT, SOURCE, SYMBOL} type;
     disassembled_instr_arg_t arg0;

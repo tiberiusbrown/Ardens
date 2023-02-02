@@ -32,6 +32,7 @@ void window_display(bool& open, void* tex);
 void window_display_internals(bool& open);
 void window_data_space(bool& open);
 void window_simulation(bool& open);
+void window_call_stack(bool& open);
 
 static bool open_disassembly = true;
 static bool open_display = true;
@@ -39,6 +40,7 @@ static bool open_display_internals = true;
 static bool open_data_space = true;
 static bool open_profiler = true;
 static bool open_simulation = true;
+static bool open_call_stack = true;
 
 int main(int, char**)
 {
@@ -213,6 +215,8 @@ int main(int, char**)
                     open_simulation = !open_simulation;
                 if(ImGui::MenuItem("Disassembly", nullptr, open_disassembly))
                     open_disassembly = !open_disassembly;
+                if(ImGui::MenuItem("Call Stack", nullptr, open_call_stack))
+                    open_call_stack = !open_call_stack;
                 if(ImGui::MenuItem("CPU Data Space", nullptr, open_data_space))
                     open_data_space = !open_data_space;
                 if(ImGui::MenuItem("Profiler", nullptr, open_profiler))
@@ -227,6 +231,7 @@ int main(int, char**)
         window_display(open_display, (void*)framebuffer_texture);
         window_simulation(open_simulation);
         window_disassembly(open_disassembly);
+        window_call_stack(open_call_stack);
         window_display_internals(open_display_internals);
         window_profiler(open_profiler);
         window_data_space(open_data_space);

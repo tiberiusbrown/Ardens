@@ -444,8 +444,8 @@ void window_disassembly(bool& open)
                     if(d.type == absim::disassembled_instr_t::OBJECT)
                     {
                         TextDisabled("%02x %02x",
-                            arduboy.cpu.prog[i * 2 + 0],
-                            arduboy.cpu.prog[i * 2 + 1]);
+                            arduboy.cpu.prog[d.addr + 0],
+                            arduboy.cpu.prog[d.addr + 1]);
                     }
                     else
                     {

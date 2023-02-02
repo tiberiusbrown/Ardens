@@ -72,6 +72,8 @@ set(IMGUI_SOURCES
     src/imgui/imgui_memory_editor.h
     )
 add_executable(arduboy_sim ${EXEFLAG}
+    .editorconfig
+
     src/main.cpp
     src/window_disassembly.cpp
     src/window_profiler.cpp
@@ -79,6 +81,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_display_internals.cpp
     src/window_data_space.cpp
     src/window_simulation.cpp
+    src/window_call_stack.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp
