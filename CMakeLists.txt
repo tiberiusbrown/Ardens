@@ -18,14 +18,6 @@ FetchContent_MakeAvailable(SDL2)
 set_property(DIRECTORY ${SDL2_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
 
 FetchContent_Declare(
-    ELFIO
-    URL https://github.com/serge1/ELFIO/releases/download/Release_3.11/elfio-3.11.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-set(ELFIO_BUILD_EXAMPLES OFF)
-FetchContent_MakeAvailable(ELFIO)
-
-FetchContent_Declare(
     nlohmann_json
     URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
@@ -116,16 +108,16 @@ add_executable(arduboy_sim ${EXEFLAG}
 target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
     SDL2main
-    elfio
     nlohmann_json::nlohmann_json
     LLVMDebugInfoDWARF
     LLVMDemangle
+    LLVMObject
     )
 target_include_directories(arduboy_sim PRIVATE
     src/imgui
-    src/libelfin
     src/miniz-cpp
     "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
     "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
+    "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
     )
 source_group("ImGui" FILES ${IMGUI_SOURCES})

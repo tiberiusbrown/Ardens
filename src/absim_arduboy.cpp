@@ -90,7 +90,7 @@ void arduboy_t::profiler_build_hotspots()
         for(auto const& kv : elf->text_symbols)
         {
             auto const& sym = kv.second;
-            if(sym.type == 1) continue;
+            if(sym.object) continue;
             auto i = cpu.addr_to_disassembled_index(sym.addr);
             if(i < starts.size()) starts.set(i);
         }

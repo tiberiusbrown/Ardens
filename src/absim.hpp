@@ -358,8 +358,10 @@ struct elf_data_symbol_t
     std::string name;
     uint16_t addr;
     uint16_t size;
-    uint8_t type;
-    uint8_t bind;
+    bool weak;
+    bool global;
+    bool notype;
+    bool object;
 };
 
 struct elf_data_t

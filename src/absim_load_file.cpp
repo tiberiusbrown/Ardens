@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <cctype>
 
-#include <elfio/elfio.hpp>
 #include <nlohmann/json.hpp>
 #include <zip_file.hpp>
 
@@ -18,73 +17,13 @@
 
 #include <llvm/DebugInfo/DWARF/DWARFContext.h>
 #include <llvm/DebugInfo/DWARF/DWARFCompileUnit.h>
+#include <llvm/DebugInfo/DWARF/DWARFDebugFrame.h>
 #include <llvm/Demangle/Demangle.h>
+#include <llvm/Object/ELFObjectFile.h>
 
 #ifdef _MSC_VER
 #pragma warning(pop) 
 #endif
-
-// trim from start (in place)
-static inline void ltrim(std::string& s)
-{
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-        }));
-}
-
-// trim from end (in place)
-static inline void rtrim(std::string& s)
-{
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-        }).base(), s.end());
-}
-
-// trim from both ends (in place)
-static inline void trim(std::string& s)
-{
-    rtrim(s);
-    ltrim(s);
-}
-
-struct MyDWARFObject : public llvm::DWARFObject
-{
-    llvm::StringRef    d_aranges;
-    llvm::DWARFSection d_info;
-    llvm::StringRef    d_abbrev;
-    llvm::DWARFSection d_line;
-    llvm::DWARFSection d_frame;
-    llvm::StringRef    d_str;
-    llvm::DWARFSection d_loc;
-    llvm::DWARFSection d_ranges;
-
-    // TODO: set this from ELF file
-    bool isLittleEndian() const { return true; }
-
-    void forEachInfoSections(
-        llvm::function_ref<void(llvm::DWARFSection const&)> F) const override
-    {
-        F(d_info);
-    }
-
-    llvm::StringRef getArangesSection() const override { return d_aranges; }
-    llvm::StringRef getAbbrevSection() const override { return d_abbrev; }
-    llvm::StringRef getStrSection() const override { return d_str; }
-    llvm::DWARFSection const& getLineSection() const override { return d_line; }
-    llvm::DWARFSection const& getFrameSection() const override { return d_frame; }
-    llvm::DWARFSection const& getLocSection() const override { return d_loc; }
-    llvm::DWARFSection const& getRangesSection() const override { return d_ranges; }
-
-    llvm::Optional<llvm::RelocAddrEntry> find(
-        llvm::DWARFSection const& sec, uint64_t Pos) const override
-    {
-        return {};
-    }
-
-    virtual ~MyDWARFObject() = default;
-};
-
-//extern "C" char* __cxa_demangle(const char* MangledName, char* Buf, size_t * N, int* Status);
 
 namespace absim
 {
@@ -214,12 +153,15 @@ static void try_insert_symbol(elf_data_t::map_type& m, elf_data_symbol_t& sym)
         return;
     }
     // if new is WEAK don't replace old with it
-    if(sym.bind == 2) return;
+    if(sym.weak)
+        return;
     auto& oldsym = it->second;
     // if new is NOTYPE and old is not NOTYPE don't replace
-    if(sym.type == 0 && oldsym.type != 0) return;
+    if(sym.notype && !oldsym.notype)
+        return;
     // if old is GLOBAL don't replace it
-    if(oldsym.bind == 1) return;
+    if(oldsym.global)
+        return;
     m[sym.addr] = std::move(sym);
 }
 
@@ -249,146 +191,32 @@ static void add_file_to_elf(elf_data_t& elf,
         elf.source_lines[addr] = { elf.source_file_names[filename], line };
 }
 
-static char const* load_elf(arduboy_t& a, std::string const& fname)
+template<class T> T defval(llvm::Expected<T> e)
 {
-    using namespace ELFIO;
-    elfio reader;
+    return e ? e.get() : T{};
+}
 
-    if(!reader.load(fname))
-        return "ELF: Unable to load file";
+static void load_elf_debug(
+    arduboy_t& a, absim::elf_data_t& elf,
+    llvm::object::ELFObjectFileBase* obj,
+    llvm::DWARFContext* dwarf_ctx)
+{
+    using namespace llvm;
 
     auto& cpu = a.cpu;
 
-    a.elf.reset();
-    memset(&cpu.prog, 0, sizeof(cpu.prog));
-    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
-    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-    memset(&cpu.breakpoints, 0, sizeof(cpu.breakpoints));
-    memset(&cpu.breakpoints_rd, 0, sizeof(cpu.breakpoints_rd));
-    memset(&cpu.breakpoints_wr, 0, sizeof(cpu.breakpoints_wr));
-
-    if(reader.get_machine() != 0x0053)
-        return "ELF: machine not EM_AVR";
-
-    if(reader.get_class() != 0x1)
-        return "ELF: not a 32-bit ELF file";
-
-    auto elf_ptr = std::make_unique<elf_data_t>();
-    auto& elf = *elf_ptr;
-
-    bool found_text = false;
-
-    section const* sec_symtab = nullptr;
-    section const* sec_strtab = nullptr;
-
-    int sec_index_data = -1;
-    int sec_index_bss = -1;
-    int sec_index_text = -1;
-
-    constexpr uint32_t ram_offset = 0x800000;
-
-    auto dwarf = std::make_unique<MyDWARFObject>();
-
-    for(unsigned i = 0; i < reader.sections.size(); ++i)
-    {
-        auto const* sec = reader.sections[i];
-        auto name = sec->get_name();
-        auto size = sec->get_size();
-        auto data = sec->get_data();
-        auto addr = sec->get_address();
-
-        if(name == ".text")
-        {
-            sec_index_text = (int)i;
-            if(size > cpu.PROG_SIZE_BYTES)
-                return "ELF: Section .text too large";
-            memcpy(&cpu.prog, data, size);
-            cpu.last_addr = (uint16_t)size;
-            found_text = true;
-        }
-
-        if(name == ".data")
-        {
-            sec_index_data = (int)i;
-            elf.data_begin = uint16_t(addr - ram_offset);
-            elf.data_end = uint16_t(elf.data_begin + size);
-        }
-
-        if(name == ".bss")
-        {
-            sec_index_bss = (int)i;
-            elf.bss_begin = uint16_t(addr - ram_offset);
-            elf.bss_end = uint16_t(elf.data_begin + size);
-        }
-
-        if(name == ".symtab") sec_symtab = sec;
-        if(name == ".strtab") sec_strtab = sec;
-
-        if(name == ".debug_info"  ) dwarf->d_info   = { { data, size }, addr };
-        if(name == ".debug_line"  ) dwarf->d_line   = { { data, size }, addr };
-        if(name == ".debug_frame" ) dwarf->d_frame  = { { data, size }, addr };
-        if(name == ".debug_loc"   ) dwarf->d_loc    = { { data, size }, addr };
-        if(name == ".debug_ranges") dwarf->d_ranges = { { data, size }, addr };
-
-        if(name == ".debug_aranges") dwarf->d_aranges = { data, size };
-        if(name == ".debug_abbrev" ) dwarf->d_abbrev  = { data, size };
-        if(name == ".debug_str"    ) dwarf->d_str     = { data, size };
-    }
-
-    if(!found_text)
-        return "ELF: No .text section";
-
-    if(sec_symtab && sec_strtab && sec_index_data >= 0 && sec_index_bss >= 0)
-    {
-        char const* str = sec_strtab->get_data();
-        int num_syms = (int)sec_symtab->get_size() / 16;
-        Elf32_Sym const* ptr = (Elf32_Sym const*)sec_symtab->get_data();
-        for(int i = 0; i < num_syms; ++i, ++ptr)
-        {
-            uint8_t sym_type = ptr->st_info & 0xf;
-            uint8_t sym_bind = ptr->st_info >> 4;
-            // limit to OBJECT or FUNC or NOTYPE
-            if(sym_type > 2)
-                continue;
-            auto sec_index = ptr->st_shndx;
-            bool text = false;
-            if(sec_index == sec_index_text)
-                text = true;
-            else if(sec_index != sec_index_data && sec_index != sec_index_bss)
-                continue;
-            if(sym_type == 0 && !text)
-                continue;
-            char const* name = &str[ptr->st_name];
-            elf_data_symbol_t sym;
-            sym.name = demangle(name);
-            auto addr = ptr->st_value;
-            if(!text) addr -= ram_offset;
-            sym.addr = (uint16_t)addr;
-            sym.size = (uint16_t)ptr->st_size;
-            sym.type = sym_type;
-            sym.bind = sym_bind;
-            try_insert_symbol(text ? elf.text_symbols : elf.data_symbols, sym);
-        }
-    }
-
-    cpu.decode();
-
-    // note object text symbols in disassembly
-    for(auto const& kv : elf.text_symbols)
-    {
-        auto const& sym = kv.second;
-        if(sym.type != 1) continue;
-        auto addr = sym.addr;
-        auto addr_end = addr + sym.size;
-        while(addr < addr_end)
-        {
-            auto i = cpu.addr_to_disassembled_index(addr);
-            cpu.disassembled_prog[i].type = disassembled_instr_t::OBJECT;
-            addr += 2;
-        }
-    }
-
-    auto dwarf_ctx = std::make_unique<llvm::DWARFContext>(std::move(dwarf));
+    // get frame info
+    //if(auto frame_or_err = dwarf_ctx->getDebugFrame())
+    //{
+    //    auto frame = frame_or_err.get();
+    //    for(auto const& e : *frame)
+    //    {
+    //        for(auto const& i : e.cfis())
+    //        {
+    //            auto n = e.cfis().callFrameString(i.Opcode);
+    //        }
+    //    }
+    //}
 
     // find source lines for each address
     for(size_t a = 0; a < cpu.last_addr; a += 2)
@@ -436,6 +264,178 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
             v.push_back(cpu.disassembled_prog[i]);
         }
     }
+}
+
+static char const* load_elf(arduboy_t& a, std::string const& fname)
+{
+    using namespace llvm;
+
+    std::ifstream f(fname, std::ios::binary);
+    std::vector<char> fdata(
+        (std::istreambuf_iterator<char>(f)),
+        std::istreambuf_iterator<char>());
+
+    MemoryBufferRef mbuf(
+        { fdata.data(), fdata.size() },
+        { fname.c_str(), fname.size() });
+
+    auto bin_or_err = object::createBinary(mbuf);
+    if(!bin_or_err) return "ELF: could not load file";
+
+    auto* obj = dyn_cast<object::ELFObjectFileBase>(bin_or_err->get());
+    if(!obj)
+        return "ELF: could not load object file";
+
+    if(obj->getEMachine() != 0x0053)
+        return "ELF: machine not EM_AVR";
+
+    auto& cpu = a.cpu;
+
+    a.elf.reset();
+    memset(&cpu.prog, 0, sizeof(cpu.prog));
+    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
+    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
+    memset(&cpu.breakpoints, 0, sizeof(cpu.breakpoints));
+    memset(&cpu.breakpoints_rd, 0, sizeof(cpu.breakpoints_rd));
+    memset(&cpu.breakpoints_wr, 0, sizeof(cpu.breakpoints_wr));
+    bool found_text = false;
+
+    auto elf_ptr = std::make_unique<elf_data_t>();
+    auto& elf = *elf_ptr;
+
+    constexpr uint32_t ram_offset = 0x800000;
+
+    object::SectionRef sec_data;
+    object::SectionRef sec_bss;
+    object::SectionRef sec_text;
+
+    for(auto const& section : obj->sections())
+    {
+        auto name = defval(section.getName());
+        auto data = defval(section.getContents());
+        auto addr = section.getAddress();
+        auto size = data.size();
+        if(!name.data() || !data.data()) continue;
+
+        if(name == ".text")
+        {
+            sec_text = section;
+            if(size > cpu.PROG_SIZE_BYTES)
+                return "ELF: Section .text too large";
+            memcpy(&cpu.prog, data.data(), size);
+            cpu.last_addr = (uint16_t)size;
+            found_text = true;
+        }
+
+        if(name == ".data")
+        {
+            sec_data = section;
+            elf.data_begin = uint16_t(addr - ram_offset);
+            elf.data_end = uint16_t(elf.data_begin + size);
+        }
+
+        if(name == ".bss")
+        {
+            sec_bss = section;
+            elf.bss_begin = uint16_t(addr - ram_offset);
+            elf.bss_end = uint16_t(elf.data_begin + size);
+        }
+
+    }
+
+    if(!found_text)
+        return "ELF: No .text section";
+
+    cpu.decode();
+
+    for(auto const& symbol : obj->symbols())
+    {
+        auto name = defval(symbol.getName());
+        auto addr = defval(symbol.getAddress());
+        auto type = defval(symbol.getType());
+        auto flags = defval(symbol.getFlags());
+        auto sec_or_err = symbol.getSection();
+        if(!sec_or_err) continue;
+        auto sec = sec_or_err.get();
+        auto size = symbol.getSize();
+        if(!name.data())
+            continue;
+        if(name == "FONT_IMG") __debugbreak();
+        if(*sec != sec_text && *sec != sec_data && *sec != sec_bss)
+            continue;
+
+        switch(type)
+        {
+        case object::SymbolRef::Type::ST_Unknown:
+        case object::SymbolRef::Type::ST_Data:
+        case object::SymbolRef::Type::ST_Function:
+            break;
+        default:
+            continue;
+        }
+
+        bool is_text = (sec == sec_text);
+        if(!is_text)
+        {
+            addr -= ram_offset;
+            if(addr >= 2560) continue;
+        }
+
+        if(name == "__eeprom_end") __debugbreak();
+
+        elf_data_symbol_t sym;
+        sym.name = demangle(name.data());
+        sym.addr = (uint16_t)addr;
+        sym.size = (uint16_t)size;
+        sym.global = (flags & object::SymbolRef::Flags::SF_Global) != 0;
+        sym.weak   = (flags & object::SymbolRef::Flags::SF_Weak) != 0;
+        sym.notype = (type == object::SymbolRef::Type::ST_Unknown);
+        sym.object = (type == object::SymbolRef::Type::ST_Data);
+        try_insert_symbol(is_text ? elf.text_symbols : elf.data_symbols, sym);
+    }
+
+    // note object text symbols in disassembly
+    for(auto const& kv : elf.text_symbols)
+    {
+        auto const& sym = kv.second;
+        if(!sym.object) continue;
+        auto addr = sym.addr;
+        auto addr_end = addr + sym.size;
+        while(addr < addr_end)
+        {
+            auto i = cpu.addr_to_disassembled_index(addr);
+            cpu.disassembled_prog[i].type = disassembled_instr_t::OBJECT;
+            addr += 2;
+        }
+    }
+
+    // create intermixed asm with source/symbols
+    {
+        auto& v = elf.asm_with_source;
+        for(uint16_t i = 0; i < cpu.num_instrs; ++i)
+        {
+            uint16_t addr = cpu.disassembled_prog[i].addr;
+            disassembled_instr_t instr;
+            instr.addr = addr;
+            auto its = elf.text_symbols.find(addr);
+            if(its != elf.text_symbols.end())
+            {
+                instr.type = disassembled_instr_t::SYMBOL;
+                v.push_back(instr);
+            }
+            auto it = elf.source_lines.find(addr);
+            if(it != elf.source_lines.end())
+            {
+                instr.type = disassembled_instr_t::SOURCE;
+                v.push_back(instr);
+            }
+            v.push_back(cpu.disassembled_prog[i]);
+        }
+    }
+
+    // load debug info
+    auto dwarf_ctx = DWARFContext::create(*obj);
+    load_elf_debug(a, elf, obj, dwarf_ctx.get());
 
     a.elf.swap(elf_ptr);
 
