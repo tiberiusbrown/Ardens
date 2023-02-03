@@ -18,6 +18,15 @@
 #define FORCEINLINE __forceinline
 #endif
 
+namespace llvm
+{
+class DWARFContext;
+namespace object
+{
+class Binary;
+}
+}
+
 namespace absim
 {
 
@@ -404,6 +413,11 @@ struct elf_data_t
         std::vector<unwind_t> unwinds;
     };
     std::vector<frame_info_t> frames;
+
+    std::unique_ptr<llvm::object::Binary> obj;
+    std::unique_ptr<llvm::DWARFContext> dwarf_ctx;
+
+    ~elf_data_t(); // only exists for unique_ptr's above
 };
 
 struct arduboy_t

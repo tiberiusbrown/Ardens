@@ -370,7 +370,7 @@ constexpr std::array<double, 16> FOSC =
 {
     // mostly made up
     200, 224, 248, 272, 296, 320, 344, 368,
-    392, 416, 440, 464, 488, 512, 536, 700,
+    392, 416, 440, 464, 488, 512, 536, 570,
 };
 
 void FORCEINLINE ssd1306_t::update_clocking()

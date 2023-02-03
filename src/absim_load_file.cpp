@@ -29,6 +29,24 @@
 namespace absim
 {
 
+size_t elf_data_t::addr_to_disassembled_index(uint16_t addr)
+{
+    absim::disassembled_instr_t temp;
+    temp.addr = addr;
+    auto it = std::lower_bound(
+        asm_with_source.begin(),
+        asm_with_source.end(),
+        temp,
+        [](auto const& a, auto const& b) { return a.addr < b.addr; }
+    );
+
+    auto index = std::distance(asm_with_source.begin(), it);
+
+    return (size_t)index;
+}
+
+elf_data_t::~elf_data_t() {}
+
 static std::string demangle(char const* sym)
 {
     size_t size = 0;
@@ -476,6 +494,8 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
     auto dwarf_ctx = DWARFContext::create(*obj);
     load_elf_debug(a, elf, obj, dwarf_ctx.get());
 
+    elf.obj.swap(bin_or_err.get());
+    elf.dwarf_ctx.swap(dwarf_ctx);
     a.elf.swap(elf_ptr);
 
     return nullptr;

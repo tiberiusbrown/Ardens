@@ -54,6 +54,10 @@ static void window_call_stack_contents()
 	flags |= ImGuiTableFlags_ScrollY;
 	if(BeginTable("##callstack", 2, flags))
 	{
+        TableSetupColumn("Address",
+            ImGuiTableColumnFlags_WidthFixed,
+            CalcTextSize("0x0000").x);
+        TableSetupColumn("Symbol");
 		for(int depth = 0; depth < 32; ++depth)
 		{
             if(addr >= cpu.last_addr) break;
