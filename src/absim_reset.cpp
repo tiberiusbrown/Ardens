@@ -41,6 +41,8 @@ void atmega32u4_t::reset()
     st_handlers[0x4c] = spi_handle_st_spcr_or_spsr;
     st_handlers[0x4d] = spi_handle_st_spcr_or_spsr;
     st_handlers[0x4e] = spi_handle_st_spdr;
+    st_handlers[0x64] = st_handle_prr0;
+    st_handlers[0x7a] = adc_st_handle_adcsra;
 
     ld_handlers[0x4d] = spi_handle_ld_spsr;
 

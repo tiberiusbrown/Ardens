@@ -23,6 +23,14 @@ void atmega32u4_t::update_sleep_min_cycles()
     sleep_min_cycles = d;
 }
 
+void atmega32u4_t::st_handle_prr0(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == 0x64);
+    cpu.data[0x64] = x;
+    cpu.adc_handle_prr0(x);
+}
+
 FORCEINLINE void atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {

@@ -5,41 +5,52 @@
 namespace absim
 {
 
+void atmega32u4_t::adc_handle_prr0(uint8_t x)
+{
+    constexpr uint8_t pradc = 1 << 0;
+    if(x & pradc)
+        adc_busy = false;
+    else
+    {
+        uint8_t adcsra = data[0x7a];
+        adc_busy = (adcsra & 0xc0) != 0;
+    }
+}
+
+void atmega32u4_t::adc_st_handle_adcsra(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == 0x7a);
+    constexpr uint8_t pradc = 1 << 0;
+    if(cpu.data[0x64] & pradc)
+        return;
+    if(x & 0xc0)
+        cpu.adc_busy = true;
+    cpu.data[0x7a] = x;
+}
+
 FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
 {
-	// check if adc is powered down
-	uint32_t prr0 = data[0x64];
-	constexpr uint32_t pradc = 1 << 0;
-	if(prr0 & pradc)
-		return;
+    if(!adc_busy)
+        return;
 
 	uint8_t& adcsra = data[0x7a];
-
-	// adc enable turned off or not converting
-	if((adcsra & 0xc0) == 0)
-	{
-		adc_cycle = 0;
-		adc_prescaler_cycle = 0;
-		return;
-	}
-
 	uint32_t adps  = adcsra & 0x7;
 
 	uint32_t prescaler = 1 << adps;
 	if(prescaler <= 1)
 		prescaler = 2;
 
-	if(++adc_prescaler_cycle < prescaler)
-		return;
-	adc_prescaler_cycle = 0;
+    uint32_t tcycles = increase_counter(adc_prescaler_cycle, cycles, prescaler);
+    if(tcycles == 0) return;
 
-	uint8_t& adcsrb = data[0x7b];
-	uint8_t& admux = data[0x7c];
+	uint32_t adcsrb = data[0x7b];
+	uint32_t admux = data[0x7c];
 
 	uint32_t adts = adcsrb & 0xf;
 	uint32_t mux = admux & 0x1f;
 
-	for(uint32_t i = 0; i < cycles; ++i)
+	for(uint32_t i = 0; i < tcycles; ++i)
 	{
 		if(++adc_cycle < 13)
 			continue;
@@ -49,7 +60,8 @@ FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
 		adcsra &= ~ADSC;
 
 		adc_result = 500;
-		break;
+        adc_busy = false;
+        break;
 	}
 
 	uint32_t adc = adc_result;

@@ -190,6 +190,8 @@ struct atmega32u4_t
     uint32_t sleep_min_cycles;
     void update_sleep_min_cycles();
 
+    static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+
     // timer0
     uint64_t timer0_prev_update_cycle;
     uint64_t timer0_next_update_cycle;
@@ -263,7 +265,10 @@ struct atmega32u4_t
     uint32_t adc_cycle;
     uint32_t adc_ref;
     uint32_t adc_result;
+    bool adc_busy;
     void cycle_adc(uint32_t cycles);
+    void adc_handle_prr0(uint8_t x);
+    static void adc_st_handle_adcsra(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     void check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
@@ -516,5 +521,22 @@ constexpr uint8_t SREG_Z = 1 << 1;
 constexpr uint8_t SREG_C = 1 << 0;
 
 constexpr uint8_t SREG_HSVNZC = 0x3f;
+
+static FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
+{
+    uint32_t n = 0;
+    uint32_t c = counter;
+    c += inc;
+    if(c >= top)
+    {
+        do
+        {
+            c -= top;
+            ++n;
+        } while(c >= top);
+    }
+    counter = c;
+    return n;
+}
 
 }

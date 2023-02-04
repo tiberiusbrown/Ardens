@@ -3,23 +3,6 @@
 namespace absim
 {
 
-static FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
-{
-    uint32_t n = 0;
-    uint32_t c = counter;
-    c += inc;
-    if(c >= top)
-    {
-        do
-        {
-            c -= top;
-            ++n;
-        } while(c >= top);
-    }
-    counter = c;
-    return n;
-}
-
 static FORCEINLINE uint32_t word(atmega32u4_t const& cpu, uint32_t addr)
 {
     uint32_t lo = cpu.data[addr + 0];
