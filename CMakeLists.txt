@@ -6,48 +6,63 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(arduboy_sim)
 
-include(FetchContent)
-set(FETCHCONTENT_QUIET FALSE)
+if(EMSCRIPTEN)
+    set(EXTRA_FLAGS "${EXTRA_FLAGS} -Oz")
+    set(EXTRA_FLAGS "${EXTRA_FLAGS} -flto")
+    set(EXTRA_FLAGS "${EXTRA_FLAGS} -fno-rtti -fno-exceptions")
+    set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${EXTRA_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS}")
+    add_link_options("--closure 1")
+    add_link_options("-s MODULARIZE=1")
+    #add_link_options("-s TOTAL_MEMORY=24MB")
+    add_link_options("-sEXPORTED_FUNCTIONS=_main,_load_file,_malloc,_free")
+    add_link_options("-sEXPORTED_RUNTIME_METHODS=ccall")
+    add_link_options("-flto")
+endif()
 
-FetchContent_Declare(
-    SDL2
-    URL https://github.com/libsdl-org/SDL/releases/download/release-2.26.2/SDL2-2.26.2.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(SDL2)
-set_property(DIRECTORY ${SDL2_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
+add_subdirectory(deps/SDL)
+set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
 
-FetchContent_Declare(
-    nlohmann_json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(nlohmann_json)
+add_subdirectory(deps/json)
 
-FetchContent_Declare(
-    llvm
-    URL https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-15.0.7.src.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
-set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
-set(LLVM_USE_CRT_RELEASE        "MT"  CACHE STRING "" FORCE)
-set(LLVM_USE_CRT_RELWITHDEBINFO "MT"  CACHE STRING "" FORCE)
-set(LLVM_BUILD_TESTS            OFF)
-set(LLVM_BUILD_TOOLS            OFF)
-set(LLVM_BUILD_UTILS            OFF)
-set(LLVM_INCLUDE_TESTS          OFF)
-set(LLVM_INCLUDE_TOOLS          OFF)
-set(LLVM_INCLUDE_UTILS          OFF)
-set(LLVM_INCLUDE_BENCHMARKS     OFF)
-set(LLVM_INCLUDE_DOCS           OFF)
-set(LLVM_INCLUDE_EXAMPLES       OFF)
-set(LLVM_INCLUDE_RUNTIMES       OFF)
-set(LLVM_TARGETS_TO_BUILD ";" CACHE STRING "" FORCE)
+add_subdirectory(deps/miniz)
+
+if(MSVC)
+    set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
+    set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
+    set(LLVM_USE_CRT_RELEASE        "MT"  CACHE STRING "" FORCE)
+    set(LLVM_USE_CRT_RELWITHDEBINFO "MT"  CACHE STRING "" FORCE)
+    set(LLVM_BUILD_LLVM_C_DYLIB     OFF   CACHE BOOL   "" FORCE)
+endif()
+set(LLVM_BUILD_TESTS                   OFF CACHE BOOL   "" FORCE)
+set(LLVM_BUILD_TOOLS                   OFF CACHE BOOL   "" FORCE)
+set(LLVM_BUILD_UTILS                   OFF CACHE BOOL   "" FORCE)
+set(LLVM_INCLUDE_TESTS                 OFF CACHE BOOL   "" FORCE)
+set(LLVM_INCLUDE_TOOLS                 OFF CACHE BOOL   "" FORCE)
+set(LLVM_INCLUDE_UTILS                 OFF CACHE BOOL   "" FORCE)
+set(LLVM_INCLUDE_BENCHMARKS            OFF CACHE BOOL   "" FORCE)
+set(LLVM_INCLUDE_DOCS                  OFF CACHE BOOL   "" FORCE)
+set(LLVM_INCLUDE_EXAMPLES              OFF CACHE BOOL   "" FORCE)
+set(LLVM_INCLUDE_RUNTIMES              OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_BINDINGS               OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_LIBEDIT                OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_LIBPFM                 OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_OCAMLDOC               OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_TIMESTAMPS             OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_TERMINFO               OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_ZLIB                   OFF CACHE BOOL   "" FORCE)
+set(LLVM_ENABLE_LIBXML2                OFF CACHE BOOL   "" FORCE)
+set(_ENABLE_LLVM_NATIVE_BUILD          OFF CACHE BOOL   "" FORCE)
+set(LLVM_TARGETS_TO_BUILD              ";" CACHE STRING "" FORCE)
 set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD ";" CACHE STRING "" FORCE)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-FetchContent_MakeAvailable(llvm)
-set_property(DIRECTORY ${llvm_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL YES)
+if(EMSCRIPTEN)
+    set(LLVM_TARGET_ARCH "wasm64" CACHE STRING "" FORCE)
+    set(LLVM_NATIVE_ARCH "wasm64" CACHE STRING "" FORCE)
+    set(LLVM_HOST_TRIPLE "wasm64-unknown-emscripten" CACHE STRING "" FORCE)
+    set(LLVM_OPTIMIZED_TABLEGEN OFF CACHE BOOL "" FORCE)
+endif()
+add_subdirectory(deps/llvm-project/llvm)
+set_property(DIRECTORY deps/llvm-project/llvm PROPERTY EXCLUDE_FROM_ALL YES)
 
 set(EXEFLAG)
 if(MSVC)
@@ -106,7 +121,6 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim_eeprom.hpp
     
     ${IMGUI_SOURCES}
-    ${LLVM_DEMANGLER_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
@@ -115,12 +129,16 @@ target_link_libraries(arduboy_sim PRIVATE
     LLVMDebugInfoDWARF
     LLVMDemangle
     LLVMObject
+    miniz
     )
 target_include_directories(arduboy_sim PRIVATE
     src/imgui
-    src/miniz-cpp
+    #src/miniz-cpp
     "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
     "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
     "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
     )
 source_group("ImGui" FILES ${IMGUI_SOURCES})
+if(EMSCRIPTEN)
+    target_link_options(arduboy_sim PRIVATE -s TOTAL_MEMORY=24MB)
+endif()

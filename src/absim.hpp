@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <istream>
 
 #include <stdint.h>
 #include <assert.h>
@@ -16,6 +17,10 @@
 
 #if defined(_MSC_VER)
 #define FORCEINLINE __forceinline
+#elif defined(__GNUC__) || defined(__clang__) 
+#define FORCEINLINE __attribute__((always_inline))
+#else
+#define FORCEINLINE
 #endif
 
 namespace llvm
@@ -470,7 +475,7 @@ struct arduboy_t
     void advance(uint64_t ps);
 
     // returns an error string on error or nullptr on success
-    char const* load_file(char const* filename);
+    char const* load_file(char const* filename, std::istream& f);
 };
 
 

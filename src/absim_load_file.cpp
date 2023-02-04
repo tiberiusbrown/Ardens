@@ -4,11 +4,13 @@
 #include <fstream>
 #include <sstream>
 #include <iterator>
+#include <vector>
 #include <algorithm>
 #include <cctype>
 
 #include <nlohmann/json.hpp>
-#include <zip_file.hpp>
+#include <miniz.h>
+#include <miniz_zip.h>
 
 #ifdef _MSC_VER
 #pragma warning(push, 1)
@@ -289,7 +291,7 @@ static void load_elf_debug(
             [](auto const& a, auto const& b) { return a.Address.Address < b.Address.Address; });
         if(it == rows.end() || it->Address.Address != a)
             continue;
-        if(!it->IsStmt) __debugbreak();
+        if(!it->IsStmt) continue;
         std::string source_file;
         if(!tab->getFileNameByIndex(it->File, cu->getCompilationDir(),
             llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath,
@@ -323,11 +325,10 @@ static void load_elf_debug(
     }
 }
 
-static char const* load_elf(arduboy_t& a, std::string const& fname)
+static char const* load_elf(arduboy_t& a, std::istream& f, std::string const& fname)
 {
     using namespace llvm;
 
-    std::ifstream f(fname, std::ios::binary);
     std::vector<char> fdata(
         (std::istreambuf_iterator<char>(f)),
         std::istreambuf_iterator<char>());
@@ -417,7 +418,6 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
         auto size = symbol.getSize();
         if(!name.data())
             continue;
-        if(name == "FONT_IMG") __debugbreak();
         if(*sec != sec_text && *sec != sec_data && *sec != sec_bss)
             continue;
 
@@ -437,8 +437,6 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
             addr -= ram_offset;
             if(addr >= 2560) continue;
         }
-
-        if(name == "__eeprom_end") __debugbreak();
 
         elf_data_symbol_t sym;
         sym.name = demangle(name.data());
@@ -501,6 +499,14 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
     return nullptr;
 }
 
+static char const* load_elf(arduboy_t& a, std::string const& fname)
+{
+    std::ifstream f(fname, std::ios::binary);
+    if(f.fail())
+        return "ELF: Could not open file";
+    return load_elf(a, f, fname);
+}
+
 static char const* load_bin(arduboy_t& a, std::istream& f)
 {
     std::vector<uint8_t> data(
@@ -521,20 +527,37 @@ static char const* load_bin(arduboy_t& a, std::istream& f)
 
 static char const* load_bin(arduboy_t& a, std::string const& fname)
 {
-    std::ifstream f(fname, std::ios::in | std::ios::binary);
-
+    std::ifstream f(fname, std::ios::binary);
     if(f.fail())
         return "BIN: Unable to open file";
-
     return load_bin(a, f);
 }
 
-static char const* load_arduboy(arduboy_t& a, std::string const& fname)
+static char const* load_arduboy(arduboy_t& a, std::istream& f)
 {
-    miniz_cpp::zip_file z(fname);
-    if(!z.has_file("info.json"))
-        return "ARDUBOY: No info.json file";
-    std::string info = z.read("info.json");
+    std::vector<uint8_t> fdata(
+        (std::istreambuf_iterator<char>(f)),
+        std::istreambuf_iterator<char>());
+
+    struct zip_t
+    {
+        mz_zip_archive z = {};
+        ~zip_t() { mz_zip_reader_end(&z); }
+    };
+    zip_t zip;
+    auto* z = &zip.z;
+    mz_zip_reader_init_mem(z, fdata.data(), fdata.size(), 0);
+
+    std::vector<char> info;
+    {
+        int i = mz_zip_reader_locate_file(z, "info.json", nullptr, 0);
+        if(i == -1)
+            return "ARDUBOY: No info.json file";
+        mz_zip_archive_file_stat stat{};
+        mz_zip_reader_file_stat(z, i, &stat);
+        info.resize(stat.m_uncomp_size);
+        mz_zip_reader_extract_to_mem(z, i, info.data(), info.size(), 0);
+    }
 
     auto j = nlohmann::json::parse(info);
     if(!j.contains("binaries"))
@@ -549,12 +572,20 @@ static char const* load_arduboy(arduboy_t& a, std::string const& fname)
     if(!hexfile.is_string())
         return "ARDUBOY: primary binary filename not string type";
 
-    if(!z.has_file(hexfile))
-        return "ARDUBOY: missing hex file indicated in info.json";
+    std::vector<char> data;
+    {
+        char const* hexfilename = hexfile.get_ref<std::string const&>().c_str();
+        int i = mz_zip_reader_locate_file(z, hexfilename, nullptr, 0);
+        if(i == -1)
+            return "ARDUBOY: missing hex file indicated in info.json";
+        mz_zip_archive_file_stat stat{};
+        mz_zip_reader_file_stat(z, i, &stat);
+        data.resize(stat.m_uncomp_size);
+        mz_zip_reader_extract_to_mem(z, i, data.data(), data.size(), 0);
+    }
 
     {
-        std::string hexdata = z.read(hexfile);
-        std::stringstream ss(hexdata);
+        std::stringstream ss(std::string(data.begin(), data.end()));
         char const* err = load_hex(a, ss);
         if(err) return err;
     }
@@ -564,18 +595,32 @@ static char const* load_arduboy(arduboy_t& a, std::string const& fname)
         auto const& binfile = bin["flashdata"];
         if(!binfile.is_string())
             return "ARDUBOY: FX data filename not string type";
-        if(!z.has_file(binfile))
-            return "ARDUBOY: missing FX data file indicated in info.json";
 
-        std::string bindata = z.read(binfile);
-        std::stringstream ss(bindata);
+        {
+            char const* binfilename = binfile.get_ref<std::string const&>().c_str();
+            int i = mz_zip_reader_locate_file(z, binfilename, nullptr, 0);
+            if(i == -1)
+                return "ARDUBOY: missing FX data file indicated in info.json";
+            mz_zip_archive_file_stat stat{};
+            mz_zip_reader_file_stat(z, i, &stat);
+            data.resize(stat.m_uncomp_size);
+            mz_zip_reader_extract_to_mem(z, i, data.data(), data.size(), 0);
+        }
+
+        std::stringstream ss(std::string(data.begin(), data.end()));
         char const* err = load_bin(a, ss);
         if(err) return err;
     }
 
-    // TODO: bin file
-
     return nullptr;
+}
+
+static char const* load_arduboy(arduboy_t& a, std::string const& fname)
+{
+    std::ifstream f(fname, std::ios::binary);
+    if(f.fail())
+        return "ARDUBOY: Unable to open file";
+    return load_arduboy(a, f);
 }
 
 static bool ends_with(std::string const& str, std::string const& end)
@@ -584,31 +629,34 @@ static bool ends_with(std::string const& str, std::string const& end)
     return str.substr(str.size() - end.size()) == end;
 }
 
-char const* arduboy_t::load_file(char const* filename)
+char const* arduboy_t::load_file(char const* filename, std::istream& f)
 {
+    if(f.fail())
+        return "Failed to open file";
+    
     std::string fname(filename);
 
     if(ends_with(fname, ".hex"))
     {
         reset();
-        return load_hex(*this, fname);
+        return load_hex(*this, f);
     }
 
     if(ends_with(fname, ".bin"))
     {
-        return load_bin(*this, fname);
+        return load_bin(*this, f);
     }
 
     if(ends_with(fname, ".elf"))
     {
         reset();
-        return load_elf(*this, fname);
+        return load_elf(*this, f, fname);
     }
 
     if(ends_with(fname, ".arduboy"))
     {
         reset();
-        return load_arduboy(*this, fname);
+        return load_arduboy(*this, f);
     }
 
     return nullptr;

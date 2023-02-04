@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head>
+
+<style>
+#canvas {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    margin: 0px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: block;
+}
+</style>
+
+<body>
+
+    <canvas id="canvas" ondrop="dropHandler(event)" ondragover="event.preventDefault()" oncontextmenu="event.preventDefault()" width="100%" height="100%"></canvas>
+
+    <script type='text/javascript'>
+        var Module = {
+            canvas: (function() { return document.getElementById('canvas'); })()
+        };
+        function dropHandler(ev) {
+            ev.preventDefault();
+            [...ev.dataTransfer.files].forEach((f, i) => {
+                
+                var fr = new FileReader();
+                fr.onloadend = evt => {
+                    const fdata = new Uint8Array(evt.target.result);
+                    var ptr = Module._malloc(fdata.length);
+                    Module.HEAPU8.set(fdata, ptr)
+                    Module.ccall('load_file', 'number', ['string', 'number', 'number'], [f.name, ptr, fdata.length]);
+                    Module._free(ptr)
+                };
+                fr.readAsArrayBuffer(f);
+                
+                console.log(f);
+            });
+        }
+    </script>
+    
+    <script src="arduboy_sim.js"></script>
+    
+</body>
+
+</html>
