@@ -33,8 +33,28 @@ void atmega32u4_t::reset()
     timer0_divider_cycle = 0;
     timer0_divider = 0;
 
+    for(auto& h : ld_handlers) h = nullptr;
+    for(auto& h : st_handlers) h = nullptr;
+
+    st_handlers[0x4c] = spi_handle_st_spcr_or_spsr;
+    st_handlers[0x4d] = spi_handle_st_spcr_or_spsr;
+    st_handlers[0x4e] = spi_handle_st_spdr;
+
+    ld_handlers[0x4d] = spi_handle_ld_spsr;
+
     memset(&timer1, 0, sizeof(timer1));
     memset(&timer3, 0, sizeof(timer3));
+
+    timer1.base_addr = 0x80;
+    timer3.base_addr = 0x90;
+    timer1.tifrN_addr = 0x36;
+    timer3.tifrN_addr = 0x38;
+    timer1.timskN_addr = 0x6f;
+    timer3.timskN_addr = 0x71;
+    timer1.prr_addr = 0x64;
+    timer3.prr_addr = 0x65;
+    timer1.prr_mask = 1 << 3;
+    timer3.prr_mask = 1 << 3;
 
     pll_lock_cycle = 0;
 

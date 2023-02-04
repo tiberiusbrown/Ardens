@@ -78,14 +78,23 @@ struct atmega32u4_t
     uint16_t just_read;
     uint16_t just_written;
 
+    using ld_handler_t = uint8_t(*)(atmega32u4_t& cpu, uint16_t ptr);
+    using st_handler_t = void(*)(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    std::array<ld_handler_t, 256> ld_handlers;
+    std::array<st_handler_t, 256> st_handlers;
+
     FORCEINLINE uint8_t ld(uint16_t ptr)
     {
         just_read = ptr;
+        if(ptr < ld_handlers.size() && ld_handlers[ptr])
+            return ld_handlers[ptr](*this, ptr);
         return ptr < data.size() ? data[ptr] : 0x00;
     }
     FORCEINLINE void st(uint16_t ptr, uint8_t x)
     {
         just_written = ptr;
+        if(ptr < st_handlers.size() && st_handlers[ptr])
+            return st_handlers[ptr](*this, ptr, x);
         if(ptr < data.size()) data[ptr] = x;
     }
 
@@ -182,6 +191,8 @@ struct atmega32u4_t
     void update_sleep_min_cycles();
 
     // timer0
+    uint64_t timer0_prev_update_cycle;
+    uint64_t timer0_next_update_cycle;
     uint32_t timer0_divider_cycle;
     uint32_t timer0_divider;
     bool timer0_count_down;
@@ -190,14 +201,21 @@ struct atmega32u4_t
     // timer 1 or 3
     struct timer16_t
     {
+        uint64_t prev_update_cycle;
+        uint64_t next_update_cycle;
         uint32_t divider_cycle;
         uint32_t divider;
         uint32_t top;
         uint32_t tov;
         uint32_t tupdate;
-        uint16_t ocrNa;
-        uint16_t ocrNb;
-        uint16_t ocrNc;
+        uint32_t ocrNa;
+        uint32_t ocrNb;
+        uint32_t ocrNc;
+        uint32_t tifrN_addr;
+        uint32_t timskN_addr;
+        uint32_t prr_addr;
+        uint32_t prr_mask;
+        uint32_t base_addr;
         bool phase_correct;
         bool count_down;
         bool update_ocrN_at_top;
@@ -207,8 +225,8 @@ struct atmega32u4_t
     timer16_t timer1;
     timer16_t timer3;
 
-    void cycle_timer1(uint32_t cycles);
-    void cycle_timer3(uint32_t cycles);
+    void cycle_timer1();
+    void cycle_timer3();
 
     // PLL
     uint64_t pll_lock_cycle;
@@ -224,6 +242,9 @@ struct atmega32u4_t
     uint32_t spi_clock_cycle;
     uint32_t spi_bit_progress;
     void cycle_spi(uint32_t cycles);
+    static void spi_handle_st_spcr_or_spsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void spi_handle_st_spdr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static uint8_t spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr);
 
     // EEPROM
     uint32_t eeprom_clear_eempe_cycles;
@@ -468,7 +489,7 @@ struct arduboy_t
 
     // each cycle is 62.5 ns
     static constexpr uint64_t CYCLE_PS = 62500;
-    static constexpr uint64_t PS_BUFFER = CYCLE_PS * 256;
+    static constexpr uint64_t PS_BUFFER = CYCLE_PS * 256 * 64;
 
     // advance by specified number of picoseconds
     // ratio is for display filtering: 1.0 means real time,

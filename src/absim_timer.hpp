@@ -189,7 +189,7 @@ static FORCEINLINE void process_wgm16(
     }
 }
 
-static inline FORCEINLINE void timer16_update_ocrN(
+static FORCEINLINE void timer16_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
     uint32_t addr)
@@ -197,16 +197,34 @@ static inline FORCEINLINE void timer16_update_ocrN(
     timer.ocrNa = word(cpu, addr + 0x8);
     timer.ocrNb = word(cpu, addr + 0xa);
     timer.ocrNc = word(cpu, addr + 0xc);
+
+    uint32_t icrN = word(cpu, addr + 0x6);
+    uint32_t tccrNa = cpu.data[addr + 0x0];
+    uint32_t tccrNb = cpu.data[addr + 0x1];
+    uint32_t wgm = (tccrNa & 0x3) | ((tccrNb >> 1) & 0xc);
+
+    process_wgm16(wgm, timer.top, timer.tov, timer.ocrNa, icrN);
+}
+
+static FORCEINLINE uint32_t timer16_period(
+    atmega32u4_t const& cpu,
+    atmega32u4_t::timer16_t const& timer)
+{
+    uint32_t period = UINT32_MAX;
+    uint32_t timsk = cpu.data[timer.timskN_addr];
+    if(timsk & 0x01) period = std::min(period, timer.tov);
+    if(timsk & 0x02) period = std::min(period, timer.ocrNa);
+    if(timsk & 0x04) period = std::min(period, timer.ocrNb);
+    if(timsk & 0x08) period = std::min(period, timer.ocrNc);
+    return period;
 }
 
 static FORCEINLINE void cycle_timer16(
     atmega32u4_t& cpu,
-    atmega32u4_t::timer16_t& timer,
-    uint32_t addr,
-    uint32_t tifrN_addr,
-    uint32_t powered_down,
-    uint32_t cycles)
+    atmega32u4_t::timer16_t& timer)
 {
+    uint32_t addr = timer.base_addr;
+
     //if(cpu.just_written >= addr && cpu.just_written <= addr + 0x0d)
     if((cpu.just_written >> 4) == (addr >> 4))
     {
@@ -230,21 +248,27 @@ static FORCEINLINE void cycle_timer16(
         timer.phase_correct = (1 << wgm) & 0x0f0e;
         if(!timer.phase_correct)
             timer.count_down = false;
+
+        timer.next_update_cycle = 0;
     }
 
-    if(powered_down) return;
-
+    // clock off?
     if(timer.divider == 0) return;
+
+    // powered down?
+    if(cpu.data[timer.prr_addr] & timer.prr_mask) return;
+
+    uint32_t cycles = cpu.cycle_count - timer.prev_update_cycle;
+    timer.prev_update_cycle = cpu.cycle_count;
+
+    // writing a logic 1 to TOV1 clears it
+    uint8_t& tifrN = cpu.data[timer.tifrN_addr];
+    if(cpu.just_written == timer.tifrN_addr && (tifrN & 0x1))
+        tifrN &= ~0x1;
 
     uint32_t timer_cycles = increase_counter(
         timer.divider_cycle, cycles, timer.divider);
     if(timer_cycles == 0) return;
-
-    uint8_t& tifrN = cpu.data[tifrN_addr];
-
-    // writing a logic 1 to TOV1 clears it
-    if(cpu.just_written == tifrN_addr && (tifrN & 0x1))
-        tifrN &= ~0x1;
 
     uint32_t t = word(cpu, addr + 0x4);
 
@@ -252,7 +276,7 @@ static FORCEINLINE void cycle_timer16(
     uint32_t ocrNb = word(cpu, addr + 0xa);
     uint32_t ocrNc = word(cpu, addr + 0xc);
 
-    for(uint32_t i = 0; i < timer_cycles; ++i)
+    do
     {
         if(t == timer.tov)
             tifrN |= (1 << 0);
@@ -271,6 +295,14 @@ static FORCEINLINE void cycle_timer16(
                     timer16_update_ocrN(cpu, timer, addr);
                 t = 1;
                 timer.count_down = false;
+                uint32_t timsk = cpu.data[timer.timskN_addr];
+                if((timsk & 0xf) == 0)
+                    timer.next_update_cycle = 0;
+                else
+                {
+                    timer.next_update_cycle = cpu.cycle_count - timer_cycles +
+                        (timer16_period(cpu, timer) * 2) * timer.divider;
+                }
             }
             else
                 --t;
@@ -284,31 +316,35 @@ static FORCEINLINE void cycle_timer16(
                 if(timer.phase_correct)
                     timer.count_down = true;
                 else
+                {
                     t = 0;
+                    uint32_t timsk = cpu.data[timer.timskN_addr];
+                    if((timsk & 0xf) == 0)
+                        timer.next_update_cycle = 0;
+                    else
+                    {
+                        timer.next_update_cycle = cpu.cycle_count +
+                            timer16_period(cpu, timer) * timer.divider;
+                    }
+                }
             }
             else
                 ++t;
         }
-    }
+    } while(--timer_cycles != 0);
 
     cpu.data[addr + 0x4 + 0] = uint8_t(t >> 0);
     cpu.data[addr + 0x4 + 1] = uint8_t(t >> 8);
 }
 
-FORCEINLINE void atmega32u4_t::cycle_timer1(uint32_t cycles)
+FORCEINLINE void atmega32u4_t::cycle_timer1()
 {
-    uint32_t prr0 = data[0x64];
-    constexpr uint32_t prtim1 = 1 << 3;
-
-    cycle_timer16(*this, timer1, 0x80, 0x36, prr0 & prtim1, cycles);
+    cycle_timer16(*this, timer1);
 }
 
-FORCEINLINE void atmega32u4_t::cycle_timer3(uint32_t cycles)
+FORCEINLINE void atmega32u4_t::cycle_timer3()
 {
-    uint32_t prr1 = data[0x65];
-    constexpr uint32_t prtim3 = 1 << 3;
-
-    cycle_timer16(*this, timer3, 0x90, 0x38, prr1 & prtim3, cycles);
+    cycle_timer16(*this, timer3);
 }
 
 }

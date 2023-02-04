@@ -325,7 +325,6 @@ void arduboy_t::advance(uint64_t ps)
         cpu.breakpoints_rd.any() ||
         cpu.breakpoints_wr.any();
 
-    // leave a 256-cycle buffer
     while(ps >= PS_BUFFER)
     {
         uint32_t cycles = cycle();

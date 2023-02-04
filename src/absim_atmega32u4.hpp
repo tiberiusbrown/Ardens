@@ -93,16 +93,23 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         prev_sreg = sreg();
         cycles = INSTR_MAP[i.func](*this, i);
     }
+    cycle_count += cycles;
 
     spi_done = false;
     // peripheral updates
     cycle_spi(cycles);
     cycle_pll(cycles);
-    cycle_timer0(cycles);
-    cycle_timer1(cycles);
-    cycle_timer3(cycles);
     cycle_eeprom(cycles);
     cycle_adc(cycles);
+
+    cycle_timer0(cycles);
+    {
+        uint32_t a = just_written >> 4;
+        if(a == (0x80 >> 4) || cycle_count >= timer1.next_update_cycle)
+            cycle_timer1();
+        if(a == (0x90 >> 4) || cycle_count >= timer3.next_update_cycle)
+            cycle_timer3();
+    }
 
     {
         // handle interrupts here
@@ -135,7 +142,6 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         }
     }
 
-    cycle_count += cycles;
     return cycles;
 }
 
