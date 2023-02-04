@@ -42,6 +42,7 @@ void atmega32u4_t::reset()
     spi_busy = false;
     spi_done = false;
     spi_data_byte = 0;
+    spi_clock_cycles = 4;
     spi_clock_cycle = 0;
     spi_bit_progress = 0;
 

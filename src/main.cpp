@@ -101,7 +101,7 @@ static void main_loop()
         }
 
 #if PROFILING
-        dt = 16;
+        dt = 100;
 #endif
         arduboy.advance(dt * 1000000000 / simulation_slowdown);
     }
@@ -144,7 +144,6 @@ static void main_loop()
             std::ifstream f(event.drop.file, std::ios::binary);
             dferr = arduboy.load_file(event.drop.file, f);
             SDL_free(event.drop.file);
-            
         }
     }
 
@@ -244,7 +243,9 @@ static void main_loop()
         ImGui::EndPopup();
     }
 
-    //ImGui::ShowMetricsWindow();
+#if PROFILING
+    ImGui::ShowMetricsWindow();
+#endif
     //ImGui::ShowDemoWindow();
 
     ImGui::Render();

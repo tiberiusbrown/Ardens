@@ -69,7 +69,7 @@ struct atmega32u4_t
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
 
-    uint8_t& gpr(uint8_t n)
+    FORCEINLINE uint8_t& gpr(uint8_t n)
     {
         assert(n < 32);
         return data[n];
@@ -98,17 +98,17 @@ struct atmega32u4_t
         st(n + 32, x);
     }
 
-    uint16_t gpr_word(uint8_t n)
+    FORCEINLINE uint16_t gpr_word(uint8_t n)
     {
         uint16_t lo = gpr(n + 0);
         uint16_t hi = gpr(n + 1);
         return lo | (hi << 8);
     }
 
-    uint16_t w_word() { return gpr_word(24); }
-    uint16_t x_word() { return gpr_word(26); }
-    uint16_t y_word() { return gpr_word(28); }
-    uint16_t z_word() { return gpr_word(30); }
+    FORCEINLINE uint16_t w_word() { return gpr_word(24); }
+    FORCEINLINE uint16_t x_word() { return gpr_word(26); }
+    FORCEINLINE uint16_t y_word() { return gpr_word(28); }
+    FORCEINLINE uint16_t z_word() { return gpr_word(30); }
 
     // false if the cpu is sleeping
     bool active;
@@ -136,12 +136,12 @@ struct atmega32u4_t
     uint8_t& ocr0a()  { return data[0x47]; }
     uint8_t& ocr0b()  { return data[0x48]; }
 
-    uint16_t sp()
+    FORCEINLINE uint16_t sp()
     {
         return (uint16_t)spl() | ((uint16_t)sph() << 8);
     }
 
-    void push(uint8_t x)
+    FORCEINLINE void push(uint8_t x)
     {
         uint16_t tsp = sp();
         st(tsp, x);
@@ -150,7 +150,7 @@ struct atmega32u4_t
         sph() = uint8_t(tsp >> 8);
     }
 
-    uint8_t pop()
+    FORCEINLINE uint8_t pop()
     {
         uint16_t tsp = sp();
         ++tsp;
@@ -220,6 +220,7 @@ struct atmega32u4_t
     bool spi_done;
     uint8_t spi_data_byte;
     uint8_t spi_datain_byte;
+    uint32_t spi_clock_cycles;
     uint32_t spi_clock_cycle;
     uint32_t spi_bit_progress;
     void cycle_spi(uint32_t cycles);

@@ -84,7 +84,7 @@ bool instr_is_two_words(avr_instr_t const& i)
         i.func == INSTR_STS;
 }
 
-static bool next_instr_is_two_words(atmega32u4_t const& cpu)
+static FORCEINLINE bool next_instr_is_two_words(atmega32u4_t const& cpu)
 {
     if(cpu.pc + 1 >= cpu.decoded_prog.size())
         return false;
@@ -106,26 +106,26 @@ uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-static void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
+static FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
     if(x) cpu.sreg() |= mask;
     else cpu.sreg() &= ~mask;
 }
 
-static void set_flag_s(atmega32u4_t& cpu)
+static FORCEINLINE void set_flag_s(atmega32u4_t& cpu)
 {
     uint8_t f = cpu.sreg();
     set_flag(cpu, SREG_S, (f ^ (f >> 1)) & 0x4);
 }
 
-static void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
+static FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
 {
     set_flag(cpu, SREG_H, h);
     set_flag(cpu, SREG_C, c);
     set_flag(cpu, SREG_V, v);
 }
 
-static void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
+static FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
 {
     set_flag(cpu, SREG_N, x & 0x80);
     set_flag(cpu, SREG_Z, x == 0);

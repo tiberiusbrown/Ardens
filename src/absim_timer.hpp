@@ -48,8 +48,6 @@ FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
     }
     if(timer0_divider == 0) return;
 
-    uint32_t wgm = (tccr0a() & 0x3) | ((tccr0b() >> 1) & 0x4);
-
     // writing a logic 1 to TOV0 clears it
     if(just_written == 0x35 && (tifr0() & 0x1))
         tifr0() &= ~0x1;
@@ -63,6 +61,8 @@ FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
     uint32_t timer_cycles = increase_counter(
         timer0_divider_cycle, cycles, timer0_divider);
     if(timer_cycles == 0) return;
+
+    uint32_t wgm = (tccr0a() & 0x3) | ((tccr0b() >> 1) & 0x4);
 
     uint32_t top = 0xff;
     uint32_t tov = 0xff;
@@ -199,7 +199,7 @@ static inline FORCEINLINE void timer16_update_ocrN(
     timer.ocrNc = word(cpu, addr + 0xc);
 }
 
-static inline FORCEINLINE void cycle_timer16(
+static FORCEINLINE void cycle_timer16(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
     uint32_t addr,
@@ -207,9 +207,8 @@ static inline FORCEINLINE void cycle_timer16(
     uint32_t powered_down,
     uint32_t cycles)
 {
-    if(powered_down) return;
-
-    if(cpu.just_written >= addr && cpu.just_written <= addr + 0x0d)
+    //if(cpu.just_written >= addr && cpu.just_written <= addr + 0x0d)
+    if((cpu.just_written >> 4) == (addr >> 4))
     {
         uint32_t cs = cpu.data[addr + 0x1] & 0x7;
         timer.divider = get_divider(cs);
@@ -232,6 +231,8 @@ static inline FORCEINLINE void cycle_timer16(
         if(!timer.phase_correct)
             timer.count_down = false;
     }
+
+    if(powered_down) return;
 
     if(timer.divider == 0) return;
 
@@ -294,7 +295,7 @@ static inline FORCEINLINE void cycle_timer16(
     cpu.data[addr + 0x4 + 1] = uint8_t(t >> 8);
 }
 
-void FORCEINLINE atmega32u4_t::cycle_timer1(uint32_t cycles)
+FORCEINLINE void atmega32u4_t::cycle_timer1(uint32_t cycles)
 {
     uint32_t prr0 = data[0x64];
     constexpr uint32_t prtim1 = 1 << 3;
@@ -302,7 +303,7 @@ void FORCEINLINE atmega32u4_t::cycle_timer1(uint32_t cycles)
     cycle_timer16(*this, timer1, 0x80, 0x36, prr0 & prtim1, cycles);
 }
 
-void FORCEINLINE atmega32u4_t::cycle_timer3(uint32_t cycles)
+FORCEINLINE void atmega32u4_t::cycle_timer3(uint32_t cycles)
 {
     uint32_t prr1 = data[0x65];
     constexpr uint32_t prtim3 = 1 << 3;
