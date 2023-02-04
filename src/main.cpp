@@ -184,9 +184,19 @@ static void main_loop()
     {
         // default docked layout
         using namespace ImGui;
-        ImGuiDockNode* node = DockBuilderGetNode(dockspace_id);
-        ImGuiID col0, col1, col2;
-        // TODO
+        ImGuiID c01, c0, c1, c2, c1r01, c1r0, c1r1, c1r2, c2r0, c2r1;
+        DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.35f, &c2, &c01);
+        DockBuilderSplitNode(c01, ImGuiDir_Right, 0.5f, &c1, &c0);
+        DockBuilderSplitNode(c1, ImGuiDir_Down, 0.5f, &c1r2, &c1r01);
+        DockBuilderSplitNode(c1r01, ImGuiDir_Down, 0.25f, &c1r1, &c1r0);
+        DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
+        DockBuilderDockWindow("CPU Data Space", c0);
+        DockBuilderDockWindow("Display Internals", c0);
+        DockBuilderDockWindow("Display", c1r0);
+        DockBuilderDockWindow("Simulation", c1r1);
+        DockBuilderDockWindow("Profiler", c1r2);
+        DockBuilderDockWindow("Call Stack", c2r0);
+        DockBuilderDockWindow("Disassembly", c2r1);
     }
 
     if(ImGui::BeginMainMenuBar())
@@ -234,7 +244,7 @@ static void main_loop()
         ImGui::EndPopup();
     }
 
-    ImGui::ShowMetricsWindow();
+    //ImGui::ShowMetricsWindow();
     //ImGui::ShowDemoWindow();
 
     ImGui::Render();

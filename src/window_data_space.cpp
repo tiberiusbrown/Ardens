@@ -56,20 +56,20 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
     return r;
 }
 
-static void hover_func(ImU8 const* data, size_t off)
+void hover_data_space(uint16_t addr)
 {
     using namespace ImGui;
-    auto const* sym = arduboy.symbol_for_data_addr((uint16_t)off);
-    if(off < 256)
+    auto const* sym = arduboy.symbol_for_data_addr(addr);
+    BeginTooltip();
+    if(addr < 256)
     {
-        auto const& r = absim::REG_INFO[off];
-        BeginTooltip();
+        auto const& r = absim::REG_INFO[addr];
         if(r.name)
         {
             constexpr auto UNUSED = IM_COL32(50, 50, 50, 255);
             constexpr auto BIT_SET = IM_COL32(30, 30, 100, 255);
-            TextUnformatted(r.name);
-            if(off >= 32)
+            Text("0x%02x: %s", addr, r.name);
+            if(addr >= 32)
             {
                 Separator();
                 Dummy({ 1.f, 4.f });
@@ -85,7 +85,7 @@ static void hover_func(ImU8 const* data, size_t off)
                         if(bit)
                         {
                             uint8_t mask = 0x80 >> i;
-                            if(arduboy.cpu.data[off] & mask)
+                            if(arduboy.cpu.data[addr] & mask)
                                 TableSetBgColor(ImGuiTableBgTarget_CellBg, BIT_SET);
                             TextUnformatted(bit);
                         }
@@ -97,18 +97,26 @@ static void hover_func(ImU8 const* data, size_t off)
             }
         }
         else
-            TextUnformatted("Reserved");
-        EndTooltip();
+            Text("0x%02x: Reserved", addr);
     }
     else if(sym)
     {
-        BeginTooltip();
         if(sym->size > 1)
-            Text("%s [byte %d]", sym->name.c_str(), int(off - sym->addr));
+            Text("0x%04x: %s [byte %d]", addr, sym->name.c_str(), int(addr - sym->addr));
         else
-            TextUnformatted(sym->name.c_str());
-        EndTooltip();
+            Text("0x%04x: %s", addr, sym->name.c_str());
     }
+    else
+    {
+        Text("0x%04x", addr);
+    }
+    EndTooltip();
+}
+
+static void hover_func(ImU8 const* data, size_t off)
+{
+    (void)data;
+    hover_data_space((uint16_t)off);
 }
 
 void window_data_space(bool& open)

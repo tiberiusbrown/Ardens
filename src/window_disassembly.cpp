@@ -11,6 +11,9 @@ extern bool profiler_cycle_counts;
 
 static bool scroll_addr_to_top;
 
+// defined in window_data_space
+void hover_data_space(uint16_t addr);
+
 static absim::disassembled_instr_t const& dis_instr(int row)
 {
     return arduboy.elf ?
@@ -132,9 +135,9 @@ static void prog_addr_tooltip(uint16_t addr)
             Text("%s [%+d]", sym->name.c_str(), addr - sym->addr);
         EndTooltip();
     }
-    BeginTooltip();
-    prog_addr_source_line(addr);
-    EndTooltip();
+    //BeginTooltip();
+    //prog_addr_source_line(addr);
+    //EndTooltip();
 }
 
 static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
@@ -189,26 +192,27 @@ static void disassembly_arg(
         Text("0x%04x", a.val);
         if(IsItemHovered())
         {
-            auto const* sym = arduboy.symbol_for_data_addr(a.val);
-            BeginTooltip();
-            if(sym)
-            {
-                if(sym->size > 1)
-                    Text("%s [byte %d]", sym->name.c_str(), int(a.val - sym->addr));
-                else
-                    TextUnformatted(sym->name.c_str());
-            }
-            else
-            {
-                Text("Data Space: 0x%04x", a.val);
-            }
-            Separator();
-            if(a.val < arduboy.cpu.data.size())
-            {
-                uint8_t x = arduboy.cpu.data[a.val];
-                Text("0x%02x  %d  %d", x, x, (int8_t)x);
-            }
-            EndTooltip();
+            hover_data_space(a.val);
+            //auto const* sym = arduboy.symbol_for_data_addr(a.val);
+            //BeginTooltip();
+            //if(sym)
+            //{
+            //    if(sym->size > 1)
+            //        Text("%s [byte %d]", sym->name.c_str(), int(a.val - sym->addr));
+            //    else
+            //        TextUnformatted(sym->name.c_str());
+            //}
+            //else
+            //{
+            //    Text("Data Space: 0x%04x", a.val);
+            //}
+            //Separator();
+            //if(a.val < arduboy.cpu.data.size())
+            //{
+            //    uint8_t x = arduboy.cpu.data[a.val];
+            //    Text("0x%02x  %d  %d", x, x, (int8_t)x);
+            //}
+            //EndTooltip();
         }
         break;
     }
@@ -277,6 +281,8 @@ static void disassembly_arg(
         PushStyleColor(ImGuiCol_Text, IO_COLOR);
         Text("0x%02x", a.val);
         PopStyleColor();
+        if(IsItemHovered())
+            hover_data_space(a.val);
     }
     default:
         break;
