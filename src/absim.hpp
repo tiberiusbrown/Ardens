@@ -230,7 +230,9 @@ struct atmega32u4_t
 
     // PLL
     uint64_t pll_lock_cycle;
+    bool pll_busy;
     void cycle_pll(uint32_t cycles);
+    static void pll_handle_st_pllcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // SPI
     bool spsr_read_after_transmit;
@@ -251,7 +253,10 @@ struct atmega32u4_t
     uint32_t eeprom_write_addr;
     uint32_t eeprom_write_data;
     uint32_t eeprom_program_cycles;
+    bool eeprom_busy;
     void cycle_eeprom(uint32_t cycles);
+    static void eeprom_handle_st_eecr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+
 
     // ADC
     uint32_t adc_prescaler_cycle;

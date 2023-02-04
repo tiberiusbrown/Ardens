@@ -36,6 +36,8 @@ void atmega32u4_t::reset()
     for(auto& h : ld_handlers) h = nullptr;
     for(auto& h : st_handlers) h = nullptr;
 
+    st_handlers[0x3f] = eeprom_handle_st_eecr;
+    st_handlers[0x49] = pll_handle_st_pllcsr;
     st_handlers[0x4c] = spi_handle_st_spcr_or_spsr;
     st_handlers[0x4d] = spi_handle_st_spcr_or_spsr;
     st_handlers[0x4e] = spi_handle_st_spdr;
