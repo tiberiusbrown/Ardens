@@ -209,7 +209,7 @@ struct atmega32u4_t
         uint32_t divider;
         uint32_t top;
         uint32_t tov;
-        uint32_t tupdate;
+        uint32_t tcnt;
         uint32_t ocrNa;
         uint32_t ocrNb;
         uint32_t ocrNc;
@@ -506,8 +506,8 @@ struct arduboy_t
     // 0.1 means 10x slower
     void advance(uint64_t ps);
 
-    // returns an error string on error or nullptr on success
-    char const* load_file(char const* filename, std::istream& f);
+    // returns an error string on error or empty string on success
+    std::string load_file(char const* filename, std::istream& f);
 };
 
 

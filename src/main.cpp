@@ -62,7 +62,7 @@ static bool open_simulation = true;
 static bool open_call_stack = true;
 
 static uint64_t pt;
-static char const* dropfile_err = nullptr;
+static std::string dropfile_err;
 static bool done = false;
 
 static SDL_Window* window;
@@ -169,7 +169,7 @@ static void main_loop()
 
     SDL_Event event;
 
-    char const* dferr = nullptr;
+    std::string dferr;
     while (SDL_PollEvent(&event))
     {
         ImGui_ImplSDL2_ProcessEvent(&event);
@@ -267,15 +267,18 @@ static void main_loop()
     window_profiler(open_profiler);
     window_data_space(open_data_space);
 
-    if(dferr)
+    if(!dferr.empty())
     {
         dropfile_err = dferr;
         ImGui::OpenPopup("File Load Error");
     }
 
+    ImGui::SetNextWindowSize({ 500, 0 });
     if(ImGui::BeginPopupModal("File Load Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextUnformatted(dropfile_err);
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextUnformatted(dropfile_err.c_str());
+        ImGui::PopTextWrapPos();
         if(ImGui::Button("OK", ImVec2(120, 0)))
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
@@ -353,7 +356,6 @@ int main(int, char**)
     arduboy.reset();
 
     pt = SDL_GetTicks64();
-    dropfile_err = nullptr;
     done = false;
     
 #ifdef __EMSCRIPTEN__

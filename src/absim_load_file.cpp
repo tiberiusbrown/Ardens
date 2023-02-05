@@ -80,7 +80,7 @@ static int get_hex_byte(std::istream& f)
     return lo + hi * 16;
 }
 
-static char const* load_hex(arduboy_t& a, std::istream& f)
+static std::string load_hex(arduboy_t& a, std::istream& f)
 {
     auto& cpu = a.cpu;
     memset(&cpu.prog, 0, sizeof(cpu.prog));
@@ -142,10 +142,10 @@ static char const* load_hex(arduboy_t& a, std::istream& f)
 
     cpu.decode();
 
-    return nullptr;
+    return "";
 }
 
-static char const* load_hex(arduboy_t& a, std::string const& fname)
+static std::string load_hex(arduboy_t& a, std::string const& fname)
 {
     std::ifstream f(fname, std::ios::in);
 
@@ -325,7 +325,7 @@ static void load_elf_debug(
     }
 }
 
-static char const* load_elf(arduboy_t& a, std::istream& f, std::string const& fname)
+static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fname)
 {
     using namespace llvm;
 
@@ -475,7 +475,7 @@ static char const* load_elf(arduboy_t& a, std::istream& f, std::string const& fn
     return nullptr;
 }
 
-static char const* load_elf(arduboy_t& a, std::string const& fname)
+static std::string load_elf(arduboy_t& a, std::string const& fname)
 {
     std::ifstream f(fname, std::ios::binary);
     if(f.fail())
@@ -483,7 +483,7 @@ static char const* load_elf(arduboy_t& a, std::string const& fname)
     return load_elf(a, f, fname);
 }
 
-static char const* load_bin(arduboy_t& a, std::istream& f)
+static std::string load_bin(arduboy_t& a, std::istream& f)
 {
     std::vector<uint8_t> data(
         (std::istreambuf_iterator<char>(f)),
@@ -501,7 +501,7 @@ static char const* load_bin(arduboy_t& a, std::istream& f)
     return nullptr;
 }
 
-static char const* load_bin(arduboy_t& a, std::string const& fname)
+static std::string load_bin(arduboy_t& a, std::string const& fname)
 {
     std::ifstream f(fname, std::ios::binary);
     if(f.fail())
@@ -509,7 +509,27 @@ static char const* load_bin(arduboy_t& a, std::string const& fname)
     return load_bin(a, f);
 }
 
-static char const* load_arduboy(arduboy_t& a, std::istream& f)
+class sax_no_exception : public nlohmann::detail::json_sax_dom_parser<nlohmann::json>
+{
+public:
+    std::string json_parse_error;
+    sax_no_exception(nlohmann::json& j)
+        : nlohmann::detail::json_sax_dom_parser<nlohmann::json>(j, false)
+    {}
+
+    bool parse_error(std::size_t position,
+                     const std::string& last_token,
+                     const nlohmann::json::exception& ex)
+    {
+        char buf[512];
+        snprintf(buf, sizeof(buf), "ARDUBOY: JSON parse error at input byte %d (%s)",
+            (int)position, ex.what());
+        json_parse_error = buf;
+        return false;
+    }
+};
+
+static std::string load_arduboy(arduboy_t& a, std::istream& f)
 {
     std::vector<uint8_t> fdata(
         (std::istreambuf_iterator<char>(f)),
@@ -535,7 +555,10 @@ static char const* load_arduboy(arduboy_t& a, std::istream& f)
         mz_zip_reader_extract_to_mem(z, i, info.data(), info.size(), 0);
     }
 
-    auto j = nlohmann::json::parse(info);
+    nlohmann::json j;
+    sax_no_exception sax(j);
+    if(!nlohmann::json::sax_parse(info, &sax))
+        return sax.json_parse_error;
     if(!j.contains("binaries"))
         return "ARDUBOY: info.json missing 'binaries'";
     auto const& bins = j["binaries"];
@@ -562,8 +585,8 @@ static char const* load_arduboy(arduboy_t& a, std::istream& f)
 
     {
         std::stringstream ss(std::string(data.begin(), data.end()));
-        char const* err = load_hex(a, ss);
-        if(err) return err;
+        std::string err = load_hex(a, ss);
+        if(!err.empty()) return err;
     }
 
     if(bin.contains("flashdata"))
@@ -584,14 +607,14 @@ static char const* load_arduboy(arduboy_t& a, std::istream& f)
         }
 
         std::stringstream ss(std::string(data.begin(), data.end()));
-        char const* err = load_bin(a, ss);
-        if(err) return err;
+        std::string err = load_bin(a, ss);
+        if(!err.empty()) return err;
     }
 
-    return nullptr;
+    return "";
 }
 
-static char const* load_arduboy(arduboy_t& a, std::string const& fname)
+static std::string load_arduboy(arduboy_t& a, std::string const& fname)
 {
     std::ifstream f(fname, std::ios::binary);
     if(f.fail())
@@ -605,7 +628,7 @@ static bool ends_with(std::string const& str, std::string const& end)
     return str.substr(str.size() - end.size()) == end;
 }
 
-char const* arduboy_t::load_file(char const* filename, std::istream& f)
+std::string arduboy_t::load_file(char const* filename, std::istream& f)
 {
     if(f.fail())
         return "Failed to open file";
@@ -635,7 +658,7 @@ char const* arduboy_t::load_file(char const* filename, std::istream& f)
         return load_arduboy(*this, f);
     }
 
-    return nullptr;
+    return "";
 }
 
 }
