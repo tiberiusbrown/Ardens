@@ -111,13 +111,11 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     cycle_adc(cycles);
 
     cycle_timer0(cycles);
-    {
-        uint32_t a = just_written >> 4;
-        if(a == (0x80 >> 4) || cycle_count >= timer1.next_update_cycle)
-            cycle_timer1();
-        if(a == (0x90 >> 4) || cycle_count >= timer3.next_update_cycle)
-            cycle_timer3();
-    }
+
+    if(cycle_count >= timer1.next_update_cycle)
+        update_timer1();
+    if(cycle_count >= timer3.next_update_cycle)
+        update_timer3();
 
     {
         // handle interrupts here
@@ -151,6 +149,12 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     }
 
     return cycles;
+}
+
+void atmega32u4_t::update_all()
+{
+    update_timer1();
+    update_timer3();
 }
 
 }

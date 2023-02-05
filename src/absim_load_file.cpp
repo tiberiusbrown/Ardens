@@ -472,7 +472,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
     elf.dwarf_ctx.swap(dwarf_ctx);
     a.elf.swap(elf_ptr);
 
-    return nullptr;
+    return "";
 }
 
 static std::string load_elf(arduboy_t& a, std::string const& fname)
@@ -498,7 +498,7 @@ static std::string load_bin(arduboy_t& a, std::istream& f)
     if(n != 0)
         memcpy(&a.fx.data[a.fx.data.size() - n], &data[0], n);
 
-    return nullptr;
+    return "";
 }
 
 static std::string load_bin(arduboy_t& a, std::string const& fname)

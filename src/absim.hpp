@@ -223,12 +223,15 @@ struct atmega32u4_t
         bool update_ocrN_at_top;
         bool update_ocrN_at_bottom;
     };
+    static void timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void timer3_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static uint8_t timer1_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
+    static uint8_t timer3_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
+    void update_timer1();
+    void update_timer3();
 
     timer16_t timer1;
     timer16_t timer3;
-
-    void cycle_timer1();
-    void cycle_timer3();
 
     // PLL
     uint64_t pll_lock_cycle;
@@ -284,6 +287,9 @@ struct atmega32u4_t
 
     // execute at least one cycle (return how many cycles were executed)
     uint32_t advance_cycle();
+
+    // update delayed peripheral states
+    void update_all();
 };
 
 struct ssd1306_t
