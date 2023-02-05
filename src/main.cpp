@@ -3,10 +3,23 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_sdlrenderer.h"
 #include <stdio.h>
+#include <time.h>
 #include <SDL.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#endif
+
+#if !defined(__EMSCRIPTEN__)
+#define ALLOW_SCREENSHOTS 1
+#define ALLOW_SCREENSHOTS 1
+#else
+#define ALLOW_SCREENSHOTS 1
+#endif
+
+#if ALLOW_SCREENSHOTS
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #endif
 
 #include <cmath>
@@ -17,7 +30,7 @@
 #include "absim.hpp"
 #include "absim_instructions.hpp"
 
-#define PROFILING 1
+#define PROFILING 0
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
@@ -70,6 +83,28 @@ static void main_loop()
     
 #ifdef __EMSCRIPTEN__
     if(done) emscripten_cancel_main_loop();
+#endif
+
+#if ALLOW_SCREENSHOTS
+    if(ImGui::IsKeyPressed(ImGuiKey_F12, false))
+    {
+        int w = 0, h = 0;
+        Uint32 format = SDL_PIXELFORMAT_RGB24;
+        SDL_GetWindowSizeInPixels(window, &w, &h);
+        SDL_Surface* ss = SDL_CreateRGBSurfaceWithFormat(0, w, h, 24, format);
+        SDL_RenderReadPixels(renderer, NULL, format, ss->pixels, ss->pitch);
+        char fname[256];
+        time_t rawtime;
+        struct tm* ti;
+        time(&rawtime);
+        ti = localtime(&rawtime);
+        (void)snprintf(fname, sizeof(fname),
+            "screenshot_%04d%02d%02d%02d%02d%02d.png",
+            ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+            ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+        stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
+        SDL_FreeSurface(ss);
+    }
 #endif
 
     // advance simulation

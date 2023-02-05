@@ -120,6 +120,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim_spi.hpp
     src/absim_eeprom.hpp
     
+    src/stb_image_write.h
     ${IMGUI_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
