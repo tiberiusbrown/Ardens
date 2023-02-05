@@ -464,30 +464,6 @@ static char const* load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         }
     }
 
-    // create intermixed asm with source/symbols
-    {
-        auto& v = elf.asm_with_source;
-        for(uint16_t i = 0; i < cpu.num_instrs; ++i)
-        {
-            uint16_t addr = cpu.disassembled_prog[i].addr;
-            disassembled_instr_t instr;
-            instr.addr = addr;
-            auto its = elf.text_symbols.find(addr);
-            if(its != elf.text_symbols.end())
-            {
-                instr.type = disassembled_instr_t::SYMBOL;
-                v.push_back(instr);
-            }
-            auto it = elf.source_lines.find(addr);
-            if(it != elf.source_lines.end())
-            {
-                instr.type = disassembled_instr_t::SOURCE;
-                v.push_back(instr);
-            }
-            v.push_back(cpu.disassembled_prog[i]);
-        }
-    }
-
     // load debug info
     auto dwarf_ctx = DWARFContext::create(*obj);
     load_elf_debug(a, elf, obj, dwarf_ctx.get());

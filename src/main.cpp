@@ -138,7 +138,10 @@ static void main_loop()
 #if PROFILING
         dt = 100;
 #endif
+        bool prev_paused = arduboy.paused;
         arduboy.advance(dt * 1000000000 / simulation_slowdown);
+        if(arduboy.paused && !prev_paused)
+            disassembly_scroll_addr = arduboy.cpu.pc * 2;
     }
 
     // update framebuffer texture

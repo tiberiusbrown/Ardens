@@ -395,7 +395,8 @@ void window_disassembly(bool& open)
             ImGuiListClipper clipper;
             clipper.Begin(arduboy.elf ?
                 (int)arduboy.elf->asm_with_source.size() :
-                (int)arduboy.cpu.num_instrs);
+                (int)arduboy.cpu.num_instrs,
+                GetTextLineHeightWithSpacing());
             while(clipper.Step())
             {
                 for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
