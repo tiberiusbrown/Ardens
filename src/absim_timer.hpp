@@ -355,7 +355,7 @@ static void update_timer16(
             update_tcycles *= 2;
     }
 
-    if(update_tcycles > timer.top) __debugbreak();
+    assert(update_tcycles <= timer.top);
 
     uint64_t update_cycles = (uint64_t)update_tcycles * timer.divider - timer.divider_cycle;
 
