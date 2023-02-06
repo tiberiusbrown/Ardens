@@ -332,7 +332,12 @@ int main(int, char**)
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Setup window
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_WindowFlags window_flags = (SDL_WindowFlags)(
+        SDL_WINDOW_RESIZABLE |
+#ifdef _WIN32
+        SDL_WINDOW_ALLOW_HIGHDPI |
+#endif
+        0);
     window = SDL_CreateWindow("arduboy_sim", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
@@ -351,6 +356,7 @@ int main(int, char**)
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
+#ifdef _WIN32
     {
         float ratio = 0.f;
         SDL_GetDisplayDPI(0, nullptr, &ratio, nullptr);
@@ -361,6 +367,7 @@ int main(int, char**)
             io.FontGlobalScale = std::round(ratio);
         }
     }
+#endif
 
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer_Init(renderer);
