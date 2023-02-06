@@ -13,6 +13,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#include <emscripten/html5.h>
 #endif
 
 #if !defined(__EMSCRIPTEN__)
@@ -40,6 +41,8 @@
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
 #endif
+
+extern unsigned char const ProggyVector[198188];
 
 static SDL_Texture* framebuffer_texture;
 absim::arduboy_t arduboy;
@@ -73,6 +76,52 @@ static bool done = false;
 static SDL_Window* window;
 static SDL_Renderer* renderer;
 
+static float pixel_ratio = 1.f;
+static ImGuiStyle default_style;
+
+static void define_font()
+{
+    ImGuiIO& io = ImGui::GetIO();
+    ImFontConfig cfg;
+    cfg.FontDataOwnedByAtlas = false;
+    cfg.RasterizerMultiply = 1.5f;
+    io.Fonts->Clear();
+    io.Fonts->AddFontFromMemoryTTF(
+        (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
+#ifdef __EMSCRIPTEN__
+    //io.FontGlobalScale = 1.f / pixel_ratio;
+#endif
+}
+
+static bool update_pixel_ratio()
+{
+    float ratio = 1.f;
+#ifdef _WIN32
+    SDL_GetDisplayDPI(0, nullptr, &ratio, nullptr);
+    ratio *= 1.f / 96;
+#endif
+#ifdef __EMSCRIPTEN__
+    ratio = (float)emscripten_get_device_pixel_ratio();
+#endif
+    bool changed = (ratio != pixel_ratio);
+    pixel_ratio = ratio;
+    return changed;
+}
+
+static void rebuild_fonts()
+{
+    ImGui_ImplSDLRenderer_DestroyFontsTexture();
+    define_font();
+    ImGui_ImplSDLRenderer_CreateFontsTexture();
+}
+
+static void rescale_style()
+{
+    auto& style = ImGui::GetStyle();
+    style = default_style;
+    style.ScaleAllSizes(pixel_ratio);
+}
+
 extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
@@ -83,9 +132,9 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 
 static void main_loop()
 {
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
     ImGuiIO& io = ImGui::GetIO();
-    
+
 #ifdef __EMSCRIPTEN__
     if(done) emscripten_cancel_main_loop();
 #endif
@@ -128,12 +177,12 @@ static void main_loop()
 
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
-            if(ImGui::IsKeyDown(ImGuiKey_DownArrow )) pinf &= ~0x10;
-            if(ImGui::IsKeyDown(ImGuiKey_LeftArrow )) pinf &= ~0x20;
+            if(ImGui::IsKeyDown(ImGuiKey_DownArrow)) pinf &= ~0x10;
+            if(ImGui::IsKeyDown(ImGuiKey_LeftArrow)) pinf &= ~0x20;
             if(ImGui::IsKeyDown(ImGuiKey_RightArrow)) pinf &= ~0x40;
-            if(ImGui::IsKeyDown(ImGuiKey_UpArrow   )) pinf &= ~0x80;
-            if(ImGui::IsKeyDown(ImGuiKey_A         )) pine &= ~0x40;
-            if(ImGui::IsKeyDown(ImGuiKey_B         )) pinb &= ~0x10;
+            if(ImGui::IsKeyDown(ImGuiKey_UpArrow)) pinf &= ~0x80;
+            if(ImGui::IsKeyDown(ImGuiKey_A)) pine &= ~0x40;
+            if(ImGui::IsKeyDown(ImGuiKey_B)) pinb &= ~0x10;
 
             arduboy.cpu.data[0x23] = pinb;
             arduboy.cpu.data[0x2c] = pine;
@@ -156,7 +205,7 @@ static void main_loop()
         arduboy.display.filter_pixels();
 
         SDL_LockTexture(framebuffer_texture, nullptr, &pixels, &pitch);
-        
+
         uint8_t* bpixels = (uint8_t*)pixels;
         for(int i = 0; i < 64; ++i)
         {
@@ -175,13 +224,16 @@ static void main_loop()
     SDL_Event event;
 
     std::string dferr;
-    while (SDL_PollEvent(&event))
+    while(SDL_PollEvent(&event))
     {
         ImGui_ImplSDL2_ProcessEvent(&event);
-        if (event.type == SDL_QUIT)
+        if(event.type == SDL_QUIT)
             done = true;
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-            done = true;
+        if(event.type == SDL_WINDOWEVENT && event.window.windowID == SDL_GetWindowID(window))
+        {
+            if(event.window.event == SDL_WINDOWEVENT_CLOSE)
+                done = true;
+        }
         if(event.type == SDL_DROPFILE)
         {
             std::ifstream f(event.drop.file, std::ios::binary);
@@ -190,8 +242,25 @@ static void main_loop()
         }
     }
 
+    if(update_pixel_ratio())
+    {
+        rescale_style();
+        rebuild_fonts();
+    }
+
     ImGui_ImplSDLRenderer_NewFrame();
+#ifdef __EMSCRIPTEN__
+    {
+        double w, h;
+        emscripten_get_element_css_size("canvas", &w, &h);
+        io.DisplaySize = {
+            (float)(w * pixel_ratio),
+            (float)(h * pixel_ratio) };
+        ImGui::GetIO().DisplayFramebufferScale = { pixel_ratio, pixel_ratio };
+    }
+#endif
     ImGui_ImplSDL2_NewFrame();
+
     ImGui::NewFrame();
 
     const bool enableDocking = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable;
@@ -334,7 +403,7 @@ int main(int, char**)
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__EMSCRIPTEN__)
         SDL_WINDOW_ALLOW_HIGHDPI |
 #endif
         0);
@@ -356,21 +425,15 @@ int main(int, char**)
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     }
 
-#ifdef _WIN32
-    {
-        float ratio = 0.f;
-        SDL_GetDisplayDPI(0, nullptr, &ratio, nullptr);
-        ratio *= 1.f / 96;
-        if(ratio > 1.f)
-        {
-            style.ScaleAllSizes(ratio);
-            io.FontGlobalScale = std::round(ratio);
-        }
-    }
-#endif
+    default_style = style;
+
+    update_pixel_ratio();
+    rescale_style();
 
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer_Init(renderer);
+
+    define_font();
 
     framebuffer_texture = SDL_CreateTexture(
         renderer,

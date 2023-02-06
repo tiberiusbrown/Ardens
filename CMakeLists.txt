@@ -90,6 +90,8 @@ add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
     src/main.cpp
+    src/font.cpp
+
     src/window_disassembly.cpp
     src/window_profiler.cpp
     src/window_display.cpp

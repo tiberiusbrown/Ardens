@@ -139,6 +139,9 @@ void ImGui_ImplSDLRenderer_RenderDrawData(ImDrawData* draw_data)
 	// Will project scissor/clipping rectangles into framebuffer space
 	ImVec2 clip_off = draw_data->DisplayPos;         // (0,0) unless using multi-viewports
 	ImVec2 clip_scale = render_scale;
+#ifdef __EMSCRIPTEN__
+    clip_scale = { 1.f, 1.f };
+#endif
 
     // Render command lists
     ImGui_ImplSDLRenderer_SetupRenderState();
