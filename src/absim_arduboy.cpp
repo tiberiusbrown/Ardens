@@ -310,6 +310,7 @@ void arduboy_t::advance_instr()
         advance(CYCLE_PS);
         paused = true;
     } while(++n < 65536 && cpu.pc == oldpc);
+    cpu.update_all();
 }
 
 void arduboy_t::advance(uint64_t ps)
@@ -341,6 +342,8 @@ void arduboy_t::advance(uint64_t ps)
         }
 
     }
+
+    cpu.update_all();
 
     // track remainder
     ps_rem = ps;
