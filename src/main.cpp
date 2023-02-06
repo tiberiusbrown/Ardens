@@ -6,6 +6,11 @@
 #include <time.h>
 #include <SDL.h>
 
+#ifdef _WIN32
+#include <ShellScalingApi.h>
+#pragma comment(lib, "shcore.lib")
+#endif
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -306,6 +311,10 @@ static void main_loop()
 
 int main(int, char**)
 {
+#ifdef _WIN32
+    SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+#endif
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
@@ -340,6 +349,17 @@ int main(int, char**)
     {
         style.WindowRounding = 0.0f;
         style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
+
+    {
+        float ratio = 0.f;
+        SDL_GetDisplayDPI(0, nullptr, &ratio, nullptr);
+        ratio *= 1.f / 96;
+        if(ratio > 1.f)
+        {
+            style.ScaleAllSizes(ratio);
+            io.FontGlobalScale = std::round(ratio);
+        }
     }
 
     ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
