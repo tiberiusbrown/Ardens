@@ -253,7 +253,7 @@ void arduboy_t::profiler_build_hotspots()
     );
 }
 
-FORCEINLINE uint32_t arduboy_t::cycle()
+ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
 {
     assert(cpu.decoded);
 
@@ -325,6 +325,8 @@ void arduboy_t::advance(uint64_t ps)
         cpu.breakpoints.any() ||
         cpu.breakpoints_rd.any() ||
         cpu.breakpoints_wr.any();
+
+    cpu.no_merged = profiler_enabled || any_breakpoints;
 
     while(ps >= PS_BUFFER)
     {

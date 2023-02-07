@@ -16,11 +16,12 @@
 #include "absim_instructions.hpp"
 
 #if defined(_MSC_VER)
-#define FORCEINLINE __forceinline
+#define ABSIM_FORCEINLINE __forceinline
+//#define ABSIM_FORCEINLINE
 #elif defined(__GNUC__) || defined(__clang__) 
-#define FORCEINLINE __attribute__((always_inline))
+#define ABSIM_FORCEINLINE __attribute__((always_inline))
 #else
-#define FORCEINLINE
+#define ABSIM_FORCEINLINE
 #endif
 
 namespace llvm
@@ -56,10 +57,10 @@ struct avr_instr_t
     uint8_t dst;
     uint8_t func;
 
-    // merged instructions for increased speed
-    uint8_t mfunc;
+    // extra data for merged instructions
     uint8_t m0;
     uint8_t m1;
+    uint8_t m2;
 };
 
 struct atmega32u4_t
@@ -69,7 +70,7 @@ struct atmega32u4_t
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
 
-    FORCEINLINE uint8_t& gpr(uint8_t n)
+    ABSIM_FORCEINLINE uint8_t& gpr(uint8_t n)
     {
         assert(n < 32);
         return data[n];
@@ -83,14 +84,14 @@ struct atmega32u4_t
     std::array<ld_handler_t, 256> ld_handlers;
     std::array<st_handler_t, 256> st_handlers;
 
-    FORCEINLINE uint8_t ld(uint16_t ptr)
+    ABSIM_FORCEINLINE uint8_t ld(uint16_t ptr)
     {
         just_read = ptr;
         if(ptr < ld_handlers.size() && ld_handlers[ptr])
             return ld_handlers[ptr](*this, ptr);
         return ptr < data.size() ? data[ptr] : 0x00;
     }
-    FORCEINLINE void st(uint16_t ptr, uint8_t x)
+    ABSIM_FORCEINLINE void st(uint16_t ptr, uint8_t x)
     {
         just_written = ptr;
         if(ptr < st_handlers.size() && st_handlers[ptr])
@@ -98,26 +99,26 @@ struct atmega32u4_t
         if(ptr < data.size()) data[ptr] = x;
     }
 
-    FORCEINLINE uint8_t ld_ior(uint8_t n)
+    ABSIM_FORCEINLINE uint8_t ld_ior(uint8_t n)
     {
         return ld(n + 32);
     }
-    FORCEINLINE void st_ior(uint8_t n, uint8_t x)
+    ABSIM_FORCEINLINE void st_ior(uint8_t n, uint8_t x)
     {
         st(n + 32, x);
     }
 
-    FORCEINLINE uint16_t gpr_word(uint8_t n)
+    ABSIM_FORCEINLINE uint16_t gpr_word(uint8_t n)
     {
         uint16_t lo = gpr(n + 0);
         uint16_t hi = gpr(n + 1);
         return lo | (hi << 8);
     }
 
-    FORCEINLINE uint16_t w_word() { return gpr_word(24); }
-    FORCEINLINE uint16_t x_word() { return gpr_word(26); }
-    FORCEINLINE uint16_t y_word() { return gpr_word(28); }
-    FORCEINLINE uint16_t z_word() { return gpr_word(30); }
+    ABSIM_FORCEINLINE uint16_t w_word() { return gpr_word(24); }
+    ABSIM_FORCEINLINE uint16_t x_word() { return gpr_word(26); }
+    ABSIM_FORCEINLINE uint16_t y_word() { return gpr_word(28); }
+    ABSIM_FORCEINLINE uint16_t z_word() { return gpr_word(30); }
 
     // false if the cpu is sleeping
     bool active;
@@ -145,12 +146,12 @@ struct atmega32u4_t
     uint8_t& ocr0a()  { return data[0x47]; }
     uint8_t& ocr0b()  { return data[0x48]; }
 
-    FORCEINLINE uint16_t sp()
+    ABSIM_FORCEINLINE uint16_t sp()
     {
         return (uint16_t)spl() | ((uint16_t)sph() << 8);
     }
 
-    FORCEINLINE void push(uint8_t x)
+    ABSIM_FORCEINLINE void push(uint8_t x)
     {
         uint16_t tsp = sp();
         st(tsp, x);
@@ -159,7 +160,7 @@ struct atmega32u4_t
         sph() = uint8_t(tsp >> 8);
     }
 
-    FORCEINLINE uint8_t pop()
+    ABSIM_FORCEINLINE uint8_t pop()
     {
         uint16_t tsp = sp();
         ++tsp;
@@ -179,12 +180,17 @@ struct atmega32u4_t
 
     uint16_t executing_instr_pc;
 
+    static constexpr int MAX_INSTR_CYCLES = 32;
+
     uint16_t last_addr;
     uint16_t num_instrs;
+    bool no_merged;
     std::array<avr_instr_t, PROG_SIZE_BYTES / 2> decoded_prog;
+    std::array<avr_instr_t, PROG_SIZE_BYTES / 2> merged_prog; // decoded and merged instrs
     std::array<disassembled_instr_t, PROG_SIZE_BYTES / 2> disassembled_prog;
     bool decoded;
     void decode();
+    void merge_instrs();
     size_t addr_to_disassembled_index(uint16_t addr);
 
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -538,7 +544,7 @@ constexpr uint8_t SREG_C = 1 << 0;
 
 constexpr uint8_t SREG_HSVNZC = 0x3f;
 
-static FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
+static ABSIM_FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
 {
     uint32_t n = 0;
     uint32_t c = counter;

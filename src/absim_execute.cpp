@@ -2,77 +2,86 @@
 
 #include "absim_instructions.hpp"
 
+// TODO: clean up remaining flags logic
+
 namespace absim
 {
 
 instr_func_t const INSTR_MAP[] =
 {
-    instr_nop     ,
-    instr_rcall   ,
-    instr_call    ,
-    instr_icall   ,
-    instr_ret     ,
-    instr_reti    ,
-    instr_movw    ,
-    instr_mov     ,
-    instr_and     ,
-    instr_or      ,
-    instr_eor     ,
-    instr_add     ,
-    instr_adc     ,
-    instr_sub     ,
-    instr_sbc     ,
-    instr_cpi     ,
-    instr_cp      ,
-    instr_cpc     ,
-    instr_out     ,
-    instr_in      ,
-    instr_ldi     ,
-    instr_lpm     ,
-    instr_brbs    ,
-    instr_brbc    ,
-    instr_lds     ,
-    instr_sts     ,
-    instr_ldd_std ,
-    instr_ld_st   ,
-    instr_push_pop,
-    instr_cpse    ,
-    instr_subi    ,
-    instr_sbci    ,
-    instr_ori     ,
-    instr_andi    ,
-    instr_adiw    ,
-    instr_sbiw    ,
-    instr_bset    ,
-    instr_bclr    ,
-    instr_sbi     ,
-    instr_cbi     ,
-    instr_sbis    ,
-    instr_sbic    ,
-    instr_sbrs    ,
-    instr_sbrc    ,
-    instr_bld     ,
-    instr_bst     ,
-    instr_com     ,
-    instr_neg     ,
-    instr_swap    ,
-    instr_inc     ,
-    instr_dec     ,
-    instr_asr     ,
-    instr_lsr     ,
-    instr_ror     ,
-    instr_sleep   ,
-    instr_mul     ,
-    instr_muls    ,
-    instr_mulsu   ,
-    instr_fmul    ,
-    instr_fmuls   ,
-    instr_fmulsu  ,
-    instr_nop     ,
-    instr_rjmp    ,
-    instr_jmp     ,
-    instr_ijmp    ,
-    instr_wdr     ,
+    instr_nop,
+    instr_rcall,
+    instr_call,
+    instr_icall,
+    instr_ret,
+    instr_reti,
+    instr_movw,
+    instr_mov,
+    instr_and,
+    instr_or,
+    instr_eor,
+    instr_add,
+    instr_adc,
+    instr_sub,
+    instr_sbc,
+    instr_cpi,
+    instr_cp,
+    instr_cpc,
+    instr_out,
+    instr_in,
+    instr_ldi,
+    instr_lpm,
+    instr_brbs,
+    instr_brbc,
+    instr_lds,
+    instr_sts,
+    instr_ldd_std,
+    instr_ld_st,
+    instr_push,
+    instr_pop,
+    instr_cpse,
+    instr_subi,
+    instr_sbci,
+    instr_ori,
+    instr_andi,
+    instr_adiw,
+    instr_sbiw,
+    instr_bset,
+    instr_bclr,
+    instr_sbi,
+    instr_cbi,
+    instr_sbis,
+    instr_sbic,
+    instr_sbrs,
+    instr_sbrc,
+    instr_bld,
+    instr_bst,
+    instr_com,
+    instr_neg,
+    instr_swap,
+    instr_inc,
+    instr_dec,
+    instr_asr,
+    instr_lsr,
+    instr_ror,
+    instr_sleep,
+    instr_mul,
+    instr_muls,
+    instr_mulsu,
+    instr_fmul,
+    instr_fmuls,
+    instr_fmulsu,
+    instr_nop,
+    instr_rjmp,
+    instr_jmp,
+    instr_ijmp,
+    instr_wdr,
+
+    // merged instrs
+    instr_merged_push_n,
+    instr_merged_pop_n,
+    instr_merged_ldi_n,
+    instr_merged_dec_brne,
 };
 
 bool instr_is_two_words(avr_instr_t const& i)
@@ -84,7 +93,7 @@ bool instr_is_two_words(avr_instr_t const& i)
         i.func == INSTR_STS;
 }
 
-static FORCEINLINE bool next_instr_is_two_words(atmega32u4_t const& cpu)
+static ABSIM_FORCEINLINE bool next_instr_is_two_words(atmega32u4_t const& cpu)
 {
     if(cpu.pc + 1 >= cpu.decoded_prog.size())
         return false;
@@ -106,30 +115,42 @@ uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-static FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
+static ABSIM_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
     if(x) cpu.sreg() |= mask;
     else cpu.sreg() &= ~mask;
 }
 
-static FORCEINLINE void set_flag_s(atmega32u4_t& cpu)
+static ABSIM_FORCEINLINE uint8_t flag_s(uint8_t sreg)
 {
-    uint8_t f = cpu.sreg();
-    set_flag(cpu, SREG_S, (f ^ (f >> 1)) & 0x4);
+    sreg |= (((sreg ^ (sreg >> 1)) & 0x4) << 2);
+    return sreg;
 }
 
-static FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
+static ABSIM_FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
 {
-    set_flag(cpu, SREG_H, h);
-    set_flag(cpu, SREG_C, c);
-    set_flag(cpu, SREG_V, v);
+    uint8_t sreg = cpu.sreg() & ~(SREG_H | SREG_C | SREG_V);
+
+    if(h) sreg |= SREG_H;
+    if(c) sreg |= SREG_C;
+    if(v) sreg |= SREG_V;
+
+    cpu.sreg() = sreg;
 }
 
-static FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
+static ABSIM_FORCEINLINE uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 {
-    set_flag(cpu, SREG_N, x & 0x80);
-    set_flag(cpu, SREG_Z, x == 0);
-    set_flag_s(cpu);
+    sreg |= ((x & 0x80) >> 5); // N
+    if(x == 0) sreg |= SREG_Z; // Z
+    sreg = flag_s(sreg);      // S
+    return sreg;
+}
+
+static ABSIM_FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint32_t x)
+{
+    uint8_t sreg = cpu.sreg() & ~(SREG_N | SREG_Z | SREG_S);
+    sreg = flags_nzs(sreg, x);
+    cpu.sreg() = sreg;
 }
 
 uint32_t instr_rjmp(atmega32u4_t& cpu, avr_instr_t const& i)
@@ -212,36 +233,44 @@ uint32_t instr_mov(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_and(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.gpr(i.dst) &= cpu.gpr(i.src);
-    cpu.sreg() &= ~SREG_V;
-    set_flags_nzs(cpu, cpu.gpr(i.dst));
+    uint32_t dst = cpu.gpr(i.dst);
+    uint32_t res = dst & cpu.gpr(i.src);
+    cpu.gpr(i.dst) = res;
+    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = sreg;
+    //cpu.sreg() &= ~SREG_V;
+    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_or(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.gpr(i.dst) |= cpu.gpr(i.src);
-    cpu.sreg() &= ~SREG_V;
-    set_flags_nzs(cpu, cpu.gpr(i.dst));
+    uint32_t dst = cpu.gpr(i.dst);
+    uint32_t res = dst | cpu.gpr(i.src);
+    cpu.gpr(i.dst) = res;
+    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = sreg;
+    //cpu.sreg() &= ~SREG_V;
+    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.gpr(i.dst) ^= cpu.gpr(i.src);
-    cpu.sreg() &= ~SREG_V;
-    set_flags_nzs(cpu, cpu.gpr(i.dst));
+    uint32_t dst = cpu.gpr(i.dst);
+    uint32_t res = dst ^ cpu.gpr(i.src);
+    cpu.gpr(i.dst) = res;
+    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = sreg;
+    //cpu.sreg() &= ~SREG_V;
+    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
-}
-
-static FORCEINLINE void flag_nzs(uint32_t& sreg, uint32_t res)
-{
-    if(res == 0)   sreg |= SREG_Z;
-    if(res & 0x80) sreg |= SREG_N;
-    sreg |= ((sreg << 1) ^ (sreg << 2)) & SREG_S;
 }
 
 uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t const& i)
@@ -257,7 +286,7 @@ uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t const& i)
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
-    flag_nzs(sreg, res);
+    sreg = flags_nzs(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 1;
@@ -278,14 +307,14 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t const& i)
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
-    flag_nzs(sreg, res);
+    sreg = flags_nzs(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 1;
     return 1;
 }
 
-static FORCEINLINE void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst, unsigned src)
+static ABSIM_FORCEINLINE void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst, unsigned src)
 {
     unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
     unsigned v = (dst & ~src & ~res) | (~dst & src & res);
@@ -293,11 +322,11 @@ static FORCEINLINE void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst,
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
-    flag_nzs(sreg, res);
+    sreg = flags_nzs(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 }
 
-static FORCEINLINE void sub_imm(atmega32u4_t& cpu, unsigned rdst, unsigned imm, unsigned c)
+static ABSIM_FORCEINLINE void sub_imm(atmega32u4_t& cpu, unsigned rdst, unsigned imm, unsigned c)
 {
     unsigned dst = cpu.gpr(rdst);
     unsigned src = imm;
@@ -355,7 +384,7 @@ uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t const& i)
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     res |= z;
-    flag_nzs(sreg, res);
+    sreg = flags_nzs(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 1;
@@ -495,12 +524,16 @@ uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_push_pop(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_push(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    if(!i.word)
-        cpu.gpr(i.src) = cpu.pop();
-    else
-        cpu.push(cpu.gpr(i.src));
+    cpu.push(cpu.gpr(i.src));
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_pop(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    cpu.gpr(i.src) = cpu.pop();
     cpu.pc += 1;
     return 2;
 }
@@ -546,7 +579,7 @@ uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t const& i)
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     res |= z;
-    flag_nzs(sreg, res);
+    sreg = flags_nzs(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 1;
@@ -555,18 +588,28 @@ uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_ori(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.gpr(i.dst) |= i.src;
-    cpu.sreg() &= ~SREG_V;
-    set_flags_nzs(cpu, cpu.gpr(i.dst));
+    uint32_t dst = cpu.gpr(i.dst);
+    uint32_t res = dst | i.src;
+    cpu.gpr(i.dst) = res;
+    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = sreg;
+    //cpu.sreg() &= ~SREG_V;
+    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
 
 uint32_t instr_andi(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    cpu.gpr(i.dst) &= i.src;
-    cpu.sreg() &= ~SREG_V;
-    set_flags_nzs(cpu, cpu.gpr(i.dst));
+    uint32_t dst = cpu.gpr(i.dst);
+    uint32_t res = dst & i.src;
+    cpu.gpr(i.dst) = res;
+    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = sreg;
+    //cpu.sreg() &= ~SREG_V;
+    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
@@ -578,11 +621,23 @@ uint32_t instr_adiw(atmega32u4_t& cpu, avr_instr_t const& i)
     uint16_t res = dst + src;
     cpu.gpr(i.dst + 0) = uint8_t(res >> 0);
     cpu.gpr(i.dst + 1) = uint8_t(res >> 8);
-    set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_V, ~dst & res & 0x8000);
-    set_flag(cpu, SREG_C, ~res & dst & 0x8000);
-    set_flag(cpu, SREG_N, res & 0x8000);
-    set_flag_s(cpu);
+
+    uint8_t sreg = cpu.sreg() & ~(SREG_Z | SREG_V | SREG_C | SREG_N | SREG_S);
+
+    if(res == 0) sreg |= SREG_Z;         // Z
+    sreg |= (~dst & res & 0x8000) >> 12; // V
+    sreg |= (~res & dst & 0x8000) >> 15; // C
+    sreg |= (res & 0x8000) >> 13;        // N
+    sreg = flag_s(sreg);                 // S
+
+    cpu.sreg() = sreg;
+
+    //set_flag(cpu, SREG_Z, res == 0);
+    //set_flag(cpu, SREG_V, ~dst & res & 0x8000);
+    //set_flag(cpu, SREG_C, ~res & dst & 0x8000);
+    //set_flag(cpu, SREG_N, res & 0x8000);
+    //set_flag_s(cpu);
+
     cpu.pc += 1;
     return 2;
 }
@@ -594,15 +649,26 @@ uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t const& i)
     uint16_t res = dst - src;
     cpu.gpr(i.dst + 0) = uint8_t(res >> 0);
     cpu.gpr(i.dst + 1) = uint8_t(res >> 8);
-    set_flag(cpu, SREG_Z, res == 0);
 
     // in the AVR instruction set manual (seemingly a typo):
     //set_flag(cpu, SREG_V, res & ~dst & 0x8000);
 
-    set_flag(cpu, SREG_V, dst & ~res & 0x8000);
-    set_flag(cpu, SREG_C, res & ~dst & 0x8000);
-    set_flag(cpu, SREG_N, res & 0x8000);
-    set_flag_s(cpu);
+    uint8_t sreg = cpu.sreg() & ~(SREG_Z | SREG_V | SREG_C | SREG_N | SREG_S);
+
+    if(res == 0) sreg |= SREG_Z;         // Z
+    sreg |= (dst & ~res & 0x8000) >> 12; // V
+    sreg |= (res & ~dst & 0x8000) >> 15; // C
+    sreg |= (res & 0x8000) >> 13;        // N
+    sreg = flag_s(sreg);                 // S
+
+    cpu.sreg() = sreg;
+
+    //set_flag(cpu, SREG_Z, res == 0);
+    //set_flag(cpu, SREG_V, dst & ~res & 0x8000);
+    //set_flag(cpu, SREG_C, res & ~dst & 0x8000);
+    //set_flag(cpu, SREG_N, res & 0x8000);
+    //set_flag_s(cpu);
+
     cpu.pc += 1;
     return 2;
 }
@@ -735,10 +801,12 @@ uint32_t instr_neg(atmega32u4_t& cpu, avr_instr_t const& i)
     uint8_t src = cpu.gpr(i.dst);
     uint8_t res = uint8_t(-src);
     cpu.gpr(i.dst) = res;
+
     set_flag(cpu, SREG_H, (res | ~src) & 0x8);
     set_flag(cpu, SREG_V, res == 0x80);
     set_flag(cpu, SREG_C, res != 0x00);
     set_flags_nzs(cpu, res);
+    
     cpu.pc += 1;
     return 1;
 }

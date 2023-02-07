@@ -21,7 +21,7 @@ void atmega32u4_t::st_handle_prr0(
     cpu.adc_handle_prr0(x);
 }
 
-FORCEINLINE void atmega32u4_t::check_interrupt(
+ABSIM_FORCEINLINE void atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
     if(!flag) return;
@@ -54,7 +54,7 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
     return (size_t)index;
 }
 
-FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
+ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 {
     uint32_t cycles = 1;
     just_read = 0xffff;
@@ -80,35 +80,63 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         cycles = 1;
     }
 
-    bool periphs_busy;
+    bool single_instr_only;
+    uint32_t max_merged_cycles;
     {
-        uint64_t cycle32 = cycle_count + 32;
-        periphs_busy = (
+        uint64_t t = timer0.next_update_cycle - cycle_count;
+        t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
+        t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
+
+        max_merged_cycles = std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
+
+        single_instr_only = (
             spi_busy ||
             eeprom_busy ||
             pll_busy ||
             adc_busy ||
-            cycle32 >= timer0.next_update_cycle ||
-            cycle32 >= timer1.next_update_cycle ||
-            cycle32 >= timer3.next_update_cycle);
+            t < MAX_INSTR_CYCLES ||
+            no_merged);
     }
     
     if(active)
     {
-        // not sleeping: execute instruction
-        if(pc >= decoded_prog.size())
-            return cycles;
-        auto const& i = decoded_prog[pc];
-        if(i.func == INSTR_UNKNOWN)
-            return cycles;
+        // not sleeping: execute instruction(s)
         executing_instr_pc = pc;
-        prev_sreg = sreg();
-        cycles = INSTR_MAP[i.func](*this, i);
+        if(single_instr_only)
+        {
+            if(pc >= decoded_prog.size())
+                return cycles;
+            auto const& i = decoded_prog[pc];
+            if(i.func == INSTR_UNKNOWN)
+                return cycles;
+            prev_sreg = sreg();
+            cycles = INSTR_MAP[i.func](*this, i);
+        }
+        else
+        {
+            cycles = 0;
+            do
+            {
+                if(pc >= decoded_prog.size())
+                    return cycles + 1;
+                auto const& i = merged_prog[pc];
+                if(i.func == INSTR_UNKNOWN)
+                    return cycles + 1;
+                prev_sreg = sreg();
+                cycles += INSTR_MAP[i.func](*this, i);
+                if(just_written < 0x100 || just_read < 0x100)
+                {
+                    // need to check peripherals below
+                    single_instr_only = true;
+                    break;
+                }
+            } while(cycles <= max_merged_cycles);
+        }
     }
     cycle_count += cycles;
 
     spi_done = false;
-    if(periphs_busy)
+    if(single_instr_only)
     {
         // peripheral updates
         cycle_spi(cycles);

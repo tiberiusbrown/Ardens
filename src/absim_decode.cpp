@@ -181,8 +181,16 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         {
             i.src = reg;
             i.dst = n;
+            uint16_t t = w0 & 0x0200;
             i.word = w0 & 0x0200;
-            i.func = (n == 0xf ? INSTR_PUSH_POP : INSTR_LD_ST);
+            if(n == 0xf)
+            {
+                i.func = t ? INSTR_PUSH : INSTR_POP;
+            }
+            else
+            {
+                i.func = INSTR_LD_ST;
+            }
             return;
         }
     }
@@ -337,6 +345,8 @@ void atmega32u4_t::decode()
         ++num_instrs;
         addr += instr_is_two_words(i) ? 4 : 2;
     }
+
+    merge_instrs();
 
     decoded = true;
 }

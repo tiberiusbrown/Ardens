@@ -73,7 +73,7 @@ uint8_t atmega32u4_t::spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr)
 }
 
 
-FORCEINLINE void atmega32u4_t::cycle_spi(uint32_t cycles)
+ABSIM_FORCEINLINE void atmega32u4_t::cycle_spi(uint32_t cycles)
 {
     if(!spi_busy)
         return;

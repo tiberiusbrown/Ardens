@@ -29,7 +29,7 @@ void atmega32u4_t::pll_handle_st_pllcsr(
 }
 
 
-void FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
+void ABSIM_FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
 {
     if(!pll_busy)
         return;
@@ -43,7 +43,10 @@ void FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
     constexpr uint64_t LOCK_CYCLES = 16000000 * 3 / 1000;
 
     if((pll_lock_cycle += cycles) >= LOCK_CYCLES)
+    {
         csr |= PLOCK;
+        pll_busy = false;
+    }
 }
 
 }

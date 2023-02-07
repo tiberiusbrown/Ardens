@@ -73,7 +73,7 @@ void atmega32u4_t::eeprom_handle_st_eecr(
 }
 
 
-void FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
+void ABSIM_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
 {
     if(!eeprom_busy)
         return;
@@ -92,6 +92,8 @@ void FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
         {
             eeprom_clear_eempe_cycles = 0;
             eecr &= ~EEMPE;
+            if(eeprom_program_cycles == 0)
+                eeprom_busy = false;
         }
         else
             eeprom_clear_eempe_cycles -= cycles;
@@ -106,6 +108,7 @@ void FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
             eeprom_program_cycles = 0;
             eecr &= ~EEPE;
             eeprom[eeprom_write_addr] = eeprom_write_data;
+            eeprom_busy = false;
         }
         else
             eeprom_program_cycles -= cycles;

@@ -23,19 +23,22 @@ void w25q128_t::reset()
 	current_addr = 0;
 }
 
-FORCEINLINE void w25q128_t::set_enabled(bool e)
+ABSIM_FORCEINLINE void w25q128_t::set_enabled(bool e)
 {
-	enabled = e;
-	if(!e)
+	if(enabled != e)
 	{
-		reading_status = false;
-		reading = false;
-		programming = false;
-		processing_command = false;
+	    enabled = e;
+        if(!e)
+        {
+            reading_status = false;
+            reading = false;
+            programming = false;
+            processing_command = false;
+        }
 	}
 }
 
-FORCEINLINE void w25q128_t::advance(uint64_t ps)
+ABSIM_FORCEINLINE void w25q128_t::advance(uint64_t ps)
 {
 	if(ps >= busy_ps_rem)
 		busy_ps_rem = 0;
@@ -43,7 +46,7 @@ FORCEINLINE void w25q128_t::advance(uint64_t ps)
 		busy_ps_rem -= ps;
 }
 
-FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
+ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 {
 	if(!enabled) return 0;
 

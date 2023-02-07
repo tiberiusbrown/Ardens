@@ -94,8 +94,10 @@ static char const* get_instr_name(avr_instr_t const& i)
             return (i.word & 0x200) ? "std" : "ldd";
         case INSTR_LD_ST   :
             return i.word ? "st" : "ld";
-        case INSTR_PUSH_POP:
-            return i.word ? "push" : "pop";
+        case INSTR_PUSH:
+            return "push";
+        case INSTR_POP:
+            return "pop";
         case INSTR_WDR:
             return "wdr";
         default: return nullptr;
@@ -162,7 +164,8 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
         d.arg0.type = disassembled_instr_arg_t::type::REG;
         d.arg0.val = i.dst;
         break;
-    case INSTR_PUSH_POP:
+    case INSTR_PUSH:
+    case INSTR_POP:
         d.arg0.type = disassembled_instr_arg_t::type::REG;
         d.arg0.val = i.src;
         break;
