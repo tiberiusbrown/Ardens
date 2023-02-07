@@ -30,9 +30,6 @@ void atmega32u4_t::reset()
 
     prev_sreg = 0;
 
-    timer0_divider_cycle = 0;
-    timer0_divider = 0;
-
     for(auto& h : ld_handlers) h = nullptr;
     for(auto& h : st_handlers) h = nullptr;
 
@@ -44,17 +41,21 @@ void atmega32u4_t::reset()
     st_handlers[0x64] = st_handle_prr0;
     st_handlers[0x7a] = adc_st_handle_adcsra;
 
+    for(int i = 0x44; i <= 0x48; ++i)
+        st_handlers[i] = timer0_handle_st_regs;
     for(int i = 0x80; i <= 0x8d; ++i)
         st_handlers[i] = timer1_handle_st_regs;
     for(int i = 0x90; i <= 0x9d; ++i)
         st_handlers[i] = timer3_handle_st_regs;
 
     ld_handlers[0x4d] = spi_handle_ld_spsr;
+    ld_handlers[0x46] = timer0_handle_ld_tcnt;
     ld_handlers[0x84] = timer1_handle_ld_tcnt;
     ld_handlers[0x85] = timer1_handle_ld_tcnt;
     ld_handlers[0x94] = timer3_handle_ld_tcnt;
     ld_handlers[0x95] = timer3_handle_ld_tcnt;
 
+    memset(&timer0, 0, sizeof(timer0));
     memset(&timer1, 0, sizeof(timer1));
     memset(&timer3, 0, sizeof(timer3));
 
@@ -69,6 +70,7 @@ void atmega32u4_t::reset()
     timer1.prr_mask = 1 << 3;
     timer3.prr_mask = 1 << 3;
 
+    timer0.next_update_cycle = UINT64_MAX;
     timer1.next_update_cycle = UINT64_MAX;
     timer3.next_update_cycle = UINT64_MAX;
 
@@ -93,8 +95,6 @@ void atmega32u4_t::reset()
     adc_result = 0;
 
     cycle_count = 0;
-
-    update_sleep_min_cycles();
 }
 
 }

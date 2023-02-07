@@ -187,18 +187,28 @@ struct atmega32u4_t
     void decode();
     size_t addr_to_disassembled_index(uint16_t addr);
 
-    uint32_t sleep_min_cycles;
-    void update_sleep_min_cycles();
-
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // timer0
-    uint64_t timer0_prev_update_cycle;
-    uint64_t timer0_next_update_cycle;
-    uint32_t timer0_divider_cycle;
-    uint32_t timer0_divider;
-    bool timer0_count_down;
-    void cycle_timer0(uint32_t cycles);
+    struct timer8_t
+    {
+        uint64_t prev_update_cycle;
+        uint64_t next_update_cycle;
+        uint32_t divider_cycle;
+        uint32_t divider;
+        uint32_t top;
+        uint32_t tov;
+        uint32_t tcnt;
+        uint32_t ocrNa;
+        uint32_t ocrNb;
+        bool phase_correct;
+        bool count_down;
+        bool update_ocrN_at_top;
+    };
+    timer8_t timer0;
+    static void timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static uint8_t timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
+    void update_timer0();
 
     // timer 1 or 3
     struct timer16_t

@@ -13,16 +13,6 @@
 namespace absim
 {
 
-void atmega32u4_t::update_sleep_min_cycles()
-{
-    // TODO: incorporate ADC conversion / EEPROM program cycles
-    uint32_t d = 1024;
-    if(timer0_divider != 0) d = std::min(d, timer0_divider);
-    if(timer1.divider != 0) d = std::min(d, timer1.divider);
-    if(timer3.divider != 0) d = std::min(d, timer3.divider);
-    sleep_min_cycles = d;
-}
-
 void atmega32u4_t::st_handle_prr0(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
@@ -85,8 +75,22 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     {
         // sleeping and not waking up from an interrupt
 
-        // boost executed cycles to speed up timer code
-        cycles = sleep_min_cycles;
+        // TODO: boost executed cycles to speed up timer code
+        //cycles = sleep_min_cycles;
+        cycles = 1;
+    }
+
+    bool periphs_busy;
+    {
+        uint64_t cycle32 = cycle_count + 32;
+        periphs_busy = (
+            spi_busy ||
+            eeprom_busy ||
+            pll_busy ||
+            adc_busy ||
+            cycle32 >= timer0.next_update_cycle ||
+            cycle32 >= timer1.next_update_cycle ||
+            cycle32 >= timer3.next_update_cycle);
     }
     
     if(active)
@@ -104,20 +108,21 @@ FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     cycle_count += cycles;
 
     spi_done = false;
-    // peripheral updates
-    cycle_spi(cycles);
-    cycle_pll(cycles);
-    cycle_eeprom(cycles);
-    cycle_adc(cycles);
-
-    cycle_timer0(cycles);
-
-    if(cycle_count >= timer1.next_update_cycle)
-        update_timer1();
-    if(cycle_count >= timer3.next_update_cycle)
-        update_timer3();
-
+    if(periphs_busy)
     {
+        // peripheral updates
+        cycle_spi(cycles);
+        cycle_pll(cycles);
+        cycle_eeprom(cycles);
+        cycle_adc(cycles);
+
+        if(cycle_count >= timer0.next_update_cycle)
+            update_timer0();
+        if(cycle_count >= timer1.next_update_cycle)
+            update_timer1();
+        if(cycle_count >= timer3.next_update_cycle)
+            update_timer3();
+
         // handle interrupts here
         uint8_t i;
 

@@ -1,5 +1,3 @@
-#pragma once
-
 extern unsigned char const ProggyVector[198188];
 
 // array size is 198188

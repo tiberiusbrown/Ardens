@@ -20,38 +20,18 @@ static FORCEINLINE uint32_t get_divider(uint32_t cs)
     return DIVIDERS[cs];
 }
 
-FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
+static FORCEINLINE uint32_t min_nonzero(uint32_t a, uint32_t top, int32_t b)
 {
-    if(just_written == 0x45)
-    {
-        uint32_t cs = data[0x45] & 0x7;
-        timer0_divider = get_divider(cs);
-        update_sleep_min_cycles();
-        if(cs == 0) return;
-    }
-    if(timer0_divider == 0) return;
+    if(b <= 0) return std::min(a, top);
+    return std::min(a, (uint32_t)b);
+}
 
-    // writing a logic 1 to TOV0 clears it
-    if(just_written == 0x35 && (tifr0() & 0x1))
-        tifr0() &= ~0x1;
-
-    // timer0 is powered down
-    uint32_t prr0 = data[0x64];
-    constexpr uint32_t prtim0 = 1 << 5;
-    if(prr0 & prtim0)
-        return;
-
-    uint32_t timer_cycles = increase_counter(
-        timer0_divider_cycle, cycles, timer0_divider);
-    if(timer_cycles == 0) return;
-
-    uint32_t wgm = (tccr0a() & 0x3) | ((tccr0b() >> 1) & 0x4);
-
-    uint32_t top = 0xff;
-    uint32_t tov = 0xff;
-
-    // skip compare output modes since they are not connected to Arduboy pins
-
+static FORCEINLINE void process_wgm8(
+    uint32_t wgm, uint32_t& top, uint32_t& tov, uint32_t ocr)
+{
+    top = 0xff;
+    tov = 0xff;
+    
     switch(wgm)
     {
     case 0x0: // normal
@@ -60,50 +40,166 @@ FORCEINLINE void atmega32u4_t::cycle_timer0(uint32_t cycles)
         tov = 0x00;
         break;
     case 0x2: // CTC
-        top = ocr0a();
+        top = ocr;
         break;
     case 0x3: // fast PWM
         break;
     case 0x5: // PWM, phase correct
         tov = 0x00;
-        top = ocr0a();
+        top = ocr;
         break;
     case 0x7: // fast PWM
-        top = ocr0a();
+        top = ocr;
         break;
     default:
         break;
     }
+}
 
-    if((wgm & 0x3) != 1)
-        timer0_count_down = false;
+static FORCEINLINE void timer8_update_ocrN(
+    atmega32u4_t& cpu,
+    atmega32u4_t::timer8_t& timer)
+{
+    timer.ocrNa = cpu.data[0x47];
+    timer.ocrNb = cpu.data[0x48];
 
-    uint8_t& t = tcnt0();
+    uint32_t tccr0a = cpu.data[0x44];
+    uint32_t tccr0b = cpu.data[0x45];
+    uint32_t wgm = (tccr0a & 0x3) | ((tccr0b >> 1) & 0x4);
+    process_wgm8(wgm, timer.top, timer.tov, timer.ocrNa);
+}
 
-    for(uint32_t i = 0; i < timer_cycles; ++i)
+static FORCEINLINE void update_timer8_state(
+    atmega32u4_t& cpu,
+    atmega32u4_t::timer8_t& timer,
+    uint64_t cycles)
+{
+    // find out how many timer cycles happened after prescaler
+    uint32_t timer_cycles = increase_counter(timer.divider_cycle, cycles, timer.divider);
+
+    auto tcnt = timer.tcnt;
+    bool count_down = timer.count_down;
+    bool phase_correct = timer.phase_correct;
+    auto ocrNa = timer.ocrNa;
+    auto ocrNb = timer.ocrNb;
+    auto tov = timer.tov;
+    auto top = timer.top;
+    uint8_t tifr = cpu.data[0x35] & 0x7;
+
+    while(timer_cycles > 0)
     {
-        if(t == tov)
-            tifr0() |= (1 << 0);
-        if(t == ocr0a())
-            tifr0() |= (1 << 1);
-        if(t == ocr0b())
-            tifr0() |= (1 << 2);
-
-        if(t == top)
+        if(count_down)
         {
-            if((wgm & 0x3) == 1)
-            {
-                timer0_count_down = !timer0_count_down;
-                t = timer0_count_down ? t - 1 : t + 1;
-            }
-            else
-                t = 0;
+            uint32_t stop = 0;
+            if(ocrNa < tcnt) stop = std::max(stop, ocrNa);
+            if(ocrNb < tcnt) stop = std::max(stop, ocrNb);
+            uint32_t t = tcnt - stop;
+            t = std::min(t, timer_cycles);
+            timer_cycles -= t;
+            tcnt -= t;
+            if(tcnt == 0) tifr |= 0x1, count_down = false;
+        }
+        else if(tcnt > top)
+        {
+            uint32_t t = 16;
+            t = std::min(t, timer_cycles);
+            timer_cycles -= t;
+            tcnt += t;
+            tcnt &= 0xff;
+            if(tcnt < 0x100) tifr |= 0x1;
         }
         else
         {
-            t = timer0_count_down ? t - 1 : t + 1;
+            uint32_t stop = top + 1;
+            if(ocrNa > tcnt) stop = std::min(stop, ocrNa);
+            if(ocrNb > tcnt) stop = std::min(stop, ocrNb);
+            uint32_t t = stop - tcnt;
+            t = std::min(t, timer_cycles);
+            timer_cycles -= t;
+            tcnt += t;
+            if(tcnt == top + 1)
+                tifr |= 0x1, tcnt = 0;
         }
+        if(tcnt == ocrNa) tifr |= 0x2;
+        if(tcnt == ocrNb) tifr |= 0x4;
     }
+
+    timer.tcnt = tcnt;
+    timer.count_down = count_down;
+    cpu.data[0x35] |= tifr;
+    cpu.data[0x46] = uint8_t(tcnt);
+}
+
+void atmega32u4_t::update_timer0()
+{
+    // first compute what happened to tcnt/tifr during the cycles
+    if(!(timer0.divider == 0 || (data[0x64] & (1 << 5))))
+    {
+        // timer clock is running and timer is not powered down...
+        uint64_t cycles = cycle_count - timer0.prev_update_cycle;
+        update_timer8_state(*this, timer0, cycles);
+    }
+    timer0.prev_update_cycle = cycle_count;
+
+    // now set up timer state for next update
+
+    uint32_t cs = data[0x45] & 0x7;
+    timer0.divider = get_divider(cs);
+
+    if(timer0.divider == 0 || (data[0x64] & (1 << 5)))
+    {
+        timer0.next_update_cycle = UINT64_MAX;
+        return;
+    }
+
+    uint32_t tccr0a = data[0x44];
+    uint32_t tccr0b = data[0x45];
+    uint32_t wgm = (tccr0a & 0x3) | ((tccr0b >> 1) & 0x4);
+
+    uint32_t wgm_mask = 1 << wgm;
+    if(wgm_mask & 0x5) // update ocrN immediately
+        timer8_update_ocrN(*this, timer0);
+    timer0.update_ocrN_at_top = ((wgm_mask & 0xaa) != 0);
+
+    if(timer0.update_ocrN_at_top && timer0.tcnt == timer0.top)
+        timer8_update_ocrN(*this, timer0);
+
+    process_wgm8(wgm, timer0.top, timer0.tov, timer0.ocrNa);
+    timer0.phase_correct = (wgm_mask & 0x22) != 0;
+    if(!timer0.phase_correct)
+        timer0.count_down = false;
+
+    // compute next update cycle
+
+    uint32_t update_tcycles = UINT32_MAX;
+    if(timer0.count_down)
+    {
+        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tcnt);
+        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tcnt - timer0.ocrNa);
+        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tcnt - timer0.ocrNb);
+    }
+    else
+    {
+        if(timer0.phase_correct)
+            update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.top - timer0.tcnt);
+        else
+            update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tov - timer0.tcnt);
+        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNa - timer0.tcnt);
+        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNb - timer0.tcnt);
+    }
+    if(update_tcycles == UINT32_MAX)
+    {
+        // all ocrN's and tov are the same. set to period
+        update_tcycles = timer0.top;
+        if(timer0.phase_correct)
+            update_tcycles *= 2;
+    }
+
+    assert(update_tcycles <= timer0.top);
+
+    uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.divider_cycle;
+
+    timer0.next_update_cycle = cycle_count + update_cycles;
 }
 
 static FORCEINLINE void process_wgm16(
@@ -177,9 +273,9 @@ static FORCEINLINE void timer16_update_ocrN(
     atmega32u4_t::timer16_t& timer,
     uint32_t addr)
 {
-    timer.ocrNa = std::max<uint32_t>(3, word(cpu, addr + 0x8));
-    timer.ocrNb = std::max<uint32_t>(3, word(cpu, addr + 0xa));
-    timer.ocrNc = std::max<uint32_t>(3, word(cpu, addr + 0xc));
+    timer.ocrNa = word(cpu, addr + 0x8);
+    timer.ocrNb = word(cpu, addr + 0xa);
+    timer.ocrNc = word(cpu, addr + 0xc);
 
     uint32_t icrN = word(cpu, addr + 0x6);
     uint32_t tccrNa = cpu.data[addr + 0x0];
@@ -219,13 +315,6 @@ static FORCEINLINE void update_timer16_state(
     auto tov = timer.tov;
     auto top = timer.top;
     uint8_t tifr = cpu.data[timer.tifrN_addr] & 0xf;
-
-    auto minstop = std::min(
-        std::min(ocrNa, tov),
-        std::min(ocrNb, ocrNc));
-    auto maxstop = std::max(
-        std::max(ocrNa, tov),
-        std::max(ocrNb, ocrNc));
 
     while(timer_cycles > 0)
     {
@@ -275,12 +364,6 @@ static FORCEINLINE void update_timer16_state(
     cpu.data[timer.base_addr + 0x5] = uint8_t(tcnt >> 8);
 }
 
-static FORCEINLINE uint32_t min_nonzero(uint32_t a, uint32_t top, int32_t b)
-{
-    if(b <= 0) return std::min(a, top);
-    return std::min(a, (uint32_t)b);
-}
-
 static void update_timer16(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer)
@@ -323,7 +406,7 @@ static void update_timer16(
         timer16_update_ocrN(cpu, timer, addr);
 
     process_wgm16(wgm, timer.top, timer.tov, timer.ocrNa, icrN);
-    timer.phase_correct = (1 << wgm) & 0x0f0e;
+    timer.phase_correct = (wgm_mask & 0x0f0e) != 0;
     if(!timer.phase_correct)
         timer.count_down = false;
 
@@ -360,6 +443,18 @@ static void update_timer16(
     uint64_t update_cycles = (uint64_t)update_tcycles * timer.divider - timer.divider_cycle;
 
     timer.next_update_cycle = cpu.cycle_count + update_cycles;
+}
+
+void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    cpu.data[ptr] = x;
+    cpu.update_timer0();
+}
+
+uint8_t atmega32u4_t::timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
+{
+    cpu.update_timer0();
+    return cpu.data[ptr];
 }
 
 FORCEINLINE void atmega32u4_t::update_timer1()
