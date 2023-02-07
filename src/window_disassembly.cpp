@@ -386,7 +386,7 @@ void window_disassembly(bool& open)
         {
             TableSetupColumn("Address",
                 ImGuiTableColumnFlags_WidthFixed,
-                65.f);
+                CalcTextSize("   0x0000").x);
             TableSetupColumn("Instruction",
                 ImGuiTableColumnFlags_WidthStretch);
             TableSetupColumn("Profiling",
