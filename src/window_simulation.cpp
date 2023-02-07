@@ -6,8 +6,14 @@ extern absim::arduboy_t arduboy;
 extern int disassembly_scroll_addr;
 extern int simulation_slowdown;
 
-static int slider_val;
-static int const SLIDERS[] = { 1, 10, 100, 1000, 10000, 100000, 1000000 };
+static int slider_val = 9;
+static int const SLIDERS[] = {
+    1000000, 500000, 200000,
+    100000, 50000, 20000,
+    10000, 5000, 2000,
+    1000,
+    500, 200,
+};
 
 void window_simulation(bool& open)
 {
@@ -17,10 +23,15 @@ void window_simulation(bool& open)
     SetNextWindowSize({ 200, 100 }, ImGuiCond_FirstUseEver);
     if(Begin("Simulation", &open) && arduboy.cpu.decoded)
     {
-        SliderInt("Slowdown:", &slider_val, 0, sizeof(SLIDERS) / sizeof(int) - 1, "");
+        SliderInt("Speed:", &slider_val, 0, sizeof(SLIDERS) / sizeof(int) - 1, "");
         simulation_slowdown = SLIDERS[slider_val];
         SameLine();
-        Text("%dx", simulation_slowdown);
+        if(simulation_slowdown == 1000)
+            TextUnformatted("Normal");
+        else if(simulation_slowdown < 1000)
+            Text("%dx faster", 1000 / simulation_slowdown);
+        else
+            Text("%dx slower", simulation_slowdown / 1000);
         if(Button("Reset"))
         {
             arduboy.paused = false;

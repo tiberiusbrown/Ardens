@@ -69,6 +69,11 @@
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#endif
+
 // SDL
 // (the multi-viewports feature requires SDL features supported from SDL 2.0.4+. SDL 2.0.5+ is highly recommended)
 #include <SDL.h>
@@ -283,8 +288,9 @@ bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event)
                 mouse_pos.y += window_y;
             }
 #ifdef __EMSCRIPTEN__
-            mouse_pos.x *= io.DisplayFramebufferScale.x;
-            mouse_pos.y *= io.DisplayFramebufferScale.y;
+            float ratio = (float)emscripten_get_device_pixel_ratio();
+            mouse_pos.x *= ratio;
+            mouse_pos.y *= ratio;
 #endif
             io.AddMousePosEvent(mouse_pos.x, mouse_pos.y);
             return true;
@@ -675,6 +681,15 @@ void ImGui_ImplSDL2_NewFrame()
     ImGuiIO& io = ImGui::GetIO();
 
     // Setup display size (every frame to accommodate for window resizing)
+#ifdef __EMSCRIPTEN__
+    {
+        double w, h;
+        emscripten_get_element_css_size("canvas", &w, &h);
+        double pixel_ratio = emscripten_get_device_pixel_ratio();
+        io.DisplaySize = ImVec2((float)(int)(w * pixel_ratio + 0.5f), (float)(int)(h * pixel_ratio + 0.5f));
+        io.DisplayFramebufferScale = ImVec2(1.f, 1.f);
+    }
+#else
     int w, h;
     int display_w, display_h;
     SDL_GetWindowSize(bd->Window, &w, &h);
@@ -684,7 +699,6 @@ void ImGui_ImplSDL2_NewFrame()
         SDL_GetRendererOutputSize(bd->Renderer, &display_w, &display_h);
     else
         SDL_GL_GetDrawableSize(bd->Window, &display_w, &display_h);
-#ifndef __EMSCRIPTEN__
     io.DisplaySize = ImVec2((float)w, (float)h);
     if (w > 0 && h > 0)
         io.DisplayFramebufferScale = ImVec2((float)display_w / w, (float)display_h / h);

@@ -18,7 +18,6 @@
 
 #if !defined(__EMSCRIPTEN__)
 #define ALLOW_SCREENSHOTS 1
-#define ALLOW_SCREENSHOTS 1
 #else
 #define ALLOW_SCREENSHOTS 1
 #endif
@@ -190,10 +189,10 @@ static void main_loop()
         }
 
 #if PROFILING
-        dt = 100;
+        dt = 200;
 #endif
         bool prev_paused = arduboy.paused;
-        arduboy.advance(dt * 1000000000 / simulation_slowdown);
+        arduboy.advance(dt * 1000000000000ull / simulation_slowdown);
         if(arduboy.paused && !prev_paused)
             disassembly_scroll_addr = arduboy.cpu.pc * 2;
     }
@@ -249,16 +248,6 @@ static void main_loop()
     }
 
     ImGui_ImplSDLRenderer_NewFrame();
-#ifdef __EMSCRIPTEN__
-    {
-        double w, h;
-        emscripten_get_element_css_size("canvas", &w, &h);
-        io.DisplaySize = {
-            (float)(w * pixel_ratio),
-            (float)(h * pixel_ratio) };
-        ImGui::GetIO().DisplayFramebufferScale = { pixel_ratio, pixel_ratio };
-    }
-#endif
     ImGui_ImplSDL2_NewFrame();
 
     ImGui::NewFrame();
