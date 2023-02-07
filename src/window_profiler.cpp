@@ -94,7 +94,7 @@ void window_profiler(bool& open)
     if(!open) return;
     
     SetNextWindowSize({ 150, 300 }, ImGuiCond_FirstUseEver);
-    if(Begin("Profiler") && arduboy.cpu.decoded)
+    if(Begin("Profiler", &open) && arduboy.cpu.decoded)
     {
         if(arduboy.profiler_enabled)
         {

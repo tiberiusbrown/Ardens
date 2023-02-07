@@ -59,6 +59,8 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     uint32_t cycles = 1;
     just_read = 0xffff;
     just_written = 0xffff;
+    bool single_instr_only;
+    uint32_t max_merged_cycles;
     if(!active && wakeup_cycles > 0)
     {
         // sleeping but waking up from an interrupt
@@ -75,14 +77,24 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     {
         // sleeping and not waking up from an interrupt
 
-        // TODO: boost executed cycles to speed up timer code
-        //cycles = sleep_min_cycles;
-        cycles = 1;
+        // boost executed cycles to speed up timer code
+        if(spi_busy || eeprom_busy || pll_busy || adc_busy)
+            cycles = 1;
+        else
+        {
+            uint64_t t = timer0.next_update_cycle - cycle_count;
+            t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
+            t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
+            t = std::min<uint64_t>(t, 1024);
+            if(t > 1) --t;
+            cycles = (uint32_t)t;
+        }
+        single_instr_only = true;
     }
-
-    bool single_instr_only;
-    uint32_t max_merged_cycles;
+    else
     {
+        // not sleeping: execute instruction(s)
+
         uint64_t t = timer0.next_update_cycle - cycle_count;
         t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
         t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
@@ -96,11 +108,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             adc_busy ||
             t < MAX_INSTR_CYCLES ||
             no_merged);
-    }
-    
-    if(active)
-    {
-        // not sleeping: execute instruction(s)
+
         executing_instr_pc = pc;
         if(single_instr_only)
         {
