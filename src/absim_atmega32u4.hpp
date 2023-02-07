@@ -61,37 +61,8 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     just_written = 0xffff;
     bool single_instr_only;
     uint32_t max_merged_cycles;
-    if(!active && wakeup_cycles > 0)
-    {
-        // sleeping but waking up from an interrupt
 
-        // set this here so we don't steal profiler cycle from
-        // instruction that was running when interrupt hit
-        if(wakeup_cycles == 4)
-            executing_instr_pc = pc;
-
-        if(--wakeup_cycles == 0)
-            active = true;
-    }
-    else if(!active)
-    {
-        // sleeping and not waking up from an interrupt
-
-        // boost executed cycles to speed up timer code
-        if(spi_busy || eeprom_busy || pll_busy || adc_busy)
-            cycles = 1;
-        else
-        {
-            uint64_t t = timer0.next_update_cycle - cycle_count;
-            t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
-            t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
-            t = std::min<uint64_t>(t, 1024);
-            if(t > 1) --t;
-            cycles = (uint32_t)t;
-        }
-        single_instr_only = true;
-    }
-    else
+    if(active)
     {
         // not sleeping: execute instruction(s)
 
@@ -141,6 +112,37 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             } while(cycles <= max_merged_cycles);
         }
     }
+    else if(wakeup_cycles > 0)
+    {
+        // sleeping but waking up from an interrupt
+
+        // set this here so we don't steal profiler cycle from
+        // instruction that was running when interrupt hit
+        if(wakeup_cycles == 4)
+            executing_instr_pc = pc;
+
+        if(--wakeup_cycles == 0)
+            active = true;
+    }
+    else
+    {
+        // sleeping and not waking up from an interrupt
+
+        // boost executed cycles to speed up timer code
+        if(spi_busy || eeprom_busy || pll_busy || adc_busy)
+            cycles = 1;
+        else
+        {
+            uint64_t t = timer0.next_update_cycle - cycle_count;
+            t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
+            t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
+            t = std::min<uint64_t>(t, 1024);
+            if(t > 1) --t;
+            cycles = (uint32_t)t;
+        }
+        single_instr_only = true;
+    }
+
     cycle_count += cycles;
 
     spi_done = false;
