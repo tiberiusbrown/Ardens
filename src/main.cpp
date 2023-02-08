@@ -35,7 +35,7 @@
 #include "absim.hpp"
 #include "absim_instructions.hpp"
 
-#define PROFILING 1
+#define PROFILING 0
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
@@ -50,7 +50,7 @@ int profiler_selected_hotspot = -1;
 int disassembly_scroll_addr = -1;
 bool profiler_cycle_counts = false;
 
-int simulation_slowdown = 1;
+int simulation_slowdown = 1000;
 
 void window_disassembly(bool& open);
 void window_profiler(bool& open);
