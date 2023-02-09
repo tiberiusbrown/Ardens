@@ -294,12 +294,12 @@ static void main_loop()
         DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
         DockBuilderDockWindow("CPU Data Space", c0);
         DockBuilderDockWindow("Display Internals", c0);
+        DockBuilderDockWindow("Symbols", c0);
         DockBuilderDockWindow("Display", c1r0);
         DockBuilderDockWindow("Simulation", c1r1);
         DockBuilderDockWindow("Profiler", c1r2);
         DockBuilderDockWindow("Call Stack", c2r0);
         DockBuilderDockWindow("Disassembly", c2r1);
-        open_symbols = false;
     }
 
     if(ImGui::BeginMainMenuBar())
