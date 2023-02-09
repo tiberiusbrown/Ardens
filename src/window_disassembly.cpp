@@ -8,8 +8,7 @@ extern absim::arduboy_t arduboy;
 extern int profiler_selected_hotspot;
 extern int disassembly_scroll_addr;
 extern bool profiler_cycle_counts;
-
-static bool scroll_addr_to_top;
+extern bool scroll_addr_to_top;
 
 // defined in window_data_space
 void hover_data_space(uint16_t addr);
@@ -189,7 +188,11 @@ static void disassembly_arg(
         break;
     case absim::disassembled_instr_arg_t::type::DS_ADDR:
     {
+        if(a.val >= 32 && a.val < 0x100)
+            PushStyleColor(ImGuiCol_Text, IO_COLOR);
         Text("0x%04x", a.val);
+        if(a.val >= 32 && a.val < 0x100)
+            PopStyleColor();
         if(IsItemHovered())
         {
             hover_data_space(a.val);
@@ -282,7 +285,7 @@ static void disassembly_arg(
         Text("0x%02x", a.val);
         PopStyleColor();
         if(IsItemHovered())
-            hover_data_space(a.val);
+            hover_data_space(a.val + 32);
     }
     default:
         break;
@@ -375,6 +378,23 @@ void window_disassembly(bool& open)
         if(Button("Jump to PC"))
         {
             do_scroll = arduboy.cpu.pc * 2;
+        }
+
+        if(arduboy.elf)
+        {
+            SameLine();
+            SetNextItemWidth(GetContentRegionAvail().x);
+            if(BeginCombo("##symboljump", "Jump to function...", ImGuiComboFlags_HeightLarge))
+            {
+                for(uint16_t addr : arduboy.elf->text_symbols_sorted)
+                {
+                    auto const& sym = arduboy.elf->text_symbols[addr];
+                    if(sym.object || sym.weak || sym.notype) continue;
+                    if(Selectable(sym.name.c_str()))
+                        do_scroll = addr, scroll_addr_to_top = true;
+                }
+                EndCombo();
+            }
         }
 
         ImGuiTableFlags flags = 0;

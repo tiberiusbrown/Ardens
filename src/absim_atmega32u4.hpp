@@ -59,7 +59,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     uint32_t cycles = 1;
     just_read = 0xffff;
     just_written = 0xffff;
-    bool single_instr_only;
+    bool single_instr_only = true;
     uint32_t max_merged_cycles;
 
     if(active)

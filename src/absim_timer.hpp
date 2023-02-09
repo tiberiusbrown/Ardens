@@ -205,67 +205,70 @@ void atmega32u4_t::update_timer0()
 static ABSIM_FORCEINLINE void process_wgm16(
     uint32_t wgm, uint32_t& top, uint32_t& tov, uint32_t ocr, uint32_t icr)
 {
-    top = 0xffff;
-    tov = 0xffff;
+    uint32_t ttop = 0xffff;
+    uint32_t ttov = 0xffff;
 
     switch(wgm)
     {
     case 0x0: // normal
         break;
     case 0x1: // PWM, Phase Correct, 8-bit
-        top = 0x00ff;
-        tov = 0x0000;
+        ttop = 0x00ff;
+        ttov = 0x0000;
         break;
     case 0x2: // PWM, Phase Correct, 9-bit
-        top = 0x01ff;
-        tov = 0x0000;
+        ttop = 0x01ff;
+        ttov = 0x0000;
         break;
     case 0x3: // PWM, Phase Correct, 10-bit
-        top = 0x03ff;
-        tov = 0x0000;
+        ttop = 0x03ff;
+        ttov = 0x0000;
         break;
     case 0x4: // CTC
-        top = ocr;
+        ttop = ocr;
         break;
     case 0x5: // Fast PWM, 8-bit
-        top = 0x00ff;
+        ttop = 0x00ff;
         break;
     case 0x6: // Fast PWM, 9-bit
-        top = 0x01ff;
+        ttop = 0x01ff;
         break;
     case 0x7: // Fast PWM, 10-bit
-        top = 0x03ff;
+        ttop = 0x03ff;
         break;
     case 0x8: // PWM, Phase and Frequency Correct
-        top = icr;
-        tov = 0x0000;
+        ttop = icr;
+        ttov = 0x0000;
         break;
     case 0x9: // PWM, Phase and Frequency Correct
-        top = ocr;
-        tov = 0x0000;
+        ttop = ocr;
+        ttov = 0x0000;
         break;
     case 0xa: // PWM, Phase Correct
-        top = icr;
-        tov = 0x0000;
+        ttop = icr;
+        ttov = 0x0000;
         break;
     case 0xb: // PWM, Phase Correct
-        top = ocr;
-        tov = 0x0000;
+        ttop = ocr;
+        ttov = 0x0000;
         break;
     case 0xc: // CTC
-        top = icr;
+        ttop = icr;
         break;
     case 0xd: // (Reserved)
         break;
     case 0xe: // Fast PWM
-        top = icr;
+        ttop = icr;
         break;
     case 0xf: // Fast PWM
-        top = ocr;
+        ttop = ocr;
         break;
     default:
         break;
     }
+
+    top = ttop;
+    tov = ttov;
 }
 
 static ABSIM_FORCEINLINE void timer16_update_ocrN(
@@ -273,9 +276,9 @@ static ABSIM_FORCEINLINE void timer16_update_ocrN(
     atmega32u4_t::timer16_t& timer,
     uint32_t addr)
 {
-    timer.ocrNa = word(cpu, addr + 0x8);
-    timer.ocrNb = word(cpu, addr + 0xa);
-    timer.ocrNc = word(cpu, addr + 0xc);
+    timer.ocrNa = std::max<uint32_t>(3, word(cpu, addr + 0x8));
+    timer.ocrNb = std::max<uint32_t>(3, word(cpu, addr + 0xa));
+    timer.ocrNc = std::max<uint32_t>(3, word(cpu, addr + 0xc));
 
     uint32_t icrN = word(cpu, addr + 0x6);
     uint32_t tccrNa = cpu.data[addr + 0x0];
@@ -440,9 +443,13 @@ static void update_timer16(
 
     assert(update_tcycles <= timer.top);
 
-    uint64_t update_cycles = (uint64_t)update_tcycles * timer.divider - timer.divider_cycle;
-
-    timer.next_update_cycle = cpu.cycle_count + update_cycles;
+    if(update_tcycles == 0)
+        timer.next_update_cycle = UINT64_MAX;
+    else
+    {
+        uint64_t update_cycles = (uint64_t)update_tcycles * timer.divider - timer.divider_cycle;
+        timer.next_update_cycle = cpu.cycle_count + update_cycles;
+    }
 }
 
 void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)

@@ -107,6 +107,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_data_space.cpp
     src/window_simulation.cpp
     src/window_call_stack.cpp
+    src/window_symbols.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp

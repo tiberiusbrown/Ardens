@@ -48,8 +48,8 @@ absim::arduboy_t arduboy;
 
 int profiler_selected_hotspot = -1;
 int disassembly_scroll_addr = -1;
+bool scroll_addr_to_top = false;
 bool profiler_cycle_counts = false;
-
 int simulation_slowdown = 1000;
 
 void window_disassembly(bool& open);
@@ -59,6 +59,7 @@ void window_display_internals(bool& open);
 void window_data_space(bool& open);
 void window_simulation(bool& open);
 void window_call_stack(bool& open);
+void window_symbols(bool& open);
 
 static bool open_disassembly = true;
 static bool open_display = true;
@@ -67,6 +68,7 @@ static bool open_data_space = true;
 static bool open_profiler = true;
 static bool open_simulation = true;
 static bool open_call_stack = true;
+static bool open_symbols = true;
 
 static uint64_t pt;
 static std::string dropfile_err;
@@ -181,7 +183,7 @@ static void main_loop()
             if(ImGui::IsKeyDown(ImGuiKey_RightArrow)) pinf &= ~0x40;
             if(ImGui::IsKeyDown(ImGuiKey_UpArrow)) pinf &= ~0x80;
             if(ImGui::IsKeyDown(ImGuiKey_A)) pine &= ~0x40;
-            if(ImGui::IsKeyDown(ImGuiKey_B)) pinb &= ~0x10;
+            if(ImGui::IsKeyDown(ImGuiKey_B) || ImGui::IsKeyDown(ImGuiKey_S)) pinb &= ~0x10;
 
             arduboy.cpu.data[0x23] = pinb;
             arduboy.cpu.data[0x2c] = pine;
@@ -297,6 +299,7 @@ static void main_loop()
         DockBuilderDockWindow("Profiler", c1r2);
         DockBuilderDockWindow("Call Stack", c2r0);
         DockBuilderDockWindow("Disassembly", c2r1);
+        open_symbols = false;
     }
 
     if(ImGui::BeginMainMenuBar())
@@ -309,6 +312,8 @@ static void main_loop()
                 open_simulation = !open_simulation;
             if(ImGui::MenuItem("Disassembly", nullptr, open_disassembly))
                 open_disassembly = !open_disassembly;
+            if(ImGui::MenuItem("Symbols", nullptr, open_symbols))
+                open_symbols = !open_symbols;
             if(ImGui::MenuItem("Call Stack", nullptr, open_call_stack))
                 open_call_stack = !open_call_stack;
             if(ImGui::MenuItem("CPU Data Space", nullptr, open_data_space))
@@ -325,6 +330,7 @@ static void main_loop()
     window_display(open_display, (void*)framebuffer_texture);
     window_simulation(open_simulation);
     window_disassembly(open_disassembly);
+    window_symbols(open_symbols);
     window_call_stack(open_call_stack);
     window_display_internals(open_display_internals);
     window_profiler(open_profiler);
@@ -385,6 +391,7 @@ int main(int, char**)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
     ImGuiIO& io = ImGui::GetIO();
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;

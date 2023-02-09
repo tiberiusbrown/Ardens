@@ -441,6 +441,8 @@ struct elf_data_t
     using map_type = std::map<uint16_t, elf_data_symbol_t>;
     map_type text_symbols;
     map_type data_symbols;
+    std::vector<uint16_t> text_symbols_sorted;
+    std::vector<uint16_t> data_symbols_sorted;
 
     struct source_file_t
     {

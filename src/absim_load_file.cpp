@@ -449,6 +449,24 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         try_insert_symbol(is_text ? elf.text_symbols : elf.data_symbols, sym);
     }
 
+    auto icompare = [](std::string const& a, std::string const& b) -> bool
+    {
+        std::string ta = a, tb = b;
+        for(char& c : ta) if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
+        for(char& c : tb) if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
+        return ta < tb;
+    };
+
+    // sort symbols by name
+    for(auto const& kv : elf.text_symbols)
+        elf.text_symbols_sorted.push_back(kv.first);
+    for(auto const& kv : elf.data_symbols)
+        elf.data_symbols_sorted.push_back(kv.first);
+    std::sort(elf.text_symbols_sorted.begin(), elf.text_symbols_sorted.end(),
+        [&](uint16_t a, uint16_t b) { return icompare(elf.text_symbols[a].name, elf.text_symbols[b].name); });
+    std::sort(elf.data_symbols_sorted.begin(), elf.data_symbols_sorted.end(),
+        [&](uint16_t a, uint16_t b) { return icompare(elf.data_symbols[a].name, elf.data_symbols[b].name); });
+
     // note object text symbols in disassembly
     for(auto const& kv : elf.text_symbols)
     {

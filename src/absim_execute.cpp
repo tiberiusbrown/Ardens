@@ -169,7 +169,7 @@ uint32_t instr_ijmp(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     (void)i;
     cpu.pc = cpu.z_word();
-    return 3;
+    return 2;
 }
 
 uint32_t instr_rcall(atmega32u4_t& cpu, avr_instr_t const& i)
