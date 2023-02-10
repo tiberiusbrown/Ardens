@@ -378,7 +378,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         if(name == ".text")
         {
             sec_text = section;
-            if(size > cpu.PROG_SIZE_BYTES)
+            if(size > cpu.prog.size())
                 return "ELF: Section .text too large";
             memcpy(&cpu.prog, data.data(), size);
             cpu.last_addr = (uint16_t)size;
@@ -403,6 +403,16 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
 
     if(!found_text)
         return "ELF: No .text section";
+
+    // copy data
+    if(sec_data.getObject())
+    {
+        auto size = sec_data.getSize();
+        auto data = defval(sec_data.getContents());
+        if(cpu.last_addr + size > cpu.prog.size())
+            return "ELF: text+data too large";
+        memcpy(&cpu.prog[cpu.last_addr], data.data(), size);
+    }
 
     cpu.decode();
 
