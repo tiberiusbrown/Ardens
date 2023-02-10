@@ -411,7 +411,8 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         auto data = defval(sec_data.getContents());
         if(cpu.last_addr + size > cpu.prog.size())
             return "ELF: text+data too large";
-        memcpy(&cpu.prog[cpu.last_addr], data.data(), size);
+        if(size > 0)
+            memcpy(&cpu.prog[cpu.last_addr], data.data(), size);
     }
 
     cpu.decode();
@@ -666,6 +667,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     if(ends_with(fname, ".hex"))
     {
         reset();
+        elf.reset();
         return load_hex(*this, f);
     }
 
@@ -683,6 +685,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     if(ends_with(fname, ".arduboy"))
     {
         reset();
+        elf.reset();
         return load_arduboy(*this, f);
     }
 
