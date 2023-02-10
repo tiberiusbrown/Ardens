@@ -195,8 +195,6 @@ void atmega32u4_t::update_timer0()
             update_tcycles *= 2;
     }
 
-    assert(update_tcycles <= timer0.top);
-
     uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.divider_cycle;
 
     timer0.next_update_cycle = cycle_count + update_cycles;
@@ -440,8 +438,6 @@ static void update_timer16(
         if(timer.phase_correct)
             update_tcycles *= 2;
     }
-
-    assert(update_tcycles <= timer.top);
 
     if(update_tcycles == 0)
         timer.next_update_cycle = UINT64_MAX;
