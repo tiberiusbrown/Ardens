@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include <algorithm>
+#include <vector>
 
 extern absim::arduboy_t arduboy;
 
@@ -32,11 +33,10 @@ static uint16_t cpu_word(uint16_t addr)
 	return lo | (hi << 8);
 }
 
-static void window_call_stack_contents()
+std::vector<uint16_t> get_call_stack()
 {
-	using namespace ImGui;
     auto const& cpu = arduboy.cpu;
-	auto addr = cpu.pc * 2;
+    auto addr = cpu.pc * 2;
 
     std::array<uint8_t, 34> regs;
     for(int i = 0; i < 32; ++i)
@@ -50,6 +50,47 @@ static void window_call_stack_contents()
         return lo | (hi << 8);
     };
 
+    std::vector<uint16_t> r;
+    if(!arduboy.elf) return r;
+
+    for(int depth = 0; depth < 32; ++depth)
+    {
+        if(addr >= cpu.last_addr) break;
+
+        r.push_back(addr);
+
+        auto const* u = find_unwind(addr);
+        if(!u) break;
+        if(u->cfa_reg > 32) break;
+
+        uint16_t cfa = word(u->cfa_reg) + u->cfa_offset;
+        uint16_t ret = cpu_word(cfa + u->ra_offset);
+
+        ret = (ret >> 8) | (ret << 8);
+        ret *= 2;
+
+        for(int i = 0; i < 32; ++i)
+        {
+            auto off = u->reg_offsets[i];
+            if(off == INT16_MAX) continue;
+            regs[i] = cpu_word(cfa + u->reg_offsets[i]);
+        }
+
+        regs[32] = uint8_t(cfa >> 0);
+        regs[33] = uint8_t(cfa >> 8);
+
+        addr = ret;
+    }
+
+    return r;
+}
+
+static void window_call_stack_contents()
+{
+	using namespace ImGui;
+
+    auto call_stack = get_call_stack();
+
 	ImGuiTableFlags flags = 0;
 	flags |= ImGuiTableFlags_ScrollY;
 	if(BeginTable("##callstack", 2, flags))
@@ -58,44 +99,23 @@ static void window_call_stack_contents()
             ImGuiTableColumnFlags_WidthFixed,
             CalcTextSize("0x0000").x);
         TableSetupColumn("Symbol");
-		for(int depth = 0; depth < 32; ++depth)
-		{
-            if(addr >= cpu.last_addr) break;
 
-			TableNextRow();
+        for(auto addr : call_stack)
+        {
+            if(addr >= arduboy.cpu.last_addr) break;
 
-			TableSetColumnIndex(0);
-			Text("0x%04x", addr);
+            TableNextRow();
 
-			TableSetColumnIndex(1);
-			auto const* sym = arduboy.symbol_for_prog_addr(addr);
-			if(sym)
-			{
-			    TextUnformatted(sym->name.c_str());
-			}
+            TableSetColumnIndex(0);
+            Text("0x%04x", addr);
 
-			auto const* u = find_unwind(addr);
-			if(!u) break;
-            if(u->cfa_reg > 32) break;
-            
-            uint16_t cfa = word(u->cfa_reg) + u->cfa_offset;
-            uint16_t ret = cpu_word(cfa + u->ra_offset);
-
-            ret = (ret >> 8) | (ret << 8);
-            ret *= 2;
-
-            for(int i = 0; i < 32; ++i)
+            TableSetColumnIndex(1);
+            auto const* sym = arduboy.symbol_for_prog_addr(addr);
+            if(sym)
             {
-                auto off = u->reg_offsets[i];
-                if(off == INT16_MAX) continue;
-                regs[i] = cpu_word(cfa + u->reg_offsets[i]);
+                TextUnformatted(sym->name.c_str());
             }
-
-            regs[32] = uint8_t(cfa >> 0);
-            regs[33] = uint8_t(cfa >> 8);
-
-            addr = ret;
-		}
+        }
 
 		EndTable();
 	}

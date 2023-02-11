@@ -198,6 +198,10 @@ static void main_loop()
         if(arduboy.paused && !prev_paused)
             disassembly_scroll_addr = arduboy.cpu.pc * 2;
     }
+    else
+    {
+        arduboy.break_step = 0xffffffff;
+    }
 
     // update framebuffer texture
     {

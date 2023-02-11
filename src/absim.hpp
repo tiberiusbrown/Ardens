@@ -291,11 +291,6 @@ struct atmega32u4_t
 
     void check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
-    // breakpoints
-    std::bitset<PROG_SIZE_BYTES / 2> breakpoints;
-    std::bitset<DATA_SIZE_BYTES> breakpoints_rd;
-    std::bitset<DATA_SIZE_BYTES> breakpoints_wr;
-
     uint64_t cycle_count;
 
     // set all registers to initial value
@@ -508,6 +503,12 @@ struct arduboy_t
 
     void profiler_build_hotspots();
     void profiler_reset();
+
+    // breakpoints
+    std::bitset<NUM_INSTRS> breakpoints;
+    std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_rd;
+    std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_wr;
+    uint32_t break_step;
 
     uint64_t ps_rem;
 

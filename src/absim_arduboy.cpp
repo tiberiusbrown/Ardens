@@ -15,8 +15,9 @@ void arduboy_t::reset()
     display.reset();
     fx.reset();
     paused = false;
+    break_step = 0xffffffff;
 
-    if(cpu.breakpoints.test(0))
+    if(breakpoints.test(0))
         paused = true;
 }
 
@@ -303,14 +304,15 @@ void arduboy_t::advance_instr()
     if(!cpu.decoded) return;
     int n = 0;
     auto oldpc = cpu.pc;
-    ps_rem = PS_BUFFER - CYCLE_PS;
+    cpu.no_merged = true;
+    ps_rem = 0;
     do
     {
         paused = false;
-        advance(CYCLE_PS);
+        cycle();
+        cpu.update_all();
         paused = true;
     } while(++n < 65536 && cpu.pc == oldpc);
-    cpu.update_all();
 }
 
 void arduboy_t::advance(uint64_t ps)
@@ -322,22 +324,26 @@ void arduboy_t::advance(uint64_t ps)
     if(paused) return;
 
     bool any_breakpoints =
-        cpu.breakpoints.any() ||
-        cpu.breakpoints_rd.any() ||
-        cpu.breakpoints_wr.any();
+        breakpoints.any() ||
+        breakpoints_rd.any() ||
+        breakpoints_wr.any() ||
+        break_step != 0xffffffff;
 
     cpu.no_merged = profiler_enabled || any_breakpoints;
 
     while(ps >= PS_BUFFER)
     {
+        uint32_t prev_pc = cpu.pc;
+
         uint32_t cycles = cycle();
         
         ps -= cycles * CYCLE_PS;
 
         if(any_breakpoints && (
-            cpu.pc < cpu.breakpoints.size() && cpu.breakpoints.test(cpu.pc) ||
-            cpu.just_read < cpu.breakpoints_rd.size() && cpu.breakpoints_rd.test(cpu.just_read) ||
-            cpu.just_written < cpu.breakpoints_wr.size() && cpu.breakpoints_wr.test(cpu.just_written)))
+            cpu.pc < breakpoints.size() && breakpoints.test(cpu.pc) ||
+            cpu.just_read < breakpoints_rd.size() && breakpoints_rd.test(cpu.just_read) ||
+            cpu.just_written < breakpoints_wr.size() && breakpoints_wr.test(cpu.just_written)) ||
+            cpu.pc == break_step)
         {
             paused = true;
             return;

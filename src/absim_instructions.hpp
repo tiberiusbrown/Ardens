@@ -39,6 +39,8 @@ struct disassembled_instr_t
 };
 void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d);
 bool instr_is_two_words(avr_instr_t const& i);
+bool instr_is_call(avr_instr_t const& i);
+bool instr_is_ret(avr_instr_t const& i);
 
 enum
 {

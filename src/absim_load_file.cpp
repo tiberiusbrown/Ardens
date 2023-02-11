@@ -86,9 +86,9 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-    memset(&cpu.breakpoints, 0, sizeof(cpu.breakpoints));
-    memset(&cpu.breakpoints_rd, 0, sizeof(cpu.breakpoints_rd));
-    memset(&cpu.breakpoints_wr, 0, sizeof(cpu.breakpoints_wr));
+    memset(&a.breakpoints, 0, sizeof(a.breakpoints));
+    memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
+    memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
 
     while(!f.eof())
     {
@@ -353,9 +353,9 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-    memset(&cpu.breakpoints, 0, sizeof(cpu.breakpoints));
-    memset(&cpu.breakpoints_rd, 0, sizeof(cpu.breakpoints_rd));
-    memset(&cpu.breakpoints_wr, 0, sizeof(cpu.breakpoints_wr));
+    memset(&a.breakpoints, 0, sizeof(a.breakpoints));
+    memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
+    memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
     bool found_text = false;
 
     auto elf_ptr = std::make_unique<elf_data_t>();

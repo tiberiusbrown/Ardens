@@ -93,6 +93,21 @@ bool instr_is_two_words(avr_instr_t const& i)
         i.func == INSTR_STS;
 }
 
+bool instr_is_call(avr_instr_t const& i)
+{
+    return
+        i.func == INSTR_CALL ||
+        i.func == INSTR_RCALL ||
+        i.func == INSTR_ICALL;
+}
+
+bool instr_is_ret(avr_instr_t const& i)
+{
+    return
+        i.func == INSTR_RET ||
+        i.func == INSTR_RETI;
+}
+
 static ABSIM_FORCEINLINE bool next_instr_is_two_words(atmega32u4_t const& cpu)
 {
     if(cpu.pc + 1 >= cpu.decoded_prog.size())

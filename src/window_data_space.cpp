@@ -13,10 +13,10 @@ static void draw_memory_breakpoints(size_t addr)
     bool wr = false;
     if(addr < arduboy.cpu.data.size())
     {
-        rd = arduboy.cpu.breakpoints_rd.test(addr);
-        wr = arduboy.cpu.breakpoints_wr.test(addr);
+        rd = arduboy.breakpoints_rd.test(addr);
+        wr = arduboy.breakpoints_wr.test(addr);
     }
-    BeginDisabled(addr >= arduboy.cpu.data.size());
+    BeginDisabled(addr < 32 || addr >= arduboy.cpu.data.size());
     AlignTextToFramePadding();
     TextUnformatted("Break on:");
     SameLine();
@@ -26,8 +26,8 @@ static void draw_memory_breakpoints(size_t addr)
     EndDisabled();
     if(addr < arduboy.cpu.data.size())
     {
-        arduboy.cpu.breakpoints_rd[addr] = rd;
-        arduboy.cpu.breakpoints_wr[addr] = wr;
+        arduboy.breakpoints_rd[addr] = rd;
+        arduboy.breakpoints_wr[addr] = wr;
     }
 }
 
@@ -47,8 +47,8 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
         r = true;
     }
     if(off < arduboy.cpu.data.size() && (
-        arduboy.cpu.breakpoints_rd.test(off) ||
-        arduboy.cpu.breakpoints_wr.test(off)))
+        arduboy.breakpoints_rd.test(off) ||
+        arduboy.breakpoints_wr.test(off)))
     {
         color = IM_COL32(100, 50, 50, 255);
         r = true;

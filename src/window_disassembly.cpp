@@ -295,7 +295,7 @@ static void disassembly_arg(
 static void toggle_breakpoint(int row)
 {
     auto addr = dis_instr(row).addr;
-    arduboy.cpu.breakpoints.flip(addr / 2);
+    arduboy.breakpoints.flip(addr / 2);
 }
 
 static void draw_breakpoint_color(ImVec2 p, ImU32 color)
@@ -312,7 +312,7 @@ static void draw_breakpoint_hovered(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR_HOVERED = IM_COL32(150, 40, 40, 255);
     auto addr = dis_instr(row).addr / 2;
-    bool bp = arduboy.cpu.breakpoints.test(addr);
+    bool bp = arduboy.breakpoints.test(addr);
     if(!bp) draw_breakpoint_color(p, BP_COLOR_HOVERED);
 }
 
@@ -320,7 +320,7 @@ static void draw_breakpoint(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR = IM_COL32(255, 40, 40, 255);
     auto addr = dis_instr(row).addr / 2;
-    bool bp = arduboy.cpu.breakpoints.test(addr);
+    bool bp = arduboy.breakpoints.test(addr);
     if(bp) draw_breakpoint_color(p, BP_COLOR);
 }
 

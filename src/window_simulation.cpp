@@ -15,6 +15,9 @@ static int const SLIDERS[] = {
     500, 200,
 };
 
+// defined in window_call_stack.cpp
+std::vector<uint16_t> get_call_stack();
+
 void window_simulation(bool& open)
 {
 	using namespace ImGui;
@@ -43,10 +46,62 @@ void window_simulation(bool& open)
             if(Button("Continue"))
                 arduboy.paused = false;
             SameLine();
-            if(Button("Step"))
+            if(Button("Step Into"))
             {
                 arduboy.advance_instr();
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
+            }
+            if(IsItemHovered())
+            {
+                BeginTooltip();
+                TextUnformatted("Execute one instruction, stepping into function calls");
+                EndTooltip();
+            }
+            SameLine();
+            if(Button("Step Over") && arduboy.cpu.pc < arduboy.cpu.decoded_prog.size())
+            {
+                auto const& i = arduboy.cpu.decoded_prog[arduboy.cpu.pc];
+
+                if(absim::instr_is_call(i))
+                {
+                    arduboy.paused = false;
+
+                    if(absim::instr_is_two_words(i))
+                        arduboy.break_step = arduboy.cpu.pc + 2;
+                    else
+                        arduboy.break_step = arduboy.cpu.pc + 1;
+                }
+                else
+                {
+                    arduboy.advance_instr();
+                    disassembly_scroll_addr = arduboy.cpu.pc * 2;
+                }
+            }
+            if(IsItemHovered())
+            {
+                BeginTooltip();
+                TextUnformatted("Execute one instruction, stepping over function calls");
+                EndTooltip();
+            }
+            auto call_stack = get_call_stack();
+            if(arduboy.elf)
+            {
+                SameLine();
+                if(call_stack.size() < 2)
+                    BeginDisabled();
+                if(Button("Step Out"))
+                {
+                    arduboy.break_step = call_stack[1] / 2;
+                    arduboy.paused = false;
+                }
+                if(call_stack.size() < 2)
+                    EndDisabled();
+                if(IsItemHovered())
+                {
+                    BeginTooltip();
+                    TextUnformatted("Execute until the current function returns");
+                    EndTooltip();
+                }
             }
         }
         else
