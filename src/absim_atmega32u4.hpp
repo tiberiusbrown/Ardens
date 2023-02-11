@@ -196,7 +196,6 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
 void atmega32u4_t::update_all()
 {
-    update_timer0();
     update_timer1();
     update_timer3();
 }
