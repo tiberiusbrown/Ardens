@@ -470,9 +470,11 @@ void window_disassembly(bool& open)
                     TableSetColumnIndex(1);
                     if(d.type == absim::disassembled_instr_t::OBJECT)
                     {
-                        TextDisabled("%02x %02x",
-                            arduboy.cpu.prog[d.addr + 0],
-                            arduboy.cpu.prog[d.addr + 1]);
+                        for(int i = 0; i < d.obj_bytes; ++i)
+                        {
+                            if(i > 0) SameLine();
+                            TextDisabled("%02x", arduboy.cpu.prog[d.addr + i]);
+                        }
                     }
                     else
                     {

@@ -321,6 +321,55 @@ static void load_elf_debug(
                 v.push_back(instr);
             }
             v.push_back(cpu.disassembled_prog[i]);
+
+            // check for unaligned symbol
+            if(cpu.disassembled_prog[i].type != disassembled_instr_t::OBJECT)
+                continue;
+            its = elf.text_symbols.find(addr + 1);
+            if(its == elf.text_symbols.end()) continue;
+            // split object
+            v.back().obj_bytes = 1;
+            instr.addr += 1;
+            instr.type = disassembled_instr_t::SYMBOL;
+            v.push_back(instr);
+            instr.type = disassembled_instr_t::OBJECT;
+            instr.obj_bytes = 1;
+            v.push_back(instr);
+        }
+    }
+
+    // merge adjacent object types
+    constexpr int MAX_OBJ_BYTES = 8;
+    for(size_t m, n = 0; n < elf.asm_with_source.size(); ++n)
+    {
+        auto& i = elf.asm_with_source[n];
+        if(i.type != disassembled_instr_t::OBJECT) continue;
+        for(m = n + 1; m < elf.asm_with_source.size(); ++m)
+        {
+            auto& j = elf.asm_with_source[m];
+            if(j.type != disassembled_instr_t::OBJECT) break;
+            i.obj_bytes += j.obj_bytes;
+            j.obj_bytes = 0;
+            j.addr = i.addr + i.obj_bytes;
+            if(i.obj_bytes > MAX_OBJ_BYTES)
+            {
+                j.obj_bytes = i.obj_bytes - MAX_OBJ_BYTES;
+                j.addr = i.addr + MAX_OBJ_BYTES;
+                i.obj_bytes = MAX_OBJ_BYTES;
+                break;
+            }
+        }
+        auto bytes = i.obj_bytes;
+        if(m > n + 1)
+        {
+            elf.asm_with_source.erase(
+                elf.asm_with_source.begin() + (n + 1),
+                elf.asm_with_source.begin() + (m - 1));
+        }
+        if(bytes == 0)
+        {
+            elf.asm_with_source.erase(elf.asm_with_source.begin() + n);
+            --n;
         }
     }
 }
@@ -413,6 +462,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
             return "ELF: text+data too large";
         if(size > 0)
             memcpy(&cpu.prog[cpu.last_addr], data.data(), size);
+        cpu.last_addr += size;
     }
 
     cpu.decode();
@@ -489,6 +539,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         {
             auto i = cpu.addr_to_disassembled_index(addr);
             cpu.disassembled_prog[i].type = disassembled_instr_t::OBJECT;
+            cpu.disassembled_prog[i].obj_bytes = 2;
             addr += 2;
         }
     }

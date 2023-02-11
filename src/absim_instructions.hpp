@@ -32,8 +32,9 @@ struct disassembled_instr_arg_t
 struct disassembled_instr_t
 {
     char const* name;
-    uint16_t addr;
     enum { INSTR, OBJECT, SOURCE, SYMBOL} type;
+    uint16_t addr;
+    uint8_t obj_bytes;
     disassembled_instr_arg_t arg0;
     disassembled_instr_arg_t arg1;
 };
