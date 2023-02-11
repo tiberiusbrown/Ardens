@@ -305,8 +305,28 @@ static void load_elf_debug(
         auto& v = elf.asm_with_source;
         for(uint16_t i = 0; i < cpu.num_instrs; ++i)
         {
-            uint16_t addr = cpu.disassembled_prog[i].addr;
+            auto const& di = cpu.disassembled_prog[i];
+            uint16_t addr = di.addr;
             disassembled_instr_t instr;
+
+            if(di.type == disassembled_instr_t::OBJECT)
+            {
+                instr.obj_bytes = 1;
+                for(int j = 0; j < di.obj_bytes; ++j)
+                {
+                    auto its = elf.text_symbols.find(addr + j);
+                    instr.addr = addr + j;
+                    if(its != elf.text_symbols.end())
+                    {
+                        instr.type = disassembled_instr_t::SYMBOL;
+                        v.push_back(instr);
+                    }
+                    instr.type = disassembled_instr_t::OBJECT;
+                    v.push_back(instr);
+                }
+                continue;
+            }
+
             instr.addr = addr;
             auto its = elf.text_symbols.find(addr);
             if(its != elf.text_symbols.end())
@@ -321,20 +341,6 @@ static void load_elf_debug(
                 v.push_back(instr);
             }
             v.push_back(cpu.disassembled_prog[i]);
-
-            // check for unaligned symbol
-            if(cpu.disassembled_prog[i].type != disassembled_instr_t::OBJECT)
-                continue;
-            its = elf.text_symbols.find(addr + 1);
-            if(its == elf.text_symbols.end()) continue;
-            // split object
-            v.back().obj_bytes = 1;
-            instr.addr += 1;
-            instr.type = disassembled_instr_t::SYMBOL;
-            v.push_back(instr);
-            instr.type = disassembled_instr_t::OBJECT;
-            instr.obj_bytes = 1;
-            v.push_back(instr);
         }
     }
 
@@ -354,17 +360,16 @@ static void load_elf_debug(
             if(i.obj_bytes > MAX_OBJ_BYTES)
             {
                 j.obj_bytes = i.obj_bytes - MAX_OBJ_BYTES;
-                j.addr = i.addr + MAX_OBJ_BYTES;
                 i.obj_bytes = MAX_OBJ_BYTES;
+                j.addr = i.addr + i.obj_bytes;
                 break;
             }
         }
         auto bytes = i.obj_bytes;
-        if(m > n + 1)
         {
             elf.asm_with_source.erase(
                 elf.asm_with_source.begin() + (n + 1),
-                elf.asm_with_source.begin() + (m - 1));
+                elf.asm_with_source.begin() + m);
         }
         if(bytes == 0)
         {
@@ -537,9 +542,10 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         auto addr_end = addr + sym.size;
         while(addr < addr_end)
         {
-            auto i = cpu.addr_to_disassembled_index(addr);
+            auto i = cpu.addr_to_disassembled_index(addr & ~1);
             cpu.disassembled_prog[i].type = disassembled_instr_t::OBJECT;
-            cpu.disassembled_prog[i].obj_bytes = 2;
+            cpu.disassembled_prog[i].obj_bytes = (
+                instr_is_two_words(cpu.decoded_prog[addr / 2]) ? 4 : 2);
             addr += 2;
         }
     }

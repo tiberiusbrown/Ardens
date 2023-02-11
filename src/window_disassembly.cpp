@@ -470,11 +470,23 @@ void window_disassembly(bool& open)
                     TableSetColumnIndex(1);
                     if(d.type == absim::disassembled_instr_t::OBJECT)
                     {
-                        for(int i = 0; i < d.obj_bytes; ++i)
+                        std::array<char, 3 * 8> buf;
+                        std::array<char, 9> charbuf;
+                        int i;
+                        for(i = 0; i < d.obj_bytes && i < 8; ++i)
                         {
-                            if(i > 0) SameLine();
-                            TextDisabled("%02x", arduboy.cpu.prog[d.addr + i]);
+                            uint8_t byte = arduboy.cpu.prog[d.addr + i];
+                            if(i > 0) buf[i * 3 - 1] = ' ';
+                            buf[i * 3 + 0] = "0123456789abcdef"[byte >> 4];
+                            buf[i * 3 + 1] = "0123456789abcdef"[byte & 15];
+                            buf[i * 3 + 2] = '\0';
+                            char c = '.';
+                            if(byte >= 32 && byte < 127)
+                                c = (char)byte;
+                            charbuf[i] = c;
+                            charbuf[i + 1] = '\0';
                         }
+                        TextDisabled("  %-26s %s", buf.data(), charbuf.data());
                     }
                     else
                     {
