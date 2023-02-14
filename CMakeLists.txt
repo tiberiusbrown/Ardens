@@ -32,7 +32,7 @@ add_subdirectory(deps/SDL)
 set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
 
 add_subdirectory(deps/json)
-
+add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 
 if(MSVC)
@@ -108,6 +108,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_simulation.cpp
     src/window_call_stack.cpp
     src/window_symbols.cpp
+    src/window_globals.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp
@@ -143,6 +144,7 @@ target_link_libraries(arduboy_sim PRIVATE
     LLVMDemangle
     LLVMObject
     miniz
+    fmt
     )
 target_include_directories(arduboy_sim PRIVATE
     src/imgui

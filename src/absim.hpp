@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include <vector>
 #include <array>
 #include <bitset>
@@ -9,6 +11,7 @@
 #include <map>
 #include <unordered_map>
 #include <istream>
+#include <algorithm>
 
 #include <stdint.h>
 #include <assert.h>
@@ -427,6 +430,35 @@ struct elf_data_symbol_t
     bool object;
 };
 
+struct icompare
+{
+    static char lower(char c)
+    {
+        if(c >= 'A' && c <= 'Z') return c + 'a' - 'A';
+        return c;
+    }
+    int compare(std::string const& a, std::string const& b) const
+    {
+        auto sa = a.size();
+        auto sb = b.size();
+        auto s = (sa < sb ? sa : sb);
+        for(size_t i = 0; i < s; ++i)
+        {
+            char ca = lower(a[i]);
+            char cb = lower(b[i]);
+            if(ca < cb) return -1;
+            if(ca > cb) return 1;
+        }
+        if(sa < sb) return -1;
+        if(sb > sa) return 1;
+        return 0;
+    }
+    bool operator()(std::string const& a, std::string const& b) const
+    {
+        return compare(a, b) < 0;
+    }
+};
+
 struct elf_data_t
 {
     uint16_t data_begin;
@@ -470,8 +502,19 @@ struct elf_data_t
     };
     std::vector<frame_info_t> frames;
 
+    std::vector<char> fdata;
     std::unique_ptr<llvm::object::Binary> obj;
     std::unique_ptr<llvm::DWARFContext> dwarf_ctx;
+
+    struct global_t
+    {
+        uint64_t cu_offset; // compile unit
+        int file, line;
+        uint32_t addr;
+        uint32_t type; // DIE offset
+        bool text;
+    };
+    std::map<std::string, global_t, icompare> globals;
 
     ~elf_data_t(); // only exists for unique_ptr's above
 };

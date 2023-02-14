@@ -60,6 +60,7 @@ void window_data_space(bool& open);
 void window_simulation(bool& open);
 void window_call_stack(bool& open);
 void window_symbols(bool& open);
+void window_globals(bool& open);
 
 static bool open_disassembly = true;
 static bool open_display = true;
@@ -69,6 +70,7 @@ static bool open_profiler = true;
 static bool open_simulation = true;
 static bool open_call_stack = true;
 static bool open_symbols = true;
+static bool open_globals = true;
 
 static uint64_t pt;
 static std::string dropfile_err;
@@ -290,9 +292,10 @@ static void main_loop()
     {
         // default docked layout
         using namespace ImGui;
-        ImGuiID c01, c0, c1, c2, c1r01, c1r0, c1r1, c1r2, c2r0, c2r1;
+        ImGuiID c01, c01u, c01d, c0, c1, c2, c1r01, c1r0, c1r1, c1r2, c2r0, c2r1;
         DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.35f, &c2, &c01);
-        DockBuilderSplitNode(c01, ImGuiDir_Left, 0.5f, &c0, &c1);
+        DockBuilderSplitNode(c01, ImGuiDir_Up, 0.65f, &c01u, &c01d);
+        DockBuilderSplitNode(c01u, ImGuiDir_Left, 0.5f, &c0, &c1);
         DockBuilderSplitNode(c1, ImGuiDir_Down, 0.5f, &c1r2, &c1r01);
         DockBuilderSplitNode(c1r01, ImGuiDir_Down, 0.25f, &c1r1, &c1r0);
         DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
@@ -304,6 +307,7 @@ static void main_loop()
         DockBuilderDockWindow("Profiler", c1r2);
         DockBuilderDockWindow("Call Stack", c2r0);
         DockBuilderDockWindow("Disassembly", c2r1);
+        DockBuilderDockWindow("Globals", c01d);
     }
 
     if(ImGui::BeginMainMenuBar())
@@ -318,6 +322,8 @@ static void main_loop()
                 open_disassembly = !open_disassembly;
             if(ImGui::MenuItem("Symbols", nullptr, open_symbols))
                 open_symbols = !open_symbols;
+            if(ImGui::MenuItem("Globals", nullptr, open_globals))
+                open_globals = !open_globals;
             if(ImGui::MenuItem("Call Stack", nullptr, open_call_stack))
                 open_call_stack = !open_call_stack;
             if(ImGui::MenuItem("CPU Data Space", nullptr, open_data_space))
@@ -335,6 +341,7 @@ static void main_loop()
     window_simulation(open_simulation);
     window_disassembly(open_disassembly);
     window_symbols(open_symbols);
+    window_globals(open_globals);
     window_call_stack(open_call_stack);
     window_display_internals(open_display_internals);
     window_profiler(open_profiler);

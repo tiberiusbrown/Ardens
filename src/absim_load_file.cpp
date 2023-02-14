@@ -25,11 +25,19 @@
 #include <llvm/Object/ELFObjectFile.h>
 
 #ifdef _MSC_VER
-#pragma warning(pop) 
+#pragma warning(pop)
 #endif
 
 namespace absim
 {
+
+static bool icompare(std::string const& a, std::string const& b)
+{
+    std::string ta = a, tb = b;
+    for(char& c : ta) if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
+    for(char& c : tb) if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
+    return ta < tb;
+}
 
 size_t elf_data_t::addr_to_disassembled_index(uint16_t addr)
 {
@@ -377,18 +385,81 @@ static void load_elf_debug(
             --n;
         }
     }
+
+    // track globals
+    for(auto const& cu : dwarf_ctx->compile_units())
+    {
+        auto const& u = cu->getUnitDIE();
+        for(auto const& v : u.children())
+        {
+            if(v.getTag() != llvm::dwarf::DW_TAG_variable) continue;
+            elf_data_t::global_t g{};
+            g.addr = 0xffffffff;
+            g.type = 0xffffffff;
+            char const* name = v.getShortName();
+            if(!name) continue;
+            g.cu_offset = cu->getOffset();
+            for(auto const& a : v.attributes())
+            {
+                if(a.Attr == llvm::dwarf::DW_AT_location)
+                {
+                    auto opt = a.Value.getAsBlock();
+                    if(!opt.hasValue()) continue;
+                    auto expr = *opt;
+                    llvm::DataExtractor data(llvm::StringRef(
+                        (char const*)expr.data(), expr.size()),
+                        dwarf_ctx->isLittleEndian(), 0);
+                    llvm::DWARFExpression e(
+                        data, cu->getAddressByteSize(), cu->getFormParams().Format);
+                    for(auto const& op : e)
+                    {
+                        if(op.getCode() == llvm::dwarf::DW_OP_addr)
+                            g.addr = op.getRawOperand(0);
+                    }
+                }
+                if(a.Attr == llvm::dwarf::DW_AT_type)
+                    g.type = (uint32_t)a.Value.getAsReference().value_or(0xffffffff);
+                if(a.Attr == llvm::dwarf::DW_AT_decl_file)
+                    g.file = (int)a.Value.getAsUnsignedConstant().value_or(0);
+                if(a.Attr == llvm::dwarf::DW_AT_decl_line)
+                    g.line = (int)a.Value.getAsUnsignedConstant().value_or(0);
+            }
+            if(g.addr == 0xffffffff) continue;
+            if(g.type == 0xffffffff) continue;
+            if(g.addr >= 0x800000)
+                g.addr -= 0x800000;
+            else
+                g.text = true;
+            if(g.text && g.addr >= cpu.prog.size()) continue;
+            if(!g.text && g.addr >= cpu.data.size()) continue;
+            elf.globals[name] = g;
+        }
+    }
 }
 
 static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fname)
 {
     using namespace llvm;
 
-    std::vector<char> fdata(
+    a.elf.reset();
+    auto& cpu = a.cpu;
+    memset(&cpu.prog, 0, sizeof(cpu.prog));
+    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
+    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
+    memset(&a.breakpoints, 0, sizeof(a.breakpoints));
+    memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
+    memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
+    bool found_text = false;
+
+    auto elf_ptr = std::make_unique<elf_data_t>();
+    auto& elf = *elf_ptr;
+
+    elf.fdata = std::vector<char>(
         (std::istreambuf_iterator<char>(f)),
         std::istreambuf_iterator<char>());
 
     MemoryBufferRef mbuf(
-        { fdata.data(), fdata.size() },
+        { elf.fdata.data(), elf.fdata.size() },
         { fname.c_str(), fname.size() });
 
     auto bin_or_err = object::createBinary(mbuf);
@@ -400,20 +471,6 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
 
     if(obj->getEMachine() != 0x0053)
         return "ELF: machine not EM_AVR";
-
-    auto& cpu = a.cpu;
-
-    a.elf.reset();
-    memset(&cpu.prog, 0, sizeof(cpu.prog));
-    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
-    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-    memset(&a.breakpoints, 0, sizeof(a.breakpoints));
-    memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
-    memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
-    bool found_text = false;
-
-    auto elf_ptr = std::make_unique<elf_data_t>();
-    auto& elf = *elf_ptr;
 
     constexpr uint32_t ram_offset = 0x800000;
 
@@ -514,14 +571,6 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         sym.object = (type == object::SymbolRef::Type::ST_Data);
         try_insert_symbol(is_text ? elf.text_symbols : elf.data_symbols, sym);
     }
-
-    auto icompare = [](std::string const& a, std::string const& b) -> bool
-    {
-        std::string ta = a, tb = b;
-        for(char& c : ta) if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
-        for(char& c : tb) if(c >= 'A' && c <= 'Z') c += 'a' - 'A';
-        return ta < tb;
-    };
 
     // sort symbols by name
     for(auto const& kv : elf.text_symbols)
