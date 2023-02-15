@@ -407,6 +407,10 @@ int main(int, char**)
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+#ifdef __EMSCRIPTEN__
+    io.IniFilename = nullptr;
+#endif
+
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |

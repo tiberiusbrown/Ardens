@@ -100,7 +100,7 @@ static std::string recurse_type(llvm::DWARFDie die)
     default:
         break;
     }
-    return "";
+    return "<unknown>";
 }
 
 static uint32_t type_size(llvm::DWARFDie die)
@@ -209,7 +209,7 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
     case llvm::dwarf::DW_TAG_pointer_type:
     case llvm::dwarf::DW_TAG_enumeration_type:
     {
-        int bytes = 0, enc = -1;
+        int bytes = 0, enc = llvm::dwarf::DW_ATE_unsigned;
         bool is_enum =
             (die.getTag() == llvm::dwarf::DW_TAG_enumeration_type);
         auto old_die = die;
@@ -289,7 +289,7 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
     default:
         break;
     }
-    return "";
+    return "<unknown>";
 }
 
 static uint32_t array_size(llvm::DWARFDie& die)
