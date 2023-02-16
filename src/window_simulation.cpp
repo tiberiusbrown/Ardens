@@ -15,9 +15,6 @@ static int const SLIDERS[] = {
     500, 200,
 };
 
-// defined in window_call_stack.cpp
-std::vector<uint16_t> get_call_stack();
-
 void window_simulation(bool& open)
 {
 	using namespace ImGui;
@@ -83,19 +80,16 @@ void window_simulation(bool& open)
                 TextUnformatted("Execute one instruction, stepping over function calls");
                 EndTooltip();
             }
-            auto call_stack = get_call_stack();
             if(arduboy.elf)
             {
                 SameLine();
-                if(call_stack.size() < 2)
-                    BeginDisabled();
                 if(Button("Step Out"))
                 {
-                    arduboy.break_step = call_stack[1] / 2;
+                    arduboy.stepping_out = true;
+                    arduboy.num_calls = 0;
+                    arduboy.num_rets = 0;
                     arduboy.paused = false;
                 }
-                if(call_stack.size() < 2)
-                    EndDisabled();
                 if(IsItemHovered())
                 {
                     BeginTooltip();

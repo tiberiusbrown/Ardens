@@ -296,7 +296,7 @@ static void main_loop()
         DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.35f, &c2, &c01);
         DockBuilderSplitNode(c01, ImGuiDir_Up, 0.65f, &c01u, &c01d);
         DockBuilderSplitNode(c01u, ImGuiDir_Left, 0.5f, &c0, &c1);
-        DockBuilderSplitNode(c1, ImGuiDir_Down, 0.5f, &c1r2, &c1r01);
+        DockBuilderSplitNode(c1, ImGuiDir_Down, 0.25f, &c1r2, &c1r01);
         DockBuilderSplitNode(c1r01, ImGuiDir_Down, 0.25f, &c1r1, &c1r0);
         DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
         DockBuilderDockWindow("CPU Data Space", c0);

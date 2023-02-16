@@ -126,6 +126,7 @@ struct atmega32u4_t
     // false if the cpu is sleeping
     bool active;
     uint8_t wakeup_cycles; // for tracking interrupt wakeup delay
+    bool just_interrupted;
 
     uint8_t& smcr()   { return data[0x53]; }
     uint8_t& mcucr()  { return data[0x55]; }
@@ -552,6 +553,10 @@ struct arduboy_t
     std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_rd;
     std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_wr;
     uint32_t break_step;
+
+    bool stepping_out;
+    uint32_t num_calls;
+    uint32_t num_rets;
 
     uint64_t ps_rem;
 

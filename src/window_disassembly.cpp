@@ -97,7 +97,7 @@ static void prog_addr_source_line(uint16_t addr)
         for(int i = line - N; i <= line + N; ++i)
         {
             if(i < 0) continue;
-            if(i > sf.lines.size()) continue;
+            if(i >= sf.lines.size()) continue;
             if(i == line) PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.f, 1.f));
             Text("%5d  ", i);
             SameLine();

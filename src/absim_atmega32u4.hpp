@@ -36,6 +36,7 @@ ABSIM_FORCEINLINE void atmega32u4_t::check_interrupt(
     if(!active)
         wakeup_cycles += 4;
     active = false;
+    just_interrupted = true;
 }
 
 size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
@@ -59,6 +60,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     uint32_t cycles = 1;
     just_read = 0xffff;
     just_written = 0xffff;
+    just_interrupted = false;
     bool single_instr_only = true;
     uint32_t max_merged_cycles;
 
