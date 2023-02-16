@@ -80,21 +80,18 @@ void window_simulation(bool& open)
                 TextUnformatted("Execute one instruction, stepping over function calls");
                 EndTooltip();
             }
-            if(arduboy.elf)
+            SameLine();
+            if(Button("Step Out"))
             {
-                SameLine();
-                if(Button("Step Out"))
-                {
-                    arduboy.stepping_out = true;
-                    arduboy.stepping_out_num_calls = 0;
-                    arduboy.paused = false;
-                }
-                if(IsItemHovered())
-                {
-                    BeginTooltip();
-                    TextUnformatted("Execute until the current function returns");
-                    EndTooltip();
-                }
+                arduboy.stepping_out = true;
+                arduboy.stepping_out_num_calls = 0;
+                arduboy.paused = false;
+            }
+            if(IsItemHovered())
+            {
+                BeginTooltip();
+                TextUnformatted("Execute until the current function returns");
+                EndTooltip();
             }
         }
         else
