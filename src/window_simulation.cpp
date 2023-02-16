@@ -86,8 +86,7 @@ void window_simulation(bool& open)
                 if(Button("Step Out"))
                 {
                     arduboy.stepping_out = true;
-                    arduboy.num_calls = 0;
-                    arduboy.num_rets = 0;
+                    arduboy.stepping_out_num_calls = 0;
                     arduboy.paused = false;
                 }
                 if(IsItemHovered())

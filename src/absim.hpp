@@ -555,8 +555,7 @@ struct arduboy_t
     uint32_t break_step;
 
     bool stepping_out;
-    uint32_t num_calls;
-    uint32_t num_rets;
+    int32_t stepping_out_num_calls;
 
     uint64_t ps_rem;
 
