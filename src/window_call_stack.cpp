@@ -5,7 +5,10 @@
 #include <algorithm>
 #include <vector>
 
+#include <fmt/format.h>
+
 extern absim::arduboy_t arduboy;
+extern int disassembly_scroll_addr;
 
 static absim::elf_data_t::frame_info_t::unwind_t const* find_unwind(uint16_t addr)
 {
@@ -93,28 +96,25 @@ static void window_call_stack_contents()
 
 	ImGuiTableFlags flags = 0;
 	flags |= ImGuiTableFlags_ScrollY;
-	if(BeginTable("##callstack", 2, flags))
+	flags |= ImGuiTableFlags_RowBg;
+    std::string name;
+	if(BeginTable("##callstack", 1, flags))
 	{
-        TableSetupColumn("Address",
-            ImGuiTableColumnFlags_WidthFixed,
-            CalcTextSize("0x0000").x);
-        TableSetupColumn("Symbol");
-
         for(auto addr : call_stack)
         {
             if(addr >= arduboy.cpu.last_addr) break;
 
             TableNextRow();
 
-            TableSetColumnIndex(0);
-            Text("0x%04x", addr);
-
-            TableSetColumnIndex(1);
             auto const* sym = arduboy.symbol_for_prog_addr(addr);
             if(sym)
-            {
-                TextUnformatted(sym->name.c_str());
-            }
+                name = fmt::format("{:#04x} {}", addr, sym->name);
+            else
+                name = fmt::format("{:#04x}", addr);
+
+            TableSetColumnIndex(0);
+            if(Selectable(name.c_str()))
+                disassembly_scroll_addr = (int)addr;
         }
 
 		EndTable();

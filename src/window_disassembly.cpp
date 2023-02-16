@@ -10,6 +10,10 @@ extern int disassembly_scroll_addr;
 extern bool profiler_cycle_counts;
 extern bool scroll_addr_to_top;
 
+static int scroll_highlight_addr = -1;
+static float scroll_highlight_time;
+constexpr float HIGHLIGHT_DURATION = 2.f;
+
 // defined in window_data_space
 void hover_data_space(uint16_t addr);
 
@@ -354,6 +358,8 @@ void window_disassembly(bool& open)
     SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
     int do_scroll = disassembly_scroll_addr;
     disassembly_scroll_addr = -1;
+    if(scroll_highlight_time > 0)
+        scroll_highlight_time -= GetIO().DeltaTime;
     if(Begin("Disassembly", &open) && arduboy.cpu.decoded)
     {
         AlignTextToFramePadding();
@@ -435,12 +441,18 @@ void window_disassembly(bool& open)
                         continue;
                     }
                     uint16_t instr_index = d.addr / 2;
+                    if(d.addr == scroll_highlight_addr && scroll_highlight_time >= 0.f)
+                    {
+                        float f = scroll_highlight_time / HIGHLIGHT_DURATION;
+                        auto color = IM_COL32(80, 80, 80, uint8_t(f * 255));
+                        TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
+                    }
                     if(instr_index == arduboy.cpu.pc)
                     {
                         auto color = arduboy.paused ?
                             IM_COL32(80, 0, 0, 255) :
                             IM_COL32(60, 60, 60, 255);
-                        TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
+                        TableSetBgColor(ImGuiTableBgTarget_RowBg0, color);
                     }
                     else if(profiler_selected_hotspot >= 0)
                     {
@@ -451,7 +463,7 @@ void window_disassembly(bool& open)
                         uint16_t instr_begin = arduboy.cpu.disassembled_prog[h.begin].addr / 2;
                         uint16_t instr_end = arduboy.cpu.disassembled_prog[h.end].addr / 2;
                         if(instr_index >= instr_begin && instr_index <= instr_end)
-                            TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
+                            TableSetBgColor(ImGuiTableBgTarget_RowBg0, color);
                     }
                     auto bp_pos = GetCursorScreenPos();
                     draw_breakpoint(i, bp_pos);
@@ -518,6 +530,8 @@ void window_disassembly(bool& open)
                 if(!scroll_addr_to_top) index -= num_display / 2;
                 SetScrollY(clipper.ItemsHeight * index);
                 scroll_addr_to_top = false;
+                scroll_highlight_addr = do_scroll;
+                scroll_highlight_time = HIGHLIGHT_DURATION;
             }
 
             EndTable();
