@@ -73,6 +73,22 @@ struct atmega32u4_t
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
 
+    static constexpr size_t MAX_STACK_FRAMES = 1280;
+    std::array<uint16_t, MAX_STACK_FRAMES> stack_frames;
+    uint32_t num_stack_frames;
+    ABSIM_FORCEINLINE void push_stack_frame(uint16_t ret_addr)
+    {
+        //assert(num_stack_frames < stack_frames.size());
+        if(num_stack_frames < stack_frames.size())
+            stack_frames[num_stack_frames++] = ret_addr;
+    }
+    ABSIM_FORCEINLINE void pop_stack_frame()
+    {
+        //assert(num_stack_frames > 0);
+        if(num_stack_frames > 0)
+            --num_stack_frames;
+    }
+
     ABSIM_FORCEINLINE uint8_t& gpr(uint8_t n)
     {
         assert(n < 32);
@@ -486,6 +502,7 @@ struct elf_data_t
     std::vector<disassembled_instr_t> asm_with_source;
     size_t addr_to_disassembled_index(uint16_t addr);
 
+#if 0
     // frame info
     struct frame_info_t
     {
@@ -502,6 +519,7 @@ struct elf_data_t
         std::vector<unwind_t> unwinds;
     };
     std::vector<frame_info_t> frames;
+#endif
 
     std::vector<char> fdata;
     std::unique_ptr<llvm::object::Binary> obj;

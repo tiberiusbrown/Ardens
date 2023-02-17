@@ -234,6 +234,7 @@ static void load_elf_debug(
 
     auto& cpu = a.cpu;
 
+#if 0
     // get frame unwind info
     if(auto frame_or_err = dwarf_ctx->getDebugFrame())
     {
@@ -284,6 +285,7 @@ static void load_elf_debug(
     }
     std::sort(elf.frames.begin(), elf.frames.end(),
         [](auto const& a, auto const& b) { return a.addr_lo < b.addr_lo; });
+#endif
 
     // find source lines for each address
     for(size_t a = 0; a < cpu.last_addr; a += 2)

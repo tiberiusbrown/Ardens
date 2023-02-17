@@ -27,6 +27,7 @@ ABSIM_FORCEINLINE void atmega32u4_t::check_interrupt(
     if(!flag) return;
     if(wakeup_cycles != 0) return;
     if(!(prev_sreg & SREG_I)) return;
+    push_stack_frame(pc);
     push(uint8_t(pc >> 0));
     push(uint8_t(pc >> 8));
     pc = vector;

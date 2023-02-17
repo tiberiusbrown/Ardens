@@ -191,6 +191,7 @@ uint32_t instr_rcall(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint16_t ret_addr = cpu.pc + 1;
     cpu.pc += (int16_t)i.word + 1;
+    cpu.push_stack_frame(ret_addr);
     cpu.push(uint8_t(ret_addr >> 0));
     cpu.push(uint8_t(ret_addr >> 8));
     return 3;
@@ -200,6 +201,7 @@ uint32_t instr_call(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint16_t ret_addr = cpu.pc + 2;
     cpu.pc = i.word;
+    cpu.push_stack_frame(ret_addr);
     cpu.push(uint8_t(ret_addr >> 0));
     cpu.push(uint8_t(ret_addr >> 8));
     return 4;
@@ -209,6 +211,7 @@ uint32_t instr_icall(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint16_t ret_addr = cpu.pc + 1;
     cpu.pc = cpu.z_word();
+    cpu.push_stack_frame(ret_addr);
     cpu.push(uint8_t(ret_addr >> 0));
     cpu.push(uint8_t(ret_addr >> 8));
     return 3;
@@ -219,6 +222,7 @@ uint32_t instr_ret(atmega32u4_t& cpu, avr_instr_t const& i)
     uint16_t hi = cpu.pop();
     uint16_t lo = cpu.pop();
     cpu.pc = lo | (hi << 8);
+    cpu.pop_stack_frame();
     return 4;
 }
 
@@ -228,6 +232,7 @@ uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t const& i)
     uint16_t lo = cpu.pop();
     cpu.pc = lo | (hi << 8);
     cpu.sreg() |= SREG_I;
+    cpu.pop_stack_frame();
     return 4;
 }
 

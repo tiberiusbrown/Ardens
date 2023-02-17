@@ -10,6 +10,7 @@
 extern absim::arduboy_t arduboy;
 extern int disassembly_scroll_addr;
 
+#if 0
 static absim::elf_data_t::frame_info_t::unwind_t const* find_unwind(uint16_t addr)
 {
 	auto const& frames = arduboy.elf->frames;
@@ -87,12 +88,13 @@ std::vector<uint16_t> get_call_stack()
 
     return r;
 }
+#endif
 
 static void window_call_stack_contents()
 {
 	using namespace ImGui;
 
-    auto call_stack = get_call_stack();
+    //auto call_stack = get_call_stack();
 
 	ImGuiTableFlags flags = 0;
 	flags |= ImGuiTableFlags_ScrollY;
@@ -100,8 +102,12 @@ static void window_call_stack_contents()
     std::string name;
 	if(BeginTable("##callstack", 1, flags))
 	{
-        for(auto addr : call_stack)
+        //for(auto addr : call_stack)
+        for(int i = (int)arduboy.cpu.num_stack_frames; i >= 0; --i)
         {
+            uint16_t addr = (i < (int)arduboy.cpu.num_stack_frames) ?
+                arduboy.cpu.stack_frames[i] * 2 :
+                arduboy.cpu.pc * 2;
             if(addr >= arduboy.cpu.last_addr) break;
 
             TableNextRow();

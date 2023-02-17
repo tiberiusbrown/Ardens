@@ -81,12 +81,15 @@ void window_simulation(bool& open)
                 EndTooltip();
             }
             SameLine();
-            if(Button("Step Out"))
+            if(arduboy.cpu.num_stack_frames == 0)
+                BeginDisabled();
+            if(Button("Step Out") && arduboy.cpu.num_stack_frames > 0)
             {
-                arduboy.stepping_out = true;
-                arduboy.stepping_out_num_calls = 0;
+                arduboy.break_step = arduboy.cpu.stack_frames[arduboy.cpu.num_stack_frames - 1];
                 arduboy.paused = false;
             }
+            if(arduboy.cpu.num_stack_frames == 0)
+                EndDisabled();
             if(IsItemHovered())
             {
                 BeginTooltip();
