@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "absim.hpp"
+#include "settings.hpp"
 
 extern absim::arduboy_t arduboy;
 
@@ -22,7 +23,7 @@ void window_display(bool& open, void* tex)
             Image(tex, { w, h });
             AlignTextToFramePadding();
             TextUnformatted("Filter for:");
-            int& num = arduboy.display.num_pixel_history;
+            int num = settings.num_pixel_history;
             SameLine();
             if(RadioButton("Monochrome", num <= 1))
                 num = 1;
@@ -43,6 +44,11 @@ void window_display(bool& open, void* tex)
                 BeginTooltip();
                 TextUnformatted("Average the last 3 display frames");
                 EndTooltip();
+            }
+            if(num != settings.num_pixel_history)
+            {
+                settings.num_pixel_history = num;
+                update_settings();
             }
         }
         End();

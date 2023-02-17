@@ -1,13 +1,13 @@
 #include "imgui.h"
 
 #include "absim.hpp"
+#include "settings.hpp"
 
 #include <inttypes.h>
 
 extern absim::arduboy_t arduboy;
 extern int profiler_selected_hotspot;
 extern int disassembly_scroll_addr;
-extern bool profiler_cycle_counts;
 extern bool scroll_addr_to_top;
 
 static int scroll_highlight_addr = -1;
@@ -335,7 +335,7 @@ static void profiler_count(absim::disassembled_instr_t const& d)
     uint64_t count = arduboy.profiler_counts[d.addr / 2];
     if(count == 0) return;
     double f = double(count) * 100 / arduboy.profiler_total;
-    if(profiler_cycle_counts)
+    if(settings.profiler_cycle_counts)
         Text("%12" PRIu64 "%8.4f%%", count, f);
     else
         Text("%8.4f%%", f);
@@ -417,7 +417,7 @@ void window_disassembly(bool& open)
                 ImGuiTableColumnFlags_WidthStretch);
             TableSetupColumn("Profiling",
                 ImGuiTableColumnFlags_WidthFixed,
-                CalcTextSize(profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
+                CalcTextSize(settings.profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
             ImGuiListClipper clipper;
             clipper.Begin(arduboy.elf ?
                 (int)arduboy.elf->asm_with_source.size() :

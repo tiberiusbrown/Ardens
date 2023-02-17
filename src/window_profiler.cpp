@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "absim.hpp"
+#include "settings.hpp"
 
 #include <inttypes.h>
 #include <string.h>
@@ -8,7 +9,6 @@
 extern absim::arduboy_t arduboy;
 extern int profiler_selected_hotspot;
 extern int disassembly_scroll_addr;
-extern bool profiler_cycle_counts;
 
 static void hotspot_row(int i)
 {
@@ -31,7 +31,7 @@ static void hotspot_row(int i)
         }
     }
     SetCursorPos(pos);
-    if(profiler_cycle_counts)
+    if(settings.profiler_cycle_counts)
     {
         Text("%12" PRIu64 "  ", h.count);
         SameLine();
@@ -113,7 +113,8 @@ void window_profiler(bool& open)
             }
         }
         SameLine();
-        Checkbox("Cycle Counts", &profiler_cycle_counts);
+        if(Checkbox("Cycle Counts", &settings.profiler_cycle_counts))
+            update_settings();
 
         show_hotspots();
     }

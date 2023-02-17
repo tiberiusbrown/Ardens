@@ -8,10 +8,10 @@ project(arduboy_sim)
 
 if(EMSCRIPTEN)
     #set(EXTRA_FLAGS "${EXTRA_FLAGS} -O0 -g3 -gsource-map")
+    #add_link_options("-gsource-map")
     #add_link_options("--profiling")
     #add_link_options("--profiling-funcs")
     #add_link_options("--cpuprofiler")
-    #add_link_options("-gsource-map")
     
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -O3")
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -flto")
@@ -24,8 +24,9 @@ if(EMSCRIPTEN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS}")
     add_link_options("-sALLOW_MEMORY_GROWTH")
     add_link_options("-sINITIAL_MEMORY=24MB")
-    add_link_options("-sEXPORTED_FUNCTIONS=_main,_load_file,_malloc,_free")
-    add_link_options("-sEXPORTED_RUNTIME_METHODS=ccall")
+    add_link_options("-sEXPORTED_FUNCTIONS=_main,_load_file,_malloc,_free,_postsyncfs")
+    add_link_options("-sEXPORTED_RUNTIME_METHODS=ccall,FS")
+    add_link_options("-lidbfs.js")
 endif()
 
 add_subdirectory(deps/SDL)
@@ -99,6 +100,8 @@ add_executable(arduboy_sim ${EXEFLAG}
 
     src/main.cpp
     src/font.cpp
+    src/settings.hpp
+    src/settings.cpp
 
     src/window_disassembly.cpp
     src/window_profiler.cpp

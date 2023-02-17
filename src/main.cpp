@@ -35,6 +35,8 @@
 #include "absim.hpp"
 #include "absim_instructions.hpp"
 
+#include "settings.hpp"
+
 #define PROFILING 0
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
@@ -49,7 +51,6 @@ absim::arduboy_t arduboy;
 int profiler_selected_hotspot = -1;
 int disassembly_scroll_addr = -1;
 bool scroll_addr_to_top = false;
-bool profiler_cycle_counts = false;
 int simulation_slowdown = 1000;
 
 void window_disassembly(bool& open);
@@ -62,25 +63,28 @@ void window_call_stack(bool& open);
 void window_symbols(bool& open);
 void window_globals(bool& open);
 
-static bool open_disassembly = true;
-static bool open_display = true;
-static bool open_display_internals = true;
-static bool open_data_space = true;
-static bool open_profiler = true;
-static bool open_simulation = true;
-static bool open_call_stack = true;
-static bool open_symbols = true;
-static bool open_globals = true;
-
 static uint64_t pt;
 static std::string dropfile_err;
 static bool done = false;
+static bool layout_done = false;
+#ifdef __EMSCRIPTEN__
+static bool settings_loaded = false;
+static bool fs_ready = false;
+#else
+static bool fs_ready = true;
+#endif
 
 static SDL_Window* window;
 static SDL_Renderer* renderer;
 
 static float pixel_ratio = 1.f;
 static ImGuiStyle default_style;
+
+extern "C" void postsyncfs()
+{
+    //printf("postsyncfs\n");
+    fs_ready = true;
+}
 
 static void define_font()
 {
@@ -209,6 +213,7 @@ static void main_loop()
     {
         void* pixels = nullptr;
         int pitch = 0;
+        arduboy.display.num_pixel_history = settings.num_pixel_history;
         arduboy.display.filter_pixels();
 
         SDL_LockTexture(framebuffer_texture, nullptr, &pixels, &pitch);
@@ -261,10 +266,25 @@ static void main_loop()
     ImGui::NewFrame();
 
     const bool enableDocking = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable;
-    bool dockspace_created = true;
     ImGuiID dockspace_id = ImGui::GetID("DockSpace");
-    if(enableDocking)
+    if(fs_ready && enableDocking)
     {
+#ifdef __EMSCRIPTEN__
+        if(!settings_loaded)
+        {
+            ImGui::LoadIniSettingsFromDisk("/offline/imgui.ini");
+            settings_loaded = true;
+        }
+        if(ImGui::GetIO().WantSaveIniSettings)
+        {
+            ImGui::GetIO().WantSaveIniSettings = false;
+            ImGui::SaveIniSettingsToDisk("/offline/imgui.ini");
+            EM_ASM(
+                FS.syncfs(function(err) { assert(!err); });
+            );
+        }
+#endif
+
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -283,69 +303,66 @@ static void main_loop()
         ImGui::Begin("DockSpace Window", nullptr, host_window_flags);
         ImGui::PopStyleVar(3);
 
-        dockspace_created = ImGui::DockBuilderGetNode(dockspace_id) != nullptr;
+        bool dockspace_created = ImGui::DockBuilderGetNode(dockspace_id) != nullptr;
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, nullptr);
         ImGui::End();
-    }
 
-    if(!dockspace_created)
-    {
-        // default docked layout
-        using namespace ImGui;
-        ImGuiID c01, c01u, c01d, c0, c1, c2, c1r01, c1r0, c1r1, c1r2, c2r0, c2r1;
-        DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.35f, &c2, &c01);
-        DockBuilderSplitNode(c01, ImGuiDir_Up, 0.65f, &c01u, &c01d);
-        DockBuilderSplitNode(c01u, ImGuiDir_Left, 0.5f, &c0, &c1);
-        DockBuilderSplitNode(c1, ImGuiDir_Down, 0.25f, &c1r2, &c1r01);
-        DockBuilderSplitNode(c1r01, ImGuiDir_Down, 0.25f, &c1r1, &c1r0);
-        DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
-        DockBuilderDockWindow("CPU Data Space", c0);
-        DockBuilderDockWindow("Display Internals", c0);
-        DockBuilderDockWindow("Symbols", c0);
-        DockBuilderDockWindow("Display", c1r0);
-        DockBuilderDockWindow("Simulation", c1r1);
-        DockBuilderDockWindow("Profiler", c1r2);
-        DockBuilderDockWindow("Call Stack", c2r0);
-        DockBuilderDockWindow("Disassembly", c2r1);
-        DockBuilderDockWindow("Globals", c01d);
-    }
-
-    if(ImGui::BeginMainMenuBar())
-    {
-        if(ImGui::BeginMenu("Windows"))
+        if(!dockspace_created && !layout_done)
         {
-            if(ImGui::MenuItem("Display", nullptr, open_display))
-                open_display = !open_display;
-            if(ImGui::MenuItem("Simulation", nullptr, open_simulation))
-                open_simulation = !open_simulation;
-            if(ImGui::MenuItem("Disassembly", nullptr, open_disassembly))
-                open_disassembly = !open_disassembly;
-            if(ImGui::MenuItem("Symbols", nullptr, open_symbols))
-                open_symbols = !open_symbols;
-            if(ImGui::MenuItem("Globals", nullptr, open_globals))
-                open_globals = !open_globals;
-            if(ImGui::MenuItem("Call Stack", nullptr, open_call_stack))
-                open_call_stack = !open_call_stack;
-            if(ImGui::MenuItem("CPU Data Space", nullptr, open_data_space))
-                open_data_space = !open_data_space;
-            if(ImGui::MenuItem("Profiler", nullptr, open_profiler))
-                open_profiler = !open_profiler;
-            if(ImGui::MenuItem("Display Internals", nullptr, open_display_internals))
-                open_display_internals = !open_display_internals;
-            ImGui::EndMenu();
+            // default docked layout
+            using namespace ImGui;
+            ImGuiID c01, c01u, c01d, c0, c1, c2, c1r01, c1r0, c1r1, c1r2, c2r0, c2r1;
+            DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.35f, &c2, &c01);
+            DockBuilderSplitNode(c01, ImGuiDir_Up, 0.65f, &c01u, &c01d);
+            DockBuilderSplitNode(c01u, ImGuiDir_Left, 0.5f, &c0, &c1);
+            DockBuilderSplitNode(c1, ImGuiDir_Down, 0.25f, &c1r2, &c1r01);
+            DockBuilderSplitNode(c1r01, ImGuiDir_Down, 0.25f, &c1r1, &c1r0);
+            DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
+            DockBuilderDockWindow("CPU Data Space", c0);
+            DockBuilderDockWindow("Display Internals", c0);
+            DockBuilderDockWindow("Symbols", c0);
+            DockBuilderDockWindow("Display", c1r0);
+            DockBuilderDockWindow("Simulation", c1r1);
+            DockBuilderDockWindow("Profiler", c1r2);
+            DockBuilderDockWindow("Call Stack", c2r0);
+            DockBuilderDockWindow("Disassembly", c2r1);
+            DockBuilderDockWindow("Globals", c01d);
         }
-        ImGui::EndMainMenuBar();
+        layout_done = true;
     }
 
-    window_display(open_display, (void*)framebuffer_texture);
-    window_simulation(open_simulation);
-    window_disassembly(open_disassembly);
-    window_symbols(open_symbols);
-    window_globals(open_globals);
-    window_call_stack(open_call_stack);
-    window_display_internals(open_display_internals);
-    window_profiler(open_profiler);
-    window_data_space(open_data_space);
+    if(layout_done)
+    {
+
+        if(ImGui::BeginMainMenuBar())
+        {
+            if(ImGui::BeginMenu("Windows"))
+            {
+                ImGui::MenuItem("Display", nullptr, &settings.open_display);
+                ImGui::MenuItem("Simulation", nullptr, &settings.open_simulation);
+                ImGui::MenuItem("Disassembly", nullptr, &settings.open_disassembly);
+                ImGui::MenuItem("Symbols", nullptr, &settings.open_symbols);
+                ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
+                ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
+                ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
+                ImGui::MenuItem("Profiler", nullptr, &settings.open_profiler);
+                ImGui::MenuItem("Display Internals", nullptr, &settings.open_display_internals);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+
+        window_display(settings.open_display, (void*)framebuffer_texture);
+        window_simulation(settings.open_simulation);
+        window_disassembly(settings.open_disassembly);
+        window_symbols(settings.open_symbols);
+        window_globals(settings.open_globals);
+        window_call_stack(settings.open_call_stack);
+        window_display_internals(settings.open_display_internals);
+        window_profiler(settings.open_profiler);
+        window_data_space(settings.open_data_space);
+
+    }
 
     if(!dferr.empty())
     {
@@ -386,6 +403,14 @@ static void main_loop()
 
 int main(int, char**)
 {
+#ifdef __EMSCRIPTEN__
+    EM_ASM(
+        FS.mkdir('/offline');
+        FS.mount(IDBFS, {}, '/offline');
+        FS.syncfs(true, function(err) { ccall('postsyncfs', 'v'); });
+    );
+#endif
+
 #ifdef _WIN32
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
@@ -402,6 +427,8 @@ int main(int, char**)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
+    init_settings();
 
     ImGuiIO& io = ImGui::GetIO();
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
