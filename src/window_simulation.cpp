@@ -1,6 +1,7 @@
 #include "imgui.h"
 
 #include "absim.hpp"
+#include "settings.hpp"
 
 extern absim::arduboy_t arduboy;
 extern int disassembly_scroll_addr;
@@ -96,6 +97,8 @@ void window_simulation(bool& open)
                 TextUnformatted("Execute until the current function returns");
                 EndTooltip();
             }
+            if(Checkbox("Enable breakpoints while stepping over/out", &settings.enable_step_breaks))
+                update_settings();
         }
         else
         {

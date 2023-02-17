@@ -570,10 +570,8 @@ struct arduboy_t
     std::bitset<NUM_INSTRS> breakpoints;
     std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_rd;
     std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_wr;
+    bool allow_nonstep_breakpoints;
     uint32_t break_step;
-
-    bool stepping_out;
-    int32_t stepping_out_num_calls;
 
     uint64_t ps_rem;
 

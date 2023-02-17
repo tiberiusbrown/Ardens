@@ -16,8 +16,6 @@ void arduboy_t::reset()
     fx.reset();
     paused = false;
     break_step = 0xffffffff;
-    stepping_out = false;
-    stepping_out_num_calls = 0;
 
     if(breakpoints.test(0))
         paused = true;
@@ -326,11 +324,11 @@ void arduboy_t::advance(uint64_t ps)
     if(paused) return;
 
     bool any_breakpoints =
+        allow_nonstep_breakpoints && (
         breakpoints.any() ||
         breakpoints_rd.any() ||
-        breakpoints_wr.any() ||
-        break_step != 0xffffffff ||
-        stepping_out;
+        breakpoints_wr.any()) ||
+        break_step != 0xffffffff;
 
     cpu.no_merged = profiler_enabled || any_breakpoints;
 
@@ -344,24 +342,12 @@ void arduboy_t::advance(uint64_t ps)
 
         if(any_breakpoints)
         {
-            if(stepping_out && prev_pc < cpu.decoded_prog.size())
-            {
-                auto const& i = cpu.decoded_prog[prev_pc];
-                if(instr_is_call(i) || cpu.just_interrupted)
-                    ++stepping_out_num_calls;
-                if(instr_is_ret(i))
-                    --stepping_out_num_calls;
-            }
-
-            if( cpu.pc < breakpoints.size() && breakpoints.test(cpu.pc) ||
+            if(cpu.pc == break_step || allow_nonstep_breakpoints && (
+                cpu.pc < breakpoints.size() && breakpoints.test(cpu.pc) ||
                 cpu.just_read < breakpoints_rd.size() && breakpoints_rd.test(cpu.just_read) ||
-                cpu.just_written < breakpoints_wr.size() && breakpoints_wr.test(cpu.just_written) ||
-                cpu.pc == break_step ||
-                stepping_out && stepping_out_num_calls < 0)
+                cpu.just_written < breakpoints_wr.size() && breakpoints_wr.test(cpu.just_written)))
             {
                 paused = true;
-                stepping_out = false;
-                stepping_out_num_calls = 0;
                 return;
             }
         }
