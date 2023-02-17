@@ -7,8 +7,9 @@ extern absim::arduboy_t arduboy;
 extern int disassembly_scroll_addr;
 extern int simulation_slowdown;
 
-static int slider_val = 9;
+static int slider_val = 12;
 static int const SLIDERS[] = {
+    10000000, 5000000, 2000000,
     1000000, 500000, 200000,
     100000, 50000, 20000,
     10000, 5000, 2000,

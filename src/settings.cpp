@@ -16,6 +16,7 @@ static void settings_read_line(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line)
 {
     int d_display;
+    int d_display_buffer;
     int d_simulation;
     int d_disassembly;
     int d_symbols;
@@ -28,6 +29,7 @@ static void settings_read_line(
     int d_num_pixel_history;
     int d_enable_step_breaks;
     if(sscanf(line, "open_display=%d", &d_display) == 1) settings.open_display = !!d_display;
+    if(sscanf(line, "open_display_buffer=%d", &d_display_buffer) == 1) settings.open_display_buffer = !!d_display_buffer;
     if(sscanf(line, "open_simulation=%d", &d_simulation) == 1) settings.open_simulation = !!d_simulation;
     if(sscanf(line, "open_disassembly=%d", &d_disassembly) == 1) settings.open_disassembly = !!d_disassembly;
     if(sscanf(line, "open_symbols=%d", &d_symbols) == 1) settings.open_symbols = !!d_symbols;
@@ -44,6 +46,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     buf->reserve(buf->size() + 1024);
     buf->append("[UserData][Settings]\n");
     buf->appendf("open_display=%d\n", (int)settings.open_display);
+    buf->appendf("open_display_buffer=%d\n", (int)settings.open_display_buffer);
     buf->appendf("open_simulation=%d\n", (int)settings.open_simulation);
     buf->appendf("open_disassembly=%d\n", (int)settings.open_disassembly);
     buf->appendf("open_symbols=%d\n", (int)settings.open_symbols);

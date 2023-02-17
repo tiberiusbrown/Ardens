@@ -26,6 +26,8 @@ void atmega32u4_t::reset()
     active = true;
     wakeup_cycles = false;
 
+    num_stack_frames = 0;
+
     memset(&eeprom, 0xff, sizeof(eeprom));
 
     prev_sreg = 0;

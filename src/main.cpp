@@ -45,7 +45,8 @@
 
 extern unsigned char const ProggyVector[198188];
 
-static SDL_Texture* framebuffer_texture;
+static SDL_Texture* display_texture;
+static SDL_Texture* display_buffer_texture;
 absim::arduboy_t arduboy;
 
 int profiler_selected_hotspot = -1;
@@ -53,9 +54,14 @@ int disassembly_scroll_addr = -1;
 bool scroll_addr_to_top = false;
 int simulation_slowdown = 1000;
 
+int display_buffer_addr = -1;
+int display_buffer_w = 128;
+int display_buffer_h = 64;
+
 void window_disassembly(bool& open);
 void window_profiler(bool& open);
 void window_display(bool& open, void* tex);
+void window_display_buffer(bool& open, SDL_Texture* tex);
 void window_display_internals(bool& open);
 void window_data_space(bool& open);
 void window_simulation(bool& open);
@@ -218,7 +224,7 @@ static void main_loop()
         arduboy.display.num_pixel_history = settings.num_pixel_history;
         arduboy.display.filter_pixels();
 
-        SDL_LockTexture(framebuffer_texture, nullptr, &pixels, &pitch);
+        SDL_LockTexture(display_texture, nullptr, &pixels, &pitch);
 
         uint8_t* bpixels = (uint8_t*)pixels;
         for(int i = 0; i < 64; ++i)
@@ -232,7 +238,7 @@ static void main_loop()
                 *bpixels++ = 255;
             }
         }
-        SDL_UnlockTexture(framebuffer_texture);
+        SDL_UnlockTexture(display_texture);
     }
 
     SDL_Event event;
@@ -348,13 +354,15 @@ static void main_loop()
                 ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
                 ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
                 ImGui::MenuItem("Profiler", nullptr, &settings.open_profiler);
+                ImGui::MenuItem("Display Buffer (RAM)", nullptr, &settings.open_display_buffer);
                 ImGui::MenuItem("Display Internals", nullptr, &settings.open_display_internals);
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
         }
 
-        window_display(settings.open_display, (void*)framebuffer_texture);
+        window_display(settings.open_display, (void*)display_texture);
+        window_display_buffer(settings.open_display_buffer, display_buffer_texture);
         window_simulation(settings.open_simulation);
         window_disassembly(settings.open_disassembly);
         window_symbols(settings.open_symbols);
@@ -475,7 +483,13 @@ int main(int, char**)
 
     define_font();
 
-    framebuffer_texture = SDL_CreateTexture(
+    display_texture = SDL_CreateTexture(
+        renderer,
+        SDL_PIXELFORMAT_ABGR8888,
+        SDL_TEXTUREACCESS_STREAMING,
+        128,
+        64);
+    display_buffer_texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_ABGR8888,
         SDL_TEXTUREACCESS_STREAMING,
@@ -495,10 +509,15 @@ int main(int, char**)
         main_loop();
 #endif
 
-    if(framebuffer_texture)
+    if(display_texture)
     {
-        SDL_DestroyTexture(framebuffer_texture);
-        framebuffer_texture = nullptr;
+        SDL_DestroyTexture(display_texture);
+        display_texture = nullptr;
+    }
+    if(display_buffer_texture)
+    {
+        SDL_DestroyTexture(display_buffer_texture);
+        display_buffer_texture = nullptr;
     }
 
     ImGui_ImplSDLRenderer_Shutdown();

@@ -7,6 +7,7 @@ struct settings_t
 
     bool open_disassembly = true;
     bool open_display = true;
+    bool open_display_buffer = false;
     bool open_display_internals = true;
     bool open_data_space = true;
     bool open_profiler = true;
