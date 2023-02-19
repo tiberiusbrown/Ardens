@@ -411,7 +411,7 @@ static void main_loop()
     SDL_RenderPresent(renderer);
 }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
 #ifdef __EMSCRIPTEN__
     EM_ASM(
@@ -505,6 +505,15 @@ int main(int, char**)
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(main_loop, -1, 1);
 #else
+    for(int arg = 1; arg < argc; ++arg)
+    {
+        SDL_Event file_drop_event;
+        file_drop_event.type = SDL_DROPFILE;
+        file_drop_event.drop.timestamp = SDL_GetTicks();
+        file_drop_event.drop.file = SDL_strdup(argv[arg]);
+        file_drop_event.drop.windowID = SDL_GetWindowID(window);
+        SDL_PushEvent(&file_drop_event);
+    }
     while(!done)
         main_loop();
 #endif
