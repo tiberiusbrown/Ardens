@@ -106,7 +106,7 @@ static void window_call_stack_contents()
         for(int i = (int)arduboy.cpu.num_stack_frames; i >= 0; --i)
         {
             uint16_t addr = (i < (int)arduboy.cpu.num_stack_frames) ?
-                arduboy.cpu.stack_frames[i] * 2 :
+                arduboy.cpu.stack_frames[i].pc * 2 :
                 arduboy.cpu.pc * 2;
             if(addr >= arduboy.cpu.last_addr) break;
 

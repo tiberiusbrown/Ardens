@@ -87,7 +87,7 @@ void window_simulation(bool& open)
                 BeginDisabled();
             if(Button("Step Out") && arduboy.cpu.num_stack_frames > 0)
             {
-                arduboy.break_step = arduboy.cpu.stack_frames[arduboy.cpu.num_stack_frames - 1];
+                arduboy.break_step = arduboy.cpu.stack_frames[arduboy.cpu.num_stack_frames - 1].pc;
                 arduboy.paused = false;
             }
             if(arduboy.cpu.num_stack_frames == 0)

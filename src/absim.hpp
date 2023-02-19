@@ -73,22 +73,6 @@ struct atmega32u4_t
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
 
-    static constexpr size_t MAX_STACK_FRAMES = 1280;
-    std::array<uint16_t, MAX_STACK_FRAMES> stack_frames;
-    uint32_t num_stack_frames;
-    ABSIM_FORCEINLINE void push_stack_frame(uint16_t ret_addr)
-    {
-        //assert(num_stack_frames < stack_frames.size());
-        if(num_stack_frames < stack_frames.size())
-            stack_frames[num_stack_frames++] = ret_addr;
-    }
-    ABSIM_FORCEINLINE void pop_stack_frame()
-    {
-        //assert(num_stack_frames > 0);
-        if(num_stack_frames > 0)
-            --num_stack_frames;
-    }
-
     ABSIM_FORCEINLINE uint8_t& gpr(uint8_t n)
     {
         assert(n < 32);
@@ -199,6 +183,27 @@ struct atmega32u4_t
     uint16_t pc;                       // program counter
 
     uint16_t executing_instr_pc;
+
+    static constexpr size_t MAX_STACK_FRAMES = 1280;
+    struct stack_frame_t { uint16_t pc; uint16_t sp; };
+    std::array<stack_frame_t, MAX_STACK_FRAMES> stack_frames;
+    uint32_t num_stack_frames;
+    ABSIM_FORCEINLINE void push_stack_frame(uint16_t ret_addr)
+    {
+        //assert(num_stack_frames < stack_frames.size());
+        if(num_stack_frames < stack_frames.size())
+            stack_frames[num_stack_frames++] = { ret_addr, sp() };
+    }
+    ABSIM_FORCEINLINE void pop_stack_frame()
+    {
+        auto tsp = sp();
+        while(num_stack_frames > 0)
+        {
+            auto f = stack_frames[num_stack_frames - 1];
+            if(f.sp > tsp) break;
+            --num_stack_frames;
+        }
+    }
 
     static constexpr int MAX_INSTR_CYCLES = 32;
 
