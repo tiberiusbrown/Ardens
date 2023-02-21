@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include <stdint.h>
+#include <string.h>
 #include <assert.h>
 
 #include "absim_instructions.hpp"
