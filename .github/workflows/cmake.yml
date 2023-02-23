@@ -37,5 +37,5 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: Executable
-        path: ${{github.workspace}}/build/arduboy_sim*
+        name: Release_${{env.RUNNER_OS}}
+        path: ${{github.workspace}}/build/arduboy_sim
