@@ -304,7 +304,6 @@ struct atmega32u4_t
     void cycle_eeprom(uint32_t cycles);
     static void eeprom_handle_st_eecr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
-
     // ADC
     uint32_t adc_prescaler_cycle;
     uint32_t adc_cycle;
@@ -314,6 +313,14 @@ struct atmega32u4_t
     void cycle_adc(uint32_t cycles);
     void adc_handle_prr0(uint8_t x);
     static void adc_st_handle_adcsra(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+
+    // sound
+    static constexpr int SOUND_CYCLES = 320;
+    uint32_t sound_cycle;
+    uint32_t sound_enabled; // bitmask of pins 1 and 2
+    std::vector<int16_t> sound_buffer;
+    static void sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    void cycle_sound(uint32_t cycles);
 
     void check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 

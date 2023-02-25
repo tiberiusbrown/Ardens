@@ -7,6 +7,7 @@
 #include "absim_spi.hpp"
 #include "absim_eeprom.hpp"
 #include "absim_w25q128.hpp"
+#include "absim_sound.hpp"
 
 #include <algorithm>
 
@@ -194,11 +195,14 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         }
     }
 
+    cycle_sound(cycles);
+
     return cycles;
 }
 
 void atmega32u4_t::update_all()
 {
+    update_timer0();
     update_timer1();
     update_timer3();
 }

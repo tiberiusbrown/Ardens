@@ -22,6 +22,8 @@
 #define ALLOW_SCREENSHOTS 1
 #endif
 
+#define PROFILING 0
+
 #if ALLOW_SCREENSHOTS
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -37,13 +39,18 @@
 
 #include "settings.hpp"
 
-#define PROFILING 0
+constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
+constexpr uint32_t MAX_AUDIO_LATENCY_MS = 80;
+constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = AUDIO_FREQ * MAX_AUDIO_LATENCY_MS / 1000;
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
 #endif
 
 extern unsigned char const ProggyVector[198188];
+
+static SDL_AudioDeviceID audio_device;
+static SDL_AudioSpec audio_spec;
 
 static SDL_Texture* display_texture;
 static SDL_Texture* display_buffer_texture;
@@ -211,10 +218,26 @@ static void main_loop()
         arduboy.advance(dt * 1000000000000ull / simulation_slowdown);
         if(arduboy.paused && !prev_paused)
             disassembly_scroll_addr = arduboy.cpu.pc * 2;
+
+        // consume sound buffer
+        constexpr size_t SAMPLE_SIZE = sizeof(arduboy.cpu.sound_buffer[0]);
+        size_t num_bytes = arduboy.cpu.sound_buffer.size() * SAMPLE_SIZE;
+        uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
+        if(queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
+            num_bytes = 0;
+        else if(num_bytes + queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
+            num_bytes = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE - queued_bytes;
+        SDL_QueueAudio(
+            audio_device,
+            arduboy.cpu.sound_buffer.data(),
+            (uint32_t)num_bytes);
+        arduboy.cpu.sound_buffer.clear();
+        SDL_PauseAudioDevice(audio_device, 0);
     }
     else
     {
         arduboy.break_step = 0xffffffff;
+        SDL_PauseAudioDevice(audio_device, 1);
     }
 
     // update framebuffer texture
@@ -425,10 +448,23 @@ int main(int argc, char** argv)
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;
+    }
+
+    {
+        SDL_AudioSpec desired;
+        memset(&desired, 0, sizeof(desired));
+        desired.freq = AUDIO_FREQ;
+        desired.format = AUDIO_S16SYS;
+        desired.channels = 1;
+        audio_device = SDL_OpenAudioDevice(
+            nullptr, 0,
+            &desired,
+            &audio_spec,
+            0);
     }
 
 #if PROFILING
@@ -532,6 +568,8 @@ int main(int argc, char** argv)
     ImGui_ImplSDLRenderer_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
+
+    SDL_CloseAudioDevice(audio_device);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

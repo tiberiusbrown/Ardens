@@ -27,6 +27,7 @@ if(EMSCRIPTEN)
     add_link_options("-sEXPORTED_FUNCTIONS=_main,_load_file,_malloc,_free,_postsyncfs")
     add_link_options("-sEXPORTED_RUNTIME_METHODS=ccall,FS")
     add_link_options("-lidbfs.js")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
 add_subdirectory(deps/SDL)
@@ -136,6 +137,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim_pll.hpp
     src/absim_spi.hpp
     src/absim_eeprom.hpp
+    src/absim_sound.hpp
     
     src/stb_image_write.h
     ${IMGUI_SOURCES}

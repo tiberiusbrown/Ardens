@@ -50,6 +50,8 @@ void atmega32u4_t::reset()
     for(int i = 0x90; i <= 0x9d; ++i)
         st_handlers[i] = timer3_handle_st_regs;
 
+    st_handlers[0x27] = sound_st_handler_ddrc;
+
     ld_handlers[0x4d] = spi_handle_ld_spsr;
     ld_handlers[0x46] = timer0_handle_ld_tcnt;
     ld_handlers[0x84] = timer1_handle_ld_tcnt;
