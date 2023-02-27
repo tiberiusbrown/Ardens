@@ -275,8 +275,40 @@ struct atmega32u4_t
     timer16_t timer1;
     timer16_t timer3;
 
+    // timer 4
+    struct timer10_t
+    {
+        uint64_t prev_update_cycle;
+        uint64_t next_update_cycle;
+        uint32_t divider_cycle;
+        uint32_t divider;
+        uint32_t top;
+        uint32_t tov;
+        uint32_t tcnt;
+        uint32_t ocrNa_next;
+        uint32_t ocrNb_next;
+        uint32_t ocrNc_next;
+        uint32_t ocrNd_next;
+        uint32_t ocrNa;
+        uint32_t ocrNb;
+        uint32_t ocrNc;
+        uint32_t ocrNd;
+        uint32_t async_cycle;
+        bool tlock;
+        bool phase_correct;
+        bool count_down;
+        bool update_ocrN_at_top;
+        bool update_ocrN_at_bottom;
+    };
+    static void timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static uint8_t timer4_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
+    void update_timer4();
+    timer10_t timer4;
+
     // PLL
     uint64_t pll_lock_cycle;
+    uint32_t pll_num12; // numerator /12 of pll cycles per main cycle
     bool pll_busy;
     void cycle_pll(uint32_t cycles);
     static void pll_handle_st_pllcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -316,8 +348,11 @@ struct atmega32u4_t
 
     // sound
     static constexpr int SOUND_CYCLES = 320;
+    static constexpr int16_t SOUND_GAIN = 1500;
     uint32_t sound_cycle;
     uint32_t sound_enabled; // bitmask of pins 1 and 2
+    bool sound_pwm;
+    int16_t sound_pwm_val;
     std::vector<int16_t> sound_buffer;
     static void sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     void cycle_sound(uint32_t cycles);

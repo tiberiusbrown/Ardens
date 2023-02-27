@@ -49,6 +49,13 @@ void atmega32u4_t::reset()
         st_handlers[i] = timer1_handle_st_regs;
     for(int i = 0x90; i <= 0x9d; ++i)
         st_handlers[i] = timer3_handle_st_regs;
+    for(int i = 0xbe; i <= 0xc4; ++i)
+        st_handlers[i] = timer4_handle_st_regs;
+    for(int i = 0xcf; i <= 0xd2; ++i)
+        st_handlers[i] = timer4_handle_st_ocrN;
+
+    // TIMSK4
+    st_handlers[0x72] = timer4_handle_st_regs;
 
     st_handlers[0x27] = sound_st_handler_ddrc;
 
@@ -58,10 +65,13 @@ void atmega32u4_t::reset()
     ld_handlers[0x85] = timer1_handle_ld_tcnt;
     ld_handlers[0x94] = timer3_handle_ld_tcnt;
     ld_handlers[0x95] = timer3_handle_ld_tcnt;
+    ld_handlers[0xbe] = timer4_handle_ld_tcnt;
+    ld_handlers[0xbf] = timer4_handle_ld_tcnt;
 
     memset(&timer0, 0, sizeof(timer0));
     memset(&timer1, 0, sizeof(timer1));
     memset(&timer3, 0, sizeof(timer3));
+    memset(&timer4, 0, sizeof(timer4));
 
     timer1.base_addr = 0x80;
     timer3.base_addr = 0x90;
@@ -77,8 +87,11 @@ void atmega32u4_t::reset()
     timer0.next_update_cycle = UINT64_MAX;
     timer1.next_update_cycle = UINT64_MAX;
     timer3.next_update_cycle = UINT64_MAX;
+    timer4.next_update_cycle = UINT64_MAX;
 
     pll_lock_cycle = 0;
+    pll_num12 = 0;
+    pll_busy = false;
 
     spsr_read_after_transmit = false;
     spi_busy = false;

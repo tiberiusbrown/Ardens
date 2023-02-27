@@ -73,6 +73,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         uint64_t t = timer0.next_update_cycle - cycle_count;
         t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
         t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
+        t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
 
         max_merged_cycles = std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
 
@@ -140,6 +141,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             uint64_t t = timer0.next_update_cycle - cycle_count;
             t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
             t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
+            t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
             t = std::min<uint64_t>(t, 1024);
             if(t > 1) --t;
             cycles = (uint32_t)t;
@@ -164,6 +166,8 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             update_timer1();
         if(cycle_count >= timer3.next_update_cycle)
             update_timer3();
+        if(cycle_count >= timer4.next_update_cycle)
+            update_timer4();
 
         // handle interrupts here
         uint8_t i;
@@ -192,6 +196,15 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             check_interrupt(0x42, i & 0x04, tifr3()); // TIMER3 COMPB
             check_interrupt(0x44, i & 0x08, tifr3()); // TIMER3 COMPC
             check_interrupt(0x46, i & 0x01, tifr3()); // TIMER3 OVF
+        }
+
+        i = tifr4() & timsk4();
+        if(i)
+        {
+            check_interrupt(0x4c, i & 0x40, tifr4()); // TIMER4 COMPA
+            check_interrupt(0x4e, i & 0x20, tifr4()); // TIMER4 COMPB
+            check_interrupt(0x50, i & 0x80, tifr4()); // TIMER4 COMPD
+            check_interrupt(0x52, i & 0x04, tifr4()); // TIMER4 OVF
         }
     }
 

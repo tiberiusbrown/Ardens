@@ -9,7 +9,8 @@ void atmega32u4_t::pll_handle_st_pllcsr(
     assert(ptr == 0x49);
     constexpr uint8_t PLOCK = 1 << 0;
     constexpr uint8_t PLLE = 1 << 1;
-    uint8_t& csr = cpu.data[0x49];
+
+    cpu.pll_num12 = 0;
     if(!(x & PLLE))
     {
         x &= ~PLOCK;
@@ -20,6 +21,8 @@ void atmega32u4_t::pll_handle_st_pllcsr(
     {
         cpu.pll_busy = true;
     }
+
+    uint8_t& csr = cpu.data[0x49];
 
     // PLOCK is read only
     x &= ~PLOCK;
@@ -35,7 +38,6 @@ void ABSIM_FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
         return;
 
     uint8_t& csr = data[0x49];
-    //uint8_t frq = data[0x52];
 
     constexpr uint8_t PLOCK = 1 << 0;
 
@@ -46,6 +48,25 @@ void ABSIM_FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
     {
         csr |= PLOCK;
         pll_busy = false;
+
+        // compute pll numerator
+        uint32_t frq = data[0x52];
+
+        uint32_t divider = frq & 0xf;
+
+        uint32_t f = 0;
+        if(divider >= 3 && divider <= 10 && divider != 6)
+            f = divider * 8 + 16;
+        uint32_t tm = (frq >> 4) & 0x3;
+        pll_num12 = 0;
+        if(tm == 1) // D = 1
+            pll_num12 = f / 4 * 3;
+        else if(tm == 2) // D = 1.5
+            pll_num12 = f / 2;
+        else if(tm == 3) // D = 2
+            pll_num12 = f / 8 * 3;
+
+        update_timer4();
     }
 }
 

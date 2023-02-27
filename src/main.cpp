@@ -22,7 +22,7 @@
 #define ALLOW_SCREENSHOTS 1
 #endif
 
-#define PROFILING 0
+#define PROFILING 1
 
 #if ALLOW_SCREENSHOTS
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -220,17 +220,20 @@ static void main_loop()
             disassembly_scroll_addr = arduboy.cpu.pc * 2;
 
         // consume sound buffer
-        constexpr size_t SAMPLE_SIZE = sizeof(arduboy.cpu.sound_buffer[0]);
-        size_t num_bytes = arduboy.cpu.sound_buffer.size() * SAMPLE_SIZE;
-        uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
-        if(queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
-            num_bytes = 0;
-        else if(num_bytes + queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
-            num_bytes = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE - queued_bytes;
-        SDL_QueueAudio(
-            audio_device,
-            arduboy.cpu.sound_buffer.data(),
-            (uint32_t)num_bytes);
+        if(simulation_slowdown == 1000)
+        {
+            constexpr size_t SAMPLE_SIZE = sizeof(arduboy.cpu.sound_buffer[0]);
+            size_t num_bytes = arduboy.cpu.sound_buffer.size() * SAMPLE_SIZE;
+            uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
+            if(queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
+                num_bytes = 0;
+            else if(num_bytes + queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
+                num_bytes = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE - queued_bytes;
+            SDL_QueueAudio(
+                audio_device,
+                arduboy.cpu.sound_buffer.data(),
+                (uint32_t)num_bytes);
+        }
         arduboy.cpu.sound_buffer.clear();
         SDL_PauseAudioDevice(audio_device, 0);
     }
