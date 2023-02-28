@@ -146,7 +146,6 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
     dropfile_err = arduboy.load_file(filename, f);
-    dropfile_err = "Hello!";
     return 0;
 }
 
@@ -271,7 +270,6 @@ static void main_loop()
 
     SDL_Event event;
 
-    std::string dferr;
     while(SDL_PollEvent(&event))
     {
         ImGui_ImplSDL2_ProcessEvent(&event);
@@ -285,7 +283,7 @@ static void main_loop()
         if(event.type == SDL_DROPFILE)
         {
             std::ifstream f(event.drop.file, std::ios::binary);
-            dferr = arduboy.load_file(event.drop.file, f);
+            dropfile_err = arduboy.load_file(event.drop.file, f);
             SDL_free(event.drop.file);
         }
     }
@@ -402,11 +400,8 @@ static void main_loop()
 
     }
 
-    if(!dferr.empty())
-    {
-        dropfile_err = dferr;
+    if(!dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
         ImGui::OpenPopup("File Load Error");
-    }
 
     ImGui::SetNextWindowSize({ 500, 0 });
     if(ImGui::BeginPopupModal("File Load Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
@@ -415,7 +410,10 @@ static void main_loop()
         ImGui::TextUnformatted(dropfile_err.c_str());
         ImGui::PopTextWrapPos();
         if(ImGui::Button("OK", ImVec2(120, 0)))
+        {
+            dropfile_err.clear();
             ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
 
