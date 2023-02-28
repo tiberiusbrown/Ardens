@@ -219,6 +219,9 @@ struct atmega32u4_t
     void merge_instrs();
     size_t addr_to_disassembled_index(uint16_t addr);
 
+    static void st_handle_pin(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void st_handle_port(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // timer0

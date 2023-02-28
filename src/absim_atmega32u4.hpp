@@ -22,6 +22,22 @@ void atmega32u4_t::st_handle_prr0(
     cpu.adc_handle_prr0(x);
 }
 
+void atmega32u4_t::st_handle_pin(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    st_handle_port(cpu, ptr + 2, cpu.data[ptr + 2] ^ x);
+}
+
+void atmega32u4_t::st_handle_port(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    uint8_t mask = cpu.data[ptr - 1];
+    uint8_t port = cpu.data[ptr];
+    port &= ~mask;
+    port |= (x & mask);
+    cpu.data[ptr] ^= port;
+}
+
 ABSIM_FORCEINLINE void atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {

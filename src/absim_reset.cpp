@@ -43,6 +43,18 @@ void atmega32u4_t::reset()
     st_handlers[0x64] = st_handle_prr0;
     st_handlers[0x7a] = adc_st_handle_adcsra;
 
+    st_handlers[0x23] = st_handle_pin;
+    st_handlers[0x26] = st_handle_pin;
+    st_handlers[0x29] = st_handle_pin;
+    st_handlers[0x2c] = st_handle_pin;
+    st_handlers[0x2f] = st_handle_pin;
+
+    st_handlers[0x25] = st_handle_port;
+    st_handlers[0x28] = st_handle_port;
+    st_handlers[0x2b] = st_handle_port;
+    st_handlers[0x2e] = st_handle_port;
+    st_handlers[0x31] = st_handle_port;
+
     for(int i = 0x44; i <= 0x48; ++i)
         st_handlers[i] = timer0_handle_st_regs;
     for(int i = 0x80; i <= 0x8d; ++i)
