@@ -464,10 +464,10 @@ static ABSIM_FORCEINLINE void timer10_update_ocrN(
 {
     if(!timer.tlock)
     {
-        timer.ocrNa = std::max<uint32_t>(3, timer.ocrNa_next);
-        timer.ocrNb = std::max<uint32_t>(3, timer.ocrNb_next);
+        timer.ocrNa = timer.ocrNa_next;
+        timer.ocrNb = timer.ocrNb_next;
         timer.ocrNc = std::max<uint32_t>(3, timer.ocrNc_next);
-        timer.ocrNd = std::max<uint32_t>(3, timer.ocrNd_next);
+        timer.ocrNd = timer.ocrNd_next;
 
         cpu.data[0xcf] = (uint8_t)timer.ocrNa;
         cpu.data[0xd0] = (uint8_t)timer.ocrNb;
@@ -761,6 +761,13 @@ void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
     cpu.update_timer0();
 }
 
+void atmega32u4_t::timer0_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == 0x35);
+    x = (cpu.data[0x35] & ~x);
+    cpu.data[0x35] = x;
+}
+
 uint8_t atmega32u4_t::timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
 {
     cpu.update_timer0();
@@ -783,10 +790,24 @@ void atmega32u4_t::timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
     update_timer16(cpu, cpu.timer1);
 }
 
+void atmega32u4_t::timer1_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == 0x36);
+    x = (cpu.data[0x36] & ~x);
+    cpu.data[0x36] = x;
+}
+
 void atmega32u4_t::timer3_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     cpu.data[ptr] = x;
     update_timer16(cpu, cpu.timer3);
+}
+
+void atmega32u4_t::timer3_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == 0x38);
+    x = (cpu.data[0x38] & ~x);
+    cpu.data[0x38] = x;
 }
 
 uint8_t atmega32u4_t::timer1_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
@@ -803,8 +824,17 @@ uint8_t atmega32u4_t::timer3_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
 
 void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
+    if(ptr == 0x39)
+        x = (cpu.data[0x39] & ~x);
     cpu.data[ptr] = x;
     cpu.update_timer4();
+}
+
+void atmega32u4_t::timer4_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == 0x39);
+    x = (cpu.data[0x39] & ~x);
+    cpu.data[0x39] = x;
 }
 
 void atmega32u4_t::timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)

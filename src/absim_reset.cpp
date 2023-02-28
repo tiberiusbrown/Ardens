@@ -57,6 +57,11 @@ void atmega32u4_t::reset()
     // TIMSK4
     st_handlers[0x72] = timer4_handle_st_regs;
 
+    st_handlers[0x35] = timer0_handle_st_tifr;
+    st_handlers[0x36] = timer1_handle_st_tifr;
+    st_handlers[0x38] = timer3_handle_st_tifr;
+    st_handlers[0x39] = timer4_handle_st_tifr;
+
     st_handlers[0x27] = sound_st_handler_ddrc;
 
     ld_handlers[0x4d] = spi_handle_ld_spsr;
@@ -72,6 +77,8 @@ void atmega32u4_t::reset()
     memset(&timer1, 0, sizeof(timer1));
     memset(&timer3, 0, sizeof(timer3));
     memset(&timer4, 0, sizeof(timer4));
+
+    data[0xd1] = timer4.ocrNc = timer4.ocrNc_next = timer4.top = 0xff;
 
     timer1.base_addr = 0x80;
     timer3.base_addr = 0x90;

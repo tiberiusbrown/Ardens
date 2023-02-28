@@ -239,6 +239,7 @@ struct atmega32u4_t
     };
     timer8_t timer0;
     static void timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void timer0_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
     void update_timer0();
 
@@ -267,6 +268,8 @@ struct atmega32u4_t
     };
     static void timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer3_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void timer1_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void timer3_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t timer1_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
     static uint8_t timer3_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
     void update_timer1();
@@ -304,6 +307,7 @@ struct atmega32u4_t
     };
     static void timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void timer4_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t timer4_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
     void update_timer4();
     timer10_t timer4;

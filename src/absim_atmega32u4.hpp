@@ -91,10 +91,11 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             if(pc >= decoded_prog.size())
                 return cycles;
             auto const& i = decoded_prog[pc];
-            if(i.func == INSTR_UNKNOWN)
-                return cycles;
             prev_sreg = sreg();
-            cycles = INSTR_MAP[i.func](*this, i);
+            if(i.func == INSTR_UNKNOWN)
+                cycles = 1;
+            else
+                cycles = INSTR_MAP[i.func](*this, i);
         }
         else
         {
@@ -104,9 +105,12 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 if(pc >= decoded_prog.size())
                     return cycles + 1;
                 auto const& i = merged_prog[pc];
-                if(i.func == INSTR_UNKNOWN)
-                    return cycles + 1;
                 prev_sreg = sreg();
+                if(i.func == INSTR_UNKNOWN)
+                {
+                    cycles += 1;
+                    break;
+                }
                 cycles += INSTR_MAP[i.func](*this, i);
                 if(just_written < 0x100 || just_read < 0x100)
                 {
@@ -116,9 +120,11 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 }
             } while(cycles <= max_merged_cycles);
         }
+        //if(pc >= decoded_prog.size()) __debugbreak();
     }
     else if(wakeup_cycles > 0)
     {
+        prev_sreg = sreg();
         // sleeping but waking up from an interrupt
 
         // set this here so we don't steal profiler cycle from
@@ -131,6 +137,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     }
     else
     {
+        prev_sreg = sreg();
         // sleeping and not waking up from an interrupt
 
         // boost executed cycles to speed up timer code

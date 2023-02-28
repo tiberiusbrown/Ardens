@@ -133,7 +133,7 @@ void window_call_stack(bool& open)
 	if(!open) return;
 
 	SetNextWindowSize({ 200, 100 }, ImGuiCond_FirstUseEver);
-	if(Begin("Call Stack", &open) && arduboy.cpu.decoded && arduboy.elf)
+	if(Begin("Call Stack", &open) && arduboy.cpu.decoded)
 	{
 		window_call_stack_contents();
 	}
