@@ -35,7 +35,7 @@ void atmega32u4_t::st_handle_port(
     uint8_t port = cpu.data[ptr];
     port &= ~mask;
     port |= (x & mask);
-    cpu.data[ptr] ^= port;
+    cpu.data[ptr] = port;
 }
 
 ABSIM_FORCEINLINE void atmega32u4_t::check_interrupt(
