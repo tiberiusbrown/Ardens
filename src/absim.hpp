@@ -294,7 +294,9 @@ struct atmega32u4_t
         uint32_t ocrNc;
         uint32_t ocrNd;
         uint32_t async_cycle;
+        uint32_t com4a;
         bool tlock;
+        bool enhc;
         bool phase_correct;
         bool count_down;
         bool update_ocrN_at_top;
@@ -348,7 +350,7 @@ struct atmega32u4_t
 
     // sound
     static constexpr int SOUND_CYCLES = 320;
-    static constexpr int16_t SOUND_GAIN = 1500;
+    static constexpr int16_t SOUND_GAIN = 2000;
     uint32_t sound_cycle;
     uint32_t sound_enabled; // bitmask of pins 1 and 2
     bool sound_pwm;
@@ -660,18 +662,9 @@ constexpr uint8_t SREG_HSVNZC = 0x3f;
 
 static ABSIM_FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
 {
-    uint32_t n = 0;
-    uint32_t c = counter;
-    c += inc;
-    if(c >= top)
-    {
-        do
-        {
-            c -= top;
-            ++n;
-        } while(c >= top);
-    }
-    counter = c;
+    uint32_t c = counter + inc;
+    uint32_t n = c / top;
+    counter = c % top;
     return n;
 }
 

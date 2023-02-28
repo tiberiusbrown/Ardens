@@ -220,6 +220,7 @@ static void main_loop()
             disassembly_scroll_addr = arduboy.cpu.pc * 2;
 
         // consume sound buffer
+#if !PROFILING
         if(simulation_slowdown == 1000)
         {
             constexpr size_t SAMPLE_SIZE = sizeof(arduboy.cpu.sound_buffer[0]);
@@ -234,6 +235,7 @@ static void main_loop()
                 arduboy.cpu.sound_buffer.data(),
                 (uint32_t)num_bytes);
         }
+#endif
         arduboy.cpu.sound_buffer.clear();
         SDL_PauseAudioDevice(audio_device, 0);
     }
@@ -463,6 +465,7 @@ int main(int argc, char** argv)
         desired.freq = AUDIO_FREQ;
         desired.format = AUDIO_S16SYS;
         desired.channels = 1;
+        desired.samples = AUDIO_FREQ / 50;
         audio_device = SDL_OpenAudioDevice(
             nullptr, 0,
             &desired,

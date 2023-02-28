@@ -41,9 +41,9 @@ ABSIM_FORCEINLINE void atmega32u4_t::cycle_sound(uint32_t cycles)
         x = 0;
         uint8_t portc = data[0x28];
         if(pins & (1 << 0))
-            x += (portc & (1 << 6)) ? SOUND_GAIN : -SOUND_GAIN;
+            x += (portc & (1 << 6)) ? SOUND_GAIN / 2 : -SOUND_GAIN / 2;
         if(pins & (1 << 1))
-            x += (portc & (1 << 7)) ? -SOUND_GAIN : SOUND_GAIN;
+            x += (portc & (1 << 7)) ? -SOUND_GAIN / 2 : SOUND_GAIN / 2;
     }
     for(uint32_t i = 0; i < samples; ++i)
     {

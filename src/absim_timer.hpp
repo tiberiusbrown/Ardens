@@ -118,7 +118,12 @@ static ABSIM_FORCEINLINE void update_timer8_state(
             timer_cycles -= t;
             tcnt += t;
             if(tcnt == top + 1)
-                tifr |= 0x1, tcnt = 0;
+            {
+                if(phase_correct)
+                    count_down = true;
+                else
+                    tifr |= 0x1, tcnt = 0;
+            }
         }
         if(tcnt == ocrNa) tifr |= 0x2;
         if(tcnt == ocrNb) tifr |= 0x4;
@@ -351,7 +356,12 @@ static ABSIM_FORCEINLINE void update_timer16_state(
             timer_cycles -= t;
             tcnt += t;
             if(tcnt == top + 1)
-                tifr |= 0x1, tcnt = 0;
+            {
+                if(phase_correct)
+                    count_down = true;
+                else
+                    tifr |= 0x1, tcnt = 0;
+            }
         }
         if(tcnt == ocrNa) tifr |= 0x2;
         if(tcnt == ocrNb) tifr |= 0x4;
@@ -466,6 +476,31 @@ static ABSIM_FORCEINLINE void timer10_update_ocrN(
     }
 }
 
+static ABSIM_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
+{
+    uint8_t c = 0;
+    if(c6) c |= 0x40;
+    if(c7) c |= 0x80;
+    uint8_t m = cpu.data[0x27];
+    c &= m;
+    uint8_t t = cpu.data[0x28];
+    t &= ~m;
+    t |= c;
+    cpu.data[0x28] = t;
+}
+
+static ABSIM_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6)
+{
+    uint8_t c = 0;
+    if(c6) c |= 0x40;
+    if(!(cpu.data[0x27] & 0x40)) return;
+    c &= 0x40;
+    uint8_t t = cpu.data[0x28];
+    t &= ~0x40;
+    t |= c;
+    cpu.data[0x28] = t;
+}
+
 static ABSIM_FORCEINLINE void update_timer10_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer10_t& timer,
@@ -491,9 +526,18 @@ static ABSIM_FORCEINLINE void update_timer10_state(
     auto ocrNa = timer.ocrNa;
     auto ocrNb = timer.ocrNb;
     auto ocrNd = timer.ocrNd;
+    auto com4a = timer.com4a;
+    if(timer.enhc)
+    {
+        ocrNa /= 2;
+        ocrNb /= 2;
+        ocrNd /= 2;
+    }
     auto tov = timer.tov;
     auto top = timer.top;
     uint8_t tifr = cpu.data[0x39] & 0xe4;
+    uint8_t& portc = cpu.data[0x28];
+    uint8_t portc_mask = cpu.data[0x27];
 
     while(timer_cycles > 0)
     {
@@ -508,6 +552,12 @@ static ABSIM_FORCEINLINE void update_timer10_state(
             timer_cycles -= t;
             tcnt -= t;
             if(tcnt == 0) tifr |= 0x4, count_down = false;
+            if(tcnt == ocrNa)
+            {
+                if(com4a == 1) set_portc(cpu, true, false);
+                if(com4a == 2) set_portc(cpu, true);
+                if(com4a == 3) set_portc(cpu, false);
+            }
         }
         else if(tcnt > top)
         {
@@ -529,7 +579,24 @@ static ABSIM_FORCEINLINE void update_timer10_state(
             timer_cycles -= t;
             tcnt += t;
             if(tcnt == top + 1)
-                tifr |= 0x4, tcnt = 0;
+            {
+                if(phase_correct)
+                    count_down = true;
+                else
+                    tifr |= 0x1, tcnt = 0;
+            }
+            if(tcnt == ocrNa)
+            {
+                if(com4a == 1) set_portc(cpu, false, true);
+                if(com4a == 2) set_portc(cpu, false);
+                if(com4a == 3) set_portc(cpu, true);
+            }
+            if(!phase_correct && tcnt == top + 1)
+            {
+                if(com4a == 1) set_portc(cpu, true, false);
+                if(com4a == 2) set_portc(cpu, true);
+                if(com4a == 3) set_portc(cpu, false);
+            }
         }
         if(tcnt == ocrNa) tifr |= 0x40;
         if(tcnt == ocrNb) tifr |= 0x20;
@@ -562,6 +629,7 @@ void atmega32u4_t::update_timer4()
     uint32_t tccr4e = data[0xc4];
 
     timer4.tlock = ((tccr4e & 0x80) != 0);
+    timer4.enhc = ((tccr4e & 0x40) != 0);
 
     uint32_t cs = tccr4b & 0xf;
     timer4.divider = (cs == 0 ? 0 : 1 << (cs - 1));
@@ -573,6 +641,11 @@ void atmega32u4_t::update_timer4()
     }
 
     bool pwm4x = ((tccr4b & 0x80) != 0);
+
+    // for some reason, on actual Arduboys, pwm4x behaves as though it
+    // were always set, not according to the datasheet. WHY??
+    pwm4x = true;
+
     uint32_t wgm = tccr4d & 0x3;
 
     uint32_t wgm_mask = 1 << wgm;
@@ -601,6 +674,37 @@ void atmega32u4_t::update_timer4()
     timer4.phase_correct = (pwm4x && wgm == 1);
     if(!timer4.phase_correct)
         timer4.count_down = false;
+
+    // determine whether we are pwm-ing to sound pins
+    // (pins connected and freq at least 20 kHz)
+    sound_pwm = false;
+    uint32_t com = timer4.com4a = tccr4a >> 6;
+    if((tccr4a & 0xc0) != 0 && (tccr4a & 0x2) != 0)
+    {
+        uint32_t period = (timer4.top + 1) * timer4.divider;
+        if(!pwm4x || wgm != 0) period *= 2; // not fast PWM
+        if(timer4.enhc) period /= 2;
+
+        if(!pwm4x)
+        {
+            sound_pwm_val = (com == 1 ? SOUND_GAIN / 2 : 0);
+        }
+        else
+        {
+            // use ocrNa_next to simulate fast update
+            int32_t val = timer4.ocrNa_next * SOUND_GAIN / timer4.top;
+            if(timer4.enhc) val /= 2;
+            if(com == 1) val = val * 2 - SOUND_GAIN;
+            if(com == 3) val = SOUND_GAIN - val;
+            sound_pwm_val = (int16_t)val;
+        }
+
+        uint32_t max_period = 800; // 20kHz
+        if(pll_num12 > 0)
+            period *= 12, max_period *= pll_num12;
+        if(period <= max_period)
+            sound_pwm = true;
+    }
 
     // compute next update cycle
 
@@ -706,12 +810,8 @@ void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
 void atmega32u4_t::timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     uint16_t ocr = ((uint16_t)cpu.data[0xbf] << 8);
-    if(ptr >= 0xcf && ptr <= 0xd2) ocr |= x;
-    else
-    {
-        assert(0);
-        return;
-    }
+    ocr &= (cpu.timer4.enhc ? 0x700 : 0x300);
+    ocr |= x;
     if(ptr == 0xcf) cpu.timer4.ocrNa_next = ocr;
     if(ptr == 0xd0) cpu.timer4.ocrNb_next = ocr;
     if(ptr == 0xd1) cpu.timer4.ocrNc_next = ocr;
