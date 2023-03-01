@@ -7,7 +7,6 @@ on:
     branches: [ "master" ]
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
@@ -17,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
@@ -24,14 +24,58 @@ jobs:
     - name: Install prerequisites
       run: sudo apt-get install -y libpulse-dev libgl1-mesa-dev
 
-    - name: Configure CMake
+    - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 0
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: Release_ubuntu
+        name: Release_Ubuntu
+        path: ${{github.workspace}}/build/arduboy_sim
+
+  build_windows:
+  
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 0
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: Release_Windows
+        path: ${{github.workspace}}/build/arduboy_sim.exe
+
+  build_macos:
+  
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j 0
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: Release_MacOS
         path: ${{github.workspace}}/build/arduboy_sim
