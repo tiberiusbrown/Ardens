@@ -185,6 +185,7 @@ static void main_loop()
     uint64_t dt = t - pt;
     if(dt > 30) dt = 30;
     pt = t;
+    arduboy.cpu.stack_overflow = false;
     if(!arduboy.paused)
     {
         // PINF: 4,5,6,7=D,L,R,U
@@ -404,7 +405,9 @@ static void main_loop()
         ImGui::OpenPopup("File Load Error");
 
     ImGui::SetNextWindowSize({ 500, 0 });
-    if(ImGui::BeginPopupModal("File Load Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    if(ImGui::BeginPopupModal("File Load Error", NULL,
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted(dropfile_err.c_str());
@@ -414,6 +417,22 @@ static void main_loop()
             dropfile_err.clear();
             ImGui::CloseCurrentPopup();
         }
+        ImGui::EndPopup();
+    }
+
+    if(arduboy.cpu.stack_overflow)
+        ImGui::OpenPopup("Stack Overflow");
+
+    ImGui::SetNextWindowSize({ 300, 0 });
+    if(ImGui::BeginPopupModal("Stack Overflow", NULL,
+        ImGuiWindowFlags_AlwaysAutoResize |
+        ImGuiWindowFlags_NoSavedSettings))
+    {
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextUnformatted("Auto-break due to stack overflow!");
+        ImGui::PopTextWrapPos();
+        if(ImGui::Button("OK", ImVec2(120, 0)))
+            ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
 

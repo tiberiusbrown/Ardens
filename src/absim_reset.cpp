@@ -131,6 +131,8 @@ void atmega32u4_t::reset()
     adc_result = 0;
 
     cycle_count = 0;
+
+    min_stack = 0xffff;
 }
 
 }

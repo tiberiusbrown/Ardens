@@ -331,6 +331,7 @@ void arduboy_t::advance(uint64_t ps)
         break_step != 0xffffffff;
 
     cpu.no_merged = profiler_enabled || any_breakpoints;
+    cpu.stack_overflow = false;
 
     while(ps >= PS_BUFFER)
     {
@@ -348,8 +349,14 @@ void arduboy_t::advance(uint64_t ps)
                 cpu.just_written < breakpoints_wr.size() && breakpoints_wr.test(cpu.just_written)))
             {
                 paused = true;
-                return;
+                break;
             }
+        }
+
+        if(cpu.stack_overflow)
+        {
+            paused = true;
+            break;
         }
 
     }
@@ -357,7 +364,8 @@ void arduboy_t::advance(uint64_t ps)
     cpu.update_all();
 
     // track remainder
-    ps_rem = ps;
+    if(!paused)
+        ps_rem = ps;
 }
 
 }

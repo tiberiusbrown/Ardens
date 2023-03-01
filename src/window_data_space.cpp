@@ -34,16 +34,23 @@ static void draw_memory_breakpoints(size_t addr)
 static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
 {
     bool r = false;
-    if(off < 0x100)
+    if(off < 0x20)
+    {
+        color = IM_COL32(20, 20, 50, 255);
+        r = true;
+    }
+    else if(off < 0x100)
     {
         color = absim::REG_INFO[off].name ?
             IM_COL32(50, 50, 20, 255) :
             IM_COL32(0, 0, 0, 255);
         r = true;
     }
-    if(off < 0x20)
+    else if(arduboy.cpu.stack_check > 0x100 && off >= arduboy.cpu.stack_check)
     {
-        color = IM_COL32(20, 20, 50, 255);
+        color = IM_COL32(45, 45, 45, 255);
+        if(off >= arduboy.cpu.min_stack)
+            color = IM_COL32(70, 0, 90, 255);
         r = true;
     }
     if(off < arduboy.cpu.data.size() && (

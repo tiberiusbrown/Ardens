@@ -156,6 +156,10 @@ struct atmega32u4_t
         return (uint16_t)spl() | ((uint16_t)sph() << 8);
     }
 
+    uint32_t min_stack; // lowest value for SP
+    uint32_t stack_check; // max allowable value for SP
+    bool stack_overflow;
+
     ABSIM_FORCEINLINE void push(uint8_t x)
     {
         uint16_t tsp = sp();
@@ -163,6 +167,10 @@ struct atmega32u4_t
         --tsp;
         spl() = uint8_t(tsp >> 0);
         sph() = uint8_t(tsp >> 8);
+
+        // check min stack
+        min_stack = std::min<uint32_t>(min_stack, tsp);
+        if(tsp < stack_check) stack_overflow = true;
     }
 
     ABSIM_FORCEINLINE uint8_t pop()

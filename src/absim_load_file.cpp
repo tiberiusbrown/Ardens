@@ -98,6 +98,8 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
     memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
 
+    cpu.stack_check = 0x100;
+
     while(!f.eof())
     {
         while(f.get() != ':')
@@ -485,7 +487,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         auto name = defval(section.getName());
         auto data = defval(section.getContents());
         auto addr = section.getAddress();
-        auto size = data.size();
+        auto size = section.getSize();
         if(!name.data() || !data.data()) continue;
 
         if(name == ".text")
@@ -493,7 +495,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
             sec_text = section;
             if(size > cpu.prog.size())
                 return "ELF: Section .text too large";
-            memcpy(&cpu.prog, data.data(), size);
+            memcpy(&cpu.prog, data.data(), data.size());
             cpu.last_addr = (uint16_t)size;
             found_text = true;
         }
@@ -509,10 +511,16 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         {
             sec_bss = section;
             elf.bss_begin = uint16_t(addr - ram_offset);
-            elf.bss_end = uint16_t(elf.data_begin + size);
+            elf.bss_end = uint16_t(elf.bss_begin + size);
         }
 
     }
+
+    cpu.stack_check = 0x100;
+    if(sec_bss.getObject())
+        cpu.stack_check = std::max<uint32_t>(cpu.stack_check, elf.bss_end);
+    if(sec_data.getObject())
+        cpu.stack_check = std::max<uint32_t>(cpu.stack_check, elf.data_end);
 
     if(!found_text)
         return "ELF: No .text section";
