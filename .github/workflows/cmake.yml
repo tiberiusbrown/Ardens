@@ -58,7 +58,7 @@ jobs:
       uses: actions/upload-artifact@v3.1.2
       with:
         name: Release_Windows_x64
-        path: ${{github.workspace}}/build/arduboy_sim.exe
+        path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
 
   build_macos:
   
