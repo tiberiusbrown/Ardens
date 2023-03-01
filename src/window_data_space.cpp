@@ -46,11 +46,14 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
             IM_COL32(0, 0, 0, 255);
         r = true;
     }
+    else if(off >= arduboy.cpu.min_stack)
+    {
+        color = IM_COL32(70, 0, 90, 255);
+        r = true;
+    }
     else if(arduboy.cpu.stack_check > 0x100 && off >= arduboy.cpu.stack_check)
     {
         color = IM_COL32(45, 45, 45, 255);
-        if(off >= arduboy.cpu.min_stack)
-            color = IM_COL32(70, 0, 90, 255);
         r = true;
     }
     if(off < arduboy.cpu.data.size() && (

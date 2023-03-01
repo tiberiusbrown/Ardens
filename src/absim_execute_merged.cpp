@@ -35,14 +35,15 @@ uint32_t instr_merged_push_n(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     auto* ip = &i;
     uint32_t n = i.word;
-    uint32_t r = n * 2;
-    cpu.pc += n;
+    uint32_t r = 0;
     do
     {
         cpu.push(cpu.gpr(ip->src));
         --n;
         ++ip;
-    } while(n != 0);
+        r += 2;
+        cpu.pc += 1;
+    } while(!cpu.stack_overflow && n != 0);
     return r;
 }
 
