@@ -46,17 +46,33 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: Configure
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+    - name: Configure (x86)
+      run: cmake -B ${{github.workspace}}/build_x86 -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+    - name: Configure (x64)
+      run: cmake -B ${{github.workspace}}/build_x64 -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
-    - name: Upload Build Artifact
+    - name: Build (x86)
+      run: |
+        cmake --build ${{github.workspace}}/build_x86 --config ${{env.BUILD_TYPE}}
+        dir build_x86
+
+    - name: Build (x64)
+      run: |
+        cmake --build ${{github.workspace}}/build_x64 --config ${{env.BUILD_TYPE}}
+        dir build_x64
+
+    - name: Upload Build Artifact (x86)
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: Release_Windows
-        path: ${{github.workspace}}/build/arduboy_sim.exe
+        name: Release_Windows_x86
+        path: ${{github.workspace}}/build_x86/arduboy_sim.exe
+
+    - name: Upload Build Artifact (x64)
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: Release_Windows_x64
+        path: ${{github.workspace}}/build_x64/arduboy_sim.exe
 
   build_macos:
   
