@@ -29,12 +29,16 @@ static void settings_read_line(
     int d_num_pixel_history;
     int d_enable_stack_breaks;
     int d_enable_step_breaks;
+    int d_fx_data;
+    int d_open_fx_internals;
     if(sscanf(line, "open_display=%d", &d_display) == 1) settings.open_display = !!d_display;
     if(sscanf(line, "open_display_buffer=%d", &d_display_buffer) == 1) settings.open_display_buffer = !!d_display_buffer;
     if(sscanf(line, "open_simulation=%d", &d_simulation) == 1) settings.open_simulation = !!d_simulation;
     if(sscanf(line, "open_disassembly=%d", &d_disassembly) == 1) settings.open_disassembly = !!d_disassembly;
     if(sscanf(line, "open_symbols=%d", &d_symbols) == 1) settings.open_symbols = !!d_symbols;
     if(sscanf(line, "open_globals=%d", &d_globals) == 1) settings.open_globals = !!d_globals;
+    if(sscanf(line, "open_fx_data=%d", &d_fx_data) == 1) settings.open_fx_data = !!d_fx_data;
+    if(sscanf(line, "open_fx_internals=%d", &d_open_fx_internals) == 1) settings.open_fx_internals = !!d_open_fx_internals;
     if(sscanf(line, "open_call_stack=%d", &d_call_stack) == 1) settings.open_call_stack = !!d_call_stack;
     if(sscanf(line, "open_display_internals=%d", &d_display_internals) == 1) settings.open_display_internals = !!d_display_internals;
     if(sscanf(line, "open_profiler=%d", &d_profiler) == 1) settings.open_profiler = !!d_profiler;
@@ -53,6 +57,8 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     buf->appendf("open_disassembly=%d\n", (int)settings.open_disassembly);
     buf->appendf("open_symbols=%d\n", (int)settings.open_symbols);
     buf->appendf("open_globals=%d\n", (int)settings.open_globals);
+    buf->appendf("open_fx_data=%d\n", (int)settings.open_fx_data);
+    buf->appendf("open_fx_internals=%d\n", (int)settings.open_fx_internals);
     buf->appendf("open_call_stack=%d\n", (int)settings.open_call_stack);
     buf->appendf("open_display_internals=%d\n", (int)settings.open_display_internals);
     buf->appendf("open_profiler=%d\n", (int)settings.open_profiler);

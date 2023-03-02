@@ -492,6 +492,10 @@ struct w25q128_t
     uint8_t erasing_sector;
     uint64_t busy_ps_rem;
     uint32_t current_addr;
+    char const* command;
+
+    uint32_t min_page;
+    uint32_t max_page;
 
     void reset();
     void erase_all_data();
@@ -500,6 +504,7 @@ struct w25q128_t
 
     void set_enabled(bool e);
     uint8_t spi_transceive(uint8_t byte);
+    void track_page();
 };
 
 struct elf_data_symbol_t

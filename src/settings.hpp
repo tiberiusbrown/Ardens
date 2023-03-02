@@ -15,6 +15,8 @@ struct settings_t
     bool open_call_stack = true;
     bool open_symbols = true;
     bool open_globals = true;
+    bool open_fx_data = false;
+    bool open_fx_internals = false;
 
     bool profiler_cycle_counts = false;
     int num_pixel_history = 1;

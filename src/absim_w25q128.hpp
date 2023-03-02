@@ -14,6 +14,7 @@ void w25q128_t::reset()
 	write_enabled = false;
 	reading_status = false;
 	processing_command = false;
+    command = nullptr;
 
 	reading = 0;
 	programming = 0;
@@ -34,16 +35,30 @@ ABSIM_FORCEINLINE void w25q128_t::set_enabled(bool e)
             reading = false;
             programming = false;
             processing_command = false;
+            if(busy_ps_rem == 0)
+                command = nullptr;
         }
 	}
 }
 
 ABSIM_FORCEINLINE void w25q128_t::advance(uint64_t ps)
 {
-	if(ps >= busy_ps_rem)
-		busy_ps_rem = 0;
+    if(ps >= busy_ps_rem)
+    {
+        if(!enabled)
+            command = nullptr;
+        busy_ps_rem = 0;
+    }
 	else
 		busy_ps_rem -= ps;
+}
+
+ABSIM_FORCEINLINE void w25q128_t::track_page()
+{
+    current_addr &= 0xffffff;
+    uint32_t page = current_addr / 256;
+    min_page = std::min(min_page, page);
+    max_page = std::max(max_page, page);
 }
 
 ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
@@ -61,6 +76,7 @@ ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 		}
 		if(reading >= 4)
 		{
+            //track_page();
 			data_to_send = data[current_addr];
 			++current_addr;
 			current_addr &= 0xffffff;
@@ -70,7 +86,8 @@ ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 	{
 		if(programming == 4)
 		{
-			uint32_t page = current_addr & 0xffff00;
+            track_page();
+            uint32_t page = current_addr & 0xffff00;
 			data[current_addr] &= byte;
 			++current_addr;
 			current_addr = page | (current_addr & 0xff);
@@ -98,7 +115,8 @@ ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 		if(erasing_sector == 4)
 		{
 			current_addr &= 0xfff000;
-			memset(&data[current_addr], 0xff, 0x1000);
+            track_page();
+            memset(&data[current_addr], 0xff, 0x1000);
 			busy_ps_rem = 100ull * 1000 * 1000 * 1000; // 100 ms
 			erasing_sector = 0;
 		}
@@ -110,29 +128,35 @@ ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 		{
 		case 0x02: // program page
 			if(!write_enabled || busy_ps_rem != 0) break;
+            command = "Page Program";
 			programming = 1;
 			current_addr = 0;
 			break;
 		case 0x03: // read data
 			if(busy_ps_rem != 0) break;
+            command = "Read Data";
 			reading = 1;
 			current_addr = 0;
 			break;
 		case 0x04: // write disable
 			if(busy_ps_rem != 0) break;
-			write_enabled = false;
+            command = "Write disable";
+            write_enabled = false;
 			break;
 		case 0x05: // read status register 1
-			reading_status = true;
+            command = "Read Status Register-1";
+            reading_status = true;
 			if(busy_ps_rem != 0)
 				data_to_send = 0x1;
 			break;
 		case 0x06: // write enable
 			if(busy_ps_rem != 0) break;
+            command = "Write Disable";
 			write_enabled = true;
 			break;
 		case 0x20: // sector erase
 			if(!write_enabled || busy_ps_rem != 0) break;
+            command = "Sector Erase";
 			erasing_sector = 1;
 			current_addr = 0;
 			break;

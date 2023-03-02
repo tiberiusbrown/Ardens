@@ -729,6 +729,9 @@ static std::string load_bin(arduboy_t& a, std::istream& f)
     if(n != 0)
         memcpy(&a.fx.data[a.fx.data.size() - n], &data[0], n);
 
+    a.fx.min_page = (a.fx.data.size() - n) / 256;
+    a.fx.max_page = 0xffff;
+
     return "";
 }
 

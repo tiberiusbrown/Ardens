@@ -60,6 +60,7 @@ int profiler_selected_hotspot = -1;
 int disassembly_scroll_addr = -1;
 bool scroll_addr_to_top = false;
 int simulation_slowdown = 1000;
+int fx_data_scroll_addr = -1;
 
 int display_buffer_addr = -1;
 int display_buffer_w = 128;
@@ -75,6 +76,8 @@ void window_simulation(bool& open);
 void window_call_stack(bool& open);
 void window_symbols(bool& open);
 void window_globals(bool& open);
+void window_fx_data(bool& open);
+void window_fx_internals(bool& open);
 
 static uint64_t pt;
 static std::string dropfile_err;
@@ -376,16 +379,30 @@ static void main_loop()
         {
             if(ImGui::BeginMenu("Windows"))
             {
-                ImGui::MenuItem("Display", nullptr, &settings.open_display);
                 ImGui::MenuItem("Simulation", nullptr, &settings.open_simulation);
-                ImGui::MenuItem("Disassembly", nullptr, &settings.open_disassembly);
-                ImGui::MenuItem("Symbols", nullptr, &settings.open_symbols);
-                ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
-                ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
-                ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
                 ImGui::MenuItem("Profiler", nullptr, &settings.open_profiler);
-                ImGui::MenuItem("Display Buffer (RAM)", nullptr, &settings.open_display_buffer);
-                ImGui::MenuItem("Display Internals", nullptr, &settings.open_display_internals);
+                if(ImGui::BeginMenu("Display"))
+                {
+                    ImGui::MenuItem("Display", nullptr, &settings.open_display);
+                    ImGui::MenuItem("Display Buffer (RAM)", nullptr, &settings.open_display_buffer);
+                    ImGui::MenuItem("Display Internals", nullptr, &settings.open_display_internals);
+                    ImGui::EndMenu();
+                }
+                if(ImGui::BeginMenu("CPU"))
+                {
+                    ImGui::MenuItem("Disassembly", nullptr, &settings.open_disassembly);
+                    ImGui::MenuItem("Symbols", nullptr, &settings.open_symbols);
+                    ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
+                    ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
+                    ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
+                    ImGui::EndMenu();
+                }
+                if(ImGui::BeginMenu("Flash Chip"))
+                {
+                    ImGui::MenuItem("FX Data", nullptr, &settings.open_fx_data);
+                    ImGui::MenuItem("FX Internals", nullptr, &settings.open_fx_internals);
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
@@ -401,6 +418,8 @@ static void main_loop()
         window_display_internals(settings.open_display_internals);
         window_profiler(settings.open_profiler);
         window_data_space(settings.open_data_space);
+        window_fx_data(settings.open_fx_data);
+        window_fx_internals(settings.open_fx_internals);
 
     }
 
@@ -560,6 +579,8 @@ int main(int argc, char** argv)
 
     arduboy.fx.erase_all_data();
     arduboy.reset();
+    arduboy.fx.min_page = 0xffff;
+    arduboy.fx.max_page = 0xffff;
 
     pt = SDL_GetTicks64();
     done = false;

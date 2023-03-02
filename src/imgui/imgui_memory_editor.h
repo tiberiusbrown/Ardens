@@ -293,7 +293,7 @@ struct MemoryEditor
                     if (is_highlight_from_user_range || is_highlight_from_user_func || is_highlight_from_preview)
                     {
                         ImVec2 pos = ImGui::GetCursorScreenPos();
-                        float highlight_width = s.GlyphWidth * 2;
+                        float highlight_width = s.GlyphWidth * 2 - 2;
                         //bool is_next_byte_highlighted = (addr + 1 < mem_size) && ((HighlightMax != (size_t)-1 && addr + 1 < HighlightMax) || (HighlightFn && HighlightFn(mem_data, addr + 1)));
                         //if (is_next_byte_highlighted || (n + 1 == Cols))
                         //{
