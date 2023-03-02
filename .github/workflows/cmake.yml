@@ -36,6 +36,28 @@ jobs:
         name: Release_Ubuntu
         path: ${{github.workspace}}/build/arduboy_sim
 
+  build_windows_x86:
+  
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: Release_Windows_x86
+        path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+
   build_windows_x64:
   
     runs-on: windows-latest
@@ -50,9 +72,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
-      run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-        dir build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v3.1.2
