@@ -52,9 +52,9 @@ void window_fx_data(bool& open)
     SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
     if(Begin("FX Data", &open))
     {
-        if(!*minpagebuf)
+        if(autopage || !*minpagebuf)
             snprintf(minpagebuf, sizeof(minpagebuf), "%04x", arduboy.fx.min_page);
-        if(!*maxpagebuf)
+        if(autopage || !*maxpagebuf)
             snprintf(maxpagebuf, sizeof(maxpagebuf), "%04x", arduboy.fx.max_page);
 
         float tw = CalcTextSize("FFFF").x + GetStyle().FramePadding.x * 2;
