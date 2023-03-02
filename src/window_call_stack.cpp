@@ -114,9 +114,9 @@ static void window_call_stack_contents()
 
             auto const* sym = arduboy.symbol_for_prog_addr(addr);
             if(sym)
-                name = fmt::format("{:#04x} {}", addr, sym->name);
+                name = fmt::format("{:#06x} {}", addr, sym->name);
             else
-                name = fmt::format("{:#04x}", addr);
+                name = fmt::format("{:#06x}", addr);
 
             TableSetColumnIndex(0);
             if(Selectable(name.c_str()))
