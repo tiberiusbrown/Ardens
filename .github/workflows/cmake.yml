@@ -7,7 +7,6 @@ on:
     branches: [ "master" ]
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
@@ -17,14 +16,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
       with:
         submodules: 'recursive'
         
     - name: Install prerequisites
       run: sudo apt-get install -y libpulse-dev libgl1-mesa-dev
 
-    - name: Configure CMake
+    - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
     - name: Build
@@ -33,5 +33,51 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: Release_ubuntu
+        name: Release_Ubuntu
+        path: ${{github.workspace}}/build/arduboy_sim
+
+  build_windows_x64:
+  
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: |
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        dir build
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: Release_Windows_x64
+        path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+
+  build_macos:
+  
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: Release_MacOS
         path: ${{github.workspace}}/build/arduboy_sim
