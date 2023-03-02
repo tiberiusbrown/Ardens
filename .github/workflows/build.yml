@@ -1,0 +1,135 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.id }}
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+      if: github.event_name == 'schedule'
+    - name: Create tag
+      id: create_tag
+      run: |
+        tag=v$(date +%Y%m%d.%H%M%S)
+        echo "tag=$tag" >> $GITHUB_OUTPUT
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.create_tag.outputs.tag }}
+        release_name: ${{ steps.create_tag.outputs.tag }}
+        draft: true
+        prerelease: false
+
+  #build_ubuntu:
+  #
+  #  runs-on: ubuntu-latest
+  #
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v3
+  #    with:
+  #      submodules: 'recursive'
+  #      
+  #  - name: Install prerequisites
+  #    run: sudo apt-get install -y libpulse-dev libgl1-mesa-dev
+  #
+  #  - name: Configure
+  #    run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+  #
+  #  - name: Build
+  #    run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+  #
+  #  - name: Upload Build Artifact
+  #    uses: actions/upload-artifact@v3.1.2
+  #    with:
+  #      name: Release_Ubuntu
+  #      path: ${{github.workspace}}/build/arduboy_sim
+
+  #build_windows_x86:
+  #
+  #  runs-on: windows-latest
+  #
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v3
+  #    with:
+  #      submodules: 'recursive'
+  #
+  #  - name: Configure
+  #    run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+  #
+  #  - name: Build
+  #    run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+  #
+  #  - name: Upload Build Artifact
+  #    uses: actions/upload-artifact@v3.1.2
+  #    with:
+  #      name: Release_Windows_x86
+  #      path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+
+  build_windows_x64:
+  
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+    - name: Upload Build Artifact
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release.outputs.upload_url }}
+        asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+        asset_name: Windows x64
+        asset_content_type: application/zip
+      #uses: actions/upload-artifact@v3.1.2
+      #with:
+      #  name: Release_Windows_x64
+      #  path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+
+  #build_macos:
+  #
+  #  runs-on: macos-latest
+  #
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v3
+  #    with:
+  #      submodules: 'recursive'
+  #
+  #  - name: Configure
+  #    run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+  #
+  #  - name: Build
+  #    run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+  #
+  #  - name: Upload Build Artifact
+  #    uses: actions/upload-artifact@v3.1.2
+  #    with:
+  #      name: Release_MacOS
+  #      path: ${{github.workspace}}/build/arduboy_sim
