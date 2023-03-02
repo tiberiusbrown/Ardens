@@ -36,6 +36,61 @@ jobs:
         draft: true
         prerelease: false
 
+  build_web:
+  
+    name: Build (Web)
+    needs: [release]
+    runs-on: ubuntu-latest
+  
+    steps:
+        
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+        
+    - name: Install prerequisites
+      run: sudo apt-get install -y libpulse-dev libgl1-mesa-dev
+  
+    - name: Build LLVM host
+      run: |
+        cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TARGETS_TO_BUILD=WebAssembly -DLLVM_ENABLE_PROJECTS="clang" -S ${{github.workspace}}/deps/llvm-project/llvm
+        cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
+        cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- clang-tblgen
+      
+    - name: Set up emsdk
+      run: |
+        git clone https://github.com/emscripten-core/emsdk.git ${{github.workspace}}/emsdk
+        ${{github.workspace}}/emsdk/emsdk install 3.1.31
+        ${{github.workspace}}/emsdk/emsdk activate 3.1.31
+  
+    - name: Configure
+      run: |
+        source ${{github.workspace}}/emsdk/emsdk_env.sh
+        emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
+    
+    - name: Build
+      run: |
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        mkdir ${{github.workspace}}/arduboy_sim_web
+        
+    - name: Create zip file
+      run: |
+        cp ${{github.workspace}}/build/arduboy_sim.js ${{github.workspace}}/arduboy_sim_web
+        cp ${{github.workspace}}/build/arduboy_sim.wasm ${{github.workspace}}/arduboy_sim_web
+        cp ${{github.workspace}}/src/arduboy_sim.html ${{github.workspace}}/arduboy_sim_web
+        zip -r ${{github.workspace}}/arduboy_sim_web ${{github.workspace}}/arduboy_sim_web.zip
+  
+    - name: Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release.outputs.upload_url }}
+        asset_path: ${{github.workspace}}/arduboy_sim_web
+        asset_name: arduboy_sim_web.zip
+        asset_content_type: application/zip
+
   #build_ubuntu:
   #
   #  runs-on: ubuntu-latest
