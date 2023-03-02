@@ -213,11 +213,14 @@ static void main_loop()
         dt = 200;
 #endif
         bool prev_paused = arduboy.paused;
+        arduboy.cpu.enable_stack_break = settings.enable_stack_breaks;
         arduboy.allow_nonstep_breakpoints =
             arduboy.break_step == 0xffffffff || settings.enable_step_breaks;
         arduboy.advance(dt * 1000000000000ull / simulation_slowdown);
         if(arduboy.paused && !prev_paused)
             disassembly_scroll_addr = arduboy.cpu.pc * 2;
+        if(!settings.enable_stack_breaks)
+            arduboy.cpu.stack_overflow = false;
 
         // consume sound buffer
 #if !PROFILING

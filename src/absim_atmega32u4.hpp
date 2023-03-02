@@ -128,7 +128,8 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                     break;
                 }
                 cycles += INSTR_MAP[i.func](*this, i);
-                if(stack_overflow || just_written < 0x100 || just_read < 0x100)
+                if((stack_overflow && enable_stack_break) ||
+                    just_written < 0x100 || just_read < 0x100)
                 {
                     // need to check peripherals below
                     single_instr_only = true;

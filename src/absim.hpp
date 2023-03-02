@@ -159,6 +159,7 @@ struct atmega32u4_t
     uint32_t min_stack; // lowest value for SP
     uint32_t stack_check; // max allowable value for SP
     bool stack_overflow;
+    bool enable_stack_break;
 
     ABSIM_FORCEINLINE void push(uint8_t x)
     {

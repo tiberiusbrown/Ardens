@@ -353,7 +353,7 @@ void arduboy_t::advance(uint64_t ps)
             }
         }
 
-        if(cpu.stack_overflow)
+        if(cpu.stack_overflow && cpu.enable_stack_break)
         {
             paused = true;
             break;

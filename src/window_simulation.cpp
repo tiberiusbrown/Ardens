@@ -110,6 +110,8 @@ void window_simulation(bool& open)
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
         }
+        if(Checkbox("Enable auto-break on stack overflow", &settings.enable_stack_breaks))
+            update_settings();
     }
     End();
 }

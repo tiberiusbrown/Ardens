@@ -27,6 +27,7 @@ static void settings_read_line(
     int d_data_space;
     int d_profiler_cycle_counts;
     int d_num_pixel_history;
+    int d_enable_stack_breaks;
     int d_enable_step_breaks;
     if(sscanf(line, "open_display=%d", &d_display) == 1) settings.open_display = !!d_display;
     if(sscanf(line, "open_display_buffer=%d", &d_display_buffer) == 1) settings.open_display_buffer = !!d_display_buffer;
@@ -39,6 +40,7 @@ static void settings_read_line(
     if(sscanf(line, "open_profiler=%d", &d_profiler) == 1) settings.open_profiler = !!d_profiler;
     if(sscanf(line, "open_data_space=%d", &d_data_space) == 1) settings.open_data_space = !!d_data_space;
     if(sscanf(line, "num_pixel_history=%d", &d_num_pixel_history) == 1) settings.num_pixel_history = d_num_pixel_history;
+    if(sscanf(line, "enable_stack_breaks=%d", &d_enable_stack_breaks) == 1) settings.enable_stack_breaks = !!d_enable_stack_breaks;
     if(sscanf(line, "enable_step_breaks=%d", &d_enable_step_breaks) == 1) settings.enable_step_breaks = !!d_enable_step_breaks;
 }
 static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
@@ -57,6 +59,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     buf->appendf("open_data_space=%d\n", (int)settings.open_data_space);
     buf->appendf("profiler_cycle_counts=%d\n", (int)settings.profiler_cycle_counts);
     buf->appendf("num_pixel_history=%d\n", settings.num_pixel_history);
+    buf->appendf("enable_stack_breaks=%d\n", (int)settings.enable_stack_breaks);
     buf->appendf("enable_step_breaks=%d\n", (int)settings.enable_step_breaks);
     buf->append("\n");
 }
