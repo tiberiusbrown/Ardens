@@ -88,6 +88,92 @@ static int get_hex_byte(std::istream& f)
     return lo + hi * 16;
 }
 
+static void find_stack_check_data(atmega32u4_t& cpu, uint16_t n)
+{
+    if(n + 11 >= cpu.decoded_prog.size()) return;
+    uint8_t first_reg;
+    uint32_t val;
+    auto const* i = &cpu.decoded_prog[n];
+    if(i->func != INSTR_LDI) return;
+    first_reg = i->dst;
+    val = (uint32_t(i->src) << 8);
+    i = &cpu.decoded_prog[n + 1];
+    if(i->func != INSTR_LDI || i->dst != 26) return;
+    i = &cpu.decoded_prog[n + 2];
+    if(i->func != INSTR_LDI || i->dst != 27) return;
+    i = &cpu.decoded_prog[n + 3];
+    if(i->func != INSTR_LDI || i->dst != 30) return;
+    i = &cpu.decoded_prog[n + 4];
+    if(i->func != INSTR_LDI || i->dst != 31) return;
+    i = &cpu.decoded_prog[n + 5];
+    if(i->func != INSTR_RJMP || i->word != 2) return;
+    i = &cpu.decoded_prog[n + 6];
+    if(i->func != INSTR_LPM || i->word != 1 || i->dst != 0) return;
+    i = &cpu.decoded_prog[n + 7];
+    if(i->func != INSTR_LD_ST || i->dst <= 10 || i->word == 0 || i->src != 0) return;
+    i = &cpu.decoded_prog[n + 8];
+    if(i->func != INSTR_CPI || i->dst != 26) return;
+    val |= i->src;
+    i = &cpu.decoded_prog[n + 9];
+    if(i->func != INSTR_CPC || i->dst != 27 || i->src != first_reg) return;
+    i = &cpu.decoded_prog[n + 10];
+    if(i->func != INSTR_BRBC || i->src != 1) return;
+    cpu.stack_check = std::max(cpu.stack_check, val);
+}
+
+static void find_stack_check_bss(atmega32u4_t& cpu, uint16_t n)
+{
+    if(n + 8 >= cpu.decoded_prog.size()) return;
+    uint8_t first_reg;
+    uint32_t val;
+    auto const* i = &cpu.decoded_prog[n];
+    if(i->func != INSTR_LDI) return;
+    first_reg = i->dst;
+    val = (uint32_t(i->src) << 8);
+    i = &cpu.decoded_prog[n + 1];
+    if(i->func != INSTR_LDI || i->dst != 26) return;
+    i = &cpu.decoded_prog[n + 2];
+    if(i->func != INSTR_LDI || i->dst != 27) return;
+    i = &cpu.decoded_prog[n + 3];
+    if(i->func != INSTR_RJMP || i->word != 1) return;
+    i = &cpu.decoded_prog[n + 4];
+    if(i->func != INSTR_LD_ST || i->dst <= 10 || i->word == 0 || i->src != 1) return;
+    i = &cpu.decoded_prog[n + 5];
+    if(i->func != INSTR_CPI || i->dst != 26) return;
+    val |= i->src;
+    i = &cpu.decoded_prog[n + 6];
+    if(i->func != INSTR_CPC || i->dst != 27 || i->src != first_reg) return;
+    i = &cpu.decoded_prog[n + 7];
+    if(i->func != INSTR_BRBC || i->src != 1) return;
+    cpu.stack_check = std::max(cpu.stack_check, val);
+}
+
+// try to extract stack limit from disassembly
+static void find_stack_check(atmega32u4_t& cpu)
+{
+    cpu.stack_check = 0x100;
+
+    uint16_t reset_instr = 0;
+
+    {
+        auto const& i = cpu.decoded_prog[0];
+        if(i.func == INSTR_JMP)
+            reset_instr = i.word;
+        else if(i.func == INSTR_RJMP)
+            reset_instr = i.word - 1;
+        else
+            return;
+    }
+
+    for(uint16_t n = reset_instr; n < reset_instr + 32; ++n)
+    {
+        if(n >= cpu.decoded_prog.size())
+            return;
+        find_stack_check_data(cpu, n);
+        find_stack_check_bss(cpu, n);
+    }
+}
+
 static std::string load_hex(arduboy_t& a, std::istream& f)
 {
     auto& cpu = a.cpu;
@@ -97,8 +183,6 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     memset(&a.breakpoints, 0, sizeof(a.breakpoints));
     memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
     memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
-
-    cpu.stack_check = 0x100;
 
     while(!f.eof())
     {
@@ -151,6 +235,8 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     }
 
     cpu.decode();
+
+    find_stack_check(cpu);
 
     return "";
 }
