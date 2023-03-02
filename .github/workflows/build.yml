@@ -1,8 +1,10 @@
 name: Build
 
 on:
-  workflow_dispatch:
-
+  push:
+    tags:
+    - 'v*'
+    
 env:
   BUILD_TYPE: Release
 
@@ -18,11 +20,10 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
-      if: github.event_name == 'schedule'
     - name: Create tag
       id: create_tag
       run: |
-        tag=v$(date +%Y%m%d.%H%M%S)
+        tag=$(basename "${{ github.ref }}")
         echo "tag=$tag" >> $GITHUB_OUTPUT
     - name: Create Release
       id: create_release
@@ -31,7 +32,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.create_tag.outputs.tag }}
-        release_name: ${{ steps.create_tag.outputs.tag }}
         draft: true
         prerelease: false
 
@@ -60,27 +60,33 @@ jobs:
   #      name: Release_Ubuntu
   #      path: ${{github.workspace}}/build/arduboy_sim
 
-  #build_windows_x86:
-  #
-  #  runs-on: windows-latest
-  #
-  #  steps:
-  #  - name: Checkout
-  #    uses: actions/checkout@v3
-  #    with:
-  #      submodules: 'recursive'
-  #
-  #  - name: Configure
-  #    run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-  #
-  #  - name: Build
-  #    run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-  #
-  #  - name: Upload Build Artifact
-  #    uses: actions/upload-artifact@v3.1.2
-  #    with:
-  #      name: Release_Windows_x86
-  #      path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+  build_windows_x86:
+  
+    name: Build (Windows x86)
+    needs: [release]
+    runs-on: windows-latest
+  
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+  
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+  
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+  
+    - name: Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.release.outputs.upload_url }}
+        asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+        asset_name: arduboy_sim_x86.exe
+        asset_content_type: application/octet-stream
 
   build_windows_x64:
   
@@ -100,19 +106,15 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Upload Build Artifact
+    - name: Release
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.release.outputs.upload_url }}
         asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
-        asset_name: Windows x64
-        asset_content_type: application/zip
-      #uses: actions/upload-artifact@v3.1.2
-      #with:
-      #  name: Release_Windows_x64
-      #  path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+        asset_name: arduboy_sim_x64.exe
+        asset_content_type: application/octet-stream
 
   #build_macos:
   #
