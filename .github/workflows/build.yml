@@ -84,6 +84,8 @@ jobs:
 
   build_windows_x64:
   
+    name: Build (Windows x64)
+    needs: [release]
     runs-on: windows-latest
 
     steps:
