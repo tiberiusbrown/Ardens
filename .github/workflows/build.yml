@@ -92,7 +92,7 @@ jobs:
       run: |
         cp ${{github.workspace}}/build/arduboy_sim.js ${{github.workspace}}/arduboy_sim_web
         cp ${{github.workspace}}/build/arduboy_sim.wasm ${{github.workspace}}/arduboy_sim_web
-        cp ${{github.workspace}}/src/index.html ${{github.workspace}}/arduboy_sim_web
+        cp ${{github.workspace}}/src/arduboy_sim.html ${{github.workspace}}/arduboy_sim_web/index.html
         cd ${{github.workspace}}/arduboy_sim_web
         zip -r ${{github.workspace}}/arduboy_sim_web.zip arduboy_sim.*
         
