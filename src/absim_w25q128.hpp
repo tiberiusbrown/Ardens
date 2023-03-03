@@ -6,7 +6,7 @@ namespace absim
 void w25q128_t::erase_all_data()
 {
     memset(&data, 0xff, sizeof(data));
-    memcpy(&data, "ARDUBOY", 8);
+    memcpy(&data, "ARDUBOY", 7);
 }
 
 void w25q128_t::reset()
