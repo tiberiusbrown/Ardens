@@ -58,7 +58,15 @@ jobs:
     - name: Install prerequisites
       run: sudo apt-get install -y libpulse-dev libgl1-mesa-dev
   
+    - name: Cache LLVM host
+      id: cache-llvm-host
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/build_llvm
+        key: web-cache-llvm-host
+  
     - name: Build LLVM host
+      if: steps.cache-llvm-host.outputs.cache-hit != 'true'
       run: |
         cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TARGETS_TO_BUILD=WebAssembly -DLLVM_ENABLE_PROJECTS="clang" -S ${{github.workspace}}/deps/llvm-project/llvm
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
