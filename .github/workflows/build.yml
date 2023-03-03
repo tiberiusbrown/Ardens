@@ -1,9 +1,10 @@
 name: Build
 
 on:
-  push:
-    tags:
-    - 'v*'
+  #push:
+  #  tags:
+  #  - 'v*'
+  workflow_dispatch:
     
 env:
   BUILD_TYPE: Release
@@ -20,10 +21,15 @@ jobs:
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+      if: github.event_name == 'workflow_dispatch'
     - name: Create tag
       id: create_tag
       run: |
-        tag=$(basename "${{ github.ref }}")
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          tag=v$(date +%Y%m%d.%H%M%S)
+        else
+          tag=$(basename "${{ github.ref }}")
+        fi
         echo "tag=$tag" >> $GITHUB_OUTPUT
     - name: Create Release
       id: create_release
@@ -79,7 +85,8 @@ jobs:
         cp ${{github.workspace}}/build/arduboy_sim.js ${{github.workspace}}/arduboy_sim_web
         cp ${{github.workspace}}/build/arduboy_sim.wasm ${{github.workspace}}/arduboy_sim_web
         cp ${{github.workspace}}/src/arduboy_sim.html ${{github.workspace}}/arduboy_sim_web
-        zip -r ${{github.workspace}}/arduboy_sim_web ${{github.workspace}}/arduboy_sim_web.zip
+        cd ${{github.workspace}}/arduboy_sim_web
+        zip -r ${{github.workspace}}/arduboy_sim_web.zip arduboy_sim.*
   
     - name: Release
       uses: actions/upload-release-asset@v1
