@@ -335,6 +335,7 @@ struct atmega32u4_t
     bool spsr_read_after_transmit;
     bool spi_busy;
     bool spi_done;
+    bool spi_done_shifting;
     uint8_t spi_data_byte;
     uint8_t spi_datain_byte;
     uint32_t spi_clock_cycles;
@@ -485,12 +486,14 @@ struct w25q128_t
     std::array<uint8_t, DATA_BYTES> data;
 
     bool enabled;
+    bool woken_up;
     bool write_enabled;
     bool reading_status;
     bool processing_command;
     uint8_t reading;
     uint8_t programming;
     uint8_t erasing_sector;
+    uint8_t releasing;
     uint64_t busy_ps_rem;
     uint32_t current_addr;
     char const* command;

@@ -56,7 +56,12 @@ void atmega32u4_t::spi_handle_st_spdr(
         spsr |= WCOL;
     else
     {
-        //spsr &= ~(SPIF | WCOL);
+        //if(cpu.spsr_read_after_transmit)
+        //{
+        //    cpu.spsr_read_after_transmit = false;
+        //    spsr &= ~(SPIF | WCOL);
+        //}
+        spsr &= ~(SPIF | WCOL);
         cpu.spi_data_byte = 0;
         cpu.spi_clock_cycle = 0;
         cpu.spi_bit_progress = 0;
@@ -67,18 +72,18 @@ void atmega32u4_t::spi_handle_st_spdr(
 uint8_t atmega32u4_t::spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr)
 {
     auto r = cpu.data[0x4d];
-    cpu.data[0x4d] &= 0x3f;
+    if(!cpu.spi_busy && (r & 0x80))
+        cpu.spsr_read_after_transmit = true;
     return r;
 }
 
 uint8_t atmega32u4_t::spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr)
 {
-    // TODO: figure out this behavior
-    //if(cpu.spsr_read_after_transmit)
-    //{
-    //    cpu.spsr_read_after_transmit = false;
-    //    cpu.data[0x4d] &= 0x3f;
-    //}
+    if(cpu.spsr_read_after_transmit)
+    {
+        cpu.spsr_read_after_transmit = false;
+        cpu.data[0x4d] &= 0x3f;
+    }
     assert(ptr == 0x4e);
     return cpu.data[0x4e];
 }
@@ -136,10 +141,14 @@ ABSIM_FORCEINLINE void atmega32u4_t::cycle_spi(uint32_t cycles)
                 spi_datain_byte <<= 1;
                 spi_data_byte = (spi_data_byte << 1) | b;
             }
+
+            if(spi_bit_progress >= 15)
+                spi_done_shifting = true;
         }
 
         if(spi_bit_progress == 17)
         {
+            spsr_read_after_transmit = false;
             spi_done = true;
             spi_busy = false;
             spsr |= SPIF;

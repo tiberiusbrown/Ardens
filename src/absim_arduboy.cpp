@@ -266,7 +266,7 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
 
     fx.set_enabled((portd & (1 << 1)) == 0);
 
-    if(cpu.spi_done)
+    if(cpu.spi_done_shifting)
     {
         uint8_t byte = cpu.spi_data_byte;
 
@@ -280,6 +280,7 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
         }
 
         cpu.spi_datain_byte = fx.spi_transceive(byte);
+        cpu.spi_done_shifting = false;
     }
 
     display.advance(cycles * CYCLE_PS);
