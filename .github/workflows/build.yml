@@ -92,9 +92,15 @@ jobs:
       run: |
         cp ${{github.workspace}}/build/arduboy_sim.js ${{github.workspace}}/arduboy_sim_web
         cp ${{github.workspace}}/build/arduboy_sim.wasm ${{github.workspace}}/arduboy_sim_web
-        cp ${{github.workspace}}/src/arduboy_sim.html ${{github.workspace}}/arduboy_sim_web
+        cp ${{github.workspace}}/src/index.html ${{github.workspace}}/arduboy_sim_web
         cd ${{github.workspace}}/arduboy_sim_web
         zip -r ${{github.workspace}}/arduboy_sim_web.zip arduboy_sim.*
+        
+    - name: Deploy to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        folder: ${{github.workspace}}/arduboy_sim_web
   
     - name: Release
       uses: actions/upload-release-asset@v1
