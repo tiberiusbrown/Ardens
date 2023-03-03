@@ -123,62 +123,62 @@ jobs:
   #      name: Release_Ubuntu
   #      path: ${{github.workspace}}/build/arduboy_sim
 
-  build_windows_x86:
-  
-    name: Build (Windows x86)
-    needs: [release]
-    runs-on: windows-latest
-  
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
-  
-    - name: Configure
-      run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-  
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-  
-    - name: Release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
-        asset_name: arduboy_sim_x86.exe
-        asset_content_type: application/octet-stream
-
-  build_windows_x64:
-  
-    name: Build (Windows x64)
-    needs: [release]
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        submodules: 'recursive'
-
-    - name: Configure
-      run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-
-    - name: Release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
-        asset_name: arduboy_sim_x64.exe
-        asset_content_type: application/octet-stream
-
+  #build_windows_x86:
+  #
+  #  name: Build (Windows x86)
+  #  needs: [release]
+  #  runs-on: windows-latest
+  #
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v3
+  #    with:
+  #      submodules: 'recursive'
+  #
+  #  - name: Configure
+  #    run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+  #
+  #  - name: Build
+  #    run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+  #
+  #  - name: Release
+  #    uses: actions/upload-release-asset@v1
+  #    env:
+  #      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #    with:
+  #      upload_url: ${{ needs.release.outputs.upload_url }}
+  #      asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+  #      asset_name: arduboy_sim_x86.exe
+  #      asset_content_type: application/octet-stream
+  #
+  #build_windows_x64:
+  #
+  #  name: Build (Windows x64)
+  #  needs: [release]
+  #  runs-on: windows-latest
+  #
+  #  steps:
+  #  - name: Checkout
+  #    uses: actions/checkout@v3
+  #    with:
+  #      submodules: 'recursive'
+  #
+  #  - name: Configure
+  #    run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+  #
+  #  - name: Build
+  #    run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+  #
+  #  - name: Release
+  #    uses: actions/upload-release-asset@v1
+  #    env:
+  #      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #    with:
+  #      upload_url: ${{ needs.release.outputs.upload_url }}
+  #      asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
+  #      asset_name: arduboy_sim_x64.exe
+  #      asset_content_type: application/octet-stream
+  #
   #build_macos:
   #
   #  runs-on: macos-latest
