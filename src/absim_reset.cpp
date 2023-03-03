@@ -77,6 +77,7 @@ void atmega32u4_t::reset()
     st_handlers[0x27] = sound_st_handler_ddrc;
 
     ld_handlers[0x4d] = spi_handle_ld_spsr;
+    //ld_handlers[0x4e] = spi_handle_ld_spdr;
     ld_handlers[0x46] = timer0_handle_ld_tcnt;
     ld_handlers[0x84] = timer1_handle_ld_tcnt;
     ld_handlers[0x85] = timer1_handle_ld_tcnt;

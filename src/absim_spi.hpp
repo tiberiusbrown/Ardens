@@ -56,8 +56,7 @@ void atmega32u4_t::spi_handle_st_spdr(
         spsr |= WCOL;
     else
     {
-        if(cpu.spsr_read_after_transmit)
-            spsr &= ~(SPIF | WCOL);
+        //spsr &= ~(SPIF | WCOL);
         cpu.spi_data_byte = 0;
         cpu.spi_clock_cycle = 0;
         cpu.spi_bit_progress = 0;
@@ -67,11 +66,22 @@ void atmega32u4_t::spi_handle_st_spdr(
 
 uint8_t atmega32u4_t::spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr)
 {
-    cpu.spsr_read_after_transmit = true;
-    assert(ptr == 0x4d);
-    return cpu.data[0x4d];
+    auto r = cpu.data[0x4d];
+    cpu.data[0x4d] &= 0x3f;
+    return r;
 }
 
+uint8_t atmega32u4_t::spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr)
+{
+    // TODO: figure out this behavior
+    //if(cpu.spsr_read_after_transmit)
+    //{
+    //    cpu.spsr_read_after_transmit = false;
+    //    cpu.data[0x4d] &= 0x3f;
+    //}
+    assert(ptr == 0x4e);
+    return cpu.data[0x4e];
+}
 
 ABSIM_FORCEINLINE void atmega32u4_t::cycle_spi(uint32_t cycles)
 {
@@ -95,33 +105,40 @@ ABSIM_FORCEINLINE void atmega32u4_t::cycle_spi(uint32_t cycles)
 
     uint32_t iters = 0;
 
+    auto cc = spi_clock_cycles / 2;
     spi_clock_cycle += cycles;
-    while(spi_clock_cycle >= spi_clock_cycles)
-        ++iters, spi_clock_cycle -= spi_clock_cycles;
+    while(spi_clock_cycle >= cc)
+        ++iters, spi_clock_cycle -= cc;
     
     uint8_t spdr = data[0x4e];
     while(iters-- != 0)
     {
-        if(spcr & DORD)
-        {
-            uint8_t b = spdr & 0x1;
-            spdr >>= 1;
-            spdr |= (spi_datain_byte & 0x80);
-            spi_datain_byte <<= 1;
-            spi_data_byte = (spi_data_byte << 1) | b;
-        }
-        else
-        {
-            uint8_t b = spdr >> 7;
-            spdr <<= 1;
-            spdr |= (spi_datain_byte >> 7);
-            spi_datain_byte <<= 1;
-            spi_data_byte = (spi_data_byte << 1) | b;
-        }
+
+        bool clock_hi = (spi_bit_progress & 1) != 0;
 
         ++spi_bit_progress;
 
-        if(spi_bit_progress == 8)
+        if(clock_hi && spi_bit_progress <= 16)
+        {
+            if(spcr & DORD)
+            {
+                uint8_t b = spdr & 0x1;
+                spdr >>= 1;
+                spdr |= (spi_datain_byte & 0x80);
+                spi_datain_byte <<= 1;
+                spi_data_byte = (spi_data_byte << 1) | b;
+            }
+            else
+            {
+                uint8_t b = spdr >> 7;
+                spdr <<= 1;
+                spdr |= (spi_datain_byte >> 7);
+                spi_datain_byte <<= 1;
+                spi_data_byte = (spi_data_byte << 1) | b;
+            }
+        }
+
+        if(spi_bit_progress == 17)
         {
             spi_done = true;
             spi_busy = false;

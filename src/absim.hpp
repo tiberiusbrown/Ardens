@@ -344,6 +344,7 @@ struct atmega32u4_t
     static void spi_handle_st_spcr_or_spsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void spi_handle_st_spdr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr);
+    static uint8_t spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr);
 
     // EEPROM
     uint32_t eeprom_clear_eempe_cycles;
