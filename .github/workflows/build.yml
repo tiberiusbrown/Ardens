@@ -1,9 +1,9 @@
 name: Build
 
 on:
-  #push:
-  #  tags:
-  #  - 'v*'
+  push:
+    tags:
+    - 'v*'
   workflow_dispatch:
     
 env:
@@ -94,7 +94,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: ${{github.workspace}}/arduboy_sim_web
+        asset_path: ${{github.workspace}}/arduboy_sim_web.zip
         asset_name: arduboy_sim_web.zip
         asset_content_type: application/zip
 
