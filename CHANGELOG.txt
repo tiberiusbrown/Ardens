@@ -1,3 +1,6 @@
+v0.4.0
+* CPU Usage window
+
 v0.3.0
 * Version displays in main menu bar
 * EEPROM window
