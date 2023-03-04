@@ -51,6 +51,7 @@ void arduboy_t::profiler_reset()
 {
     memset(&profiler_counts, 0, sizeof(profiler_counts));
     memset(&profiler_hotspots, 0, sizeof(profiler_hotspots));
+    frame_cpu_usage.clear();
     num_hotspots = 0;
     profiler_total = 0;
     profiler_total_with_sleep = 0;
