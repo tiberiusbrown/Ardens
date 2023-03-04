@@ -101,6 +101,13 @@ set(IMGUI_SOURCES
     src/imgui/imstb_truetype.h
     src/imgui/imgui_memory_editor.h
     )
+set(IMPLOT_SOURCES
+    src/implot/implot.h
+    src/implot/implot.cpp
+    src/implot/implot_internal.h
+    src/implot/implot_demo.cpp
+    src/implot/implot_items.cpp
+    )
 add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
@@ -122,6 +129,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_fx_data.cpp
     src/window_fx_internals.cpp
     src/window_eeprom.cpp
+    src/window_cpu_usage.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp
@@ -149,6 +157,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     
     src/stb_image_write.h
     ${IMGUI_SOURCES}
+    ${IMPLOT_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
@@ -164,6 +173,7 @@ target_compile_definitions(arduboy_sim PRIVATE
     -DABSIM_VERSION="${ABSIM_VERSION}")
 target_include_directories(arduboy_sim PRIVATE
     src/imgui
+    src/implot
     #src/miniz-cpp
     "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
     "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"

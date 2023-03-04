@@ -313,6 +313,7 @@ void ABSIM_FORCEINLINE ssd1306_t::update_pixels_row()
             num_pixel_history = MAX_PIXEL_HISTORY;
         if(++pixel_history_index >= num_pixel_history)
             pixel_history_index = 0;
+        vsync = true;
     }
 
     uint8_t p0 = 0;
@@ -344,8 +345,9 @@ void ssd1306_t::filter_pixels()
         filtered_pixels[i] = filtered_pixel_counts[i] / num_pixel_history;
 }
 
-void ABSIM_FORCEINLINE ssd1306_t::advance(uint64_t ps)
+bool ABSIM_FORCEINLINE ssd1306_t::advance(uint64_t ps)
 {
+    vsync = false;
     ps += ps_rem;
     ps_rem = 0;
 
@@ -364,6 +366,8 @@ void ABSIM_FORCEINLINE ssd1306_t::advance(uint64_t ps)
     }
 
     ps_rem = ps;
+
+    return vsync;
 }
 
 constexpr std::array<double, 16> FOSC =

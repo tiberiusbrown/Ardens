@@ -51,10 +51,15 @@ void arduboy_t::profiler_reset()
 {
     memset(&profiler_counts, 0, sizeof(profiler_counts));
     memset(&profiler_hotspots, 0, sizeof(profiler_hotspots));
+    frame_cpu_usage.clear();
     num_hotspots = 0;
     profiler_total = 0;
     profiler_total_with_sleep = 0;
+    prev_profiler_total = 0;
+    prev_profiler_total_with_sleep = 0;
     profiler_enabled = false;
+    frame_bytes = 0;
+    total_frames = 0;
 }
 
 void arduboy_t::profiler_build_hotspots()
@@ -258,6 +263,7 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
 {
     assert(cpu.decoded);
 
+    bool vsync = false;
     uint32_t cycles = cpu.advance_cycle();
 
     // TODO: model SPI connection more precisely?
@@ -274,7 +280,14 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
         if(!(portd & (1 << 6)))
         {
             if(portd & (1 << 4))
+            {
+                if(frame_bytes_total != 0 && ++frame_bytes >= frame_bytes_total)
+                {
+                    frame_bytes = 0;
+                    vsync = true;
+                }
                 display.send_data(byte);
+            }
             else
                 display.send_command(byte);
         }
@@ -283,17 +296,39 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
         cpu.spi_done_shifting = false;
     }
 
-    display.advance(cycles * CYCLE_PS);
+    profiler_total_with_sleep += cycles;
+    if(cpu.active || cpu.wakeup_cycles != 0)
+    {
+        profiler_total += cycles;
+        if(profiler_enabled && cpu.executing_instr_pc < profiler_counts.size())
+        {
+            profiler_counts[cpu.executing_instr_pc] += cycles;
+        }
+    }
+
+    bool actual_vsync = display.advance(cycles * CYCLE_PS);
     fx.advance(cycles * CYCLE_PS);
 
-    if(profiler_enabled)
-        profiler_total_with_sleep += cycles;
-    if(profiler_enabled && (cpu.active || cpu.wakeup_cycles != 0))
+    if(frame_bytes_total == 0)
+        vsync |= actual_vsync;
+    if(vsync)
     {
-        if(cpu.executing_instr_pc < profiler_counts.size())
+        // vsync occurred and we are profiling: store frame cpu usage
+        uint64_t frame_total = profiler_total - prev_profiler_total;
+        uint64_t frame_sleep = profiler_total_with_sleep - prev_profiler_total_with_sleep;
+        prev_profiler_total = profiler_total;
+        prev_profiler_total_with_sleep = profiler_total_with_sleep;
+        double f = frame_sleep ? double(frame_total) / double(frame_sleep) : 0.0;
+        frame_cpu_usage.push_back((float)f);
+        prev_frame_cycles = frame_sleep;
+        ++total_frames;
+
+        // limit memory usage
+        if(frame_cpu_usage.size() >= 65536)
         {
-            profiler_total += cycles;
-            profiler_counts[cpu.executing_instr_pc] += cycles;
+            frame_cpu_usage.erase(
+                frame_cpu_usage.begin(),
+                frame_cpu_usage.begin() + 32768);
         }
     }
 

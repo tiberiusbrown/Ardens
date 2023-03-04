@@ -18,11 +18,14 @@ struct settings_t
     bool open_fx_data = false;
     bool open_fx_internals = false;
     bool open_eeprom = false;
+    bool open_cpu_usage = false;
 
     bool profiler_cycle_counts = false;
-    int num_pixel_history = 1;
     bool enable_step_breaks = true;
     bool enable_stack_breaks = true;
+    bool frame_sync_monochrome = true;
+
+    int num_pixel_history = 1;
 };
 
 extern settings_t settings;

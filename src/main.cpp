@@ -2,6 +2,7 @@
 #include "imgui_internal.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_sdlrenderer.h"
+#include "implot.h"
 #include <stdio.h>
 #include <time.h>
 #include <SDL.h>
@@ -83,6 +84,7 @@ void window_globals(bool& open);
 void window_fx_data(bool& open);
 void window_fx_internals(bool& open);
 void window_eeprom(bool& open);
+void window_cpu_usage(bool& open);
 
 static uint64_t pt;
 static std::string dropfile_err;
@@ -386,6 +388,8 @@ static void main_loop()
             {
                 ImGui::MenuItem("Simulation", nullptr, &settings.open_simulation);
                 ImGui::MenuItem("Profiler", nullptr, &settings.open_profiler);
+                ImGui::MenuItem("CPU Usage", nullptr, &settings.open_cpu_usage);
+                ImGui::Separator();
                 if(ImGui::BeginMenu("Display"))
                 {
                     ImGui::MenuItem("Display", nullptr, &settings.open_display);
@@ -435,6 +439,7 @@ static void main_loop()
         window_fx_data(settings.open_fx_data);
         window_fx_internals(settings.open_fx_internals);
         window_eeprom(settings.open_eeprom);
+        window_cpu_usage(settings.open_cpu_usage);
 
     }
 
@@ -533,6 +538,7 @@ int main(int argc, char** argv)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
 
     init_settings();
 
@@ -629,6 +635,7 @@ int main(int argc, char** argv)
 
     ImGui_ImplSDLRenderer_Shutdown();
     ImGui_ImplSDL2_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     SDL_CloseAudioDevice(audio_device);
