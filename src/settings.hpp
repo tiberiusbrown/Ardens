@@ -17,6 +17,7 @@ struct settings_t
     bool open_globals = true;
     bool open_fx_data = false;
     bool open_fx_internals = false;
+    bool open_eeprom = false;
 
     bool profiler_cycle_counts = false;
     int num_pixel_history = 1;

@@ -82,6 +82,7 @@ void window_symbols(bool& open);
 void window_globals(bool& open);
 void window_fx_data(bool& open);
 void window_fx_internals(bool& open);
+void window_eeprom(bool& open);
 
 static uint64_t pt;
 static std::string dropfile_err;
@@ -399,6 +400,7 @@ static void main_loop()
                     ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
                     ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
                     ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
+                    ImGui::MenuItem("EEPROM", nullptr, &settings.open_eeprom);
                     ImGui::EndMenu();
                 }
                 if(ImGui::BeginMenu("Flash Chip"))
@@ -432,6 +434,7 @@ static void main_loop()
         window_data_space(settings.open_data_space);
         window_fx_data(settings.open_fx_data);
         window_fx_internals(settings.open_fx_internals);
+        window_eeprom(settings.open_eeprom);
 
     }
 

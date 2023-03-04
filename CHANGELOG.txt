@@ -1,3 +1,11 @@
+v0.3.0
+* Version displays in main menu bar
+* EEPROM window
+
+v0.2.0
+* Fixes to SPI and FX emulation. Thanks Mr.Blinky!
+* Display Internals window shows internal RAM pointer.
+
 v0.1.0
 * Added "FX Data" and "FX Internals" windows
 * Fixed bug with SPIF timing

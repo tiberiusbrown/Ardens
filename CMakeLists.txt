@@ -121,6 +121,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_globals.cpp
     src/window_fx_data.cpp
     src/window_fx_internals.cpp
+    src/window_eeprom.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp

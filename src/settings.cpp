@@ -15,58 +15,54 @@ static void* settings_read_open(
 static void settings_read_line(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line)
 {
-    int d_display;
-    int d_display_buffer;
-    int d_simulation;
-    int d_disassembly;
-    int d_symbols;
-    int d_globals;
-    int d_call_stack;
-    int d_display_internals;
-    int d_profiler;
-    int d_data_space;
-    int d_profiler_cycle_counts;
+#define ABSIM_BOOL_SETTING(n__) \
+    { int d; if(sscanf(line, #n__ "=%d", &d) == 1) settings.n__ = !!d; }
+    
+    ABSIM_BOOL_SETTING(open_display);
+    ABSIM_BOOL_SETTING(open_display_buffer);
+    ABSIM_BOOL_SETTING(open_display_internals);
+    ABSIM_BOOL_SETTING(open_simulation);
+    ABSIM_BOOL_SETTING(open_disassembly);
+    ABSIM_BOOL_SETTING(open_symbols);
+    ABSIM_BOOL_SETTING(open_globals);
+    ABSIM_BOOL_SETTING(open_call_stack);
+    ABSIM_BOOL_SETTING(open_profiler);
+    ABSIM_BOOL_SETTING(open_data_space);
+    ABSIM_BOOL_SETTING(open_fx_data);
+    ABSIM_BOOL_SETTING(open_fx_internals);
+    ABSIM_BOOL_SETTING(open_eeprom);
+
+#undef ABSIM_BOOL_SETTING
+    
     int d_num_pixel_history;
-    int d_enable_stack_breaks;
-    int d_enable_step_breaks;
-    int d_fx_data;
-    int d_open_fx_internals;
-    if(sscanf(line, "open_display=%d", &d_display) == 1) settings.open_display = !!d_display;
-    if(sscanf(line, "open_display_buffer=%d", &d_display_buffer) == 1) settings.open_display_buffer = !!d_display_buffer;
-    if(sscanf(line, "open_simulation=%d", &d_simulation) == 1) settings.open_simulation = !!d_simulation;
-    if(sscanf(line, "open_disassembly=%d", &d_disassembly) == 1) settings.open_disassembly = !!d_disassembly;
-    if(sscanf(line, "open_symbols=%d", &d_symbols) == 1) settings.open_symbols = !!d_symbols;
-    if(sscanf(line, "open_globals=%d", &d_globals) == 1) settings.open_globals = !!d_globals;
-    if(sscanf(line, "open_fx_data=%d", &d_fx_data) == 1) settings.open_fx_data = !!d_fx_data;
-    if(sscanf(line, "open_fx_internals=%d", &d_open_fx_internals) == 1) settings.open_fx_internals = !!d_open_fx_internals;
-    if(sscanf(line, "open_call_stack=%d", &d_call_stack) == 1) settings.open_call_stack = !!d_call_stack;
-    if(sscanf(line, "open_display_internals=%d", &d_display_internals) == 1) settings.open_display_internals = !!d_display_internals;
-    if(sscanf(line, "open_profiler=%d", &d_profiler) == 1) settings.open_profiler = !!d_profiler;
-    if(sscanf(line, "open_data_space=%d", &d_data_space) == 1) settings.open_data_space = !!d_data_space;
     if(sscanf(line, "num_pixel_history=%d", &d_num_pixel_history) == 1) settings.num_pixel_history = d_num_pixel_history;
-    if(sscanf(line, "enable_stack_breaks=%d", &d_enable_stack_breaks) == 1) settings.enable_stack_breaks = !!d_enable_stack_breaks;
-    if(sscanf(line, "enable_step_breaks=%d", &d_enable_step_breaks) == 1) settings.enable_step_breaks = !!d_enable_step_breaks;
 }
+
 static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
 {
     buf->reserve(buf->size() + 1024);
     buf->append("[UserData][Settings]\n");
-    buf->appendf("open_display=%d\n", (int)settings.open_display);
-    buf->appendf("open_display_buffer=%d\n", (int)settings.open_display_buffer);
-    buf->appendf("open_simulation=%d\n", (int)settings.open_simulation);
-    buf->appendf("open_disassembly=%d\n", (int)settings.open_disassembly);
-    buf->appendf("open_symbols=%d\n", (int)settings.open_symbols);
-    buf->appendf("open_globals=%d\n", (int)settings.open_globals);
-    buf->appendf("open_fx_data=%d\n", (int)settings.open_fx_data);
-    buf->appendf("open_fx_internals=%d\n", (int)settings.open_fx_internals);
-    buf->appendf("open_call_stack=%d\n", (int)settings.open_call_stack);
-    buf->appendf("open_display_internals=%d\n", (int)settings.open_display_internals);
-    buf->appendf("open_profiler=%d\n", (int)settings.open_profiler);
-    buf->appendf("open_data_space=%d\n", (int)settings.open_data_space);
-    buf->appendf("profiler_cycle_counts=%d\n", (int)settings.profiler_cycle_counts);
+
+#define ABSIM_BOOL_SETTING(n__) \
+    buf->appendf(#n__ "=%d\n", (int)settings.n__)
+
+    ABSIM_BOOL_SETTING(open_display);
+    ABSIM_BOOL_SETTING(open_display_buffer);
+    ABSIM_BOOL_SETTING(open_display_internals);
+    ABSIM_BOOL_SETTING(open_simulation);
+    ABSIM_BOOL_SETTING(open_disassembly);
+    ABSIM_BOOL_SETTING(open_symbols);
+    ABSIM_BOOL_SETTING(open_globals);
+    ABSIM_BOOL_SETTING(open_call_stack);
+    ABSIM_BOOL_SETTING(open_profiler);
+    ABSIM_BOOL_SETTING(open_data_space);
+    ABSIM_BOOL_SETTING(open_fx_data);
+    ABSIM_BOOL_SETTING(open_fx_internals);
+    ABSIM_BOOL_SETTING(open_eeprom);
+
+#undef ABSIM_BOOL_SETTING
+
     buf->appendf("num_pixel_history=%d\n", settings.num_pixel_history);
-    buf->appendf("enable_stack_breaks=%d\n", (int)settings.enable_stack_breaks);
-    buf->appendf("enable_step_breaks=%d\n", (int)settings.enable_step_breaks);
     buf->append("\n");
 }
 
