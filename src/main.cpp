@@ -24,6 +24,10 @@
 
 #define PROFILING 0
 
+#ifndef ABSIM_VERSION
+#define ABSIM_VERSION "[unknown version]"
+#endif
+
 #if ALLOW_SCREENSHOTS
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -405,6 +409,14 @@ static void main_loop()
                 }
                 ImGui::EndMenu();
             }
+
+            {
+                float w = ImGui::CalcTextSize(ABSIM_VERSION, NULL, true).x;
+                w += ImGui::GetStyle().ItemSpacing.x;
+                ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - w);
+                ImGui::MenuItem(ABSIM_VERSION "##version", nullptr, nullptr, false);
+            }
+
             ImGui::EndMainMenuBar();
         }
 

@@ -6,6 +6,11 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(arduboy_sim)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+include(GetGitRevisionDescription)
+git_describe(ABSIM_VERSION)
+message(STATUS "ABSIM_VERSION: ${ABSIM_VERSION}")
+
 if(EMSCRIPTEN)
     #set(EXTRA_FLAGS "${EXTRA_FLAGS} -O0 -g3 -gsource-map")
     #add_link_options("-gsource-map")
@@ -154,6 +159,8 @@ target_link_libraries(arduboy_sim PRIVATE
     miniz
     fmt
     )
+target_compile_definitions(arduboy_sim PRIVATE
+    -DABSIM_VERSION="${ABSIM_VERSION}")
 target_include_directories(arduboy_sim PRIVATE
     src/imgui
     #src/miniz-cpp
