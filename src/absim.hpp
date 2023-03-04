@@ -645,6 +645,7 @@ struct arduboy_t
     struct hotspot_t
     {
         uint64_t count;
+        double frac;
         uint16_t begin, end;
     };
     std::array<hotspot_t, NUM_INSTRS> profiler_hotspots;

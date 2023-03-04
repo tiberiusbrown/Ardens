@@ -36,7 +36,7 @@ static void hotspot_row(int i)
         Text("%12" PRIu64 "  ", h.count);
         SameLine();
     }
-    Text("%6.2f%%", double(h.count) * 100 / arduboy.profiler_total);
+    Text("%6.2f%%", h.frac * 100);
     SameLine();
     Text("0x%04x-0x%04x", addr_begin, addr_end);
     
@@ -59,16 +59,15 @@ static void show_hotspots()
     flags |= ImGuiTableFlags_RowBg;
     flags |= ImGuiTableFlags_SizingFixedFit;
 
-    Separator();
-
-    {
-        float active_frac = float(
-            double(arduboy.profiler_total) /
-            arduboy.profiler_total_with_sleep);
-        char buf[32];
-        snprintf(buf, sizeof(buf), "CPU Active: %.1f%%", active_frac * 100);
-        ProgressBar(active_frac, ImVec2(-FLT_MIN, 0), buf);
-    }
+    //Separator();
+    //{
+    //    float active_frac = float(
+    //        double(arduboy.profiler_total) /
+    //        arduboy.profiler_total_with_sleep);
+    //    char buf[32];
+    //    snprintf(buf, sizeof(buf), "CPU Active: %.1f%%", active_frac * 100);
+    //    ProgressBar(active_frac, ImVec2(-FLT_MIN, 0), buf);
+    //}
 
     Separator();
 

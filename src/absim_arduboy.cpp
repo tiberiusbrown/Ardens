@@ -51,7 +51,6 @@ void arduboy_t::profiler_reset()
 {
     memset(&profiler_counts, 0, sizeof(profiler_counts));
     memset(&profiler_hotspots, 0, sizeof(profiler_hotspots));
-    frame_cpu_usage.clear();
     num_hotspots = 0;
     profiler_total = 0;
     profiler_total_with_sleep = 0;
@@ -252,6 +251,8 @@ void arduboy_t::profiler_build_hotspots()
         }
     }
 
+    for(auto& h : profiler_hotspots)
+        h.frac = profiler_total ? double(h.count) / profiler_total : 0.0;
     std::sort(
         profiler_hotspots.begin(),
         profiler_hotspots.begin() + num_hotspots,
