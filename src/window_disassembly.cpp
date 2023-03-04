@@ -331,10 +331,12 @@ static void draw_breakpoint(int row, ImVec2 p)
 static void profiler_count(absim::disassembled_instr_t const& d)
 {
     using namespace ImGui;
-    if(arduboy.profiler_total == 0) return;
+    uint64_t profiler_total = arduboy.profiler_enabled ?
+        arduboy.profiler_total : arduboy.cached_profiler_total;
+    if(profiler_total == 0) return;
     uint64_t count = arduboy.profiler_counts[d.addr / 2];
     if(count == 0) return;
-    double f = double(count) * 100 / arduboy.profiler_total;
+    double f = double(count) * 100 / profiler_total;
     if(settings.profiler_cycle_counts)
         Text("%12" PRIu64 "%8.4f%%", count, f);
     else

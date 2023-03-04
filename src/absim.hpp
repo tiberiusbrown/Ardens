@@ -642,10 +642,11 @@ struct arduboy_t
     std::vector<float> frame_cpu_usage;
     bool profiler_enabled;
     
+    uint64_t cached_profiler_total;
+    uint64_t cached_profiler_total_with_sleep;
     struct hotspot_t
     {
         uint64_t count;
-        double frac;
         uint16_t begin, end;
     };
     std::array<hotspot_t, NUM_INSTRS> profiler_hotspots;

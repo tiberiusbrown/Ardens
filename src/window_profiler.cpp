@@ -36,7 +36,7 @@ static void hotspot_row(int i)
         Text("%12" PRIu64 "  ", h.count);
         SameLine();
     }
-    Text("%6.2f%%", h.frac * 100);
+    Text("%6.2f%%", double(h.count) * 100 / arduboy.cached_profiler_total);
     SameLine();
     Text("0x%04x-0x%04x", addr_begin, addr_end);
     
@@ -59,15 +59,15 @@ static void show_hotspots()
     flags |= ImGuiTableFlags_RowBg;
     flags |= ImGuiTableFlags_SizingFixedFit;
 
-    //Separator();
-    //{
-    //    float active_frac = float(
-    //        double(arduboy.profiler_total) /
-    //        arduboy.profiler_total_with_sleep);
-    //    char buf[32];
-    //    snprintf(buf, sizeof(buf), "CPU Active: %.1f%%", active_frac * 100);
-    //    ProgressBar(active_frac, ImVec2(-FLT_MIN, 0), buf);
-    //}
+    Separator();
+    {
+        float active_frac = float(
+            double(arduboy.cached_profiler_total) /
+            arduboy.cached_profiler_total_with_sleep);
+        char buf[32];
+        snprintf(buf, sizeof(buf), "CPU Active: %.1f%%", active_frac * 100);
+        ProgressBar(active_frac, ImVec2(-FLT_MIN, 0), buf);
+    }
 
     Separator();
 
@@ -100,6 +100,8 @@ void window_profiler(bool& open)
             if(Button("Stop Profiling"))
             {
                 arduboy.profiler_enabled = false;
+                arduboy.cached_profiler_total = arduboy.profiler_total;
+                arduboy.cached_profiler_total_with_sleep = arduboy.profiler_total_with_sleep;
                 arduboy.profiler_build_hotspots();
             }
         }
