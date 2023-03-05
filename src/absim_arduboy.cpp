@@ -11,6 +11,8 @@ namespace absim
 void arduboy_t::reset()
 {
     profiler_reset();
+    frame_cpu_usage.clear();
+    total_frames = 0;
     cpu.reset();
     display.reset();
     fx.reset();
@@ -51,7 +53,6 @@ void arduboy_t::profiler_reset()
 {
     memset(&profiler_counts, 0, sizeof(profiler_counts));
     memset(&profiler_hotspots, 0, sizeof(profiler_hotspots));
-    frame_cpu_usage.clear();
     num_hotspots = 0;
     profiler_total = 0;
     profiler_total_with_sleep = 0;
@@ -59,7 +60,6 @@ void arduboy_t::profiler_reset()
     prev_profiler_total_with_sleep = 0;
     profiler_enabled = false;
     frame_bytes = 0;
-    total_frames = 0;
 }
 
 void arduboy_t::profiler_build_hotspots()

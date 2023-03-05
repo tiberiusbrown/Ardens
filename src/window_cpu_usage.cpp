@@ -66,10 +66,10 @@ static void window_contents()
             ImPlotAxisFlags_NoMenus |
             ImPlotAxisFlags_NoSideSwitch |
             ImPlotAxisFlags_NoHighlight |
-            ImPlotAxisFlags_NoDecorations |
+            //ImPlotAxisFlags_NoDecorations |
             0;
         SetupAxis(ImAxis_X1, "Frame", axis_flags);
-        SetupAxis(ImAxis_Y1, nullptr);
+        SetupAxis(ImAxis_Y1, nullptr, axis_flags);
         SetupAxisFormat(ImAxis_Y1, yaxis_formatter);
 
         double lim_min = m;
