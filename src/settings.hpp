@@ -23,7 +23,6 @@ struct settings_t
     bool profiler_cycle_counts = false;
     bool enable_step_breaks = true;
     bool enable_stack_breaks = true;
-    bool frame_sync_monochrome = true;
 
     int num_pixel_history = 1;
 };

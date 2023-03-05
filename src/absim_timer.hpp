@@ -583,7 +583,7 @@ static ABSIM_FORCEINLINE void update_timer10_state(
                 if(phase_correct)
                     count_down = true;
                 else
-                    tifr |= 0x1, tcnt = 0;
+                    tifr |= 0x4, tcnt = 0;
             }
             if(tcnt == ocrNa)
             {

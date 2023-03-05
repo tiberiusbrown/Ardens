@@ -19,29 +19,6 @@ static void window_contents()
 {
     using namespace ImPlot;
 
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Frame sync:");
-    ImGui::SameLine();
-    if(ImGui::RadioButton("Monochrome", settings.frame_sync_monochrome))
-        settings.frame_sync_monochrome = true;
-    if(ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::TextUnformatted("New frame every 1024 data bytes sent to the display");
-        ImGui::EndTooltip();
-    }
-    ImGui::SameLine();
-    if(ImGui::RadioButton("Grayscale", !settings.frame_sync_monochrome))
-        settings.frame_sync_monochrome = false;
-    if(ImGui::IsItemHovered())
-    {
-        ImGui::BeginTooltip();
-        ImGui::TextUnformatted("New frame every vsync from the display controller");
-        ImGui::EndTooltip();
-    }
-
-    arduboy.frame_bytes_total = settings.frame_sync_monochrome ? 1024 : 0;
-
     if(arduboy.frame_cpu_usage.empty())
         return;
 

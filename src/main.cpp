@@ -223,6 +223,7 @@ static void main_loop()
         dt = 200;
 #endif
         bool prev_paused = arduboy.paused;
+        arduboy.frame_bytes_total = (settings.num_pixel_history == 1 ? 1024 : 0);
         arduboy.cpu.enable_stack_break = settings.enable_stack_breaks;
         arduboy.allow_nonstep_breakpoints =
             arduboy.break_step == 0xffffffff || settings.enable_step_breaks;

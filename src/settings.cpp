@@ -32,7 +32,6 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(open_fx_internals);
     ABSIM_BOOL_SETTING(open_eeprom);
     ABSIM_BOOL_SETTING(open_cpu_usage);
-    ABSIM_BOOL_SETTING(frame_sync_monochrome);
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(enable_step_breaks);
     ABSIM_BOOL_SETTING(enable_stack_breaks);
@@ -65,7 +64,6 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(open_fx_internals);
     ABSIM_BOOL_SETTING(open_eeprom);
     ABSIM_BOOL_SETTING(open_cpu_usage);
-    ABSIM_BOOL_SETTING(frame_sync_monochrome);
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(enable_step_breaks);
     ABSIM_BOOL_SETTING(enable_stack_breaks);

@@ -111,7 +111,6 @@ void window_profiler(bool& open)
             {
                 arduboy.profiler_reset();
                 arduboy.profiler_enabled = true;
-                arduboy.frame_bytes_total = settings.frame_sync_monochrome ? 1024 : 0;
             }
         }
         SameLine();
