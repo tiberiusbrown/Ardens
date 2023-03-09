@@ -28,6 +28,7 @@
 #define ABSIM_FORCEINLINE
 #endif
 
+#ifdef ABSIM_LLVM
 namespace llvm
 {
 class DWARFContext;
@@ -36,6 +37,7 @@ namespace object
 class Binary;
 }
 }
+#endif
 
 namespace absim
 {
@@ -557,6 +559,7 @@ struct icompare
 
 struct elf_data_t
 {
+
     uint16_t data_begin;
     uint16_t data_end;
     uint16_t bss_begin;
@@ -601,8 +604,10 @@ struct elf_data_t
 #endif
 
     std::vector<char> fdata;
+#ifdef ABSIM_LLVM
     std::unique_ptr<llvm::object::Binary> obj;
     std::unique_ptr<llvm::DWARFContext> dwarf_ctx;
+#endif
 
     struct global_t
     {
@@ -615,6 +620,7 @@ struct elf_data_t
     std::map<std::string, global_t, icompare> globals;
 
     ~elf_data_t(); // only exists for unique_ptr's above
+
 };
 
 struct arduboy_t

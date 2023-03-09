@@ -80,7 +80,9 @@ void window_data_space(bool& open);
 void window_simulation(bool& open);
 void window_call_stack(bool& open);
 void window_symbols(bool& open);
+#ifdef ABSIM_LLVM
 void window_globals(bool& open);
+#endif
 void window_fx_data(bool& open);
 void window_fx_internals(bool& open);
 void window_eeprom(bool& open);
@@ -404,7 +406,9 @@ static void main_loop()
                     ImGui::MenuItem("Symbols", nullptr, &settings.open_symbols);
                     ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
                     ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
+#ifdef ABSIM_LLVM
                     ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
+#endif
                     ImGui::MenuItem("EEPROM", nullptr, &settings.open_eeprom);
                     ImGui::EndMenu();
                 }
@@ -432,7 +436,9 @@ static void main_loop()
         window_simulation(settings.open_simulation);
         window_disassembly(settings.open_disassembly);
         window_symbols(settings.open_symbols);
+#ifdef ABSIM_LLVM
         window_globals(settings.open_globals);
+#endif
         window_call_stack(settings.open_call_stack);
         window_display_internals(settings.open_display_internals);
         window_profiler(settings.open_profiler);

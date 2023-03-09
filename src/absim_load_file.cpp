@@ -17,12 +17,14 @@
 #pragma warning(disable: 4624)
 #endif
 
+#ifdef ABSIM_LLVM
 #include <llvm/DebugInfo/DWARF/DWARFContext.h>
 #include <llvm/DebugInfo/DWARF/DWARFCompileUnit.h>
 #include <llvm/DebugInfo/DWARF/DWARFDebugFrame.h>
 #include <llvm/DebugInfo/DWARF/DWARFDebugAbbrev.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/Object/ELFObjectFile.h>
+#endif
 
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -57,6 +59,7 @@ size_t elf_data_t::addr_to_disassembled_index(uint16_t addr)
 
 elf_data_t::~elf_data_t() {}
 
+#ifdef ABSIM_LLVM
 static std::string demangle(char const* sym)
 {
     size_t size = 0;
@@ -68,6 +71,7 @@ static std::string demangle(char const* sym)
     std::free(t);
     return r;
 }
+#endif
 
 static int convert_hex_char(int c)
 {
@@ -251,6 +255,7 @@ static std::string load_hex(arduboy_t& a, std::string const& fname)
     return load_hex(a, f);
 }
 
+#ifdef ABSIM_LLVM
 struct Elf32_Sym
 {
     uint32_t  st_name;
@@ -713,6 +718,7 @@ static std::string load_elf(arduboy_t& a, std::string const& fname)
         return "ELF: Could not open file";
     return load_elf(a, f, fname);
 }
+#endif
 
 static std::string load_bin(arduboy_t& a, std::istream& f)
 {
@@ -881,11 +887,13 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
         return load_bin(*this, f);
     }
 
+#ifdef ABSIM_LLVM
     if(ends_with(fname, ".elf"))
     {
         reset();
         return load_elf(*this, f, fname);
     }
+#endif
 
     if(ends_with(fname, ".arduboy"))
     {

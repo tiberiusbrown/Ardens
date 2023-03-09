@@ -1,10 +1,12 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(arduboy_sim)
+
+option(ABSIM_LLVM "Build and link LLVM (enables loading ELF and debug info)" ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(GetGitRevisionDescription)
@@ -42,42 +44,44 @@ add_subdirectory(deps/json)
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 
-if(MSVC)
-    set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
-    set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
-    set(LLVM_USE_CRT_RELEASE        "MT"  CACHE STRING "" FORCE)
-    set(LLVM_USE_CRT_RELWITHDEBINFO "MT"  CACHE STRING "" FORCE)
-    set(LLVM_BUILD_LLVM_C_DYLIB     OFF   CACHE BOOL   "" FORCE)
+if(ABSIM_LLVM)
+    if(MSVC)
+        set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
+        set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
+        set(LLVM_USE_CRT_RELEASE        "MT"  CACHE STRING "" FORCE)
+        set(LLVM_USE_CRT_RELWITHDEBINFO "MT"  CACHE STRING "" FORCE)
+        set(LLVM_BUILD_LLVM_C_DYLIB     OFF   CACHE BOOL   "" FORCE)
+    endif()
+    set(LLVM_BUILD_TESTS                   OFF CACHE BOOL   "" FORCE)
+    set(LLVM_BUILD_TOOLS                   OFF CACHE BOOL   "" FORCE)
+    set(LLVM_BUILD_UTILS                   OFF CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_TESTS                 OFF CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_TOOLS                 OFF CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_UTILS                 OFF CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_BENCHMARKS            OFF CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_DOCS                  OFF CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_EXAMPLES              OFF CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_RUNTIMES              OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_BINDINGS               OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_LIBEDIT                OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_LIBPFM                 OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_OCAMLDOC               OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_TIMESTAMPS             OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_TERMINFO               OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_ZLIB                   OFF CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_LIBXML2                OFF CACHE BOOL   "" FORCE)
+    set(_ENABLE_LLVM_NATIVE_BUILD          OFF CACHE BOOL   "" FORCE)
+    set(LLVM_TARGETS_TO_BUILD              ";" CACHE STRING "" FORCE)
+    set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD ";" CACHE STRING "" FORCE)
+    if(EMSCRIPTEN)
+        set(LLVM_TARGET_ARCH "wasm64" CACHE STRING "" FORCE)
+        set(LLVM_NATIVE_ARCH "wasm64" CACHE STRING "" FORCE)
+        set(LLVM_HOST_TRIPLE "wasm64-unknown-emscripten" CACHE STRING "" FORCE)
+        set(LLVM_OPTIMIZED_TABLEGEN OFF CACHE BOOL "" FORCE)
+    endif()
+    add_subdirectory(deps/llvm-project/llvm)
+    set_property(DIRECTORY deps/llvm-project/llvm PROPERTY EXCLUDE_FROM_ALL YES)
 endif()
-set(LLVM_BUILD_TESTS                   OFF CACHE BOOL   "" FORCE)
-set(LLVM_BUILD_TOOLS                   OFF CACHE BOOL   "" FORCE)
-set(LLVM_BUILD_UTILS                   OFF CACHE BOOL   "" FORCE)
-set(LLVM_INCLUDE_TESTS                 OFF CACHE BOOL   "" FORCE)
-set(LLVM_INCLUDE_TOOLS                 OFF CACHE BOOL   "" FORCE)
-set(LLVM_INCLUDE_UTILS                 OFF CACHE BOOL   "" FORCE)
-set(LLVM_INCLUDE_BENCHMARKS            OFF CACHE BOOL   "" FORCE)
-set(LLVM_INCLUDE_DOCS                  OFF CACHE BOOL   "" FORCE)
-set(LLVM_INCLUDE_EXAMPLES              OFF CACHE BOOL   "" FORCE)
-set(LLVM_INCLUDE_RUNTIMES              OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_BINDINGS               OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_LIBEDIT                OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_LIBPFM                 OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_OCAMLDOC               OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_TIMESTAMPS             OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_TERMINFO               OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_ZLIB                   OFF CACHE BOOL   "" FORCE)
-set(LLVM_ENABLE_LIBXML2                OFF CACHE BOOL   "" FORCE)
-set(_ENABLE_LLVM_NATIVE_BUILD          OFF CACHE BOOL   "" FORCE)
-set(LLVM_TARGETS_TO_BUILD              ";" CACHE STRING "" FORCE)
-set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD ";" CACHE STRING "" FORCE)
-if(EMSCRIPTEN)
-    set(LLVM_TARGET_ARCH "wasm64" CACHE STRING "" FORCE)
-    set(LLVM_NATIVE_ARCH "wasm64" CACHE STRING "" FORCE)
-    set(LLVM_HOST_TRIPLE "wasm64-unknown-emscripten" CACHE STRING "" FORCE)
-    set(LLVM_OPTIMIZED_TABLEGEN OFF CACHE BOOL "" FORCE)
-endif()
-add_subdirectory(deps/llvm-project/llvm)
-set_property(DIRECTORY deps/llvm-project/llvm PROPERTY EXCLUDE_FROM_ALL YES)
 
 set(EXEFLAG)
 if(MSVC)
@@ -163,20 +167,22 @@ target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
     SDL2main
     nlohmann_json::nlohmann_json
-    LLVMDebugInfoDWARF
-    LLVMDemangle
-    LLVMObject
     miniz
     fmt
     )
-target_compile_definitions(arduboy_sim PRIVATE
-    -DABSIM_VERSION="${ABSIM_VERSION}")
-target_include_directories(arduboy_sim PRIVATE
-    src/imgui
-    src/implot
-    #src/miniz-cpp
-    "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
-    "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
-    "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
-    )
+if(ABSIM_LLVM)
+    target_link_libraries(arduboy_sim PRIVATE
+        LLVMDebugInfoDWARF
+        LLVMDemangle
+        LLVMObject
+        )
+    target_include_directories(arduboy_sim PRIVATE
+        "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
+        "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
+        "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
+        )
+    target_compile_definitions(arduboy_sim PRIVATE -DABSIM_NO_LLVM)
+endif()
+target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
+target_include_directories(arduboy_sim PRIVATE src/imgui src/implot)
 source_group("ImGui" FILES ${IMGUI_SOURCES})

@@ -2,6 +2,8 @@
 
 #include "imgui.h"
 
+#ifdef ABSIM_LLVM
+
 #ifdef _MSC_VER
 #pragma warning(push, 1)
 #pragma warning(disable: 4624)
@@ -560,3 +562,5 @@ void window_globals(bool& open)
     }
     End();
 }
+
+#endif
