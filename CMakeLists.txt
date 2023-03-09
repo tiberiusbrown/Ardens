@@ -6,6 +6,16 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project(arduboy_sim)
 
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
+if(IPO_SUPPORTED)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    cmake_policy(SET CMP0069 NEW) 
+    set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
+else()
+    message(STATUS "IPO not supported: ${IPO_ERROR}")
+endif()
+
 option(ABSIM_LLVM "Build and link LLVM (enables loading ELF and debug info)" ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
