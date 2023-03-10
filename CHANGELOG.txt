@@ -1,3 +1,9 @@
+v0.5.0
+* Add PNG screenshot and GIF recording (not available in Web yet):
+  - F1 to take PNG screenshot of entire app window
+  - F2 to take PNG screenshot of running Arduboy game
+  - F3 to toggle GIF recording of running Arduboy game
+
 v0.4.0
 * CPU Usage window
 
