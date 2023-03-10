@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <SDL.h>
+#include "gifenc.h"
 
 #ifdef _WIN32
 #include <ShellScalingApi.h>
@@ -43,6 +44,10 @@
 #include "absim_instructions.hpp"
 
 #include "settings.hpp"
+
+static ge_GIF* gif = nullptr;
+static bool gif_recording = false;
+static uint32_t gif_ms_rem = 0;
 
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 constexpr uint32_t MAX_AUDIO_LATENCY_MS = 80;
@@ -111,6 +116,61 @@ extern "C" void postsyncfs()
     fs_ready = true;
 }
 
+static inline uint8_t colormap(uint8_t x)
+{
+    uint8_t r = x;
+    if(r == 255)
+        r = 254;
+    return r;
+}
+
+static void send_gif_frame(int ds, uint8_t const* pixels)
+{
+    if(gif_recording && pixels)
+    {
+        for(int i = 0; i < 128 * 64; ++i)
+        {
+            uint8_t p = pixels[i * 4];
+            gif->frame[i] = colormap(p);
+        }
+        ge_add_frame(gif, ds);
+    }
+}
+
+static void screen_recording_toggle(uint8_t const* pixels)
+{
+    if(gif_recording)
+    {
+        send_gif_frame(0, pixels);
+        ge_close_gif(gif);
+    }
+    else
+    {
+        char fname[256];
+        time_t rawtime;
+        struct tm* ti;
+        time(&rawtime);
+        ti = localtime(&rawtime);
+        (void)snprintf(fname, sizeof(fname),
+            "recording_%04d%02d%02d%02d%02d%02d.gif",
+            ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+            ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+        uint8_t palette[256 * 3];
+        for(int i = 0; i < 256; ++i)
+        {
+            palette[3 * i + 0] = i;
+            palette[3 * i + 1] = i;
+            palette[3 * i + 2] = i;
+        }
+        int depth = 8;
+        gif = ge_new_gif(fname, 128, 64, palette, depth, -1, 0);
+        send_gif_frame(0, pixels);
+        gif_ms_rem = 0;
+    }
+    gif_recording = !gif_recording;
+}
+
+
 static void define_font()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -170,8 +230,8 @@ static void main_loop()
     if(done) emscripten_cancel_main_loop();
 #endif
 
-#if ALLOW_SCREENSHOTS
-    if(ImGui::IsKeyPressed(ImGuiKey_F12, false))
+#if !defined(__EMSCRIPTEN__) && ALLOW_SCREENSHOTS
+    if(ImGui::IsKeyPressed(ImGuiKey_F1, false))
     {
         int w = 0, h = 0;
         Uint32 format = SDL_PIXELFORMAT_RGB24;
@@ -224,6 +284,7 @@ static void main_loop()
 #if PROFILING
         dt = 200;
 #endif
+
         bool prev_paused = arduboy.paused;
         arduboy.frame_bytes_total = (settings.num_pixel_history == 1 ? 1024 : 0);
         arduboy.cpu.enable_stack_break = settings.enable_stack_breaks;
@@ -282,6 +343,40 @@ static void main_loop()
                 *bpixels++ = 255;
             }
         }
+
+#if !defined(__EMSCRIPTEN__) && ALLOW_SCREENSHOTS
+        if(ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        {
+            char fname[256];
+            time_t rawtime;
+            struct tm* ti;
+            time(&rawtime);
+            ti = localtime(&rawtime);
+            (void)snprintf(fname, sizeof(fname),
+                "screenshot_%04d%02d%02d%02d%02d%02d.png",
+                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+            stbi_write_png(fname, 128, 64, 4, pixels, 128 * 4);
+        }
+        if(gif_recording && arduboy.paused)
+        {
+            screen_recording_toggle((uint8_t const*)pixels);
+        }
+        else if(simulation_slowdown == 1000 && ImGui::IsKeyPressed(ImGuiKey_F3, false))
+        {
+            screen_recording_toggle((uint8_t const*)pixels);
+        }
+        else if(gif_recording)
+        {
+            gif_ms_rem += dt;
+            while(gif_ms_rem >= 20)
+            {
+                send_gif_frame(2, (uint8_t const*)pixels);
+                gif_ms_rem -= 20;
+            }
+        }
+#endif
+
         SDL_UnlockTexture(display_texture);
     }
 
@@ -419,6 +514,15 @@ static void main_loop()
                     ImGui::EndMenu();
                 }
                 ImGui::EndMenu();
+            }
+            
+            if(gif_recording)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+                float w = ImGui::CalcTextSize("RECORDING").x;
+                if(ImGui::Selectable("RECORDING##recording", false, 0, { w, 0.f }))
+                    screen_recording_toggle(nullptr);
+                ImGui::PopStyleColor();
             }
 
             {

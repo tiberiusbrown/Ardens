@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
 project(arduboy_sim)
 
 include(CheckIPOSupported)
@@ -122,6 +120,10 @@ set(IMPLOT_SOURCES
     src/implot/implot_demo.cpp
     src/implot/implot_items.cpp
     )
+set(GIFENC_SOURCES
+    src/gifenc/gifenc.h
+    src/gifenc/gifenc.c
+    )
 add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
@@ -172,6 +174,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/stb_image_write.h
     ${IMGUI_SOURCES}
     ${IMPLOT_SOURCES}
+    ${GIFENC_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
@@ -191,8 +194,7 @@ if(ABSIM_LLVM)
         "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
         )
-    target_compile_definitions(arduboy_sim PRIVATE -DABSIM_NO_LLVM)
+    target_compile_definitions(arduboy_sim PRIVATE -DABSIM_LLVM)
 endif()
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
-target_include_directories(arduboy_sim PRIVATE src/imgui src/implot)
-source_group("ImGui" FILES ${IMGUI_SOURCES})
+target_include_directories(arduboy_sim PRIVATE src/imgui src/implot src/gifenc)
