@@ -35,6 +35,26 @@
         var Module = {
             canvas: (function() { return document.getElementById('canvas'); })()
         };
+        
+        // https://stackoverflow.com/questions/54466870/emscripten-offer-to-download-save-a-generated-memfs-file
+        function offerFileAsDownload(filename, mime) {
+            mime = mime || "application/octet-stream";
+    
+            let content = Module.FS.readFile(filename);
+    
+            var a = document.createElement('a');
+            a.download = filename;
+            a.href = URL.createObjectURL(new Blob([content], {type: mime}));
+            a.style.display = 'none';
+    
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            }, 2000);
+        }
+        
         function dropHandler(ev) {
             ev.preventDefault();
             [...ev.dataTransfer.files].forEach((f, i) => {

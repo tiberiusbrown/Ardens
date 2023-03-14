@@ -126,6 +126,10 @@ set(GIFENC_SOURCES
     src/gifenc/gifenc.h
     src/gifenc/gifenc.c
     )
+set(EM_FILE_BROWSER_SOURCES)
+if(EMSCRIPTEN)
+    set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
+endif()
 add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
@@ -177,6 +181,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     ${IMGUI_SOURCES}
     ${IMPLOT_SOURCES}
     ${GIFENC_SOURCES}
+    ${EM_FILE_BROWSER_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
@@ -200,3 +205,4 @@ if(ABSIM_LLVM)
 endif()
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
 target_include_directories(arduboy_sim PRIVATE src/imgui src/implot src/gifenc)
+target_compile_features(arduboy_sim PRIVATE cxx_std_17)

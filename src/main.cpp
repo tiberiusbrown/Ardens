@@ -16,6 +16,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include "emscripten-browser-file/emscripten_browser_file.h"
 #endif
 
 #if !defined(__EMSCRIPTEN__)
@@ -48,6 +49,7 @@
 static ge_GIF* gif = nullptr;
 static bool gif_recording = false;
 static uint32_t gif_ms_rem = 0;
+static char gif_fname[256];
 
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 constexpr uint32_t MAX_AUDIO_LATENCY_MS = 80;
@@ -116,6 +118,20 @@ extern "C" void postsyncfs()
     fs_ready = true;
 }
 
+#ifdef __EMSCRIPTEN__
+static void file_download(
+    char const* fname,
+    char const* download_fname,
+    char const* mime_type)
+{
+    std::ifstream f(fname, std::ios::binary);
+    std::vector<char> data(
+        (std::istreambuf_iterator<char>(f)),
+        std::istreambuf_iterator<char>());
+    emscripten_browser_file::download(download_fname, mime_type, data.data(), data.size());
+}
+#endif
+
 static inline uint8_t colormap(uint8_t x)
 {
     uint8_t r = x;
@@ -143,15 +159,17 @@ static void screen_recording_toggle(uint8_t const* pixels)
     {
         send_gif_frame(0, pixels);
         ge_close_gif(gif);
+#ifdef __EMSCRIPTEN__
+        file_download("recording.gif", gif_fname, "image/gif");
+#endif
     }
     else
     {
-        char fname[256];
         time_t rawtime;
         struct tm* ti;
         time(&rawtime);
         ti = localtime(&rawtime);
-        (void)snprintf(fname, sizeof(fname),
+        (void)snprintf(gif_fname, sizeof(gif_fname),
             "recording_%04d%02d%02d%02d%02d%02d.gif",
             ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
             ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
@@ -163,6 +181,10 @@ static void screen_recording_toggle(uint8_t const* pixels)
             palette[3 * i + 2] = i;
         }
         int depth = 8;
+        char const* fname = gif_fname;
+#ifdef __EMSCRIPTEN__
+        fname = "recording.gif";
+#endif
         gif = ge_new_gif(fname, 128, 64, palette, depth, -1, 0);
         send_gif_frame(0, pixels);
         gif_ms_rem = 0;
@@ -228,28 +250,6 @@ static void main_loop()
 
 #ifdef __EMSCRIPTEN__
     if(done) emscripten_cancel_main_loop();
-#endif
-
-#if !defined(__EMSCRIPTEN__) && ALLOW_SCREENSHOTS
-    if(ImGui::IsKeyPressed(ImGuiKey_F1, false))
-    {
-        int w = 0, h = 0;
-        Uint32 format = SDL_PIXELFORMAT_RGB24;
-        SDL_GetWindowSizeInPixels(window, &w, &h);
-        SDL_Surface* ss = SDL_CreateRGBSurfaceWithFormat(0, w, h, 24, format);
-        SDL_RenderReadPixels(renderer, NULL, format, ss->pixels, ss->pitch);
-        char fname[256];
-        time_t rawtime;
-        struct tm* ti;
-        time(&rawtime);
-        ti = localtime(&rawtime);
-        (void)snprintf(fname, sizeof(fname),
-            "screenshot_%04d%02d%02d%02d%02d%02d.png",
-            ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-            ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
-        stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
-        SDL_FreeSurface(ss);
-    }
 #endif
 
     // advance simulation
@@ -344,7 +344,7 @@ static void main_loop()
             }
         }
 
-#if !defined(__EMSCRIPTEN__) && ALLOW_SCREENSHOTS
+#if ALLOW_SCREENSHOTS
         if(ImGui::IsKeyPressed(ImGuiKey_F2, false))
         {
             char fname[256];
@@ -356,7 +356,12 @@ static void main_loop()
                 "screenshot_%04d%02d%02d%02d%02d%02d.png",
                 ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
                 ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+#ifdef __EMSCRIPTEN__
+            stbi_write_png("screenshot.png", 128, 64, 4, pixels, 128 * 4);
+            file_download("screenshot.png", fname, "image/x-png");
+#else
             stbi_write_png(fname, 128, 64, 4, pixels, 128 * 4);
+#endif
         }
         if(gif_recording && arduboy.paused)
         {
@@ -605,6 +610,33 @@ static void main_loop()
     SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
     SDL_RenderClear(renderer);
     ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
+
+#if ALLOW_SCREENSHOTS
+    if(ImGui::IsKeyPressed(ImGuiKey_F1, false))
+    {
+        int w = 0, h = 0;
+        Uint32 format = SDL_PIXELFORMAT_RGB24;
+        SDL_GetWindowSizeInPixels(window, &w, &h);
+        SDL_Surface* ss = SDL_CreateRGBSurfaceWithFormat(0, w, h, 24, format);
+        SDL_RenderReadPixels(renderer, NULL, format, ss->pixels, ss->pitch);
+        char fname[256];
+        time_t rawtime;
+        struct tm* ti;
+        time(&rawtime);
+        ti = localtime(&rawtime);
+        (void)snprintf(fname, sizeof(fname),
+            "screenshot_%04d%02d%02d%02d%02d%02d.png",
+            ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+            ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+#ifdef __EMSCRIPTEN__
+        stbi_write_png("screenshot.png", w, h, 3, ss->pixels, ss->pitch);
+        file_download("screenshot.png", fname, "image/x-png");
+#else
+        stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
+#endif
+        SDL_FreeSurface(ss);
+    }
+#endif
 
     SDL_RenderPresent(renderer);
 }
