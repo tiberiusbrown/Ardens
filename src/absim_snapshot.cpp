@@ -248,19 +248,18 @@ std::string arduboy_t::load_snapshot(std::istream& f)
     mz_ulong dst_size2 = (mz_ulong)dst_size;
     mz_ulong src_size2 = (mz_ulong)data.size();
 
-#if 1
     if(MZ_OK != mz_uncompress2(
         (uint8_t*)dst.data(), &dst_size2,
         (uint8_t const*)data.data(), &src_size2))
         return "Unable to uncompress snapshot";
 
+    // deserialize
     {
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
         std::string version = ABSIM_VERSION;
         auto r = serdes<true>(ar, *this, version);
         if(!r.empty()) return r;
     }
-#endif
 
     return "";
 }

@@ -28,7 +28,7 @@ void window_led(bool& open)
             draw->AddRectFilled(pmin, pmax, IM_COL32(tx, tx, tx, 255));
             Dummy(size);
             SameLine();
-            TextUnformatted(tx ? "ON" : "OFF");
+            TextUnformatted(tx ? "ON " : "OFF");
         }
 
         SameLine(0.f, size.x);
@@ -41,7 +41,7 @@ void window_led(bool& open)
             draw->AddRectFilled(pmin, pmax, IM_COL32(rx, rx, rx, 255));
             Dummy(size);
             SameLine();
-            TextUnformatted(rx ? "ON" : "OFF");
+            TextUnformatted(rx ? "ON " : "OFF");
         }
 
         SameLine(0.f, size.x);
