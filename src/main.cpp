@@ -324,6 +324,7 @@ static void main_loop()
     }
 
     // update framebuffer texture
+    if(arduboy.cpu.decoded)
     {
         void* pixels = nullptr;
         int pitch = 0;
@@ -362,6 +363,29 @@ static void main_loop()
             file_download("screenshot.png", fname, "image/x-png");
 #else
             stbi_write_png(fname, 128, 64, 4, pixels, 128 * 4);
+#endif
+        }
+        if(ImGui::IsKeyPressed(ImGuiKey_F4, false))
+        {
+            char fname[256];
+            time_t rawtime;
+            struct tm* ti;
+            time(&rawtime);
+            ti = localtime(&rawtime);
+            (void)snprintf(fname, sizeof(fname),
+                "absim_%04d%02d%02d%02d%02d%02d.snapshot",
+                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+#ifdef __EMSCRIPTEN__
+            std::ofstream f("absim.snapshot", std::ios::binary);
+            if(arduboy.save_snapshot(f))
+            {
+                f.close();
+                file_download("absim.snapshot", fname, "application/octet-stream");
+            }
+#else
+            std::ofstream f(fname, std::ios::binary);
+            arduboy.save_snapshot(f);
 #endif
         }
         if(gif_recording && arduboy.paused)

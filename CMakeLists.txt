@@ -53,6 +53,7 @@ set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
 add_subdirectory(deps/json)
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
+add_subdirectory(deps/bitsery)
 
 if(ABSIM_LLVM)
     if(MSVC)
@@ -170,6 +171,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim_disassemble.cpp
     src/absim_load_file.cpp
     src/absim_reset.cpp
+    src/absim_snapshot.cpp
 
     src/absim_timer.hpp
     src/absim_adc.hpp
@@ -191,6 +193,7 @@ target_link_libraries(arduboy_sim PRIVATE
     nlohmann_json::nlohmann_json
     miniz
     fmt
+    bitsery
     )
 if(ABSIM_LLVM)
     target_link_libraries(arduboy_sim PRIVATE

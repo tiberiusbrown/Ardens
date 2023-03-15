@@ -14,9 +14,9 @@ void window_fx_internals(bool& open)
     SetNextWindowSize({ 300, 100 }, ImGuiCond_FirstUseEver);
     if(Begin("FX Internals", &open) && arduboy.cpu.decoded)
     {
-        if(arduboy.fx.command)
+        if(!arduboy.fx.command.empty())
         {
-            Text("Processing command: %s", arduboy.fx.command);
+            Text("Processing command: %s", arduboy.fx.command.c_str());
             Text("Internal address: 0x%06x", arduboy.fx.current_addr);
             SameLine();
             if(SmallButton("Jump"))

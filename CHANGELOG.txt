@@ -1,3 +1,9 @@
+v0.7.0
+* Snapshot support:
+  - Press F4 to save a .snapshot file
+  - Snapshots contain full simulation state and debug info
+  - Open .snapshot files to resume
+
 v0.6.0
 * Add LED emulation and LEDs window
 * Fix bug in sbc instruction

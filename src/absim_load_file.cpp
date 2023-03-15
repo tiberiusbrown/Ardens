@@ -874,12 +874,13 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
         return "Failed to open file";
     
     std::string fname(filename);
+    std::string r;
 
     if(ends_with(fname, ".hex"))
     {
         reset();
         elf.reset();
-        return load_hex(*this, f);
+        r = load_hex(*this, f);
     }
 
     if(ends_with(fname, ".bin"))
@@ -891,7 +892,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     if(ends_with(fname, ".elf"))
     {
         reset();
-        return load_elf(*this, f, fname);
+        r = load_elf(*this, f, fname);
     }
 #endif
 
@@ -899,10 +900,24 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     {
         reset();
         elf.reset();
-        return load_arduboy(*this, f);
+        r = load_arduboy(*this, f);
     }
 
-    return "";
+    if(ends_with(fname, ".snapshot"))
+    {
+        r = load_snapshot(f);
+    }
+    else if(r.empty())
+    {
+        f.clear();
+        f.seekg(0);
+        prog_filename = filename;
+        prog_filedata = std::vector<uint8_t>(
+            (std::istreambuf_iterator<char>(f)),
+            std::istreambuf_iterator<char>());
+    }
+
+    return r;
 }
 
 }

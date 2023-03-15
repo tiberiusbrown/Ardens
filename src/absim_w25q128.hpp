@@ -16,7 +16,7 @@ void w25q128_t::reset()
     write_enabled = false;
     reading_status = false;
     processing_command = false;
-    command = nullptr;
+    command.clear();
 
     reading = 0;
     programming = 0;
@@ -40,7 +40,7 @@ ABSIM_FORCEINLINE void w25q128_t::set_enabled(bool e)
             processing_command = false;
             releasing = 0;
             if(busy_ps_rem == 0)
-                command = nullptr;
+                command.clear();
         }
     }
 }
@@ -50,7 +50,7 @@ ABSIM_FORCEINLINE void w25q128_t::advance(uint64_t ps)
     if(ps >= busy_ps_rem)
     {
         if(!enabled)
-            command = nullptr;
+            command.clear();
         busy_ps_rem = 0;
     }
     else

@@ -13,3 +13,6 @@
 [submodule "deps/fmt"]
 	path = deps/fmt
 	url = https://github.com/fmtlib/fmt.git
+[submodule "deps/bitsery"]
+	path = deps/bitsery
+	url = https://github.com/fraillt/bitsery.git

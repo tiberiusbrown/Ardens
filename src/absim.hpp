@@ -11,6 +11,7 @@
 #include <map>
 #include <unordered_map>
 #include <istream>
+#include <ostream>
 #include <algorithm>
 
 #include <stdint.h>
@@ -250,6 +251,13 @@ struct atmega32u4_t
         bool phase_correct;
         bool count_down;
         bool update_ocrN_at_top;
+        template<class A> void serialize(A& a)
+        {
+            a(prev_update_cycle, next_update_cycle);
+            a(divider_cycle, divider);
+            a(top, tov, tcnt, ocrNa, ocrNb);
+            a(phase_correct, count_down, update_ocrN_at_top);
+        }
     };
     timer8_t timer0;
     static void timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -279,6 +287,14 @@ struct atmega32u4_t
         bool count_down;
         bool update_ocrN_at_top;
         bool update_ocrN_at_bottom;
+        template<class A> void serialize(A& a)
+        {
+            a(prev_update_cycle, next_update_cycle);
+            a(divider_cycle, divider);
+            a(top, tov, tcnt, ocrNa, ocrNb, ocrNc);
+            a(tifrN_addr, timskN_addr, prr_addr, prr_mask, base_addr);
+            a(phase_correct, count_down, update_ocrN_at_top);
+        }
     };
     static void timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer3_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -318,6 +334,19 @@ struct atmega32u4_t
         bool count_down;
         bool update_ocrN_at_top;
         bool update_ocrN_at_bottom;
+        template<class A> void serialize(A& a)
+        {
+            a(prev_update_cycle, next_update_cycle);
+            a(divider_cycle, divider);
+            a(top, tov, tcnt);
+            a(ocrNa, ocrNa_next);
+            a(ocrNb, ocrNb_next);
+            a(ocrNc, ocrNc_next);
+            a(ocrNd, ocrNd_next);
+            a(async_cycle, com4a);
+            a(tlock, enhc, phase_correct, count_down);
+            a(update_ocrN_at_top, update_ocrN_at_bottom);
+        }
     };
     static void timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -507,7 +536,7 @@ struct w25q128_t
     uint8_t releasing;
     uint64_t busy_ps_rem;
     uint32_t current_addr;
-    char const* command;
+    std::string command;
 
     uint32_t min_page;
     uint32_t max_page;
@@ -634,6 +663,9 @@ struct arduboy_t
     ssd1306_t display;
     w25q128_t fx;
 
+    std::string prog_filename;
+    std::vector<uint8_t> prog_filedata;
+
     std::unique_ptr<elf_data_t> elf;
     elf_data_symbol_t const* symbol_for_prog_addr(uint16_t addr);
     elf_data_symbol_t const* symbol_for_data_addr(uint16_t addr);
@@ -659,6 +691,7 @@ struct arduboy_t
     {
         uint64_t count;
         uint16_t begin, end;
+        template <class A> void serialize(A& a) { a(count, begin, end); }
     };
     std::array<hotspot_t, NUM_INSTRS> profiler_hotspots;
     uint32_t num_hotspots;
@@ -696,6 +729,9 @@ struct arduboy_t
 
     // returns an error string on error or empty string on success
     std::string load_file(char const* filename, std::istream& f);
+
+    bool save_snapshot(std::ostream& f);
+    std::string load_snapshot(std::istream& f);
 };
 
 
