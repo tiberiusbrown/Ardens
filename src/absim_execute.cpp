@@ -364,7 +364,23 @@ uint32_t instr_sub(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_sbc(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    sub_imm(cpu, i.dst, cpu.gpr(i.src), cpu.sreg() & 0x1);
+    unsigned sreg = cpu.sreg();
+    unsigned dst = cpu.gpr(i.dst);
+    unsigned src = cpu.gpr(i.src);
+    unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
+    cpu.gpr(i.dst) = (uint8_t)res;
+
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned z = ~sreg & SREG_Z;
+    sreg &= ~SREG_HSVNZC;
+    sreg |= (hc & 0x08) << 2;    // H flag
+    sreg |= hc >> 7;             // C flag
+    sreg |= (v & 0x80) >> 4;     // V flag
+    res |= z;
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
     cpu.pc += 1;
     return 1;
 }
