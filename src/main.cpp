@@ -431,7 +431,7 @@ static void main_loop()
             ImGui::GetIO().WantSaveIniSettings = false;
             ImGui::SaveIniSettingsToDisk("/offline/imgui.ini");
             EM_ASM(
-                FS.syncfs(function(err) { assert(!err); });
+                FS.syncfs(function(err) {});
             );
         }
 #endif
