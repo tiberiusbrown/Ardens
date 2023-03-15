@@ -18,6 +18,10 @@ void atmega32u4_t::reset()
     data[0x2c] = pine;
     data[0x2f] = pinf;
 
+    // turn off TX/RX LEDs at reset (assume programming has turned them off)
+    data[0x25] |= 0x01;
+    data[0x2b] |= 0x20;
+
     pc = 0;
 
     just_read = 0;

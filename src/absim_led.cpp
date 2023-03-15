@@ -26,6 +26,12 @@ void atmega32u4_t::led_rgb(uint8_t& r, uint8_t& g, uint8_t& b) const
     uint8_t t;
     r = g = b = 0;
 
+    uint8_t ddrb = data[0x24];
+    uint8_t portb = data[0x25];
+    if((ddrb & (1 << 6)) && !(portb & (1 << 6))) r = 255;
+    if((ddrb & (1 << 7)) && !(portb & (1 << 7))) g = 255;
+    if((ddrb & (1 << 5)) && !(portb & (1 << 5))) b = 255;
+
     if(data[0x44] == 0x83) // tccr0a
         g = 255 - data[0x47]; // ocr4a
 
