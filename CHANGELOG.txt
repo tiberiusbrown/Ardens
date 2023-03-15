@@ -1,3 +1,7 @@
+v0.6.0
+* Add LED emulation and LEDs window
+* Fix bug in sbc instruction
+
 v0.5.0
 * Add PNG screenshot and GIF recording (not available in Web yet):
   - F1 to take PNG screenshot of entire app window
