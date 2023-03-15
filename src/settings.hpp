@@ -19,6 +19,7 @@ struct settings_t
     bool open_fx_internals = false;
     bool open_eeprom = false;
     bool open_cpu_usage = false;
+    bool open_led = false;
 
     bool profiler_cycle_counts = false;
     bool enable_step_breaks = true;

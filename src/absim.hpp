@@ -326,6 +326,11 @@ struct atmega32u4_t
     void update_timer4();
     timer10_t timer4;
 
+    // LEDs
+    uint8_t led_tx() const;
+    uint8_t led_rx() const;
+    void led_rgb(uint8_t& r, uint8_t& g, uint8_t& b) const;
+
     // PLL
     uint64_t pll_lock_cycle;
     uint32_t pll_num12; // numerator /12 of pll cycles per main cycle

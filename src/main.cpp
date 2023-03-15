@@ -94,6 +94,7 @@ void window_fx_data(bool& open);
 void window_fx_internals(bool& open);
 void window_eeprom(bool& open);
 void window_cpu_usage(bool& open);
+void window_led(bool& open);
 
 static uint64_t pt;
 static std::string dropfile_err;
@@ -518,6 +519,8 @@ static void main_loop()
                     ImGui::MenuItem("FX Internals", nullptr, &settings.open_fx_internals);
                     ImGui::EndMenu();
                 }
+                ImGui::Separator();
+                ImGui::MenuItem("LEDs", nullptr, &settings.open_led);
                 ImGui::EndMenu();
             }
             
@@ -556,6 +559,7 @@ static void main_loop()
         window_fx_internals(settings.open_fx_internals);
         window_eeprom(settings.open_eeprom);
         window_cpu_usage(settings.open_cpu_usage);
+        window_led(settings.open_led);
 
     }
 
