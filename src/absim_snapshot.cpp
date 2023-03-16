@@ -16,6 +16,11 @@
 #include <bitsery/traits/vector.h>
 #include <miniz.h>
 
+static constexpr std::array<char, 8> SNAPSHOT_ID =
+{
+    '_', 'A', 'B', 'S', 'I', 'M', '_', '\0',
+};
+
 static constexpr bool ct_isdigit(char c)
 {
     return c >= '0' && c <= '9';
@@ -82,13 +87,8 @@ public:
 };
 
 template<bool is_load, class Archive>
-static std::string serdes(Archive& ar, arduboy_t& a, version_t& version)
+static std::string serdes(Archive& ar, arduboy_t& a)
 {
-    ar(version);
-
-    if(version > VERSION_INFO)
-        return "Snapshot: requires " + version_str(version) + " or later";
-
     ar(a.prog_filename);
     ar(a.prog_filedata);
 
@@ -235,8 +235,7 @@ bool arduboy_t::save_snapshot(std::ostream& f)
     // serialize
     {
         bitsery::Serializer<BufferAdapter> ar(data);
-        auto version = VERSION_INFO;
-        auto r = serdes<false>(ar, *this, version);
+        auto r = serdes<false>(ar, *this);
         if(!r.empty()) return false;
     }
 
@@ -252,6 +251,8 @@ bool arduboy_t::save_snapshot(std::ostream& f)
 
     {
         bitsery::Serializer<StreamAdapter> ar(f);
+        ar(SNAPSHOT_ID);
+        ar(VERSION_INFO);
         uint32_t tsize = (uint32_t)data.size();
         ar(tsize);
     }
@@ -272,7 +273,21 @@ std::string arduboy_t::load_snapshot(std::istream& f)
 
     {
         bitsery::Deserializer<StreamAdapter> ar(f);
+
+        std::array<char, 8> id;
+        ar(id);
+        if(id != SNAPSHOT_ID)
+            return "Snapshot: invalid identifier";
+
+        version_t version;
+        ar(version);
+        if(version > VERSION_INFO)
+            return "Snapshot: requires " + version_str(version) + " or later";
+
         ar(dst_size);
+
+        if(dst_size >= 256 * 1024 * 1024)
+            return "Snapshot: data too large";
     }
 
     std::vector<char> data(
@@ -293,8 +308,7 @@ std::string arduboy_t::load_snapshot(std::istream& f)
     // deserialize
     {
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
-        version_t version{};
-        auto r = serdes<true>(ar, *this, version);
+        auto r = serdes<true>(ar, *this);
         if(!r.empty()) return r;
     }
 
