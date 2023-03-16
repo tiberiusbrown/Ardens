@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 project(arduboy_sim)
 
 #if(NOT EMSCRIPTEN)
@@ -210,4 +214,7 @@ if(ABSIM_LLVM)
 endif()
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
 target_include_directories(arduboy_sim PRIVATE src/imgui src/implot src/gifenc)
-target_compile_features(arduboy_sim PRIVATE cxx_std_17)
+
+if(MSVC)
+    target_compile_options(arduboy_sim PRIVATE /Zc:__cplusplus)
+endif()

@@ -1,17 +1,54 @@
 #include "absim.hpp"
 
 #include <sstream>
+#include <tuple>
+#include <fmt/format.h>
 
 #include <bitsery/bitsery.h>
 #include <bitsery/brief_syntax.h>
 #include <bitsery/brief_syntax/array.h>
 #include <bitsery/brief_syntax/string.h>
+#include <bitsery/brief_syntax/tuple.h>
 #include <bitsery/brief_syntax/vector.h>
 #include <bitsery/ext/std_bitset.h>
 #include <bitsery/adapter/buffer.h>
 #include <bitsery/adapter/stream.h>
 #include <bitsery/traits/vector.h>
 #include <miniz.h>
+
+static constexpr bool ct_isdigit(char c)
+{
+    return c >= '0' && c <= '9';
+}
+
+static constexpr uint32_t ct_parse_dec(char const*& t)
+{
+    uint32_t r = 0;
+    while(ct_isdigit(*t))
+        r = r * 10 + (*t++ - '0');
+    return r;
+}
+
+using version_t = std::tuple<uint32_t, uint32_t, uint32_t>;
+
+static constexpr version_t ct_version(char const* t)
+{
+    version_t r = {};
+    if(*t != 'v') return r;
+    std::get<0>(r) = ct_parse_dec(++t);
+    if(*t != '.') return r;
+    std::get<1>(r) = ct_parse_dec(++t);
+    if(*t != '.') return r;
+    std::get<2>(r) = ct_parse_dec(++t);
+    return r;
+}
+
+static std::string version_str(version_t const& v)
+{
+    return fmt::format("v{}.{}.{}", std::get<0>(v), std::get<1>(v), std::get<2>(v));
+}
+
+constexpr auto VERSION_INFO = ct_version(ABSIM_VERSION);
 
 namespace bitsery
 {
@@ -45,12 +82,12 @@ public:
 };
 
 template<bool is_load, class Archive>
-static std::string serdes(Archive& ar, arduboy_t& a, std::string& version)
+static std::string serdes(Archive& ar, arduboy_t& a, version_t& version)
 {
     ar(version);
 
-    if(version != ABSIM_VERSION)
-        return "Snapshot: Version mismatch (use " + version + ")";;
+    if(version > VERSION_INFO)
+        return "Snapshot: requires " + version_str(version) + " or later";
 
     ar(a.prog_filename);
     ar(a.prog_filedata);
@@ -198,7 +235,7 @@ bool arduboy_t::save_snapshot(std::ostream& f)
     // serialize
     {
         bitsery::Serializer<BufferAdapter> ar(data);
-        std::string version = ABSIM_VERSION;
+        auto version = VERSION_INFO;
         auto r = serdes<false>(ar, *this, version);
         if(!r.empty()) return false;
     }
@@ -256,7 +293,7 @@ std::string arduboy_t::load_snapshot(std::istream& f)
     // deserialize
     {
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
-        std::string version = ABSIM_VERSION;
+        version_t version{};
         auto r = serdes<true>(ar, *this, version);
         if(!r.empty()) return r;
     }
