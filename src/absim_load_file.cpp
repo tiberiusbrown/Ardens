@@ -184,6 +184,9 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
+#if ABSIM_JIT
+    memset(&cpu.jit_prog, 0, sizeof(cpu.jit_prog));
+#endif
     memset(&a.breakpoints, 0, sizeof(a.breakpoints));
     memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
     memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
@@ -885,6 +888,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
 
     if(ends_with(fname, ".bin"))
     {
+        reset();
         return load_bin(*this, f);
     }
 

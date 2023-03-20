@@ -20,6 +20,10 @@
 
 #include "absim_instructions.hpp"
 
+#if ABSIM_JIT
+#include <asmjit/asmjit.h>
+#endif
+
 #if defined(_MSC_VER)
 #define ABSIM_FORCEINLINE __forceinline
 //#define ABSIM_FORCEINLINE
@@ -33,10 +37,7 @@
 namespace llvm
 {
 class DWARFContext;
-namespace object
-{
-class Binary;
-}
+namespace object { class Binary; }
 }
 #endif
 
@@ -56,19 +57,6 @@ struct reg_info_t
     std::array<char const*, 8> bits;
 };
 extern std::array<reg_info_t, 256> const REG_INFO;
-
-struct avr_instr_t
-{
-    uint16_t word;
-    uint8_t src;
-    uint8_t dst;
-    uint8_t func;
-
-    // extra data for merged instructions
-    uint8_t m0;
-    uint8_t m1;
-    uint8_t m2;
-};
 
 struct atmega32u4_t
 {
@@ -220,6 +208,10 @@ struct atmega32u4_t
 
     static constexpr int MAX_INSTR_CYCLES = 32;
 
+#if ABSIM_JIT
+    std::unique_ptr<asmjit::JitRuntime> jit_runtime;
+#endif
+
     uint16_t last_addr;
     uint16_t num_instrs;
     bool no_merged;
@@ -228,8 +220,13 @@ struct atmega32u4_t
     std::array<disassembled_instr_t, PROG_SIZE_BYTES / 2> disassembled_prog;
     bool decoded;
     void decode();
+    void jit_compile();
     void merge_instrs();
     size_t addr_to_disassembled_index(uint16_t addr);
+
+#if ABSIM_JIT
+    std::array<avr_instr_jit_t, PROG_SIZE_BYTES / 2> jit_prog;
+#endif
 
     static void st_handle_pin(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void st_handle_port(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);

@@ -16,3 +16,6 @@
 [submodule "deps/bitsery"]
 	path = deps/bitsery
 	url = https://github.com/fraillt/bitsery.git
+[submodule "deps/asmjit"]
+	path = deps/asmjit
+	url = https://github.com/asmjit/asmjit.git

@@ -1,10 +1,47 @@
 #pragma once
 
+#define ABSIM_X86 0
+#define ABSIM_X64 0
+#define ABSIM_ARM 0
+#define ABSIM_ARM_THUMB 0
+
+#if i386 || __i386 || __i386__ || __IA32__ || _M_IX86 || __X86__ || _X86_ || __THW_INTEL__ || __I86__ || __INTEL__
+#undef ABSIM_X86
+#define ABSIM_X86 1
+#endif
+
+#if __amd64__ || __amd64 || __x86_64__ || __x86_64 || _M_X64 || _M_AMD64
+#undef ABSIM_X64
+#define ABSIM_X64 1
+#endif
+
+#if __arm__ || _ARM || _M_ARM || _M_ARM || __arm
+#undef ABSIM_ARM
+#define ABSIM_ARM 1
+#endif
+
+#if __thumb__ || _M_ARMT
+#undef ABSIM_ARM_THUMB
+#define ABSIM_ARM_THUMB 1
+#endif
+
+//#define ABSIM_JIT (ABSIM_X86 || ABSIM_X64)
+#define ABSIM_JIT 0
+
 namespace absim
 {
 
 struct atmega32u4_t;
-struct avr_instr_t;
+
+using avr_instr_jit_t = uint32_t(*)();
+
+struct avr_instr_t
+{
+    uint32_t func;
+    uint16_t word;
+    uint8_t src;
+    uint8_t dst;
+};
 
 using instr_func_t = uint32_t(*)(atmega32u4_t& cpu, avr_instr_t const& i);
 

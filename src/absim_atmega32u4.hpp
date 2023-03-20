@@ -103,12 +103,21 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         {
             if(pc >= decoded_prog.size())
                 return cycles;
-            auto const& i = decoded_prog[pc];
             prev_sreg = sreg();
-            if(i.func == INSTR_UNKNOWN)
-                cycles = 1;
+#if ABSIM_JIT
+            auto j = jit_prog[pc];
+            if(j != nullptr)
+                cycles = j();
             else
-                cycles = INSTR_MAP[i.func](*this, i);
+#endif
+            {
+                auto const& i = decoded_prog[pc];
+                if(i.func == INSTR_UNKNOWN)
+                    cycles = 1;
+                else
+                    cycles = INSTR_MAP[i.func](*this, i);
+            }
+            {}
         }
         else
         {
@@ -117,14 +126,24 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             {
                 if(pc >= decoded_prog.size())
                     return cycles + 1;
-                auto const& i = merged_prog[pc];
                 prev_sreg = sreg();
-                if(i.func == INSTR_UNKNOWN)
+#if ABSIM_JIT
+                // TODO: merged JIT
+                auto j = jit_prog[pc];
+                if(j != nullptr)
+                    cycles += j();
+                else
+#endif
                 {
-                    cycles += 1;
-                    break;
+                    auto const& i = merged_prog[pc];
+                    if(i.func == INSTR_UNKNOWN)
+                    {
+                        cycles += 1;
+                        break;
+                    }
+                    cycles += INSTR_MAP[i.func](*this, i);
                 }
-                cycles += INSTR_MAP[i.func](*this, i);
+                {}
                 if((stack_overflow && enable_stack_break) ||
                     just_written < 0x100 || just_read < 0x100)
                 {

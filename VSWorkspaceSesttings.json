@@ -1,0 +1,5 @@
+{
+  "ExcludedItems" : [
+    "deps/llvm-project"
+   ]
+}

@@ -313,6 +313,10 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
     }
 }
 
+#if !ABSIM_JIT
+void atmega32u4_t::jit_compile() {}
+#endif
+
 void atmega32u4_t::decode()
 {
     uint16_t w0, w1, lo, hi;
@@ -346,6 +350,7 @@ void atmega32u4_t::decode()
         addr += instr_is_two_words(i) ? 4 : 2;
     }
 
+    jit_compile();
     merge_instrs();
 
     decoded = true;

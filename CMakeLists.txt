@@ -59,6 +59,9 @@ add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
+set(ASMJIT_STATIC ON CACHE BOOL "" FORCE)
+add_subdirectory(deps/asmjit)
+
 if(ABSIM_LLVM)
     if(MSVC)
         set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
@@ -162,6 +165,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim.hpp
     src/absim_instructions.hpp
     src/absim_cpu_data.cpp
+    src/absim_jit_x86.cpp
 
     src/absim_arduboy.cpp
     src/absim_ssd1306.hpp
@@ -198,6 +202,7 @@ target_link_libraries(arduboy_sim PRIVATE
     miniz
     fmt
     bitsery
+    asmjit
     )
 if(ABSIM_LLVM)
     target_link_libraries(arduboy_sim PRIVATE
