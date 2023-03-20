@@ -63,6 +63,14 @@
             for(var i = 0; i < url_vars.length; i++) {
                 const p = url_vars[i].split('=');
                 if(p.length != 2) continue;
+                if(p[0] == 'z') {
+                    Module.ccall('fullzoom', null, ['number'], [parseInt(p[1])]);
+                    continue
+                }
+                if(p[1] == 'g') {
+                    Module.ccall('gray', null, ['number'], [parseInt(p[1])]);
+                    continue
+                }
                 const fname = p[1];
                 const fetchURL = 'https://api.combee.net/arduboyGet?url=' + fname;
                 fetch(fetchURL)
