@@ -36,11 +36,14 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(enable_step_breaks);
     ABSIM_BOOL_SETTING(enable_stack_breaks);
+    ABSIM_BOOL_SETTING(fullzoom);
 
 #undef ABSIM_BOOL_SETTING
     
     int d_num_pixel_history;
     if(sscanf(line, "num_pixel_history=%d", &d_num_pixel_history) == 1) settings.num_pixel_history = d_num_pixel_history;
+    if(settings.num_pixel_history < 1) settings.num_pixel_history = 1;
+    if(settings.num_pixel_history > 3) settings.num_pixel_history = 3;
 }
 
 static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
@@ -69,6 +72,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(enable_step_breaks);
     ABSIM_BOOL_SETTING(enable_stack_breaks);
+    ABSIM_BOOL_SETTING(fullzoom);
 
 #undef ABSIM_BOOL_SETTING
 

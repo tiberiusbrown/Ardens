@@ -21,6 +21,8 @@ struct settings_t
     bool open_cpu_usage = false;
     bool open_led = false;
 
+    bool fullzoom = false;
+
     bool profiler_cycle_counts = false;
     bool enable_step_breaks = true;
     bool enable_stack_breaks = true;
