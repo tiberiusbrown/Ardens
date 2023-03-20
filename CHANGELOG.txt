@@ -1,3 +1,6 @@
+v0.8.0
+* Use @unwiredben's CORS proxy to enable loading files via URL parameters
+
 v0.7.0
 * Snapshot support:
   - Press F4 to save a .snapshot file

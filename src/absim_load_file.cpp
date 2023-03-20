@@ -885,6 +885,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
 
     if(ends_with(fname, ".bin"))
     {
+        reset();
         return load_bin(*this, f);
     }
 

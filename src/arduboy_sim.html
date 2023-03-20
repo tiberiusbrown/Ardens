@@ -36,23 +36,11 @@
             canvas: (function() { return document.getElementById('canvas'); })()
         };
         
-        // https://stackoverflow.com/questions/54466870/emscripten-offer-to-download-save-a-generated-memfs-file
-        function offerFileAsDownload(filename, mime) {
-            mime = mime || "application/octet-stream";
-    
-            let content = Module.FS.readFile(filename);
-    
-            var a = document.createElement('a');
-            a.download = filename;
-            a.href = URL.createObjectURL(new Blob([content], {type: mime}));
-            a.style.display = 'none';
-    
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-            document.body.removeChild(a);
-            URL.revokeObjectURL(a.href);
-            }, 2000);
+        function loadFile(fname, fdata) {
+            var ptr = Module._malloc(fdata.length);
+            Module.HEAPU8.set(fdata, ptr)
+            Module.ccall('load_file', 'number', ['string', 'number', 'number'], [fname, ptr, fdata.length]);
+            Module._free(ptr)
         }
         
         function dropHandler(ev) {
@@ -62,16 +50,26 @@
                 var fr = new FileReader();
                 fr.onloadend = evt => {
                     const fdata = new Uint8Array(evt.target.result);
-                    var ptr = Module._malloc(fdata.length);
-                    Module.HEAPU8.set(fdata, ptr)
-                    Module.ccall('load_file', 'number', ['string', 'number', 'number'], [f.name, ptr, fdata.length]);
-                    Module._free(ptr)
+                    loadFile(f.name, fdata)
                 };
                 fr.readAsArrayBuffer(f);
                 
                 console.log(f);
             });
         }
+        
+        Module['onRuntimeInitialized'] = function() {
+            const url_vars = window.location.search.substring(1).split('&');
+            for(var i = 0; i < url_vars.length; i++) {
+                const p = url_vars[i].split('=');
+                if(p.length != 2) continue;
+                const fname = p[1];
+                const fetchURL = 'https://api.combee.net/arduboyGet?url=' + fname;
+                fetch(fetchURL)
+                    .then(rsp => rsp.arrayBuffer())
+                    .then(buf => loadFile(fname, new Uint8Array(buf)));
+            }
+        };
     </script>
     
     <script src="arduboy_sim.js"></script>
