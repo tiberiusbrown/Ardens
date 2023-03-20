@@ -6,16 +6,16 @@
 #include <inttypes.h>
 #include <string.h>
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 extern int profiler_selected_hotspot;
 extern int disassembly_scroll_addr;
 
 static void hotspot_row(int i)
 {
     using namespace ImGui;
-    auto const& h = arduboy.profiler_hotspots[i];
-    uint16_t addr_begin = arduboy.cpu.disassembled_prog[h.begin].addr;
-    uint16_t addr_end   = arduboy.cpu.disassembled_prog[h.end].addr;
+    auto const& h = arduboy->profiler_hotspots[i];
+    uint16_t addr_begin = arduboy->cpu.disassembled_prog[h.begin].addr;
+    uint16_t addr_end   = arduboy->cpu.disassembled_prog[h.end].addr;
     TableSetColumnIndex(0);
     char b[16];
     auto pos = GetCursorPos();
@@ -36,12 +36,12 @@ static void hotspot_row(int i)
         Text("%12" PRIu64 "  ", h.count);
         SameLine();
     }
-    Text("%6.2f%%", double(h.count) * 100 / arduboy.cached_profiler_total);
+    Text("%6.2f%%", double(h.count) * 100 / arduboy->cached_profiler_total);
     SameLine();
     Text("0x%04x-0x%04x", addr_begin, addr_end);
     
-    if(!arduboy.elf) return;
-    auto const* sym = arduboy.symbol_for_prog_addr(addr_begin);
+    if(!arduboy->elf) return;
+    auto const* sym = arduboy->symbol_for_prog_addr(addr_begin);
     if(!sym) return;
     SameLine();
     TextUnformatted(sym->name.c_str()); 
@@ -51,7 +51,7 @@ static void show_hotspots()
 {
     using namespace ImGui;
 
-    auto n = arduboy.num_hotspots;
+    auto n = arduboy->num_hotspots;
     if(n <= 0) return;
 
     ImGuiTableFlags flags = 0;
@@ -62,8 +62,8 @@ static void show_hotspots()
     Separator();
     {
         float active_frac = float(
-            double(arduboy.cached_profiler_total) /
-            arduboy.cached_profiler_total_with_sleep);
+            double(arduboy->cached_profiler_total) /
+            arduboy->cached_profiler_total_with_sleep);
         char buf[32];
         snprintf(buf, sizeof(buf), "CPU Active: %.1f%%", active_frac * 100);
         ProgressBar(active_frac, ImVec2(-FLT_MIN, 0), buf);
@@ -93,24 +93,24 @@ void window_profiler(bool& open)
     if(!open) return;
     
     SetNextWindowSize({ 150, 300 }, ImGuiCond_FirstUseEver);
-    if(Begin("Profiler", &open) && arduboy.cpu.decoded)
+    if(Begin("Profiler", &open) && arduboy->cpu.decoded)
     {
-        if(arduboy.profiler_enabled)
+        if(arduboy->profiler_enabled)
         {
             if(Button("Stop Profiling"))
             {
-                arduboy.profiler_enabled = false;
-                arduboy.cached_profiler_total = arduboy.profiler_total;
-                arduboy.cached_profiler_total_with_sleep = arduboy.profiler_total_with_sleep;
-                arduboy.profiler_build_hotspots();
+                arduboy->profiler_enabled = false;
+                arduboy->cached_profiler_total = arduboy->profiler_total;
+                arduboy->cached_profiler_total_with_sleep = arduboy->profiler_total_with_sleep;
+                arduboy->profiler_build_hotspots();
             }
         }
         else
         {
             if(Button("Start Profiling"))
             {
-                arduboy.profiler_reset();
-                arduboy.profiler_enabled = true;
+                arduboy->profiler_reset();
+                arduboy->profiler_enabled = true;
             }
         }
         SameLine();

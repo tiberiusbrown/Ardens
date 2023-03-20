@@ -10,7 +10,7 @@ extern int display_buffer_addr;
 extern int display_buffer_w;
 extern int display_buffer_h;
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 
 static char addr_buf[5];
 
@@ -25,7 +25,7 @@ static int hex_value(char c)
 static void update_texture(SDL_Texture* tex)
 {
     if(display_buffer_addr < 0) return;
-    if(display_buffer_addr >= arduboy.cpu.data.size()) return;
+    if(display_buffer_addr >= arduboy->cpu.data.size()) return;
     void* pixels = nullptr;
     int pitch = 0;
     SDL_LockTexture(tex, nullptr, &pixels, &pitch);
@@ -38,9 +38,9 @@ static void update_texture(SDL_Texture* tex)
         {
             size_t n = (size_t)display_buffer_addr + (i / 8) * display_buffer_w + j;
             uint8_t pi = 128;
-            if(n < arduboy.cpu.data.size())
+            if(n < arduboy->cpu.data.size())
             {
-                uint8_t d = arduboy.cpu.data[n];
+                uint8_t d = arduboy->cpu.data[n];
                 pi = (d & (1 << (i % 8))) ? 255 : 0;
             }
             *bpixels++ = pi;
@@ -58,7 +58,7 @@ void window_display_buffer(bool& open, SDL_Texture* tex)
     if(!open) return;
 
     SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
-    if(Begin("Display Buffer (RAM)", &open) && arduboy.cpu.decoded)
+    if(Begin("Display Buffer (RAM)", &open) && arduboy->cpu.decoded)
     {
         AlignTextToFramePadding();
         TextUnformatted("Address: 0x");
@@ -77,18 +77,18 @@ void window_display_buffer(bool& open, SDL_Texture* tex)
             char* b = addr_buf;
             while(*b != 0)
                 a = (a << 4) + hex_value(*b++);
-            if(a >= 0 && a < arduboy.cpu.prog.size())
+            if(a >= 0 && a < arduboy->cpu.prog.size())
                 display_buffer_addr = a;
         }
-        if(arduboy.elf)
+        if(arduboy->elf)
         {
             SameLine();
             SetNextItemWidth(GetContentRegionAvail().x);
             if(BeginCombo("##symbol", "Symbol...", ImGuiComboFlags_HeightLarge))
             {
-                for(uint16_t addr : arduboy.elf->data_symbols_sorted)
+                for(uint16_t addr : arduboy->elf->data_symbols_sorted)
                 {
-                    auto const& sym = arduboy.elf->data_symbols[addr];
+                    auto const& sym = arduboy->elf->data_symbols[addr];
                     if(sym.weak || sym.notype) continue;
                     if(Selectable(sym.name.c_str()))
                     {

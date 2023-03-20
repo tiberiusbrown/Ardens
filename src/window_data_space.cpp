@@ -3,7 +3,7 @@
 
 #include "absim.hpp"
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 static MemoryEditor memed_data_space;
 
 static void draw_memory_breakpoints(size_t addr)
@@ -11,12 +11,12 @@ static void draw_memory_breakpoints(size_t addr)
     using namespace ImGui;
     bool rd = false;
     bool wr = false;
-    if(addr < arduboy.cpu.data.size())
+    if(addr < arduboy->cpu.data.size())
     {
-        rd = arduboy.breakpoints_rd.test(addr);
-        wr = arduboy.breakpoints_wr.test(addr);
+        rd = arduboy->breakpoints_rd.test(addr);
+        wr = arduboy->breakpoints_wr.test(addr);
     }
-    BeginDisabled(addr < 32 || addr >= arduboy.cpu.data.size());
+    BeginDisabled(addr < 32 || addr >= arduboy->cpu.data.size());
     AlignTextToFramePadding();
     TextUnformatted("Break on:");
     SameLine();
@@ -24,10 +24,10 @@ static void draw_memory_breakpoints(size_t addr)
     SameLine();
     Checkbox("Write", &wr);
     EndDisabled();
-    if(addr < arduboy.cpu.data.size())
+    if(addr < arduboy->cpu.data.size())
     {
-        arduboy.breakpoints_rd[addr] = rd;
-        arduboy.breakpoints_wr[addr] = wr;
+        arduboy->breakpoints_rd[addr] = rd;
+        arduboy->breakpoints_wr[addr] = wr;
     }
 }
 
@@ -46,19 +46,19 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
             IM_COL32(0, 0, 0, 255);
         r = true;
     }
-    else if(off >= arduboy.cpu.min_stack)
+    else if(off >= arduboy->cpu.min_stack)
     {
         color = IM_COL32(70, 0, 90, 255);
         r = true;
     }
-    else if(arduboy.cpu.stack_check > 0x100 && off >= arduboy.cpu.stack_check)
+    else if(arduboy->cpu.stack_check > 0x100 && off >= arduboy->cpu.stack_check)
     {
         color = IM_COL32(45, 45, 45, 255);
         r = true;
     }
-    if(off < arduboy.cpu.data.size() && (
-        arduboy.breakpoints_rd.test(off) ||
-        arduboy.breakpoints_wr.test(off)))
+    if(off < arduboy->cpu.data.size() && (
+        arduboy->breakpoints_rd.test(off) ||
+        arduboy->breakpoints_wr.test(off)))
     {
         color = IM_COL32(100, 50, 50, 255);
         r = true;
@@ -69,7 +69,7 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
 void hover_data_space(uint16_t addr)
 {
     using namespace ImGui;
-    auto const* sym = arduboy.symbol_for_data_addr(addr);
+    auto const* sym = arduboy->symbol_for_data_addr(addr);
     BeginTooltip();
     if(addr < 256)
     {
@@ -95,7 +95,7 @@ void hover_data_space(uint16_t addr)
                         if(bit)
                         {
                             uint8_t mask = 0x80 >> i;
-                            if(arduboy.cpu.data[addr] & mask)
+                            if(arduboy->cpu.data[addr] & mask)
                                 TableSetBgColor(ImGuiTableBgTarget_CellBg, BIT_SET);
                             TextUnformatted(bit);
                         }
@@ -149,11 +149,11 @@ void window_data_space(bool& open)
     if(open)
     {
         SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
-        if(Begin("CPU Data Space", &open) && arduboy.cpu.decoded)
+        if(Begin("CPU Data Space", &open) && arduboy->cpu.decoded)
         {
             memed_data_space.DrawContents(
-                arduboy.cpu.data.data(),
-                arduboy.cpu.data.size());
+                arduboy->cpu.data.data(),
+                arduboy->cpu.data.size());
 
             auto addr = memed_data_space.DataPreviewAddr;
             draw_memory_breakpoints(addr);

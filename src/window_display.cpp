@@ -3,7 +3,7 @@
 #include "absim.hpp"
 #include "settings.hpp"
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 
 void window_display(bool& open, void* tex)
 {

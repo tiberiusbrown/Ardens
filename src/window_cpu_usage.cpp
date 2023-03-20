@@ -7,7 +7,7 @@
 
 #include <numeric>
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 
 static int yaxis_formatter(double value, char* buf, int size, void* user)
 {
@@ -19,7 +19,7 @@ static void window_contents()
 {
     using namespace ImPlot;
 
-    if(arduboy.frame_cpu_usage.empty())
+    if(arduboy->frame_cpu_usage.empty())
         return;
 
     {
@@ -27,22 +27,22 @@ static void window_contents()
         size_t i;
         for(i = 0; i < 16; ++i)
         {
-            if(i >= arduboy.frame_cpu_usage.size())
+            if(i >= arduboy->frame_cpu_usage.size())
                 break;
-            usage += arduboy.frame_cpu_usage[arduboy.frame_cpu_usage.size() - i - 1];
+            usage += arduboy->frame_cpu_usage[arduboy->frame_cpu_usage.size() - i - 1];
         }
         usage /= i;
-        bool red = arduboy.frame_cpu_usage.back() > 0.999;
+        bool red = arduboy->frame_cpu_usage.back() > 0.999;
         if(red) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
         ImGui::Text("CPU Usage: %5.1f%%", usage * 100);
         if(red) ImGui::PopStyleColor();
     }
 
-    if(arduboy.prev_frame_cycles != 0)
+    if(arduboy->prev_frame_cycles != 0)
     {
         static std::array<float, 16> fps_queue{};
         static size_t fps_i = 0;
-        float fps = 16e6f / float(arduboy.prev_frame_cycles);
+        float fps = 16e6f / float(arduboy->prev_frame_cycles);
         fps_queue[fps_i] = fps;
         fps_i = (fps_i + 1) % fps_queue.size();
         fps = std::accumulate(fps_queue.begin(), fps_queue.end(), 0.f) * (1.f / fps_queue.size());
@@ -55,8 +55,8 @@ static void window_contents()
         auto* plot = GetCurrentPlot();
         constexpr double ZOOM = 4.0;
         constexpr double IZOOM = 1.0 / ZOOM;
-        double n = double(arduboy.total_frames);
-        double m = n - arduboy.frame_cpu_usage.size();
+        double n = double(arduboy->total_frames);
+        double m = n - arduboy->frame_cpu_usage.size();
         double w = plot->FrameRect.GetWidth();
 
         double z = plot->Axes[ImAxis_X1].Range.Size();
@@ -74,7 +74,7 @@ static void window_contents()
 
         double lim_min = m;
         double lim_max = (n < z ? z : n);
-        if(!arduboy.paused)
+        if(!arduboy->paused)
         {
             if(n < w)
                 lim_max = w;
@@ -97,13 +97,13 @@ static void window_contents()
         SetupFinish();
         PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
         PlotShaded("##usage",
-            arduboy.frame_cpu_usage.data(),
-            (int)arduboy.frame_cpu_usage.size(),
+            arduboy->frame_cpu_usage.data(),
+            (int)arduboy->frame_cpu_usage.size(),
             0.0, 1.0, m);
         PopStyleVar();
         PlotLine("##usage",
-            arduboy.frame_cpu_usage.data(),
-            (int)arduboy.frame_cpu_usage.size(),
+            arduboy->frame_cpu_usage.data(),
+            (int)arduboy->frame_cpu_usage.size(),
             1.0, m);
         EndPlot();
     }
@@ -114,7 +114,7 @@ void window_cpu_usage(bool& open)
     if(!open) return;
 
     ImGui::SetNextWindowSize({ 400, 200 }, ImGuiCond_FirstUseEver);
-    if(ImGui::Begin("CPU Usage", &open) && arduboy.cpu.decoded)
+    if(ImGui::Begin("CPU Usage", &open) && arduboy->cpu.decoded)
     {
         window_contents();
     }

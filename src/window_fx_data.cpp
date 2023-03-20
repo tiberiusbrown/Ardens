@@ -3,7 +3,7 @@
 
 #include "absim.hpp"
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 extern int fx_data_scroll_addr;
 
 static MemoryEditor memed_fx;
@@ -33,9 +33,9 @@ static int hex_value(char const* c)
 static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
 {
     bool r = false;
-    if(off + arduboy.fx.min_page * 256 == arduboy.fx.current_addr)
+    if(off + arduboy->fx.min_page * 256 == arduboy->fx.current_addr)
     {
-        if(arduboy.fx.reading || arduboy.fx.programming)
+        if(arduboy->fx.reading || arduboy->fx.programming)
         {
             color = IM_COL32(40, 160, 40, 255);
             r = true;
@@ -53,9 +53,9 @@ void window_fx_data(bool& open)
     if(Begin("FX Data", &open))
     {
         if(autopage || !*minpagebuf)
-            snprintf(minpagebuf, sizeof(minpagebuf), "%04x", arduboy.fx.min_page);
+            snprintf(minpagebuf, sizeof(minpagebuf), "%04x", arduboy->fx.min_page);
         if(autopage || !*maxpagebuf)
-            snprintf(maxpagebuf, sizeof(maxpagebuf), "%04x", arduboy.fx.max_page);
+            snprintf(maxpagebuf, sizeof(maxpagebuf), "%04x", arduboy->fx.max_page);
 
         float tw = CalcTextSize("FFFF").x + GetStyle().FramePadding.x * 2;
         AlignTextToFramePadding();
@@ -88,8 +88,8 @@ void window_fx_data(bool& open)
         Checkbox("Auto", &autopage);
         if(autopage)
         {
-            minpage = arduboy.fx.min_page;
-            maxpage = arduboy.fx.max_page;
+            minpage = arduboy->fx.min_page;
+            maxpage = arduboy->fx.max_page;
         }
 
         maxpage = std::min<uint32_t>(maxpage, 0xffff);
@@ -100,7 +100,7 @@ void window_fx_data(bool& open)
         fx_data_scroll_addr = -1;
         memed_fx.HighlightFn = highlight_func;
         memed_fx.DrawContents(
-            arduboy.fx.data.data() + minpage * 256,
+            arduboy->fx.data.data() + minpage * 256,
             size_t((maxpage - minpage + 1) * 256),
             minpage * 256);
     }

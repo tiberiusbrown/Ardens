@@ -7,13 +7,13 @@
 
 #include <fmt/format.h>
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 extern int disassembly_scroll_addr;
 
 #if 0
 static absim::elf_data_t::frame_info_t::unwind_t const* find_unwind(uint16_t addr)
 {
-	auto const& frames = arduboy.elf->frames;
+	auto const& frames = arduboy->elf->frames;
 
 	// find frame
 	auto fit = std::find_if(frames.begin(), frames.end(),
@@ -30,7 +30,7 @@ static absim::elf_data_t::frame_info_t::unwind_t const* find_unwind(uint16_t add
 
 static uint16_t cpu_word(uint16_t addr)
 {
-	auto const& cpu = arduboy.cpu;
+	auto const& cpu = arduboy->cpu;
 	if(addr + 1 >= cpu.data.size()) return 0;
 	uint16_t lo = cpu.data[addr + 0];
 	uint16_t hi = cpu.data[addr + 1];
@@ -39,7 +39,7 @@ static uint16_t cpu_word(uint16_t addr)
 
 std::vector<uint16_t> get_call_stack()
 {
-    auto const& cpu = arduboy.cpu;
+    auto const& cpu = arduboy->cpu;
     auto addr = cpu.pc * 2;
 
     std::array<uint8_t, 34> regs;
@@ -55,7 +55,7 @@ std::vector<uint16_t> get_call_stack()
     };
 
     std::vector<uint16_t> r;
-    if(!arduboy.elf) return r;
+    if(!arduboy->elf) return r;
 
     for(int depth = 0; depth < 32; ++depth)
     {
@@ -103,16 +103,16 @@ static void window_call_stack_contents()
 	if(BeginTable("##callstack", 1, flags))
 	{
         //for(auto addr : call_stack)
-        for(int i = (int)arduboy.cpu.num_stack_frames; i >= 0; --i)
+        for(int i = (int)arduboy->cpu.num_stack_frames; i >= 0; --i)
         {
-            uint16_t addr = (i < (int)arduboy.cpu.num_stack_frames) ?
-                arduboy.cpu.stack_frames[i].pc * 2 :
-                arduboy.cpu.pc * 2;
-            if(addr >= arduboy.cpu.last_addr) break;
+            uint16_t addr = (i < (int)arduboy->cpu.num_stack_frames) ?
+                arduboy->cpu.stack_frames[i].pc * 2 :
+                arduboy->cpu.pc * 2;
+            if(addr >= arduboy->cpu.last_addr) break;
 
             TableNextRow();
 
-            auto const* sym = arduboy.symbol_for_prog_addr(addr);
+            auto const* sym = arduboy->symbol_for_prog_addr(addr);
             if(sym)
                 name = fmt::format("{:#06x} {}", addr, sym->name);
             else
@@ -133,7 +133,7 @@ void window_call_stack(bool& open)
 	if(!open) return;
 
 	SetNextWindowSize({ 200, 100 }, ImGuiCond_FirstUseEver);
-	if(Begin("Call Stack", &open) && arduboy.cpu.decoded)
+	if(Begin("Call Stack", &open) && arduboy->cpu.decoded)
 	{
 		window_call_stack_contents();
 	}

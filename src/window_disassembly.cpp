@@ -5,7 +5,7 @@
 
 #include <inttypes.h>
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 extern int profiler_selected_hotspot;
 extern int disassembly_scroll_addr;
 extern bool scroll_addr_to_top;
@@ -19,9 +19,9 @@ void hover_data_space(uint16_t addr);
 
 static absim::disassembled_instr_t const& dis_instr(int row)
 {
-    return arduboy.elf ?
-        arduboy.elf->asm_with_source[row] :
-        arduboy.cpu.disassembled_prog[row];
+    return arduboy->elf ?
+        arduboy->elf->asm_with_source[row] :
+        arduboy->cpu.disassembled_prog[row];
 }
 
 static void register_tooltip(int reg, bool pointer = false)
@@ -34,10 +34,10 @@ static void register_tooltip(int reg, bool pointer = false)
     else
         Text("Register: r%d", reg);
     Separator();
-    uint8_t x = arduboy.cpu.data[reg];
+    uint8_t x = arduboy->cpu.data[reg];
     if(reg % 2 == 0)
     {
-        uint8_t y = arduboy.cpu.data[reg + 1];
+        uint8_t y = arduboy->cpu.data[reg + 1];
         uint16_t w = x | (uint16_t(y) << 8);
         if(!pointer)
             Text("[Single]  0x%02x    %5d  %+5d", x, x, (int8_t)x);
@@ -56,17 +56,17 @@ static void register_tooltip(int reg, bool pointer = false)
 
 static int find_index_of_addr(uint16_t addr)
 {
-    return arduboy.elf ?
-        (int)arduboy.elf->addr_to_disassembled_index(addr) :
-        (int)arduboy.cpu.addr_to_disassembled_index(addr);
+    return arduboy->elf ?
+        (int)arduboy->elf->addr_to_disassembled_index(addr) :
+        (int)arduboy->cpu.addr_to_disassembled_index(addr);
 }
 
 static void prog_addr_symbol_line(uint16_t addr)
 {
     using namespace ImGui;
-    if(!arduboy.elf)
+    if(!arduboy->elf)
         return;
-    auto const& elf = *arduboy.elf;
+    auto const& elf = *arduboy->elf;
     auto it = elf.text_symbols.find(addr);
     if(it == elf.text_symbols.end())
         return;
@@ -78,9 +78,9 @@ static void prog_addr_symbol_line(uint16_t addr)
 static void prog_addr_source_line(uint16_t addr)
 {
     using namespace ImGui;
-    if(!arduboy.elf)
+    if(!arduboy->elf)
         return;
-    auto const& elf = *arduboy.elf;
+    auto const& elf = *arduboy->elf;
     auto it = elf.source_lines.find(addr);
     if(it == elf.source_lines.end())
         return;
@@ -115,7 +115,7 @@ static void prog_addr_source_line(uint16_t addr)
 static void prog_addr_tooltip(uint16_t addr)
 {
     using namespace ImGui;
-    auto const* sym = arduboy.symbol_for_prog_addr(addr);
+    auto const* sym = arduboy->symbol_for_prog_addr(addr);
     if(addr / 4 < absim::INT_VECTOR_INFO.size())
     {
         auto const& info = absim::INT_VECTOR_INFO[addr / 4];
@@ -200,7 +200,7 @@ static void disassembly_arg(
         if(IsItemHovered())
         {
             hover_data_space(a.val);
-            //auto const* sym = arduboy.symbol_for_data_addr(a.val);
+            //auto const* sym = arduboy->symbol_for_data_addr(a.val);
             //BeginTooltip();
             //if(sym)
             //{
@@ -214,9 +214,9 @@ static void disassembly_arg(
             //    Text("Data Space: 0x%04x", a.val);
             //}
             //Separator();
-            //if(a.val < arduboy.cpu.data.size())
+            //if(a.val < arduboy->cpu.data.size())
             //{
-            //    uint8_t x = arduboy.cpu.data[a.val];
+            //    uint8_t x = arduboy->cpu.data[a.val];
             //    Text("0x%02x  %d  %d", x, x, (int8_t)x);
             //}
             //EndTooltip();
@@ -299,7 +299,7 @@ static void disassembly_arg(
 static void toggle_breakpoint(int row)
 {
     auto addr = dis_instr(row).addr;
-    arduboy.breakpoints.flip(addr / 2);
+    arduboy->breakpoints.flip(addr / 2);
 }
 
 static void draw_breakpoint_color(ImVec2 p, ImU32 color)
@@ -316,7 +316,7 @@ static void draw_breakpoint_hovered(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR_HOVERED = IM_COL32(150, 40, 40, 255);
     auto addr = dis_instr(row).addr / 2;
-    bool bp = arduboy.breakpoints.test(addr);
+    bool bp = arduboy->breakpoints.test(addr);
     if(!bp) draw_breakpoint_color(p, BP_COLOR_HOVERED);
 }
 
@@ -324,17 +324,17 @@ static void draw_breakpoint(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR = IM_COL32(255, 40, 40, 255);
     auto addr = dis_instr(row).addr / 2;
-    bool bp = arduboy.breakpoints.test(addr);
+    bool bp = arduboy->breakpoints.test(addr);
     if(bp) draw_breakpoint_color(p, BP_COLOR);
 }
 
 static void profiler_count(absim::disassembled_instr_t const& d)
 {
     using namespace ImGui;
-    uint64_t profiler_total = arduboy.profiler_enabled ?
-        arduboy.profiler_total : arduboy.cached_profiler_total;
+    uint64_t profiler_total = arduboy->profiler_enabled ?
+        arduboy->profiler_total : arduboy->cached_profiler_total;
     if(profiler_total == 0) return;
-    uint64_t count = arduboy.profiler_counts[d.addr / 2];
+    uint64_t count = arduboy->profiler_counts[d.addr / 2];
     if(count == 0) return;
     double f = double(count) * 100 / profiler_total;
     if(settings.profiler_cycle_counts)
@@ -362,7 +362,7 @@ void window_disassembly(bool& open)
     disassembly_scroll_addr = -1;
     if(scroll_highlight_time > 0)
         scroll_highlight_time -= GetIO().DeltaTime;
-    if(Begin("Disassembly", &open) && arduboy.cpu.decoded)
+    if(Begin("Disassembly", &open) && arduboy->cpu.decoded)
     {
         AlignTextToFramePadding();
         TextUnformatted("Jump: 0x");
@@ -385,18 +385,18 @@ void window_disassembly(bool& open)
         SameLine();
         if(Button("Jump to PC"))
         {
-            do_scroll = arduboy.cpu.pc * 2;
+            do_scroll = arduboy->cpu.pc * 2;
         }
 
-        if(arduboy.elf)
+        if(arduboy->elf)
         {
             SameLine();
             SetNextItemWidth(GetContentRegionAvail().x);
             if(BeginCombo("##symboljump", "Jump to function...", ImGuiComboFlags_HeightLarge))
             {
-                for(uint16_t addr : arduboy.elf->text_symbols_sorted)
+                for(uint16_t addr : arduboy->elf->text_symbols_sorted)
                 {
-                    auto const& sym = arduboy.elf->text_symbols[addr];
+                    auto const& sym = arduboy->elf->text_symbols[addr];
                     if(sym.object || sym.weak || sym.notype) continue;
                     if(Selectable(sym.name.c_str()))
                         do_scroll = addr, scroll_addr_to_top = true;
@@ -421,9 +421,9 @@ void window_disassembly(bool& open)
                 ImGuiTableColumnFlags_WidthFixed,
                 CalcTextSize(settings.profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
             ImGuiListClipper clipper;
-            clipper.Begin(arduboy.elf ?
-                (int)arduboy.elf->asm_with_source.size() :
-                (int)arduboy.cpu.num_instrs,
+            clipper.Begin(arduboy->elf ?
+                (int)arduboy->elf->asm_with_source.size() :
+                (int)arduboy->cpu.num_instrs,
                 GetTextLineHeightWithSpacing());
             while(clipper.Step())
             {
@@ -449,9 +449,9 @@ void window_disassembly(bool& open)
                         auto color = IM_COL32(80, 80, 80, uint8_t(f * 255));
                         TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
                     }
-                    if(instr_index == arduboy.cpu.pc)
+                    if(instr_index == arduboy->cpu.pc)
                     {
-                        auto color = arduboy.paused ?
+                        auto color = arduboy->paused ?
                             IM_COL32(80, 0, 0, 255) :
                             IM_COL32(60, 60, 60, 255);
                         TableSetBgColor(ImGuiTableBgTarget_RowBg0, color);
@@ -461,9 +461,9 @@ void window_disassembly(bool& open)
                         auto color = i % 2 ?
                             IM_COL32(65, 0, 0, 255) :
                             IM_COL32(50, 0, 0, 255);
-                        auto const& h = arduboy.profiler_hotspots[profiler_selected_hotspot];
-                        uint16_t instr_begin = arduboy.cpu.disassembled_prog[h.begin].addr / 2;
-                        uint16_t instr_end = arduboy.cpu.disassembled_prog[h.end].addr / 2;
+                        auto const& h = arduboy->profiler_hotspots[profiler_selected_hotspot];
+                        uint16_t instr_begin = arduboy->cpu.disassembled_prog[h.begin].addr / 2;
+                        uint16_t instr_end = arduboy->cpu.disassembled_prog[h.end].addr / 2;
                         if(instr_index >= instr_begin && instr_index <= instr_end)
                             TableSetBgColor(ImGuiTableBgTarget_RowBg0, color);
                     }
@@ -489,7 +489,7 @@ void window_disassembly(bool& open)
                         int i;
                         for(i = 0; i < d.obj_bytes && i < 8; ++i)
                         {
-                            uint8_t byte = arduboy.cpu.prog[d.addr + i];
+                            uint8_t byte = arduboy->cpu.prog[d.addr + i];
                             if(i > 0) buf[i * 3 - 1] = ' ';
                             buf[i * 3 + 0] = "0123456789abcdef"[byte >> 4];
                             buf[i * 3 + 1] = "0123456789abcdef"[byte & 15];

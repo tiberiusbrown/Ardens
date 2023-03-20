@@ -1,5 +1,11 @@
 v0.8.0
-* Use @unwiredben's CORS proxy to enable loading files via URL parameters
+* Use @unwiredben's CORS proxy to enable loading files via URL parameters:
+  - g=[0,1,2] to select grayscale mode (0 for monochrome, 1 for 3-level, 2 for 4-level)
+  - z=[0,1] to control full zoom mode
+  - hex=<url> to load .hex file
+  - bin=<url> to load .bin file
+  - arduboy=<url> to load .arduboy file
+* "Full Zoom" mode: press F to toggle between full display and debugger
 
 v0.7.0
 * Snapshot support:

@@ -3,7 +3,7 @@
 
 #include "absim.hpp"
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 static MemoryEditor memed_display_ram;
 
 static char const* const MODES[] =
@@ -18,7 +18,7 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
 {
     bool r = false;
 
-    if(off == arduboy.display.data_page * 128 + arduboy.display.data_col)
+    if(off == arduboy->display.data_page * 128 + arduboy->display.data_col)
     {
         color = IM_COL32(40, 160, 40, 255);
         r = true;
@@ -32,9 +32,9 @@ void window_display_internals(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
-    if(Begin("Display Internals", &open) && arduboy.cpu.decoded)
+    if(Begin("Display Internals", &open) && arduboy->cpu.decoded)
     {
-        auto const& d = arduboy.display;
+        auto const& d = arduboy->display;
         if(CollapsingHeader("Internal State"))
         {
             Text("Address                0x%03x", d.data_page * 128 + d.data_col);
@@ -74,8 +74,8 @@ void window_display_internals(bool& open)
         Separator();
         memed_display_ram.HighlightFn = highlight_func;
         memed_display_ram.DrawContents(
-            arduboy.display.ram.data(),
-            arduboy.display.ram.size());
+            arduboy->display.ram.data(),
+            arduboy->display.ram.size());
     }
     End();
 }

@@ -19,7 +19,7 @@
 
 #include <fmt/format.h>
 
-extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> arduboy;
 
 static bool show_io = false;
 
@@ -224,13 +224,13 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
                 enc = (int)v.getValue();
         if(bytes == 0 || bytes > 8)
             break;
-        if(text && addr + bytes >= arduboy.cpu.prog.size())
+        if(text && addr + bytes >= arduboy->cpu.prog.size())
             break;
-        if(!text && addr + bytes >= arduboy.cpu.data.size())
+        if(!text && addr + bytes >= arduboy->cpu.data.size())
             break;
         uint8_t const* d = text ?
-            arduboy.cpu.prog.data() :
-            arduboy.cpu.data.data();
+            arduboy->cpu.prog.data() :
+            arduboy->cpu.data.data();
         uint64_t x = 0;
         for(int i = bytes - 1; i >= 0; --i)
             x = (x << 8) + d[addr + i];
@@ -454,7 +454,7 @@ static bool do_global(
     using namespace ImGui;
 
     bool remove = false;
-    auto* dwarf = arduboy.elf->dwarf_ctx.get();
+    auto* dwarf = arduboy->elf->dwarf_ctx.get();
     auto* cu = dwarf->getCompileUnitForOffset(g.cu_offset);
     if(!cu) return true;
 
@@ -469,7 +469,7 @@ void window_globals(bool& open)
     if(!open) return;
     SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
     ImGuiWindowFlags wflags = 0;
-    if(Begin("Globals", &open, wflags) && arduboy.cpu.decoded && arduboy.elf)
+    if(Begin("Globals", &open, wflags) && arduboy->cpu.decoded && arduboy->elf)
     {
         if(Button("Add variable..."))
             OpenPopup("##addvar");
@@ -483,7 +483,7 @@ void window_globals(bool& open)
 
         if(BeginPopup("##addvar"))
         {
-            for(auto const& kv : arduboy.elf->globals)
+            for(auto const& kv : arduboy->elf->globals)
             {
                 auto const& name = kv.first;
                 auto const& g = kv.second;
@@ -496,7 +496,7 @@ void window_globals(bool& open)
         }
         if(BeginPopup("##addprog"))
         {
-            for(auto const& kv : arduboy.elf->globals)
+            for(auto const& kv : arduboy->elf->globals)
             {
                 auto const& name = kv.first;
                 auto const& g = kv.second;
@@ -508,7 +508,7 @@ void window_globals(bool& open)
         }
         if(BeginPopup("##addio"))
         {
-            for(auto const& kv : arduboy.elf->globals)
+            for(auto const& kv : arduboy->elf->globals)
             {
                 auto const& name = kv.first;
                 auto const& g = kv.second;
@@ -538,8 +538,8 @@ void window_globals(bool& open)
             for(size_t i = 0; i < watches.size(); ++i)
             {
                 auto const& name = watches[i];
-                auto it = arduboy.elf->globals.find(name);
-                if(it == arduboy.elf->globals.end())
+                auto it = arduboy->elf->globals.find(name);
+                if(it == arduboy->elf->globals.end())
                 {
                     watches.erase(watches.begin() + i);
                     --i;

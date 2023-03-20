@@ -66,7 +66,7 @@ static SDL_AudioSpec audio_spec;
 
 static SDL_Texture* display_texture;
 static SDL_Texture* display_buffer_texture;
-absim::arduboy_t arduboy;
+std::unique_ptr<absim::arduboy_t> arduboy;
 
 int profiler_selected_hotspot = -1;
 int disassembly_scroll_addr = -1;
@@ -254,7 +254,7 @@ static void rescale_style()
 extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
-    dropfile_err = arduboy.load_file(filename, f);
+    dropfile_err = arduboy->load_file(filename, f);
     return 0;
 }
 
@@ -421,8 +421,8 @@ static void main_loop()
     uint64_t dt = t - pt;
     if(dt > 30) dt = 30;
     pt = t;
-    arduboy.cpu.stack_overflow = false;
-    if(!arduboy.paused)
+    arduboy->cpu.stack_overflow = false;
+    if(!arduboy->paused)
     {
         // PINF: 4,5,6,7=D,L,R,U
         // PINE: 6=A
@@ -440,32 +440,32 @@ static void main_loop()
             if(ImGui::IsKeyDown(ImGuiKey_A)) pine &= ~0x40;
             if(ImGui::IsKeyDown(ImGuiKey_B) || ImGui::IsKeyDown(ImGuiKey_S)) pinb &= ~0x10;
 
-            arduboy.cpu.data[0x23] = pinb;
-            arduboy.cpu.data[0x2c] = pine;
-            arduboy.cpu.data[0x2f] = pinf;
+            arduboy->cpu.data[0x23] = pinb;
+            arduboy->cpu.data[0x2c] = pine;
+            arduboy->cpu.data[0x2f] = pinf;
         }
 
 #if PROFILING
         dt = 200;
 #endif
 
-        bool prev_paused = arduboy.paused;
-        arduboy.frame_bytes_total = (settings.num_pixel_history == 1 ? 1024 : 0);
-        arduboy.cpu.enable_stack_break = settings.enable_stack_breaks;
-        arduboy.allow_nonstep_breakpoints =
-            arduboy.break_step == 0xffffffff || settings.enable_step_breaks;
-        arduboy.advance(dt * 1000000000000ull / simulation_slowdown);
-        if(arduboy.paused && !prev_paused)
-            disassembly_scroll_addr = arduboy.cpu.pc * 2;
+        bool prev_paused = arduboy->paused;
+        arduboy->frame_bytes_total = (settings.num_pixel_history == 1 ? 1024 : 0);
+        arduboy->cpu.enable_stack_break = settings.enable_stack_breaks;
+        arduboy->allow_nonstep_breakpoints =
+            arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
+        arduboy->advance(dt * 1000000000000ull / simulation_slowdown);
+        if(arduboy->paused && !prev_paused)
+            disassembly_scroll_addr = arduboy->cpu.pc * 2;
         if(!settings.enable_stack_breaks)
-            arduboy.cpu.stack_overflow = false;
+            arduboy->cpu.stack_overflow = false;
 
         // consume sound buffer
 #if !PROFILING
         if(simulation_slowdown == 1000)
         {
-            constexpr size_t SAMPLE_SIZE = sizeof(arduboy.cpu.sound_buffer[0]);
-            size_t num_bytes = arduboy.cpu.sound_buffer.size() * SAMPLE_SIZE;
+            constexpr size_t SAMPLE_SIZE = sizeof(arduboy->cpu.sound_buffer[0]);
+            size_t num_bytes = arduboy->cpu.sound_buffer.size() * SAMPLE_SIZE;
             uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
             if(queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
                 num_bytes = 0;
@@ -473,26 +473,26 @@ static void main_loop()
                 num_bytes = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE - queued_bytes;
             SDL_QueueAudio(
                 audio_device,
-                arduboy.cpu.sound_buffer.data(),
+                arduboy->cpu.sound_buffer.data(),
                 (uint32_t)num_bytes);
         }
 #endif
-        arduboy.cpu.sound_buffer.clear();
+        arduboy->cpu.sound_buffer.clear();
         SDL_PauseAudioDevice(audio_device, 0);
     }
     else
     {
-        arduboy.break_step = 0xffffffff;
+        arduboy->break_step = 0xffffffff;
         SDL_PauseAudioDevice(audio_device, 1);
     }
 
     // update framebuffer texture
-    if(arduboy.cpu.decoded)
+    if(arduboy->cpu.decoded)
     {
         void* pixels = nullptr;
         int pitch = 0;
-        arduboy.display.num_pixel_history = settings.num_pixel_history;
-        arduboy.display.filter_pixels();
+        arduboy->display.num_pixel_history = settings.num_pixel_history;
+        arduboy->display.filter_pixels();
 
         SDL_LockTexture(display_texture, nullptr, &pixels, &pitch);
 
@@ -501,7 +501,7 @@ static void main_loop()
         {
             for(int j = 0; j < 128; ++j)
             {
-                auto pi = arduboy.display.filtered_pixels[i * 128 + j];
+                auto pi = arduboy->display.filtered_pixels[i * 128 + j];
                 *bpixels++ = pi;
                 *bpixels++ = pi;
                 *bpixels++ = pi;
@@ -541,17 +541,17 @@ static void main_loop()
                 ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
 #ifdef __EMSCRIPTEN__
             std::ofstream f("absim.snapshot", std::ios::binary);
-            if(arduboy.save_snapshot(f))
+            if(arduboy->save_snapshot(f))
             {
                 f.close();
                 file_download("absim.snapshot", fname, "application/octet-stream");
             }
 #else
             std::ofstream f(fname, std::ios::binary);
-            arduboy.save_snapshot(f);
+            arduboy->save_snapshot(f);
 #endif
         }
-        if(gif_recording && arduboy.paused)
+        if(gif_recording && arduboy->paused)
         {
             screen_recording_toggle((uint8_t const*)pixels);
         }
@@ -588,7 +588,7 @@ static void main_loop()
         if(event.type == SDL_DROPFILE)
         {
             std::ifstream f(event.drop.file, std::ios::binary);
-            dropfile_err = arduboy.load_file(event.drop.file, f);
+            dropfile_err = arduboy->load_file(event.drop.file, f);
             SDL_free(event.drop.file);
         }
     }
@@ -654,7 +654,7 @@ static void main_loop()
         ImGui::EndPopup();
     }
 
-    if(arduboy.cpu.stack_overflow)
+    if(arduboy->cpu.stack_overflow)
         ImGui::OpenPopup("Stack Overflow");
 
     ImGui::SetNextWindowSize({ 300, 0 });
@@ -726,6 +726,8 @@ int main(int argc, char** argv)
         FS.syncfs(true, function(err) { ccall('postsyncfs', 'v'); });
     );
 #endif
+
+    arduboy = std::make_unique<absim::arduboy_t>();
 
 #ifdef _WIN32
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
@@ -817,10 +819,10 @@ int main(int argc, char** argv)
         128,
         64);
 
-    arduboy.fx.erase_all_data();
-    arduboy.reset();
-    arduboy.fx.min_page = 0xffff;
-    arduboy.fx.max_page = 0xffff;
+    arduboy->fx.erase_all_data();
+    arduboy->reset();
+    arduboy->fx.min_page = 0xffff;
+    arduboy->fx.max_page = 0xffff;
 
     pt = SDL_GetTicks64();
     done = false;

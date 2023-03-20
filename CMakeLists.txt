@@ -20,6 +20,17 @@ project(arduboy_sim)
 #    endif()
 #endif()
 
+if(MSVC)
+    add_link_options(
+        /DEBUG
+        /INCREMENTAL:NO                           # Disable incremental linking.
+        $<$<NOT:$<CONFIG:DEBUG>>:/OPT:REF>        # Remove unreferenced functions and data.
+        $<$<NOT:$<CONFIG:DEBUG>>:/OPT:ICF>        # Identical COMDAT folding.
+        $<$<CONFIG:DEBUG>:/OPT:NOREF>             # No unreferenced data elimination.
+        $<$<CONFIG:DEBUG>:/OPT:NOICF>             # No Identical COMDAT folding.
+    )
+endif()
+
 option(ABSIM_LLVM "Build and link LLVM (enables loading ELF and debug info)" ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
