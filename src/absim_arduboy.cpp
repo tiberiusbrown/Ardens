@@ -264,12 +264,11 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
     assert(cpu.decoded);
 
     bool vsync = false;
+    uint8_t portd = cpu.data[0x2b];
     uint32_t cycles = cpu.advance_cycle();
 
     // TODO: model SPI connection more precisely?
     // send SPI commands and data to display
-    uint8_t portd = cpu.data[0x2b];
-
     fx.set_enabled((portd & (1 << 1)) == 0);
 
     if(cpu.spi_done_shifting)

@@ -370,6 +370,7 @@ struct atmega32u4_t
     // SPI
     bool spsr_read_after_transmit;
     bool spi_busy;
+    bool spi_busy_clear;
     bool spi_done;
     bool spi_done_shifting;
     uint8_t spi_data_byte;
