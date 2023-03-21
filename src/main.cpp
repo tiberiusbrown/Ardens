@@ -503,9 +503,12 @@ int main(int argc, char** argv)
     ImPlot::CreateContext();
 
     init_settings();
-    settings_loaded = true;
-
     ImGuiIO& io = ImGui::GetIO();
+#ifndef __EMSCRIPTEN__
+    ImGui::LoadIniSettingsFromDisk(io.IniFilename);
+    settings_loaded = true;
+#endif
+
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
