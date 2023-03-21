@@ -3,7 +3,10 @@
 
 void view_player()
 {
-    auto* d = ImGui::GetForegroundDrawList(ImGui::GetMainViewport());
+    if(!arduboy->cpu.decoded)
+        return;
+
+    auto* d = ImGui::GetBackgroundDrawList(ImGui::GetMainViewport());
     auto size = ImGui::GetMainViewport()->Size;
 
     int z = display_filter_zoom();

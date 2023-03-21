@@ -1,3 +1,7 @@
+v0.9.0
+* Dedicated settings modal dialog
+* Display and recording filtering with ScaleNx family of filters
+
 v0.8.0
 * Use @unwiredben's CORS proxy to enable loading files via URL parameters:
   - g=[1,2,3] to select grayscale mode (0 for monochrome, 1 for 3-level, 2 for 4-level)

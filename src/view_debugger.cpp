@@ -146,23 +146,25 @@ void view_debugger()
         if(do_settings_modal)
             ImGui::OpenPopup("Settings");
 
-        window_display(settings.open_display);
-        window_display_buffer(settings.open_display_buffer);
-        window_simulation(settings.open_simulation);
-        window_disassembly(settings.open_disassembly);
-        window_symbols(settings.open_symbols);
+        if(arduboy->cpu.decoded)
+        {
+            window_display(settings.open_display);
+            window_display_buffer(settings.open_display_buffer);
+            window_simulation(settings.open_simulation);
+            window_disassembly(settings.open_disassembly);
+            window_symbols(settings.open_symbols);
 #ifdef ABSIM_LLVM
-        window_globals(settings.open_globals);
+            window_globals(settings.open_globals);
 #endif
-        window_call_stack(settings.open_call_stack);
-        window_display_internals(settings.open_display_internals);
-        window_profiler(settings.open_profiler);
-        window_data_space(settings.open_data_space);
-        window_fx_data(settings.open_fx_data);
-        window_fx_internals(settings.open_fx_internals);
-        window_eeprom(settings.open_eeprom);
-        window_cpu_usage(settings.open_cpu_usage);
-        window_led(settings.open_led);
-
+            window_call_stack(settings.open_call_stack);
+            window_display_internals(settings.open_display_internals);
+            window_profiler(settings.open_profiler);
+            window_data_space(settings.open_data_space);
+            window_fx_data(settings.open_fx_data);
+            window_fx_internals(settings.open_fx_internals);
+            window_eeprom(settings.open_eeprom);
+            window_cpu_usage(settings.open_cpu_usage);
+            window_led(settings.open_led);
+        }
     }
 }

@@ -103,7 +103,7 @@ extern "C" void gray(int g)
 }
 
 #ifdef __EMSCRIPTEN__
-static void file_download(
+void file_download(
     char const* fname,
     char const* download_fname,
     char const* mime_type)
@@ -259,7 +259,7 @@ static void main_loop()
         SDL_UnlockTexture(display_texture);
 
 #if ALLOW_SCREENSHOTS
-        if(ImGui::IsKeyPressed(ImGuiKey_F4, false))
+        if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
         {
             char fname[256];
             time_t rawtime;
@@ -282,7 +282,7 @@ static void main_loop()
             arduboy->save_snapshot(f);
 #endif
         }
-        if(ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
         {
             char fname[256];
             time_t rawtime;
@@ -293,12 +293,12 @@ static void main_loop()
                 "screenshot_%04d%02d%02d%02d%02d%02d.png",
                 ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
                 ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+            int z = recording_filter_zoom();
 #ifdef __EMSCRIPTEN__
-            stbi_write_png("screenshot.png", 128, 64, 4, pixels, 128 * 4);
+            stbi_write_png("screenshot.png", 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
             file_download("screenshot.png", fname, "image/x-png");
 #else
-            int z = recording_filter_zoom();
-            stbi_write_png(fname, 128 * z, 64 * z, 4, recording_pixels(true), 128 * z * 4);
+            stbi_write_png(fname, 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
 #endif
         }
         if(gif_recording && arduboy->paused)
@@ -357,6 +357,18 @@ static void main_loop()
     }
 
     ImGui::NewFrame();
+
+    if(!arduboy->cpu.decoded)
+    {
+        auto* d = ImGui::GetBackgroundDrawList(ImGui::GetMainViewport());
+        static char const* const MSG = "Drag a .hex or .arduboy file onto this window";
+        auto t = ImGui::CalcTextSize(MSG);
+        auto size = ImGui::GetMainViewport()->Size;
+        d->AddText(
+            ImVec2((size.x - t.x) * 0.5f, (size.y - t.y) * 0.5f),
+            ImGui::ColorConvertFloat4ToU32(ImGui::GetStyle().Colors[ImGuiCol_Text]),
+            MSG);
+    }
 
     if(settings.fullzoom)
         view_player();

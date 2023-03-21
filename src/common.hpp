@@ -15,6 +15,13 @@ extern int display_texture_zoom;
 extern SDL_Texture* display_texture;
 extern SDL_Texture* display_buffer_texture;
 
+#ifdef __EMSCRIPTEN__
+void file_download(
+    char const* fname,
+    char const* download_fname,
+    char const* mime_type);
+#endif
+
 extern bool gif_recording;
 extern uint32_t gif_ms_rem;
 void send_gif_frame(int ds, uint8_t const* pixels);
