@@ -46,6 +46,7 @@ void view_player();
 void settings_modal();
 
 uint8_t* recording_pixels(bool rgba);
+int filter_zoom(int f);
 int display_filter_zoom();
 int recording_filter_zoom();
 void recreate_display_texture();

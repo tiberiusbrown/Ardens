@@ -71,6 +71,8 @@ void settings_modal()
             update_settings();
 
         TableNextRow();
+        if(filter_zoom(settings.display_filtering) % settings.display_downsample != 0)
+            TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
         TextUnformatted("Display Downsample");
@@ -92,6 +94,8 @@ void settings_modal()
             update_settings();
 
         TableNextRow();
+        if(filter_zoom(settings.recording_filtering) % settings.recording_downsample != 0)
+            TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
         TextUnformatted("Recording Downsample");

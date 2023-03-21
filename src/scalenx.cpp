@@ -5,7 +5,7 @@ static uint8_t tmpbuf[128 * 64 * 2 * 2];
 
 int display_texture_zoom = -1;
 
-static int filter_zoom(int f)
+int filter_zoom(int f)
 {
     switch(f)
     {
