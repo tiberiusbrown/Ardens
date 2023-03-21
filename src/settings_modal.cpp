@@ -70,6 +70,15 @@ void settings_modal()
             FILTER_ITEMS, NUM_FILTER_ITEMS))
             update_settings();
 
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
+        TextUnformatted("Display Downsample");
+        TableSetColumnIndex(1);
+        SetNextItemWidth(-1.f);
+        if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
+            update_settings();
+
         if(gif_recording) BeginDisabled();
 
         TableNextRow();
@@ -80,6 +89,15 @@ void settings_modal()
         SetNextItemWidth(-1.f);
         if(Combo("##recordingfiltercombo", &settings.recording_filtering,
             FILTER_ITEMS, NUM_FILTER_ITEMS))
+            update_settings();
+
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
+        TextUnformatted("Recording Downsample");
+        TableSetColumnIndex(1);
+        SetNextItemWidth(-1.f);
+        if(SliderInt("##recordingdown", &settings.recording_downsample, 1, 4, "%dx"))
             update_settings();
 
         TableNextRow();

@@ -19,14 +19,21 @@ static int filter_zoom(int f)
 
 int display_filter_zoom()
 {
-    return filter_zoom(settings.display_filtering);
+    int z = filter_zoom(settings.display_filtering);
+    int d = settings.display_downsample;
+    if(z % d == 0)
+        z /= d;
+    return z;
 }
 
 int recording_filter_zoom()
 {
-    return
-        settings.recording_zoom *
-        filter_zoom(settings.recording_filtering);
+    int d = settings.recording_downsample;
+    int z = filter_zoom(settings.recording_filtering);
+    if(z % d == 0)
+        z /= d;
+    z *= settings.recording_zoom;
+    return z;
 }
 
 void recreate_display_texture()
@@ -47,7 +54,7 @@ void recreate_display_texture()
         64 * z);
 }
 
-static void scale2x(uint8_t* dst, uint8_t const* src, bool rgba, int wd, int ht)
+static void scale2x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 {
     for(int ni = 0; ni < ht; ++ni)
     {
@@ -76,37 +83,16 @@ static void scale2x(uint8_t* dst, uint8_t const* src, bool rgba, int wd, int ht)
                 e3 = e;
             }
 
-            if(rgba)
-            {
-                np = (ni * 2 * wd * 4 * 2) + (nj * 4 * 2);
-
-                dst[np + 0] = dst[np + 1] = dst[np + 2] = e0;
-                dst[np + 3] = 255;
-
-                dst[np + 4] = dst[np + 5] = dst[np + 6] = e1;
-                dst[np + 7] = 255;
-
-                np += wd * 4 * 2;
-
-                dst[np + 0] = dst[np + 1] = dst[np + 2] = e2;
-                dst[np + 3] = 255;
-
-                dst[np + 4] = dst[np + 5] = dst[np + 6] = e3;
-                dst[np + 7] = 255;
-            }
-            else
-            {
-                np = (ni * 2 * wd * 2) + (nj * 2);
-                dst[np + 0] = e0;
-                dst[np + 1] = e1;
-                dst[np + wd * 2 + 0] = e2;
-                dst[np + wd * 2 + 1] = e3;
-            }
+            np = (ni * 2 * wd * 2) + (nj * 2);
+            dst[np + 0] = e0;
+            dst[np + 1] = e1;
+            dst[np + wd * 2 + 0] = e2;
+            dst[np + wd * 2 + 1] = e3;
         }
     }
 }
 
-static void scale3x(uint8_t* dst, uint8_t const* src, bool rgba, int wd, int ht)
+static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 {
     for(int ni = 0; ni < ht; ++ni)
     {
@@ -144,103 +130,84 @@ static void scale3x(uint8_t* dst, uint8_t const* src, bool rgba, int wd, int ht)
                 e6 = e7 = e8 = e;
             }
 
-            if(rgba)
-            {
-                np = (ni * 3 * wd * 4 * 3) + (nj * 4 * 3);
-
-                dst[np + 0] = dst[np + 1] = dst[np + 2] = e0;
-                dst[np + 3] = 255;
-
-                dst[np + 4] = dst[np + 5] = dst[np + 6] = e1;
-                dst[np + 7] = 255;
-
-                dst[np + 8] = dst[np + 9] = dst[np + 10] = e2;
-                dst[np + 11] = 255;
-
-                np += wd * 4 * 3;
-
-                dst[np + 0] = dst[np + 1] = dst[np + 2] = e3;
-                dst[np + 3] = 255;
-
-                dst[np + 4] = dst[np + 5] = dst[np + 6] = e4;
-                dst[np + 7] = 255;
-
-                dst[np + 8] = dst[np + 9] = dst[np + 10] = e5;
-                dst[np + 11] = 255;
-
-                np += wd * 4 * 3;
-
-                dst[np + 0] = dst[np + 1] = dst[np + 2] = e6;
-                dst[np + 3] = 255;
-
-                dst[np + 4] = dst[np + 5] = dst[np + 6] = e7;
-                dst[np + 7] = 255;
-
-                dst[np + 8] = dst[np + 9] = dst[np + 10] = e8;
-                dst[np + 11] = 255;
-            }
-            else
-            {
-                np = (ni * 3 * wd * 3) + (nj * 3);
-                dst[np + 0] = e0;
-                dst[np + 1] = e1;
-                dst[np + 2] = e2;
-                np += wd * 3;
-                dst[np + 0] = e3;
-                dst[np + 1] = e4;
-                dst[np + 2] = e5;
-                np += wd * 3;
-                dst[np + 0] = e6;
-                dst[np + 1] = e7;
-                dst[np + 2] = e8;
-            }
+            np = (ni * 3 * wd * 3) + (nj * 3);
+            dst[np + 0] = e0;
+            dst[np + 1] = e1;
+            dst[np + 2] = e2;
+            np += wd * 3;
+            dst[np + 0] = e3;
+            dst[np + 1] = e4;
+            dst[np + 2] = e5;
+            np += wd * 3;
+            dst[np + 0] = e6;
+            dst[np + 1] = e7;
+            dst[np + 2] = e8;
         }
     }
 }
 
-static void scalenx_filter(int f, uint8_t* dst, uint8_t const* src, bool rgba)
+static uint8_t downbuf[128 * 64 * 4 * 4];
+
+static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool rgba)
 {
     if(!dst || !src) return;
+
+    int z = filter_zoom(f);
+    if(z % d != 0) d = 1;
+
+    uint8_t* tdst = (d != 1 || rgba ? downbuf : dst);
 
     switch(f)
     {
     case FILTER_NONE:
-        if(rgba)
-        {
-            for(int i = 0; i < 64; ++i)
-            {
-                for(int j = 0; j < 128; ++j)
-                {
-                    auto pi = src[i * 128 + j];
-                    *dst++ = pi;
-                    *dst++ = pi;
-                    *dst++ = pi;
-                    *dst++ = 255;
-                }
-            }
-        }
-        else
-            memcpy(dst, src, 128 * 64);
+        tdst = (uint8_t*)src;
         break;
     case FILTER_SCALE2X:
-        scale2x(dst, src, rgba, 128, 64);
+        scale2x(tdst, src, 128, 64);
         break;
     case FILTER_SCALE3X:
-        scale3x(dst, src, rgba, 128, 64);
+        scale3x(tdst, src, 128, 64);
         break;
     case FILTER_SCALE4X:
-        scale2x(tmpbuf, src, false, 128, 64);
-        scale2x(dst, tmpbuf, rgba, 256, 128);
+        scale2x(tmpbuf, src, 128, 64);
+        scale2x(tdst, tmpbuf, 256, 128);
         break;
     default:
         break;
     }
 
+    if(d != 1 || rgba)
+    {
+        int zd = z / d;
+        int d2 = d * d;
+        // dowsample from downbuf to dst
+        for(int i = 0; i < 64 * zd; ++i)
+        {
+            for(int j = 0; j < 128 * zd; ++j)
+            {
+                int t = 0;
+                for(int m = 0; m < d; ++m)
+                    for(int n = 0; n < d; ++n)
+                        t += tdst[(i * d + m) * 128 * z + j * d + n];
+                uint8_t p = t / d2;
+                int di = i * 128 * zd + j;
+                if(rgba)
+                {
+                    dst[di * 4 + 0] = p;
+                    dst[di * 4 + 1] = p;
+                    dst[di * 4 + 2] = p;
+                    dst[di * 4 + 3] = 255;
+                }
+                else
+                    dst[di] = p;
+            }
+        }
+    }
 }
 
 void scalenx(uint8_t* dst, uint8_t const* src, bool rgba)
 {
-    scalenx_filter(settings.display_filtering, dst, src, rgba);
+    scalenx_filter(settings.display_filtering, settings.display_downsample, dst, src, rgba);
 }
 
 
@@ -259,11 +226,11 @@ uint8_t* recording_pixels(bool rgba)
 
     pixels.resize(w * h * (rgba ? 4 : 1));
 
-    scalenx_filter(settings.recording_filtering, tmp, src, false);
+    scalenx_filter(settings.recording_filtering, settings.recording_downsample, tmp, src, false);
 
     // zoom and handle rgba here
-    z = filter_zoom(settings.recording_filtering);
     int rz = settings.recording_zoom;
+    z /= rz;
     for(int i = 0; i < z * 64; ++i)
     {
         for(int j = 0; j < z * 128; ++j)

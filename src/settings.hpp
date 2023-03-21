@@ -41,7 +41,9 @@ struct settings_t
     bool enable_stack_breaks = true;
 
     int display_filtering = FILTER_NONE;
+    int display_downsample = 1;
     int recording_filtering = FILTER_NONE;
+    int recording_downsample = 1;
     int recording_zoom = 1;
     int num_pixel_history = 1;
 };
