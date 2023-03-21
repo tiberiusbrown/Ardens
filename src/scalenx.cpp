@@ -146,10 +146,10 @@ static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
     }
 }
 
-static uint8_t downbuf[128 * 64 * 4 * 4];
-
 static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool rgba)
 {
+    static uint8_t downbuf[128 * 64 * 4 * 4];
+
     if(!dst || !src) return;
 
     int z = filter_zoom(f);
@@ -160,7 +160,7 @@ static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool 
     switch(f)
     {
     case FILTER_NONE:
-        tdst = (uint8_t*)src;
+        memcpy(tdst, src, 128 * 64);
         break;
     case FILTER_SCALE2X:
         scale2x(tdst, src, 128, 64);
