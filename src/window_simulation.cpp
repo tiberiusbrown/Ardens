@@ -1,11 +1,6 @@
 #include "imgui.h"
 
-#include "absim.hpp"
-#include "settings.hpp"
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
-extern int disassembly_scroll_addr;
-extern int simulation_slowdown;
+#include "common.hpp"
 
 static int slider_val = 12;
 static int const SLIDERS[] = {
@@ -98,8 +93,10 @@ void window_simulation(bool& open)
                 TextUnformatted("Execute until the current function returns");
                 EndTooltip();
             }
+#if 0
             if(Checkbox("Enable breakpoints while stepping over/out", &settings.enable_step_breaks))
                 update_settings();
+#endif
         }
         else
         {
@@ -110,8 +107,10 @@ void window_simulation(bool& open)
                 disassembly_scroll_addr = arduboy->cpu.pc * 2;
             }
         }
+#if 0
         if(Checkbox("Enable auto-break on stack overflow", &settings.enable_stack_breaks))
             update_settings();
+#endif
     }
     End();
 }

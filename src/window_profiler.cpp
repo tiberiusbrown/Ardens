@@ -1,14 +1,9 @@
 #include "imgui.h"
 
-#include "absim.hpp"
-#include "settings.hpp"
+#include "common.hpp"
 
 #include <inttypes.h>
 #include <string.h>
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
-extern int profiler_selected_hotspot;
-extern int disassembly_scroll_addr;
 
 static void hotspot_row(int i)
 {

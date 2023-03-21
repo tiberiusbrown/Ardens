@@ -1,9 +1,7 @@
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 
-#include "absim.hpp"
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
+#include "common.hpp"
 
 static MemoryEditor memed_eeprom;
 

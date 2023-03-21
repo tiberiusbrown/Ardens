@@ -1,9 +1,8 @@
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 
-#include "absim.hpp"
+#include "common.hpp"
 
-extern std::unique_ptr<absim::arduboy_t> arduboy;
 static MemoryEditor memed_display_ram;
 
 static char const* const MODES[] =

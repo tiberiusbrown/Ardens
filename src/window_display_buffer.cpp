@@ -1,16 +1,10 @@
-#include "absim.hpp"
+#include "common.hpp"
 
 #include "imgui.h"
 
 #include <SDL.h>
 
 #include <algorithm>
-
-extern int display_buffer_addr;
-extern int display_buffer_w;
-extern int display_buffer_h;
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
 
 static char addr_buf[5];
 
@@ -22,13 +16,13 @@ static int hex_value(char c)
     return 0;
 }
 
-static void update_texture(SDL_Texture* tex)
+static void update_texture()
 {
     if(display_buffer_addr < 0) return;
     if(display_buffer_addr >= arduboy->cpu.data.size()) return;
     void* pixels = nullptr;
     int pitch = 0;
-    SDL_LockTexture(tex, nullptr, &pixels, &pitch);
+    SDL_LockTexture(display_buffer_texture, nullptr, &pixels, &pitch);
     uint8_t* bpixels = (uint8_t*)pixels;
     display_buffer_w = std::min(display_buffer_w, 128);
     display_buffer_h = std::min(display_buffer_h, 64);
@@ -49,10 +43,10 @@ static void update_texture(SDL_Texture* tex)
             *bpixels++ = 255;
         }
     }
-    SDL_UnlockTexture(tex);
+    SDL_UnlockTexture(display_buffer_texture);
 }
 
-void window_display_buffer(bool& open, SDL_Texture* tex)
+void window_display_buffer(bool& open)
 {
     using namespace ImGui;
     if(!open) return;
@@ -102,7 +96,7 @@ void window_display_buffer(bool& open, SDL_Texture* tex)
         SliderInt("Width", &display_buffer_w, 1, 128);
         SliderInt("Height", &display_buffer_h, 1, 64);
 
-        update_texture(tex);
+        update_texture();
 
         {
             auto t = GetContentRegionAvail();
@@ -111,7 +105,7 @@ void window_display_buffer(bool& open, SDL_Texture* tex)
                 w += display_buffer_w, h += display_buffer_h;
             float u = (float)display_buffer_w / 128;
             float v = (float)display_buffer_h / 64;
-            Image(tex, { w, h }, { 0, 0 }, { u, v });
+            Image(display_buffer_texture, { w, h }, { 0, 0 }, { u, v });
         }
     }
     End();

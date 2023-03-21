@@ -1,9 +1,8 @@
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 
-#include "absim.hpp"
+#include "common.hpp"
 
-extern std::unique_ptr<absim::arduboy_t> arduboy;
 static MemoryEditor memed_data_space;
 
 static void draw_memory_breakpoints(size_t addr)

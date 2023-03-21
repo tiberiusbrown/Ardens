@@ -1,11 +1,8 @@
 #include "imgui.h"
 
-#include "absim.hpp"
-#include "settings.hpp"
+#include "common.hpp"
 
-extern std::unique_ptr<absim::arduboy_t> arduboy;
-
-void window_display(bool& open, void* tex)
+void window_display(bool& open)
 {
 	using namespace ImGui;
 
@@ -20,7 +17,8 @@ void window_display(bool& open, void* tex)
             float w = 128, h = 64;
             while(w + 128 < t.x && h + 64 < t.y)
                 w += 128, h += 64;
-            Image(tex, { w, h });
+            Image(display_texture, { w, h });
+#if 0
             AlignTextToFramePadding();
             TextUnformatted("Filter for:");
             int num = settings.num_pixel_history;
@@ -50,6 +48,7 @@ void window_display(bool& open, void* tex)
                 settings.num_pixel_history = num;
                 update_settings();
             }
+#endif
         }
         End();
     }

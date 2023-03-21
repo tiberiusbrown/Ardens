@@ -153,6 +153,11 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/font.cpp
     src/settings.hpp
     src/settings.cpp
+    src/settings_modal.cpp
+    src/common.hpp
+    src/view_debugger.cpp
+    src/view_player.cpp
+    src/record_gif.cpp
 
     src/window_disassembly.cpp
     src/window_profiler.cpp

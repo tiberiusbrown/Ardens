@@ -1,10 +1,6 @@
 #include "imgui.h"
 
-#include "absim.hpp"
-#include "settings.hpp"
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
-extern int fx_data_scroll_addr;
+#include "common.hpp"
 
 void window_fx_internals(bool& open)
 {

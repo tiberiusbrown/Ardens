@@ -2,8 +2,7 @@
 #include "implot.h"
 #include "implot_internal.h"
 
-#include "absim.hpp"
-#include "settings.hpp"
+#include "common.hpp"
 
 #include <numeric>
 

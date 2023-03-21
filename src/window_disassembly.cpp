@@ -1,14 +1,8 @@
 #include "imgui.h"
 
-#include "absim.hpp"
-#include "settings.hpp"
+#include "common.hpp"
 
 #include <inttypes.h>
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
-extern int profiler_selected_hotspot;
-extern int disassembly_scroll_addr;
-extern bool scroll_addr_to_top;
 
 static int scroll_highlight_addr = -1;
 static float scroll_highlight_time;

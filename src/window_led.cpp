@@ -1,8 +1,6 @@
 #include "imgui.h"
 
-#include "absim.hpp"
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
+#include "common.hpp"
 
 void window_led(bool& open)
 {

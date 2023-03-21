@@ -1,11 +1,6 @@
-#include "absim.hpp"
+#include "common.hpp"
 
 #include "imgui.h"
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
-
-extern int disassembly_scroll_addr;
-extern bool scroll_addr_to_top;
 
 static bool show_objects = false;
 static bool show_labels = false;

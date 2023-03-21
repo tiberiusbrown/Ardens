@@ -1,4 +1,4 @@
-#include "absim.hpp"
+#include "common.hpp"
 
 #include "imgui.h"
 
@@ -18,8 +18,6 @@
 #endif
 
 #include <fmt/format.h>
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
 
 static bool show_io = false;
 

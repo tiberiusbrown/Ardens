@@ -1,10 +1,7 @@
 #include "imgui.h"
 #include "imgui_memory_editor.h"
 
-#include "absim.hpp"
-
-extern std::unique_ptr<absim::arduboy_t> arduboy;
-extern int fx_data_scroll_addr;
+#include "common.hpp"
 
 static MemoryEditor memed_fx;
 static char minpagebuf[5];

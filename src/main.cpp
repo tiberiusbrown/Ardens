@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <SDL.h>
-#include "gifenc.h"
 
 #ifdef _WIN32
 #include <ShellScalingApi.h>
@@ -27,10 +26,6 @@
 
 #define PROFILING 0
 
-#ifndef ABSIM_VERSION
-#define ABSIM_VERSION "[unknown version]"
-#endif
-
 #if ALLOW_SCREENSHOTS
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -41,15 +36,7 @@
 #include <fstream>
 #include <strstream>
 
-#include "absim.hpp"
-#include "absim_instructions.hpp"
-
-#include "settings.hpp"
-
-static ge_GIF* gif = nullptr;
-static bool gif_recording = false;
-static uint32_t gif_ms_rem = 0;
-static char gif_fname[256];
+#include "common.hpp"
 
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 constexpr uint32_t MAX_AUDIO_LATENCY_MS = 80;
@@ -64,8 +51,8 @@ extern unsigned char const ProggyVector[198188];
 static SDL_AudioDeviceID audio_device;
 static SDL_AudioSpec audio_spec;
 
-static SDL_Texture* display_texture;
-static SDL_Texture* display_buffer_texture;
+SDL_Texture* display_texture = nullptr;
+SDL_Texture* display_buffer_texture = nullptr;
 std::unique_ptr<absim::arduboy_t> arduboy;
 
 int profiler_selected_hotspot = -1;
@@ -78,33 +65,15 @@ int display_buffer_addr = -1;
 int display_buffer_w = 128;
 int display_buffer_h = 64;
 
-void window_disassembly(bool& open);
-void window_profiler(bool& open);
-void window_display(bool& open, void* tex);
-void window_display_buffer(bool& open, SDL_Texture* tex);
-void window_display_internals(bool& open);
-void window_data_space(bool& open);
-void window_simulation(bool& open);
-void window_call_stack(bool& open);
-void window_symbols(bool& open);
-#ifdef ABSIM_LLVM
-void window_globals(bool& open);
-#endif
-void window_fx_data(bool& open);
-void window_fx_internals(bool& open);
-void window_eeprom(bool& open);
-void window_cpu_usage(bool& open);
-void window_led(bool& open);
-
 static uint64_t pt;
 static std::string dropfile_err;
 static bool done = false;
-static bool layout_done = false;
+bool layout_done = false;
+bool settings_loaded = false;
 #ifdef __EMSCRIPTEN__
-static bool settings_loaded = false;
-static bool fs_ready = false;
+bool fs_ready = false;
 #else
-static bool fs_ready = true;
+bool fs_ready = true;
 #endif
 
 static SDL_Window* window;
@@ -146,67 +115,6 @@ static void file_download(
     emscripten_browser_file::download(download_fname, mime_type, data.data(), data.size());
 }
 #endif
-
-static inline uint8_t colormap(uint8_t x)
-{
-    uint8_t r = x;
-    if(r == 255)
-        r = 254;
-    return r;
-}
-
-static void send_gif_frame(int ds, uint8_t const* pixels)
-{
-    if(gif_recording && pixels)
-    {
-        for(int i = 0; i < 128 * 64; ++i)
-        {
-            uint8_t p = pixels[i * 4];
-            gif->frame[i] = colormap(p);
-        }
-        ge_add_frame(gif, ds);
-    }
-}
-
-static void screen_recording_toggle(uint8_t const* pixels)
-{
-    if(gif_recording)
-    {
-        send_gif_frame(0, pixels);
-        ge_close_gif(gif);
-#ifdef __EMSCRIPTEN__
-        file_download("recording.gif", gif_fname, "image/gif");
-#endif
-    }
-    else
-    {
-        time_t rawtime;
-        struct tm* ti;
-        time(&rawtime);
-        ti = localtime(&rawtime);
-        (void)snprintf(gif_fname, sizeof(gif_fname),
-            "recording_%04d%02d%02d%02d%02d%02d.gif",
-            ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-            ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
-        uint8_t palette[256 * 3];
-        for(int i = 0; i < 256; ++i)
-        {
-            palette[3 * i + 0] = i;
-            palette[3 * i + 1] = i;
-            palette[3 * i + 2] = i;
-        }
-        int depth = 8;
-        char const* fname = gif_fname;
-#ifdef __EMSCRIPTEN__
-        fname = "recording.gif";
-#endif
-        gif = ge_new_gif(fname, 128, 64, palette, depth, -1, 0);
-        send_gif_frame(0, pixels);
-        gif_ms_rem = 0;
-    }
-    gif_recording = !gif_recording;
-}
-
 
 static void define_font()
 {
@@ -256,155 +164,6 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
     std::istrstream f((char const*)data, size);
     dropfile_err = arduboy->load_file(filename, f);
     return 0;
-}
-
-static void debugger_windows()
-{
-    const bool enableDocking = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable;
-    ImGuiID dockspace_id = ImGui::GetID("DockSpace");
-    if(fs_ready && enableDocking)
-    {
-#ifdef __EMSCRIPTEN__
-        if(!settings_loaded)
-        {
-            ImGui::LoadIniSettingsFromDisk("/offline/imgui.ini");
-            settings_loaded = true;
-        }
-        if(ImGui::GetIO().WantSaveIniSettings)
-        {
-            ImGui::GetIO().WantSaveIniSettings = false;
-            ImGui::SaveIniSettingsToDisk("/offline/imgui.ini");
-            EM_ASM(
-                FS.syncfs(function(err) {});
-            );
-        }
-#endif
-
-        ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->WorkPos);
-        ImGui::SetNextWindowSize(viewport->WorkSize);
-        ImGui::SetNextWindowViewport(viewport->ID);
-
-        ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
-        ImGuiWindowFlags host_window_flags = 0;
-        host_window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
-        host_window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-        if(dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-            host_window_flags |= ImGuiWindowFlags_NoBackground;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("DockSpace Window", nullptr, host_window_flags);
-        ImGui::PopStyleVar(3);
-
-        bool dockspace_created = ImGui::DockBuilderGetNode(dockspace_id) != nullptr;
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, nullptr);
-        ImGui::End();
-
-        if(!dockspace_created && !layout_done)
-        {
-            // default docked layout
-            using namespace ImGui;
-            ImGuiID c01, c01u, c01d, c0, c1, c2, c1r01, c1r0, c1r1, c1r2, c2r0, c2r1;
-            DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.35f, &c2, &c01);
-            DockBuilderSplitNode(c01, ImGuiDir_Up, 0.65f, &c01u, &c01d);
-            DockBuilderSplitNode(c01u, ImGuiDir_Left, 0.5f, &c0, &c1);
-            DockBuilderSplitNode(c1, ImGuiDir_Down, 0.25f, &c1r2, &c1r01);
-            DockBuilderSplitNode(c1r01, ImGuiDir_Down, 0.25f, &c1r1, &c1r0);
-            DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
-            DockBuilderDockWindow("CPU Data Space", c0);
-            DockBuilderDockWindow("Display Internals", c0);
-            DockBuilderDockWindow("Symbols", c0);
-            DockBuilderDockWindow("Display", c1r0);
-            DockBuilderDockWindow("Simulation", c1r1);
-            DockBuilderDockWindow("Profiler", c1r2);
-            DockBuilderDockWindow("Call Stack", c2r0);
-            DockBuilderDockWindow("Disassembly", c2r1);
-            DockBuilderDockWindow("Globals", c01d);
-        }
-        layout_done = true;
-    }
-
-    if(layout_done)
-    {
-
-        if(ImGui::BeginMainMenuBar())
-        {
-            if(ImGui::BeginMenu("Windows"))
-            {
-                ImGui::MenuItem("Simulation", nullptr, &settings.open_simulation);
-                ImGui::MenuItem("Profiler", nullptr, &settings.open_profiler);
-                ImGui::MenuItem("CPU Usage", nullptr, &settings.open_cpu_usage);
-                ImGui::Separator();
-                if(ImGui::BeginMenu("Display"))
-                {
-                    ImGui::MenuItem("Display", nullptr, &settings.open_display);
-                    ImGui::MenuItem("Display Buffer (RAM)", nullptr, &settings.open_display_buffer);
-                    ImGui::MenuItem("Display Internals", nullptr, &settings.open_display_internals);
-                    ImGui::EndMenu();
-                }
-                if(ImGui::BeginMenu("CPU"))
-                {
-                    ImGui::MenuItem("Disassembly", nullptr, &settings.open_disassembly);
-                    ImGui::MenuItem("Symbols", nullptr, &settings.open_symbols);
-                    ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
-                    ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
-#ifdef ABSIM_LLVM
-                    ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
-#endif
-                    ImGui::MenuItem("EEPROM", nullptr, &settings.open_eeprom);
-                    ImGui::EndMenu();
-                }
-                if(ImGui::BeginMenu("Flash Chip"))
-                {
-                    ImGui::MenuItem("FX Data", nullptr, &settings.open_fx_data);
-                    ImGui::MenuItem("FX Internals", nullptr, &settings.open_fx_internals);
-                    ImGui::EndMenu();
-                }
-                ImGui::Separator();
-                ImGui::MenuItem("LEDs", nullptr, &settings.open_led);
-                ImGui::EndMenu();
-            }
-
-            if(gif_recording)
-            {
-                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
-                float w = ImGui::CalcTextSize("RECORDING").x;
-                if(ImGui::Selectable("RECORDING##recording", false, 0, { w, 0.f }))
-                    screen_recording_toggle(nullptr);
-                ImGui::PopStyleColor();
-            }
-
-            {
-                float w = ImGui::CalcTextSize(ABSIM_VERSION, NULL, true).x;
-                w += ImGui::GetStyle().ItemSpacing.x;
-                ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - w);
-                ImGui::MenuItem(ABSIM_VERSION "##version", nullptr, nullptr, false);
-            }
-
-            ImGui::EndMainMenuBar();
-        }
-
-        window_display(settings.open_display, (void*)display_texture);
-        window_display_buffer(settings.open_display_buffer, display_buffer_texture);
-        window_simulation(settings.open_simulation);
-        window_disassembly(settings.open_disassembly);
-        window_symbols(settings.open_symbols);
-#ifdef ABSIM_LLVM
-        window_globals(settings.open_globals);
-#endif
-        window_call_stack(settings.open_call_stack);
-        window_display_internals(settings.open_display_internals);
-        window_profiler(settings.open_profiler);
-        window_data_space(settings.open_data_space);
-        window_fx_data(settings.open_fx_data);
-        window_fx_internals(settings.open_fx_internals);
-        window_eeprom(settings.open_eeprom);
-        window_cpu_usage(settings.open_cpu_usage);
-        window_led(settings.open_led);
-
-    }
 }
 
 static void main_loop()
@@ -608,32 +367,14 @@ static void main_loop()
         update_settings();
     }
 
-        ImGui::NewFrame();
+    ImGui::NewFrame();
 
     if(settings.fullzoom)
-    {
-        auto* d = ImGui::GetForegroundDrawList(ImGui::GetMainViewport());
-        auto size = ImGui::GetMainViewport()->Size;
-        ImVec2 dsize{};
-        for(int z = 1;; ++z)
-        {
-            dsize = { 128.f * z, 64.f * z };
-            if(dsize.x + 128 > size.x) break;
-            if(dsize.y +  64 > size.y) break;
-        }
-        ImVec2 dstart = {
-            std::round((size.x - dsize.x) * 0.5f),
-            std::round((size.y - dsize.y) * 0.5f)
-        };
-        d->AddImage(
-            display_texture,
-            dstart,
-            { dstart.x + dsize.x, dstart.y + dsize.y });
-    }
+        view_player();
     else
-    {
-        debugger_windows();
-    }
+        view_debugger();
+
+    settings_modal();
 
     if(!dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
         ImGui::OpenPopup("File Load Error");
@@ -762,6 +503,7 @@ int main(int argc, char** argv)
     ImPlot::CreateContext();
 
     init_settings();
+    settings_loaded = true;
 
     ImGuiIO& io = ImGui::GetIO();
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
