@@ -19,9 +19,11 @@ void send_gif_frame(int ds, uint8_t const* pixels)
 {
     if(gif_recording && pixels)
     {
-        for(int i = 0; i < 128 * 64; ++i)
+        int z = recording_filter_zoom();
+        z = 128 * 64 * z * z;
+        for(int i = 0; i < z; ++i)
         {
-            uint8_t p = pixels[i * 4];
+            uint8_t p = pixels[i];
             gif->frame[i] = colormap(p);
         }
         ge_add_frame(gif, ds);
@@ -60,7 +62,8 @@ void screen_recording_toggle(uint8_t const* pixels)
 #ifdef __EMSCRIPTEN__
         fname = "recording.gif";
 #endif
-        gif = ge_new_gif(fname, 128, 64, palette, depth, -1, 0);
+        int z = recording_filter_zoom();
+        gif = ge_new_gif(fname, 128 * z, 64 * z, palette, depth, -1, 0);
         send_gif_frame(0, pixels);
         gif_ms_rem = 0;
     }

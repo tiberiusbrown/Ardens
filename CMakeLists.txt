@@ -158,6 +158,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/view_debugger.cpp
     src/view_player.cpp
     src/record_gif.cpp
+    src/scalenx.cpp
 
     src/window_disassembly.cpp
     src/window_profiler.cpp

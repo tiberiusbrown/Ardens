@@ -2,6 +2,19 @@
 
 #include <array>
 
+enum
+{
+    FILTER_NONE,
+    FILTER_SCALE2X,
+    FILTER_SCALE3X,
+    FILTER_SCALE4X,
+
+    FILTER_MIN = FILTER_NONE,
+    FILTER_MAX = FILTER_SCALE4X,
+};
+
+constexpr int RECORDING_ZOOM_MAX = 4;
+
 struct settings_t
 {
 
@@ -27,6 +40,9 @@ struct settings_t
     bool enable_step_breaks = true;
     bool enable_stack_breaks = true;
 
+    int display_filtering = FILTER_NONE;
+    int recording_filtering = FILTER_NONE;
+    int recording_zoom = 1;
     int num_pixel_history = 1;
 };
 

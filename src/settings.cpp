@@ -39,7 +39,22 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(fullzoom);
 
 #undef ABSIM_BOOL_SETTING
-    
+
+    int d_display_filtering;
+    if(sscanf(line, "display_filtering=%d", &d_display_filtering) == 1) settings.display_filtering = d_display_filtering;
+    if(settings.display_filtering < FILTER_MIN) settings.display_filtering = FILTER_MIN;
+    if(settings.display_filtering > FILTER_MAX) settings.display_filtering = FILTER_MAX;
+
+    int d_recording_filtering;
+    if(sscanf(line, "recording_filtering=%d", &d_recording_filtering) == 1) settings.recording_filtering = d_recording_filtering;
+    if(settings.recording_filtering < FILTER_MIN) settings.recording_filtering = FILTER_MIN;
+    if(settings.recording_filtering > FILTER_MAX) settings.recording_filtering = FILTER_MAX;
+
+    int d_recording_zoom;
+    if(sscanf(line, "recording_zoom=%d", &d_recording_zoom) == 1) settings.recording_zoom = d_recording_zoom;
+    if(settings.recording_zoom < 1) settings.recording_zoom = 1;
+    if(settings.recording_zoom > RECORDING_ZOOM_MAX) settings.recording_zoom = RECORDING_ZOOM_MAX;
+
     int d_num_pixel_history;
     if(sscanf(line, "num_pixel_history=%d", &d_num_pixel_history) == 1) settings.num_pixel_history = d_num_pixel_history;
     if(settings.num_pixel_history < 1) settings.num_pixel_history = 1;
@@ -76,6 +91,9 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
 
 #undef ABSIM_BOOL_SETTING
 
+    buf->appendf("display_filtering=%d\n", settings.display_filtering);
+    buf->appendf("recording_filtering=%d\n", settings.recording_filtering);
+    buf->appendf("recording_zoom=%d\n", settings.recording_zoom);
     buf->appendf("num_pixel_history=%d\n", settings.num_pixel_history);
     buf->append("\n");
 }

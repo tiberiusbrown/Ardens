@@ -9,6 +9,9 @@
 #include "settings.hpp"
 
 extern std::unique_ptr<absim::arduboy_t> arduboy;
+extern SDL_Window* window;
+extern SDL_Renderer* renderer;
+extern int display_texture_zoom;
 extern SDL_Texture* display_texture;
 extern SDL_Texture* display_buffer_texture;
 
@@ -34,6 +37,12 @@ extern int display_buffer_h;
 void view_debugger();
 void view_player();
 void settings_modal();
+
+uint8_t* recording_pixels(bool rgba);
+int display_filter_zoom();
+int recording_filter_zoom();
+void recreate_display_texture();
+void scalenx(uint8_t* dst, uint8_t const* src, bool rgba);
 
 void window_disassembly(bool& open);
 void window_profiler(bool& open);

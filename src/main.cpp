@@ -76,8 +76,8 @@ bool fs_ready = false;
 bool fs_ready = true;
 #endif
 
-static SDL_Window* window;
-static SDL_Renderer* renderer;
+SDL_Window* window;
+SDL_Renderer* renderer;
 
 static float pixel_ratio = 1.f;
 static ImGuiStyle default_style;
@@ -253,40 +253,12 @@ static void main_loop()
         arduboy->display.num_pixel_history = settings.num_pixel_history;
         arduboy->display.filter_pixels();
 
+        recreate_display_texture();
         SDL_LockTexture(display_texture, nullptr, &pixels, &pitch);
-
-        uint8_t* bpixels = (uint8_t*)pixels;
-        for(int i = 0; i < 64; ++i)
-        {
-            for(int j = 0; j < 128; ++j)
-            {
-                auto pi = arduboy->display.filtered_pixels[i * 128 + j];
-                *bpixels++ = pi;
-                *bpixels++ = pi;
-                *bpixels++ = pi;
-                *bpixels++ = 255;
-            }
-        }
+        scalenx((uint8_t*)pixels, arduboy->display.filtered_pixels.data(), true);
+        SDL_UnlockTexture(display_texture);
 
 #if ALLOW_SCREENSHOTS
-        if(ImGui::IsKeyPressed(ImGuiKey_F2, false))
-        {
-            char fname[256];
-            time_t rawtime;
-            struct tm* ti;
-            time(&rawtime);
-            ti = localtime(&rawtime);
-            (void)snprintf(fname, sizeof(fname),
-                "screenshot_%04d%02d%02d%02d%02d%02d.png",
-                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
-#ifdef __EMSCRIPTEN__
-            stbi_write_png("screenshot.png", 128, 64, 4, pixels, 128 * 4);
-            file_download("screenshot.png", fname, "image/x-png");
-#else
-            stbi_write_png(fname, 128, 64, 4, pixels, 128 * 4);
-#endif
-        }
         if(ImGui::IsKeyPressed(ImGuiKey_F4, false))
         {
             char fname[256];
@@ -310,26 +282,43 @@ static void main_loop()
             arduboy->save_snapshot(f);
 #endif
         }
+        if(ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        {
+            char fname[256];
+            time_t rawtime;
+            struct tm* ti;
+            time(&rawtime);
+            ti = localtime(&rawtime);
+            (void)snprintf(fname, sizeof(fname),
+                "screenshot_%04d%02d%02d%02d%02d%02d.png",
+                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+#ifdef __EMSCRIPTEN__
+            stbi_write_png("screenshot.png", 128, 64, 4, pixels, 128 * 4);
+            file_download("screenshot.png", fname, "image/x-png");
+#else
+            int z = recording_filter_zoom();
+            stbi_write_png(fname, 128 * z, 64 * z, 4, recording_pixels(true), 128 * z * 4);
+#endif
+        }
         if(gif_recording && arduboy->paused)
         {
-            screen_recording_toggle((uint8_t const*)pixels);
+            screen_recording_toggle(recording_pixels(false));
         }
         else if(simulation_slowdown == 1000 && ImGui::IsKeyPressed(ImGuiKey_F3, false))
         {
-            screen_recording_toggle((uint8_t const*)pixels);
+            screen_recording_toggle(recording_pixels(false));
         }
         else if(gif_recording)
         {
             gif_ms_rem += dt;
             while(gif_ms_rem >= 20)
             {
-                send_gif_frame(2, (uint8_t const*)pixels);
+                send_gif_frame(2, recording_pixels(false));
                 gif_ms_rem -= 20;
             }
         }
 #endif
-
-        SDL_UnlockTexture(display_texture);
     }
 
     SDL_Event event;
@@ -551,12 +540,7 @@ int main(int argc, char** argv)
 
     define_font();
 
-    display_texture = SDL_CreateTexture(
-        renderer,
-        SDL_PIXELFORMAT_ABGR8888,
-        SDL_TEXTUREACCESS_STREAMING,
-        128,
-        64);
+    recreate_display_texture();
     display_buffer_texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_ABGR8888,

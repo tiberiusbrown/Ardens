@@ -14,9 +14,23 @@ void window_display(bool& open)
             ImGuiWindowFlags_NoScrollWithMouse))
         {
             auto t = GetContentRegionAvail();
-            float w = 128, h = 64;
-            while(w + 128 < t.x && h + 64 < t.y)
-                w += 128, h += 64;
+
+            float z = display_filter_zoom();
+            float tw = 128 * z;
+            float th = 64 * z;
+            float w = tw, h = th;
+            bool smaller = false;
+
+            while(w > t.x || h > t.y)
+                w *= 0.5f, h *= 0.5f, smaller = true;
+
+            while(w + tw < t.x && h + th < t.y)
+                w += tw, h += th;
+
+            SDL_SetTextureScaleMode(
+                display_texture,
+                smaller ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+
             Image(display_texture, { w, h });
 #if 0
             AlignTextToFramePadding();
