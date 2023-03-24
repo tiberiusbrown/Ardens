@@ -6,7 +6,9 @@ void settings_modal()
 {
     using namespace ImGui;
 
-    if(IsKeyPressed(ImGuiKey_0, false) && !IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
+    if(!GetIO().WantCaptureKeyboard &&
+        IsKeyPressed(ImGuiKey_O, false) &&
+        !IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
         OpenPopup("Settings");
 
     if(!BeginPopupModal("Settings", NULL,

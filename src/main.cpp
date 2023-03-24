@@ -350,7 +350,7 @@ static void main_loop()
     ImGui_ImplSDLRenderer_NewFrame();
     ImGui_ImplSDL2_NewFrame();
 
-    if(ImGui::IsKeyPressed(ImGuiKey_F, false))
+    if(!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(ImGuiKey_P, false))
     {
         settings.fullzoom = !settings.fullzoom;
         update_settings();
