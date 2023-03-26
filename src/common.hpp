@@ -27,6 +27,7 @@ extern uint32_t gif_ms_rem;
 void send_gif_frame(int ds, uint8_t const* pixels);
 void screen_recording_toggle(uint8_t const* pixels);
 
+extern float pixel_ratio;
 extern bool layout_done;
 extern bool settings_loaded;
 extern bool fs_ready;
@@ -40,6 +41,9 @@ extern int fx_data_scroll_addr;
 extern int display_buffer_addr;
 extern int display_buffer_w;
 extern int display_buffer_h;
+
+uint32_t color_for_index(size_t index);
+uint32_t darker_color_for_index(size_t index);
 
 void view_debugger();
 void view_player();

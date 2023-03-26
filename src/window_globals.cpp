@@ -4,18 +4,7 @@
 
 #ifdef ABSIM_LLVM
 
-#ifdef _MSC_VER
-#pragma warning(push, 1)
-#pragma warning(disable: 4624)
-#endif
-
-#include <llvm/DebugInfo/DWARF/DWARFContext.h>
-#include <llvm/DebugInfo/DWARF/DWARFCompileUnit.h>
-#include <llvm/DebugInfo/DWARF/DWARFExpression.h>
-
-#ifdef _MSC_VER
-#pragma warning(pop) 
-#endif
+#include "dwarf.hpp"
 
 #include <fmt/format.h>
 
@@ -25,283 +14,20 @@ constexpr int MAX_VALUE_CHARS = 64;
 
 static std::vector<std::string> watches;
 
-static std::string die_name(llvm::DWARFDie die)
-{
-    char const* name = die.getShortName();
-    if(!name) name = "";
-    return name;
-}
-
-static llvm::DWARFDie type_die(llvm::DWARFDie die)
-{
-    return die.getAttributeValueAsReferencedDie(llvm::dwarf::DW_AT_type);
-}
-
-static std::string recurse_type(llvm::DWARFDie die)
-{
-    if(!die.isValid())
-        return "";
-    switch(die.getTag())
-    {
-    case llvm::dwarf::DW_TAG_base_type:
-    case llvm::dwarf::DW_TAG_typedef:
-    case llvm::dwarf::DW_TAG_enumeration_type:
-        return die_name(die);
-    case llvm::dwarf::DW_TAG_structure_type:
-        return fmt::format("struct {}", die_name(die));
-    case llvm::dwarf::DW_TAG_union_type:
-        return fmt::format("union {}", die_name(die));
-    case llvm::dwarf::DW_TAG_const_type:
-        return recurse_type(type_die(die)) + " const";
-    case llvm::dwarf::DW_TAG_volatile_type:
-        return recurse_type(type_die(die)) + " volatile";
-    case llvm::dwarf::DW_TAG_pointer_type:
-    {
-        auto type = type_die(die);
-        if(type.getTag() == llvm::dwarf::DW_TAG_subroutine_type)
-        {
-            std::string r = recurse_type(type_die(type));
-            r += "(*)(";
-            bool found = false;
-            bool first = true;
-            for(auto p : type.children())
-            {
-                if(p.getTag() != llvm::dwarf::DW_TAG_formal_parameter)
-                    continue;
-                if(!first) r += ", ";
-                first = false;
-                r += recurse_type(p);
-            }
-            if(!found) r += "void";
-            r += ")";
-            return r;
-        }
-        return recurse_type(type) + "*";
-    }
-    case llvm::dwarf::DW_TAG_reference_type:
-        return recurse_type(type_die(die)) + "&";
-    case llvm::dwarf::DW_TAG_array_type:
-    {
-        auto child = die.getFirstChild();
-        if(!child.isValid()) break;
-        int n = -1;
-        if(child.getTag() == llvm::dwarf::DW_TAG_subrange_type)
-        {
-            if(auto tf = child.find(llvm::dwarf::DW_AT_upper_bound))
-                if(auto tn = tf.getValue().getAsUnsignedConstant())
-                    n = tn.getValue();
-            if(n < 0) break;
-        }
-        auto type = type_die(die);
-        if(n < 0)
-            return recurse_type(type) + "[]";
-        return fmt::format("{}[{}]", recurse_type(type), n + 1);
-    }
-    default:
-        break;
-    }
-    return "<unknown>";
-}
-
-static uint32_t type_size(llvm::DWARFDie die)
-{
-    return (uint32_t)die.getTypeSize(2).value_or(0);
-}
-
-static bool member_addr(uint32_t& addr, llvm::DWARFDie die)
-{
-    if(auto tloc = die.find(llvm::dwarf::DW_AT_data_member_location))
-    {
-        auto expr = *tloc->getAsBlock();
-        auto* u = die.getDwarfUnit();
-        llvm::DataExtractor data(llvm::StringRef(
-            (char const*)expr.data(), expr.size()),
-            u->getContext().isLittleEndian(), 0);
-        llvm::DWARFExpression dexpr(
-            data, u->getAddressByteSize(), u->getFormParams().Format);
-        for(auto& op : dexpr)
-        {
-            if(op.getCode() != llvm::dwarf::DW_OP_plus_uconst)
-                continue;
-            addr += (uint32_t)op.getRawOperand(0);
-            return true;
-        }
-    }
-    return false;
-}
-
-static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
-{
-    if(!die.isValid())
-        return "";
-    switch(die.getTag())
-    {
-    case llvm::dwarf::DW_TAG_const_type:
-    case llvm::dwarf::DW_TAG_volatile_type:
-    case llvm::dwarf::DW_TAG_typedef:
-        return recurse_value(addr, text, type_die(die));
-    case llvm::dwarf::DW_TAG_structure_type:
-    case llvm::dwarf::DW_TAG_union_type:
-    {
-        std::string r;
-        r += "{";
-        bool first = true;
-        uint32_t size = 0;
-        for(auto child : die.children())
-        {
-            if(size >= 8)
-            {
-                r += ", ...";
-                break;
-            }
-            if(child.getTag() != llvm::dwarf::DW_TAG_member) continue;
-            uint32_t child_addr = addr;
-            if(die.getTag() != llvm::dwarf::DW_TAG_union_type)
-                if(!member_addr(child_addr, child))
-                    continue;
-            if(!first) r += ", ";
-            r += recurse_value(child_addr, text, type_die(child));
-            first = false;
-            size += type_size(child);
-        }
-        r += "}";
-        return r;
-    }
-    case llvm::dwarf::DW_TAG_array_type:
-    {
-        bool more = true;
-        int n = 1;
-        std::string r;
-        r += "{";
-        if(die.hasChildren())
-        {
-            auto child = die.getFirstChild();
-            if(child.getTag() == llvm::dwarf::DW_TAG_subrange_type)
-            {
-                if(auto tb = child.find(llvm::dwarf::DW_AT_upper_bound))
-                    if(auto b = tb->getAsUnsignedConstant())
-                        n = (int)b.getValue() + 1, more = false;
-            }
-        }
-        auto type = type_die(die);
-        auto size = type_size(type);
-        if(size * n > 8)
-        {
-            more = size * (n + 1) >= 8;
-            n = std::max<uint32_t>(1, (8 + size - 1) / size);
-        }
-        if(size > 0)
-        {
-            bool first = true;
-            for(int i = 0; i < n; ++i)
-            {
-                if(!first) r += ", ";
-                r += recurse_value(addr + size * i, text, type);
-                first = false;
-            }
-        }
-        if(more)
-            r += ", ...";
-        r += "}";
-        return r;
-    }
-    case llvm::dwarf::DW_TAG_base_type:
-    case llvm::dwarf::DW_TAG_pointer_type:
-    case llvm::dwarf::DW_TAG_enumeration_type:
-    {
-        int bytes = 0, enc = llvm::dwarf::DW_ATE_unsigned;
-        bool is_enum =
-            (die.getTag() == llvm::dwarf::DW_TAG_enumeration_type);
-        auto old_die = die;
-        if(is_enum) die = type_die(die);
-        if(auto a = die.find(llvm::dwarf::DW_AT_byte_size))
-            if(auto v = a->getAsUnsignedConstant())
-                bytes = (int)v.getValue();
-        if(auto a = die.find(llvm::dwarf::DW_AT_encoding))
-            if(auto v = a->getAsUnsignedConstant())
-                enc = (int)v.getValue();
-        if(bytes == 0 || bytes > 8)
-            break;
-        if(text && addr + bytes >= arduboy->cpu.prog.size())
-            break;
-        if(!text && addr + bytes >= arduboy->cpu.data.size())
-            break;
-        uint8_t const* d = text ?
-            arduboy->cpu.prog.data() :
-            arduboy->cpu.data.data();
-        uint64_t x = 0;
-        for(int i = bytes - 1; i >= 0; --i)
-            x = (x << 8) + d[addr + i];
-        if(die.getTag() == llvm::dwarf::DW_TAG_pointer_type)
-            return fmt::format("{:#06x}", x);
-        if(is_enum)
-        {
-            for(auto child : old_die)
-            {
-                if(child.getTag() != llvm::dwarf::DW_TAG_enumerator)
-                    continue;
-                if(auto t = child.find(llvm::dwarf::DW_AT_const_value))
-                    if(auto v = t.getValue().getAsUnsignedConstant())
-                        if(v == x) return fmt::format("{} ({})", die_name(child), x);
-            }
-            return fmt::format("<invalid> ({})", x);
-        }
-        switch(enc)
-        {
-        case llvm::dwarf::DW_ATE_boolean:
-            return x != 0 ? "true" : "false";
-        case llvm::dwarf::DW_ATE_address:
-            return fmt::format("{:#06x}", x);
-        case llvm::dwarf::DW_ATE_float:
-            if(bytes == 4)
-            {
-                union { uint64_t x; float f; } u;
-                u.x = x;
-                return fmt::format("{}", u.f);
-            }
-            if(bytes == 8)
-            {
-                union { uint64_t x; double f; } u;
-                u.x = x;
-                return fmt::format("{}", u.f);
-            }
-            break;
-        case llvm::dwarf::DW_ATE_signed_char:
-            if(x >= 32 && x < 127)
-                return fmt::format("'{}'", (char)x);
-            return fmt::format("(char){}", (int)x);
-        case llvm::dwarf::DW_ATE_signed:
-            if(bytes < 8)
-            {
-                uint64_t mask = 1ull << (bytes * 8 - 1);
-                if(x & mask)
-                    x |= ~(mask - 1);
-            }
-            return fmt::format("{}", (int64_t)x);
-        case llvm::dwarf::DW_ATE_unsigned:
-        case llvm::dwarf::DW_ATE_unsigned_char:
-            return fmt::format("{}", x);
-        default: break;
-        }
-        return fmt::format("{:#x}", x);
-        break;
-    }
-    default:
-        break;
-    }
-    return "<unknown>";
-}
-
 static uint32_t array_size(llvm::DWARFDie& die)
 {
     if(!die.hasChildren()) return 0;
     if(die.getTag() != llvm::dwarf::DW_TAG_array_type) return 0;
-    auto child = die.getFirstChild();
-    if(child.getTag() != llvm::dwarf::DW_TAG_subrange_type) return 0;
-    if(auto tu = child.find(llvm::dwarf::DW_AT_upper_bound))
-        if(auto u = tu->getAsUnsignedConstant())
-            return (uint32_t)u.getValue() + 1;
-    return 0;
+    uint32_t n = 1;
+    for(auto child : die.children())
+    {
+        if(child.getTag() != llvm::dwarf::DW_TAG_subrange_type)
+            return 0;
+        if(auto tu = child.find(llvm::dwarf::DW_AT_upper_bound))
+            if(auto u = tu->getAsUnsignedConstant())
+                n *= ((uint32_t)u.getValue() + 1);
+    }
+    return n;
 }
 
 static llvm::DWARFDie remove_cv_typedefs_die(llvm::DWARFDie die)
@@ -313,7 +39,7 @@ static llvm::DWARFDie remove_cv_typedefs_die(llvm::DWARFDie die)
             tag == llvm::dwarf::DW_TAG_volatile_type ||
             tag == llvm::dwarf::DW_TAG_typedef)
         {
-            die = type_die(die);
+            die = dwarf_type(die);
         }
         else
             break;
@@ -387,7 +113,7 @@ static bool do_var_row(
 
     if(TableSetColumnIndex(1))
     {
-        t = recurse_value(addr, text, die);
+        t = dwarf_value_string(die, addr, text);
         if(t.empty())
             TextDisabled("???");
         else
@@ -396,7 +122,7 @@ static bool do_var_row(
 
     if(TableSetColumnIndex(2))
     {
-        t = recurse_type(die);
+        t = dwarf_type_string(die);
         if(t.empty())
             TextDisabled("???");
         else
@@ -408,23 +134,19 @@ static bool do_var_row(
         if(tree_type == T_STRUCT)
         {
             int child_id = 0;
-            for(auto child : resolved_die.children())
+			Indent(GetTreeNodeToLabelSpacing());
+            for(auto const& child : dwarf_members(resolved_die))
             {
-                if(child.getTag() != llvm::dwarf::DW_TAG_member) continue;
-                uint32_t child_addr = addr;
-                if(die.getTag() != llvm::dwarf::DW_TAG_union_type)
-                    if(!member_addr(child_addr, child)) continue;
-                char const* child_name = child.getShortName();
-                if(!child_name) continue;
-                Indent(GetTreeNodeToLabelSpacing());
-                do_var_row(child_id++, child_name, false, child_addr, text, type_die(child));
-                Unindent(GetTreeNodeToLabelSpacing());
+                do_var_row(
+                    child_id++, dwarf_name(child.die).c_str(), false,
+                    addr + child.offset, text, dwarf_type(child.die));
             }
+			Unindent(GetTreeNodeToLabelSpacing());
         }
         if(tree_type == T_ARRAY)
         {
-            auto type = type_die(resolved_die);
-            auto size = type_size(type);
+            auto type = dwarf_type(resolved_die);
+            auto size = dwarf_size(type);
             std::string name;
 
             //n = std::min<uint32_t>(n, 8);
@@ -432,7 +154,12 @@ static bool do_var_row(
             for(uint32_t i = 0; i < n; ++i)
             {
                 uint32_t child_addr = addr + i * size;
-                name = fmt::format("[{}]", i);
+                auto v = dwarf_array_index(resolved_die, i);
+                if(v.empty()) continue;
+                name.clear();
+                for(auto n : v)
+                    name += fmt::format("[{}]", n);
+                //name = fmt::format("[{}]", i);
                 Indent(GetTreeNodeToLabelSpacing());
                 do_var_row((int)i, name.c_str(), false, child_addr, text, type);
                 Unindent(GetTreeNodeToLabelSpacing());

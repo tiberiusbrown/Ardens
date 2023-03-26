@@ -24,6 +24,7 @@
 #include <llvm/DebugInfo/DWARF/DWARFDebugAbbrev.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/Object/ELFObjectFile.h>
+#include "dwarf.hpp"
 #endif
 
 #ifdef _MSC_VER
@@ -318,6 +319,93 @@ template<class T> T defval(llvm::Expected<T> e)
     return e ? e.get() : T{};
 }
 
+static void load_elf_debug_recurse_globals(
+    arduboy_t& a,
+    absim::elf_data_t& elf,
+    std::string prefix,
+    llvm::DWARFContext* dwarf_ctx,
+    llvm::DWARFUnit const* cu,
+    llvm::DWARFDie die)
+{
+    if(die.getTag() == llvm::dwarf::DW_TAG_namespace)
+    {
+        for(auto child : die)
+        {
+            load_elf_debug_recurse_globals(
+                a, elf,
+                prefix + dwarf_name(die) + "::",
+                dwarf_ctx, cu, child);
+        }
+        return;
+    }
+    if(die.getTag() == llvm::dwarf::DW_TAG_subprogram)
+    {
+        for(auto child : die)
+        {
+            load_elf_debug_recurse_globals(
+                a, elf,
+                prefix + dwarf_function_args_string(die) + "::",
+                dwarf_ctx, cu, child);
+        }
+        return;
+    }
+    if(die.getTag() != llvm::dwarf::DW_TAG_variable) return;
+    elf_data_t::global_t g{};
+    g.addr = 0xffffffff;
+    g.type = 0xffffffff;
+    char const* name = die.getShortName();
+    if(!name) return;
+    g.cu_offset = cu->getOffset();
+    for(auto const& a : die.attributes())
+    {
+        if(a.Attr == llvm::dwarf::DW_AT_location)
+        {
+            auto opt = a.Value.getAsBlock();
+            if(!opt.hasValue())
+                continue;
+            auto expr = *opt;
+            llvm::DataExtractor data(llvm::StringRef(
+                (char const*)expr.data(), expr.size()),
+                dwarf_ctx->isLittleEndian(), 0);
+            llvm::DWARFExpression e(
+                data, cu->getAddressByteSize(), cu->getFormParams().Format);
+            for(auto const& op : e)
+            {
+                if(op.getCode() == llvm::dwarf::DW_OP_addr)
+                    g.addr = op.getRawOperand(0);
+            }
+        }
+        if(a.Attr == llvm::dwarf::DW_AT_type)
+            g.type = (uint32_t)a.Value.getAsReference().value_or(0xffffffff);
+        if(a.Attr == llvm::dwarf::DW_AT_decl_file)
+            g.file = (int)a.Value.getAsUnsignedConstant().value_or(0);
+        if(a.Attr == llvm::dwarf::DW_AT_decl_line)
+            g.line = (int)a.Value.getAsUnsignedConstant().value_or(0);
+    }
+    std::string sname = prefix + name;
+    if(g.addr == 0xffffffff)
+    {
+        // try to identify with data symbol
+        for(auto const& kv : elf.data_symbols)
+        {
+            if(kv.second.name == sname)
+            {
+                g.addr = 0x800000 + kv.second.addr;
+                break;
+            }
+        }
+    }
+    if(g.addr == 0xffffffff) return;
+    if(g.type == 0xffffffff) return;
+    if(g.addr >= 0x800000)
+        g.addr -= 0x800000;
+    else
+        g.text = true;
+    if(g.text && g.addr >= a.cpu.prog.size()) return;
+    if(!g.text && g.addr >= a.cpu.data.size()) return;
+    elf.globals[sname] = g;
+}
+
 static void load_elf_debug(
     arduboy_t& a, absim::elf_data_t& elf,
     llvm::object::ELFObjectFileBase* obj,
@@ -487,47 +575,7 @@ static void load_elf_debug(
         auto const& u = cu->getUnitDIE();
         for(auto const& v : u.children())
         {
-            if(v.getTag() != llvm::dwarf::DW_TAG_variable) continue;
-            elf_data_t::global_t g{};
-            g.addr = 0xffffffff;
-            g.type = 0xffffffff;
-            char const* name = v.getShortName();
-            if(!name) continue;
-            g.cu_offset = cu->getOffset();
-            for(auto const& a : v.attributes())
-            {
-                if(a.Attr == llvm::dwarf::DW_AT_location)
-                {
-                    auto opt = a.Value.getAsBlock();
-                    if(!opt.hasValue()) continue;
-                    auto expr = *opt;
-                    llvm::DataExtractor data(llvm::StringRef(
-                        (char const*)expr.data(), expr.size()),
-                        dwarf_ctx->isLittleEndian(), 0);
-                    llvm::DWARFExpression e(
-                        data, cu->getAddressByteSize(), cu->getFormParams().Format);
-                    for(auto const& op : e)
-                    {
-                        if(op.getCode() == llvm::dwarf::DW_OP_addr)
-                            g.addr = op.getRawOperand(0);
-                    }
-                }
-                if(a.Attr == llvm::dwarf::DW_AT_type)
-                    g.type = (uint32_t)a.Value.getAsReference().value_or(0xffffffff);
-                if(a.Attr == llvm::dwarf::DW_AT_decl_file)
-                    g.file = (int)a.Value.getAsUnsignedConstant().value_or(0);
-                if(a.Attr == llvm::dwarf::DW_AT_decl_line)
-                    g.line = (int)a.Value.getAsUnsignedConstant().value_or(0);
-            }
-            if(g.addr == 0xffffffff) continue;
-            if(g.type == 0xffffffff) continue;
-            if(g.addr >= 0x800000)
-                g.addr -= 0x800000;
-            else
-                g.text = true;
-            if(g.text && g.addr >= cpu.prog.size()) continue;
-            if(!g.text && g.addr >= cpu.data.size()) continue;
-            elf.globals[name] = g;
+            load_elf_debug_recurse_globals(a, elf, "", dwarf_ctx, cu.get(), v);
         }
     }
 }
@@ -666,11 +714,19 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         sym.name = demangle(name.data());
         sym.addr = (uint16_t)addr;
         sym.size = (uint16_t)size;
+        sym.color_index = 0;
         sym.global = (flags & object::SymbolRef::Flags::SF_Global) != 0;
         sym.weak   = (flags & object::SymbolRef::Flags::SF_Weak) != 0;
         sym.notype = (type == object::SymbolRef::Type::ST_Unknown);
         sym.object = (type == object::SymbolRef::Type::ST_Data);
         try_insert_symbol(is_text ? elf.text_symbols : elf.data_symbols, sym);
+    }
+
+    // assign incrementing color indices to data and text symbols
+    {
+        uint16_t index = 0;
+        for(auto& sym : elf.data_symbols)
+            sym.second.color_index = index++;
     }
 
     // sort symbols by name

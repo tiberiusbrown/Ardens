@@ -404,7 +404,9 @@ void window_disassembly(bool& open)
         flags |= ImGuiTableFlags_RowBg;
         flags |= ImGuiTableFlags_NoClip;
         //flags |= ImGuiTableFlags_SizingFixedFit;
-        if(BeginTable("##ScrollingRegion", 3, flags))
+        auto const size = GetContentRegionAvail();
+        float const cw = arduboy->elf ? 20.f * pixel_ratio : 0.f;
+        if(BeginTable("##ScrollingRegion", 3, flags, {size.x - cw, 0.f}))
         {
             TableSetupColumn("Address",
                 ImGuiTableColumnFlags_WidthFixed,
@@ -532,6 +534,48 @@ void window_disassembly(bool& open)
 
             EndTable();
         }
+
+        if(arduboy->elf)
+        {
+            SameLine(0.f, 0.f);
+            auto* draw = GetWindowDrawList();
+            auto const cp = GetCursorScreenPos();
+
+            float iend = size.y / float(arduboy->cpu.last_addr + 1);
+            size_t index = 0;
+            auto const mp = GetMousePos();
+            for(auto const& kv : arduboy->elf->text_symbols)
+            {
+                auto const& sym = kv.second;
+                if(sym.size <= 0) continue;
+                if(sym.weak) continue;
+                float a = iend * sym.addr;
+                float b = iend * (sym.addr + sym.size);
+                if(sym.addr + sym.size >= arduboy->cpu.last_addr)
+                    __debugbreak();
+                ImVec2 ra = { cp.x, cp.y + a };
+                ImVec2 rb = { cp.x + cw, cp.y + b };
+                draw->AddRectFilled(ra, rb, color_for_index(index++));
+                if(mp.x >= ra.x && mp.y >= ra.y && mp.x < rb.x && mp.y < rb.y)
+                {
+                    BeginTooltip();
+                    TextUnformatted(sym.name.c_str());
+                    EndTooltip();
+                    SetMouseCursor(ImGuiMouseCursor_Hand);
+                    if(IsMouseClicked(0))
+                    {
+                        disassembly_scroll_addr = sym.addr;
+                        scroll_addr_to_top = true;
+                    }
+                }
+            }
+
+            draw->AddRect(
+                cp,
+                { cp.x + cw, cp.y + size.y },
+                IM_COL32(150, 150, 150, 255));
+        }
+
     }
     End();
 }

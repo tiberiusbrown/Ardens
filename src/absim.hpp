@@ -557,6 +557,7 @@ struct elf_data_symbol_t
     std::string name;
     uint16_t addr;
     uint16_t size;
+    uint16_t color_index;
     bool weak;
     bool global;
     bool notype;

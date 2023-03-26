@@ -79,7 +79,7 @@ bool fs_ready = true;
 SDL_Window* window;
 SDL_Renderer* renderer;
 
-static float pixel_ratio = 1.f;
+float pixel_ratio = 1.f;
 static ImGuiStyle default_style;
 
 extern "C" void postsyncfs()
