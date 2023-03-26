@@ -550,9 +550,8 @@ void window_disassembly(bool& open)
                 if(sym.size <= 0) continue;
                 if(sym.weak) continue;
                 float a = iend * sym.addr;
-                float b = iend * (sym.addr + sym.size);
-                if(sym.addr + sym.size >= arduboy->cpu.last_addr)
-                    __debugbreak();
+                float b = iend * (std::min<uint32_t>(
+                    arduboy->cpu.last_addr, sym.addr + sym.size));
                 ImVec2 ra = { cp.x, cp.y + a };
                 ImVec2 rb = { cp.x + cw, cp.y + b };
                 draw->AddRectFilled(ra, rb, color_for_index(index++));
