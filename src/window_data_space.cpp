@@ -87,18 +87,7 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
     }
     if(!name) return false;
 
-    //auto it = arduboy->elf->globals.find(sym.name);
-    //if(it == arduboy->elf->globals.end()) return false;
-    //auto const& g = it->second;
-    //auto* cu = dwarf->getCompileUnitForOffset(g->cu_offset);
-    //if(!cu) return false;
-    //auto type = cu->getDIEForOffset(g->type);
-
-    //std::string expr = sym.name;
-    //int byte = recurse_type(expr, offset, type);
-
     dwarf_primitive_t prim;
-    //prim.expr = sym.name;
     prim.expr = name;
     if(dwarf_find_primitive(type, offset, prim))
     {
@@ -106,16 +95,33 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
         if(dwarf_size(prim.die) > 1)
         {
             ImGui::SameLine(0.f, 0.f);
-            ImGui::Text(" [byte %d]", (int)prim.offset);
+            ImGui::Text(" [offset %d]", (int)prim.offset);
         }
         ImGui::Separator();
         ImGui::Text("Type:   %s", dwarf_type_string(prim.die).c_str());
         ImGui::Text("Value:  %s", dwarf_value_string(prim.die, addr - prim.offset, false).c_str());
+        auto size = dwarf_size(prim.die);
+        if(size <= 4)
+        {
+            ImGui::Text("Raw:    0x");
+            ImGui::SameLine(0.f, 0.f);
+            uint32_t a = addr - prim.offset;
+            for(uint32_t i = 0; i < size; ++i)
+            {
+                auto j = size - i - 1;
+                if(size > 1 && j == prim.offset)
+                    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 255, 255));
+                ImGui::Text("%02x", arduboy->cpu.data[a + j]);
+                if(size > 1 && j == prim.offset)
+                    ImGui::PopStyleColor();
+                ImGui::SameLine(0.f, 0.f);
+            }
+        }
     }
     else if(dwarf_size(type) <= 1)
         ImGui::Text("0x%04x: %s", addr, sym.name.c_str());
     else
-        ImGui::Text("0x%04x: %s [byte %d]", addr, sym.name.c_str(), (int)offset);
+        ImGui::Text("0x%04x: %s [offset %d]", addr, sym.name.c_str(), (int)offset);
     return true;
 
 #else
