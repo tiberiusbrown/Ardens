@@ -697,6 +697,7 @@ struct arduboy_t
     };
     std::array<hotspot_t, NUM_INSTRS> profiler_hotspots;
     uint32_t num_hotspots;
+    std::vector<hotspot_t> profiler_hotspots_symbol;
 
     void profiler_build_hotspots();
     void profiler_reset();

@@ -220,6 +220,9 @@ static std::string serdes(Archive& ar, arduboy_t& a)
     ar(a.fx.min_page);
     ar(a.fx.max_page);
 
+    // v0.9.4
+    ar(a.profiler_hotspots_symbol);
+
     return "";
 }
 

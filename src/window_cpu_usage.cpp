@@ -49,7 +49,14 @@ static void window_contents()
         ImGui::Text("     FPS: %5.1f", fps);
     }
 
-    if(BeginPlot("##cpu_usage", { -1, -1 }, ImPlotFlags_CanvasOnly))
+    constexpr auto plot_flags =
+        ImPlotFlags_NoTitle |
+        ImPlotFlags_NoLegend |
+        ImPlotFlags_NoMenus |
+        ImPlotFlags_NoBoxSelect |
+        0;
+
+    if(BeginPlot("##cpu_usage", { -1, -1 }, plot_flags))
     {
         auto* plot = GetCurrentPlot();
         constexpr double ZOOM = 4.0;

@@ -229,7 +229,7 @@ static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
         arduboy->breakpoints_rd.test(off) ||
         arduboy->breakpoints_wr.test(off)))
     {
-        color = IM_COL32(100, 50, 50, 255);
+        color = IM_COL32(150, 50, 50, 255);
         r = true;
     }
     return r;

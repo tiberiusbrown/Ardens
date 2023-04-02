@@ -53,6 +53,7 @@ void arduboy_t::profiler_reset()
 {
     memset(&profiler_counts, 0, sizeof(profiler_counts));
     memset(&profiler_hotspots, 0, sizeof(profiler_hotspots));
+    profiler_hotspots_symbol.clear();
     num_hotspots = 0;
     profiler_total = 0;
     profiler_total_with_sleep = 0;
@@ -66,6 +67,36 @@ void arduboy_t::profiler_build_hotspots()
 {
     if(!cpu.decoded) return;
     if(cpu.num_instrs <= 0) return;
+
+    // group symbol hotspots
+    profiler_hotspots_symbol.clear();
+    if(elf)
+    {
+        for(auto const& kv : elf->text_symbols)
+        {
+            auto const& sym = kv.second;
+            if(sym.size == 0) continue;
+            if(sym.weak) continue;
+            if(sym.notype) continue;
+            if(sym.object) continue;
+            hotspot_t h;
+            h.begin = cpu.addr_to_disassembled_index(sym.addr);
+            h.end = cpu.addr_to_disassembled_index(sym.addr + sym.size - 1);
+            h.count = 0;
+            for(uint32_t i = sym.addr / 2; i < (sym.addr + sym.size) / 2; ++i)
+            {
+                if(i >= profiler_counts.size()) break;
+                h.count += profiler_counts[i];
+            }
+            if(h.count == 0) continue;
+            profiler_hotspots_symbol.push_back(h);
+        }
+    }
+    std::sort(
+        profiler_hotspots_symbol.begin(),
+        profiler_hotspots_symbol.end(),
+        [](auto const& a, auto const& b) { return a.count > b.count; }
+    );
 
     //
     // WARNING: extremely messy hacky heuristics here

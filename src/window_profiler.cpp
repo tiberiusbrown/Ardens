@@ -8,7 +8,9 @@
 static void hotspot_row(int i)
 {
     using namespace ImGui;
-    auto const& h = arduboy->profiler_hotspots[i];
+    auto const& h = settings.profiler_group_symbols ?
+        arduboy->profiler_hotspots_symbol[i] :
+        arduboy->profiler_hotspots[i];
     uint16_t addr_begin = arduboy->cpu.disassembled_prog[h.begin].addr;
     uint16_t addr_end   = arduboy->cpu.disassembled_prog[h.end].addr;
     TableSetColumnIndex(0);
@@ -47,6 +49,8 @@ static void show_hotspots()
     using namespace ImGui;
 
     auto n = arduboy->num_hotspots;
+    if(settings.profiler_group_symbols)
+        n = (uint32_t)arduboy->profiler_hotspots_symbol.size();
     if(n <= 0) return;
 
     ImGuiTableFlags flags = 0;
@@ -111,6 +115,15 @@ void window_profiler(bool& open)
         SameLine();
         if(Checkbox("Cycle Counts", &settings.profiler_cycle_counts))
             update_settings();
+        SameLine();
+        if(!arduboy->elf)
+        {
+            BeginDisabled();
+            settings.profiler_group_symbols = false;
+        }
+        if(Checkbox("Group by Symbol", &settings.profiler_group_symbols))
+            update_settings();
+        if(!arduboy->elf) EndDisabled();
 
         show_hotspots();
     }

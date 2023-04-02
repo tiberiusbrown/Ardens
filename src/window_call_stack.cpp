@@ -118,6 +118,18 @@ static void window_call_stack_contents()
             else
                 name = fmt::format("{:#06x}", addr);
 
+            uint16_t prev_sp = (i > 0) ?
+                arduboy->cpu.stack_frames[i - 1].sp :
+                arduboy->cpu.data.size() - 1;
+            uint16_t curr_sp = (i < (int)arduboy->cpu.num_stack_frames) ?
+                arduboy->cpu.stack_frames[i].sp :
+                arduboy->cpu.sp();
+            uint16_t frame_size = prev_sp - curr_sp;
+
+            name = fmt::format("[{:3}] ", frame_size) + name;
+
+            name += fmt::format("##callstack{}", i);
+
             TableSetColumnIndex(0);
             if(Selectable(name.c_str()))
                 disassembly_scroll_addr = (int)addr;
