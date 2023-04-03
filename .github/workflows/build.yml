@@ -56,7 +56,9 @@ jobs:
         submodules: 'recursive'
         
     - name: Install prerequisites
-      run: sudo apt-get install -y libpulse-dev libgl1-mesa-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpulse-dev libgl1-mesa-dev
   
     - name: Cache LLVM host
       id: cache-llvm-host
