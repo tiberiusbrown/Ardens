@@ -90,6 +90,17 @@ void atmega32u4_t::reset()
     ld_handlers[0xbe] = timer4_handle_ld_tcnt;
     ld_handlers[0xbf] = timer4_handle_ld_tcnt;
 
+    st_handlers[0xd7] = usb_st_handler;
+    st_handlers[0xd8] = usb_st_handler;
+    st_handlers[0xd9] = usb_st_handler;
+    st_handlers[0xda] = usb_st_handler;
+    for(int i = 0xe0; i <= 0xe6; ++i)
+        st_handlers[i] = usb_st_handler;
+    for(int i = 0xe8; i <= 0xf4; ++i)
+        st_handlers[i] = usb_st_handler;
+
+    ld_handlers[0xf1] = usb_ld_handler_uedatx;
+
     memset(&timer0, 0, sizeof(timer0));
     memset(&timer1, 0, sizeof(timer1));
     memset(&timer3, 0, sizeof(timer3));
@@ -139,6 +150,10 @@ void atmega32u4_t::reset()
     cycle_count = 0;
 
     min_stack = 0xffff;
+
+    serial_bytes.clear();
+    reset_usb();
+    memset(&usb_dpram, 0, sizeof(usb_dpram));
 }
 
 }

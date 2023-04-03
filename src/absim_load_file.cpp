@@ -185,9 +185,10 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-    memset(&a.breakpoints, 0, sizeof(a.breakpoints));
-    memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
-    memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
+
+    a.breakpoints.reset();
+    a.breakpoints_rd.reset();
+    a.breakpoints_wr.reset();
 
     while(!f.eof())
     {

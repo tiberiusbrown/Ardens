@@ -220,8 +220,17 @@ static std::string serdes(Archive& ar, arduboy_t& a)
     ar(a.fx.min_page);
     ar(a.fx.max_page);
 
-    // v0.9.4
+    // v0.10.0
     ar(a.profiler_hotspots_symbol);
+    ar(a.cpu.serial_bytes);
+    ar(a.cpu.usb_ep);
+    ar(a.cpu.usb_next_eorsti_cycle);
+    ar(a.cpu.usb_next_sofi_cycle);
+    ar(a.cpu.usb_next_setconf_cycle);
+    ar(a.cpu.usb_next_setlength_cycle);
+    ar(a.cpu.usb_next_update_cycle);
+    ar(a.cpu.usb_attached);
+    ar(a.cpu.usb_dpram);
 
     return "";
 }

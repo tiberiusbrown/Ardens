@@ -86,6 +86,7 @@ void view_debugger()
                 ImGui::MenuItem("Simulation", nullptr, &settings.open_simulation);
                 ImGui::MenuItem("Profiler", nullptr, &settings.open_profiler);
                 ImGui::MenuItem("CPU Usage", nullptr, &settings.open_cpu_usage);
+                ImGui::MenuItem("Serial Monitor", nullptr, &settings.open_serial);
                 ImGui::Separator();
                 if(ImGui::BeginMenu("Display"))
                 {
@@ -165,6 +166,7 @@ void view_debugger()
             window_eeprom(settings.open_eeprom);
             window_cpu_usage(settings.open_cpu_usage);
             window_led(settings.open_led);
+            window_serial(settings.open_serial);
         }
     }
 }

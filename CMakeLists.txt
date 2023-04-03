@@ -177,6 +177,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_eeprom.cpp
     src/window_cpu_usage.cpp
     src/window_led.cpp
+    src/window_serial.cpp
 
     src/absim.hpp
     src/absim_instructions.hpp
@@ -203,6 +204,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/absim_eeprom.hpp
     src/absim_sound.hpp
     src/absim_led.cpp
+    src/absim_usb.cpp
     
     src/stb_image_write.h
     ${IMGUI_SOURCES}

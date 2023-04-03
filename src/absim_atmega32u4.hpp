@@ -87,6 +87,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
         t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
         t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
+        t = std::min<uint64_t>(t, usb_next_update_cycle - cycle_count);
 
         max_merged_cycles = std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
 
@@ -163,6 +164,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
             t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
             t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
+            t = std::min<uint64_t>(t, usb_next_update_cycle - cycle_count);
             t = std::min<uint64_t>(t, 1024);
             if(t > 1) --t;
             cycles = (uint32_t)t;
@@ -189,9 +191,28 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             update_timer3();
         if(cycle_count >= timer4.next_update_cycle)
             update_timer4();
+        if(cycle_count >= usb_next_update_cycle)
+            update_usb();
 
         // handle interrupts here
         uint8_t i;
+
+        // usb general
+        i = (data[0xe1] & data[0xe2]) | (data[0xd8] & data[0xda]);
+        if(i)
+        {
+            uint8_t dummy = 0;
+            check_interrupt(0x14, i, dummy);
+        }
+
+        //i = (data[0xe1] & data[0xe2]);
+        //if(i) check_interrupt(0x14, i, data[0xe1]);
+        //i = (data[0xd8] & data[0xda] & 0x1);
+        //if(i) check_interrupt(0x14, i, data[0xda]);
+
+        // usb endpoint
+        i = data[0xf4];
+        if(i) check_interrupt(0x16, i, data[0xf4]);
 
         i = tifr1() & timsk1();
         if(i)

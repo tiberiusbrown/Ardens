@@ -73,3 +73,4 @@ void window_fx_internals(bool& open);
 void window_eeprom(bool& open);
 void window_cpu_usage(bool& open);
 void window_led(bool& open);
+void window_serial(bool& open);

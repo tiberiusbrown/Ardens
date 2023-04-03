@@ -33,6 +33,7 @@ struct settings_t
     bool open_eeprom = false;
     bool open_cpu_usage = false;
     bool open_led = false;
+    bool open_serial = false;
 
     bool fullzoom = false;
 

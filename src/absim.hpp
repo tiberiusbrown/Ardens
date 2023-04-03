@@ -414,6 +414,50 @@ struct atmega32u4_t
     static void sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     void cycle_sound(uint32_t cycles);
 
+    // serial / USB
+    std::vector<uint8_t> serial_bytes;
+    struct usb_endpoint_t
+    {
+        uint8_t uenum;
+        uint8_t ueintx;
+        uint8_t uerst;
+        uint8_t ueconx;
+        uint8_t uecfg0x;
+        uint8_t uecfg1x;
+        uint8_t uesta0x;
+        uint8_t uesta1x;
+        uint8_t ueienx;
+        uint8_t uebclx;
+        uint8_t uebchx;
+        std::vector<uint8_t> buffer; // TODO: DPRAM modeling
+        uint32_t start;
+        uint32_t length;
+        void configure();
+        uint8_t read(atmega32u4_t& cpu);
+        void write(atmega32u4_t& cpu, uint8_t x);
+        void copy_regs(atmega32u4_t& cpu);
+        template<class A> void serialize(A& a)
+        {
+            a(uenum, ueintx, uerst, ueconx);
+            a(uesta0x, uesta1x);
+            a(uecfg0x, uecfg1x);
+            a(ueienx, uebclx, uebchx);
+            a(buffer, start, length);
+        }
+    };
+    std::array<usb_endpoint_t, 8> usb_ep;
+    uint64_t usb_next_sofi_cycle;
+    uint64_t usb_next_eorsti_cycle;
+    uint64_t usb_next_setconf_cycle;
+    uint64_t usb_next_setlength_cycle;
+    uint64_t usb_next_update_cycle;
+    std::array<uint8_t, 832> usb_dpram;
+    bool usb_attached;
+    static void usb_st_handler(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static uint8_t usb_ld_handler_uedatx(atmega32u4_t& cpu, uint16_t ptr);
+    void update_usb();
+    void reset_usb();
+
     void check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
     uint64_t cycle_count;
