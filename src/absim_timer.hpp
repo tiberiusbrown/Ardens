@@ -304,6 +304,24 @@ static ABSIM_FORCEINLINE uint32_t timer16_period(
     return period;
 }
 
+static ABSIM_FORCEINLINE void toggle_portc6(atmega32u4_t& cpu)
+{
+    if(!(cpu.data[0x27] & 0x40)) return;
+    cpu.data[0x28] ^= (1 << 6);
+}
+
+static ABSIM_FORCEINLINE void clear_portc6(atmega32u4_t& cpu)
+{
+    if(!(cpu.data[0x27] & 0x40)) return;
+    cpu.data[0x28] &= ~(1 << 6);
+}
+
+static ABSIM_FORCEINLINE void set_portc6(atmega32u4_t& cpu)
+{
+    if(!(cpu.data[0x27] & 0x40)) return;
+    cpu.data[0x28] |= (1 << 6);
+}
+
 static ABSIM_FORCEINLINE void update_timer16_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
@@ -320,6 +338,7 @@ static ABSIM_FORCEINLINE void update_timer16_state(
     auto ocrNc = timer.ocrNc;
     auto tov = timer.tov;
     auto top = timer.top;
+    auto com3a = timer.com3a;
     uint8_t tifr = cpu.data[timer.tifrN_addr] & 0xf;
 
     while(timer_cycles > 0)
@@ -335,6 +354,12 @@ static ABSIM_FORCEINLINE void update_timer16_state(
             timer_cycles -= t;
             tcnt -= t;
             if(tcnt == 0) tifr |= 0x1, count_down = false;
+            if(&timer == &cpu.timer3 && tcnt == ocrNa)
+            {
+                if(com3a == 1) toggle_portc6(cpu);
+                if(com3a == 2) clear_portc6(cpu);
+                if(com3a == 3) set_portc6(cpu);
+            }
         }
         else if(tcnt > top)
         {
@@ -361,6 +386,18 @@ static ABSIM_FORCEINLINE void update_timer16_state(
                     count_down = true;
                 else
                     tifr |= 0x1, tcnt = 0;
+            }
+            if(&timer == &cpu.timer3 && tcnt == ocrNa)
+            {
+                if(com3a == 1) toggle_portc6(cpu);
+                if(com3a == 2) clear_portc6(cpu);
+                if(com3a == 3) set_portc6(cpu);
+            }
+            if(&timer == &cpu.timer3 && !phase_correct && tcnt == top + 1)
+            {
+                if(com3a == 1) toggle_portc6(cpu);
+                if(com3a == 2) set_portc6(cpu);
+                if(com3a == 3) clear_portc6(cpu);
             }
         }
         if(tcnt == ocrNa) tifr |= 0x2;
@@ -420,6 +457,8 @@ static void update_timer16(
     timer.phase_correct = (wgm_mask & 0x0f0e) != 0;
     if(!timer.phase_correct)
         timer.count_down = false;
+
+    timer.com3a = tccrNa >> 6;
 
     // compute next update cycle
 

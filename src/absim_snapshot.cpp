@@ -293,8 +293,8 @@ std::string arduboy_t::load_snapshot(std::istream& f)
 
         version_t version;
         ar(version);
-        if(version > VERSION_INFO)
-            return "Snapshot: requires " + version_str(version) + " or later";
+        if(version != VERSION_INFO)
+            return "Snapshot: requires " + version_str(version);
 
         ar(dst_size);
 

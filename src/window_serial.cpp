@@ -22,7 +22,10 @@ void window_serial(bool& open)
         if(Button("Clear"))
             buf.clear();
         auto size = GetContentRegionAvail();
-        buf.push_back('\0');
+        buf.push_back(0);
+        SameLine();
+        if(Button("Copy to Clipboard"))
+            SDL_SetClipboardText((char*)buf.data());
         InputTextMultiline(
             "##serialbuffer",
             (char*)buf.data(),

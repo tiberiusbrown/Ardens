@@ -283,6 +283,7 @@ struct atmega32u4_t
         uint32_t prr_addr;
         uint32_t prr_mask;
         uint32_t base_addr;
+        uint32_t com3a;
         bool phase_correct;
         bool count_down;
         bool update_ocrN_at_top;
