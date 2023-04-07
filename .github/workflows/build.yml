@@ -99,7 +99,7 @@ jobs:
         cp ${{github.workspace}}/src/arduboy_sim.html ${{github.workspace}}/arduboy_sim_web/index.html
         cp ${{github.workspace}}/src/arduboy_sim_player.html ${{github.workspace}}/arduboy_sim_web/player.html
         cd ${{github.workspace}}/arduboy_sim_web
-        zip -r ${{github.workspace}}/arduboy_sim_web.zip arduboy_sim.*
+        zip -r ${{github.workspace}}/arduboy_sim_web.zip *
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
