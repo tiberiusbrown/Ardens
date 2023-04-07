@@ -256,7 +256,11 @@ add_executable(arduboy_sim_player ${EXEFLAG}
     )
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SNAPSHOTS)
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_ARDUBOY_FILE)
+#target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_ARDUBOY_FILE)
+target_link_libraries(arduboy_sim_player PRIVATE
+    nlohmann_json::nlohmann_json
+    miniz
+    )
 
 if(MSVC)
     target_compile_options(arduboy_sim PRIVATE /Zc:__cplusplus)
