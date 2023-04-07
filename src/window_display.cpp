@@ -21,11 +21,14 @@ void window_display(bool& open)
             float w = tw, h = th;
             bool smaller = false;
 
-            while(w > t.x || h > t.y)
-                w *= 0.5f, h *= 0.5f, smaller = true;
+            if(t.x >= 1.f && t.y >= 1.f)
+            {
+                while(w > t.x || h > t.y)
+                    w *= 0.5f, h *= 0.5f, smaller = true;
 
-            while(w + tw < t.x && h + th < t.y)
-                w += tw, h += th;
+                while(w + tw < t.x && h + th < t.y)
+                    w += tw, h += th;
+            }
 
             SDL_SetTextureScaleMode(
                 display_texture,

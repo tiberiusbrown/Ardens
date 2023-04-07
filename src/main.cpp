@@ -84,7 +84,6 @@ static ImGuiStyle default_style;
 
 extern "C" void postsyncfs()
 {
-    //printf("postsyncfs\n");
     fs_ready = true;
 }
 
