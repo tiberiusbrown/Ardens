@@ -1,3 +1,5 @@
+#ifndef ABSIM_NO_SNAPSHOTS
+
 #include "absim.hpp"
 
 #include <sstream>
@@ -328,3 +330,4 @@ std::string arduboy_t::load_snapshot(std::istream& f)
 }
 
 }
+#endif

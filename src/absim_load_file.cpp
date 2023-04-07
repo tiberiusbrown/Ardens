@@ -8,16 +8,17 @@
 #include <algorithm>
 #include <cctype>
 
+#ifndef ABSIM_NO_ARDUBOY_FILE
 #include <nlohmann/json.hpp>
 #include <miniz.h>
 #include <miniz_zip.h>
+#endif
 
+#ifdef ABSIM_LLVM
 #ifdef _MSC_VER
 #pragma warning(push, 1)
 #pragma warning(disable: 4624)
 #endif
-
-#ifdef ABSIM_LLVM
 #include <llvm/DebugInfo/DWARF/DWARFContext.h>
 #include <llvm/DebugInfo/DWARF/DWARFCompileUnit.h>
 #include <llvm/DebugInfo/DWARF/DWARFDebugFrame.h>
@@ -25,10 +26,9 @@
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/Object/ELFObjectFile.h>
 #include "dwarf.hpp"
-#endif
-
 #ifdef _MSC_VER
 #pragma warning(pop)
+#endif
 #endif
 
 namespace absim
@@ -806,6 +806,7 @@ static std::string load_bin(arduboy_t& a, std::string const& fname)
     return load_bin(a, f);
 }
 
+#ifndef ABSIM_NO_ARDUBOY_FILE
 class sax_no_exception : public nlohmann::detail::json_sax_dom_parser<nlohmann::json>
 {
 public:
@@ -918,6 +919,7 @@ static std::string load_arduboy(arduboy_t& a, std::string const& fname)
         return "ARDUBOY: Unable to open file";
     return load_arduboy(a, f);
 }
+#endif
 
 static bool ends_with(std::string const& str, std::string const& end)
 {
@@ -954,18 +956,23 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     }
 #endif
 
+#ifndef ABSIM_NO_ARDUBOY_FILE
     if(ends_with(fname, ".arduboy"))
     {
         reset();
         elf.reset();
         r = load_arduboy(*this, f);
     }
+#endif
 
+#ifndef ABSIM_NO_SNAPSHOTS
     if(ends_with(fname, ".snapshot"))
     {
         r = load_snapshot(f);
     }
-    else if(r.empty())
+    else
+#endif
+    if(r.empty())
     {
         f.clear();
         f.seekg(0);

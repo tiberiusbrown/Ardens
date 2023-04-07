@@ -82,23 +82,31 @@ SDL_Renderer* renderer;
 float pixel_ratio = 1.f;
 static ImGuiStyle default_style;
 
+extern "C" int setparam(char const* name, char const* value)
+{
+    if(!name || !value) return 0;
+    std::string p(name);
+    if(p == "z")
+    {
+        settings.fullzoom = (*value == '1');
+        update_settings();
+        return 1;
+    }
+    else if(p == "g")
+    {
+        int g = 1;
+        if(*value == '2') g = 2;
+        if(*value == '3') g = 3;
+        settings.num_pixel_history = g;
+        update_settings();
+        return 1;
+    }
+    return 0;
+}
+
 extern "C" void postsyncfs()
 {
     fs_ready = true;
-}
-
-extern "C" void fullzoom(int f)
-{
-    settings.fullzoom = !!f;
-    update_settings();
-}
-
-extern "C" void gray(int g)
-{
-    if(g < 1) g = 1;
-    if(g > 3) g = 3;
-    settings.num_pixel_history = g;
-    update_settings();
 }
 
 #ifdef __EMSCRIPTEN__
@@ -321,7 +329,6 @@ static void main_loop()
     }
 
     SDL_Event event;
-
     while(SDL_PollEvent(&event))
     {
         ImGui_ImplSDL2_ProcessEvent(&event);

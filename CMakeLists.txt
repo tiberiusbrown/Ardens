@@ -56,9 +56,8 @@ if(EMSCRIPTEN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_FLAGS}")
     add_link_options("-sALLOW_MEMORY_GROWTH")
     add_link_options("-sINITIAL_MEMORY=24MB")
-    add_link_options("-sEXPORTED_FUNCTIONS=_main,_load_file,_malloc,_free,_postsyncfs,_fullzoom,_gray")
+    add_link_options("-sEXPORTED_FUNCTIONS=_main,_load_file,_malloc,_free,_postsyncfs,_setparam")
     add_link_options("-sEXPORTED_RUNTIME_METHODS=ccall,FS")
-    add_link_options("-lidbfs.js")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
@@ -142,6 +141,43 @@ set(GIFENC_SOURCES
     src/gifenc/gifenc.h
     src/gifenc/gifenc.c
     )
+set(SOKOL_SOURCES
+    src/sokol/sokol_app.h
+    src/sokol/sokol_audio.h
+    src/sokol/sokol_gfx.h
+    src/sokol/sokol_gl.h
+    src/sokol/sokol_glue.h
+    src/sokol/sokol_imgui.h
+    src/sokol/sokol_time.h
+    )
+set(ABSIM_SOURCES
+    src/absim.hpp
+    src/absim_instructions.hpp
+    src/absim_cpu_data.cpp
+
+    src/absim_arduboy.cpp
+    src/absim_ssd1306.hpp
+    src/absim_atmega32u4.hpp
+    src/absim_w25q128.hpp
+
+    src/absim_decode.cpp
+    src/absim_merge_instrs.cpp
+    src/absim_execute.cpp
+    src/absim_execute_merged.cpp
+    src/absim_disassemble.cpp
+    src/absim_load_file.cpp
+    src/absim_reset.cpp
+    src/absim_snapshot.cpp
+
+    src/absim_timer.hpp
+    src/absim_adc.hpp
+    src/absim_pll.hpp
+    src/absim_spi.hpp
+    src/absim_eeprom.hpp
+    src/absim_sound.hpp
+    src/absim_led.cpp
+    src/absim_usb.cpp
+    )
 set(EM_FILE_BROWSER_SOURCES)
 if(EMSCRIPTEN)
     set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
@@ -150,6 +186,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
     src/main.cpp
+
     src/font.cpp
     src/settings.hpp
     src/settings.cpp
@@ -179,33 +216,8 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_led.cpp
     src/window_serial.cpp
 
-    src/absim.hpp
-    src/absim_instructions.hpp
-    src/absim_cpu_data.cpp
+    ${ABSIM_SOURCES}
 
-    src/absim_arduboy.cpp
-    src/absim_ssd1306.hpp
-    src/absim_atmega32u4.hpp
-    src/absim_w25q128.hpp
-
-    src/absim_decode.cpp
-    src/absim_merge_instrs.cpp
-    src/absim_execute.cpp
-    src/absim_execute_merged.cpp
-    src/absim_disassemble.cpp
-    src/absim_load_file.cpp
-    src/absim_reset.cpp
-    src/absim_snapshot.cpp
-
-    src/absim_timer.hpp
-    src/absim_adc.hpp
-    src/absim_pll.hpp
-    src/absim_spi.hpp
-    src/absim_eeprom.hpp
-    src/absim_sound.hpp
-    src/absim_led.cpp
-    src/absim_usb.cpp
-    
     src/stb_image_write.h
     ${IMGUI_SOURCES}
     ${IMPLOT_SOURCES}
@@ -236,6 +248,21 @@ endif()
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
 target_include_directories(arduboy_sim PRIVATE src/imgui src/implot src/gifenc)
 
+add_executable(arduboy_sim_player ${EXEFLAG}
+    .editorconfig
+    src/main_player.cpp
+    ${ABSIM_SOURCES}
+    ${SOKOL_SOURCES}
+    )
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SNAPSHOTS)
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_ARDUBOY_FILE)
+
 if(MSVC)
     target_compile_options(arduboy_sim PRIVATE /Zc:__cplusplus)
+    target_compile_options(arduboy_sim_player PRIVATE /Zc:__cplusplus)
+endif()
+
+if(EMSCRIPTEN)
+    target_link_options(arduboy_sim PRIVATE "-lidbfs.js")
 endif()
