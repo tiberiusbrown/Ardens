@@ -54,6 +54,8 @@ static ABSIM_FORCEINLINE void process_wgm8(
     default:
         break;
     }
+
+    top = std::max<uint32_t>(3, top);
 }
 
 static ABSIM_FORCEINLINE void timer8_update_ocrN(
@@ -270,7 +272,7 @@ static ABSIM_FORCEINLINE void process_wgm16(
         break;
     }
 
-    top = ttop;
+    top = std::max<uint32_t>(3, ttop);
     tov = ttov;
 }
 
@@ -279,9 +281,9 @@ static ABSIM_FORCEINLINE void timer16_update_ocrN(
     atmega32u4_t::timer16_t& timer,
     uint32_t addr)
 {
-    timer.ocrNa = std::max<uint32_t>(0, word(cpu, addr + 0x8));
-    timer.ocrNb = std::max<uint32_t>(0, word(cpu, addr + 0xa));
-    timer.ocrNc = std::max<uint32_t>(0, word(cpu, addr + 0xc));
+    timer.ocrNa = word(cpu, addr + 0x8);
+    timer.ocrNb = word(cpu, addr + 0xa);
+    timer.ocrNc = word(cpu, addr + 0xc);
 
     uint32_t icrN = word(cpu, addr + 0x6);
     uint32_t tccrNa = cpu.data[addr + 0x0];
@@ -505,7 +507,7 @@ static ABSIM_FORCEINLINE void timer10_update_ocrN(
     {
         timer.ocrNa = timer.ocrNa_next;
         timer.ocrNb = timer.ocrNb_next;
-        timer.ocrNc = std::max<uint32_t>(3, timer.ocrNc_next);
+        timer.ocrNc = timer.ocrNc_next;
         timer.ocrNd = timer.ocrNd_next;
 
         cpu.data[0xcf] = (uint8_t)timer.ocrNa;
@@ -705,7 +707,7 @@ void atmega32u4_t::update_timer4()
     if(timer4.update_ocrN_at_top && timer4.tcnt == timer4.top)
         timer10_update_ocrN(*this, timer4);
 
-    timer4.top = timer4.ocrNc;
+    timer4.top = std::max<uint32_t>(3, timer4.ocrNc);
     timer4.tov = timer4.top;
     if(pwm4x && (wgm & 0x1))
         timer4.tov = 0;

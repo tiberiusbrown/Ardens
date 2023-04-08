@@ -228,19 +228,31 @@ static void main_loop()
 
         // consume sound buffer
 #if !PROFILING
-        if(simulation_slowdown == 1000)
+        if(!arduboy->cpu.sound_buffer.empty() && simulation_slowdown == 1000)
         {
-            constexpr size_t SAMPLE_SIZE = sizeof(arduboy->cpu.sound_buffer[0]);
-            size_t num_bytes = arduboy->cpu.sound_buffer.size() * SAMPLE_SIZE;
+            std::vector<int16_t> buf;
+            buf.swap(arduboy->cpu.sound_buffer);
+            constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
+            size_t num_bytes = buf.size() * SAMPLE_SIZE;
             uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
-            if(queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
+            constexpr uint32_t BUFFER_BYTES = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE;
+            if(queued_bytes > BUFFER_BYTES)
                 num_bytes = 0;
-            else if(num_bytes + queued_bytes > MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE)
+            else if(num_bytes + queued_bytes > BUFFER_BYTES)
                 num_bytes = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE - queued_bytes;
+            else if(num_bytes + queued_bytes < BUFFER_BYTES)
+            {
+                size_t b = (BUFFER_BYTES - queued_bytes) / SAMPLE_SIZE;
+                size_t a = buf.size();
+                auto v = buf.back();
+                buf.resize(b);
+                for(size_t i = a; i < b; ++i)
+                    buf[i] = v;
+            }
             SDL_QueueAudio(
                 audio_device,
-                arduboy->cpu.sound_buffer.data(),
-                (uint32_t)num_bytes);
+                buf.data(),
+                buf.size() * sizeof(buf[0]));
         }
 #endif
         arduboy->cpu.sound_buffer.clear();
