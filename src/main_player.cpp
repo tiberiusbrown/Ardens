@@ -132,7 +132,14 @@ static void app_event(sapp_event const* e)
 // resample sound to target freq using nearest sampling
 static void process_sound()
 {
-    auto& buf = arduboy->cpu.sound_buffer;
+    std::vector<int16_t> buf;
+    buf.swap(arduboy->cpu.sound_buffer);
+    if(buf.empty())
+        return;
+    if(saudio_expect() <= 0)
+        return;
+    if(saudio_sample_rate() <= 0)
+        return;
 
     std::vector<float> sbuf;
 
@@ -151,8 +158,6 @@ static void process_sound()
 
     if(!sbuf.empty())
         saudio_push(sbuf.data(), (int)sbuf.size());
-
-    buf.clear();
 }
 
 static void app_frame()

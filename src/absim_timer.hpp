@@ -279,9 +279,9 @@ static ABSIM_FORCEINLINE void timer16_update_ocrN(
     atmega32u4_t::timer16_t& timer,
     uint32_t addr)
 {
-    timer.ocrNa = std::max<uint32_t>(3, word(cpu, addr + 0x8));
-    timer.ocrNb = std::max<uint32_t>(3, word(cpu, addr + 0xa));
-    timer.ocrNc = std::max<uint32_t>(3, word(cpu, addr + 0xc));
+    timer.ocrNa = std::max<uint32_t>(0, word(cpu, addr + 0x8));
+    timer.ocrNb = std::max<uint32_t>(0, word(cpu, addr + 0xa));
+    timer.ocrNc = std::max<uint32_t>(0, word(cpu, addr + 0xc));
 
     uint32_t icrN = word(cpu, addr + 0x6);
     uint32_t tccrNa = cpu.data[addr + 0x0];
