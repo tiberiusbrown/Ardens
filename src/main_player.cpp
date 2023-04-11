@@ -21,6 +21,8 @@
 #include <memory>
 #include <strstream>
 
+#include <stdio.h>
+
 #include "absim.hpp"
 
 constexpr int AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
@@ -59,8 +61,14 @@ extern "C" int setparam(char const* name, char const* value)
 extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
-    arduboy->load_file(filename, f);
-    return 0;
+    auto err = arduboy->load_file(filename, f);
+    if(!err.empty())
+    {
+        printf("Error while loading \"%s\": %s\n", filename, err.c_str());
+        return 0;
+    }
+    printf("Successfully loaded \"%s\"\n", filename);
+    return 1;
 }
 
 static void app_init()
@@ -96,6 +104,9 @@ static void app_init()
         desc.sample_rate = AUDIO_FREQ;
         saudio_setup(&desc);
     }
+
+    printf("%s\n", "arduboy_sim_player " ABSIM_VERSION);
+    printf("audio: channels=%d sample_rate=%d\n", saudio_channels(), saudio_sample_rate());
 }
 
 static void app_event(sapp_event const* e)
