@@ -345,6 +345,9 @@ static ABSIM_FORCEINLINE void update_timer16_state(
 
     while(timer_cycles > 0)
     {
+        if(tcnt == ocrNa) tifr |= 0x2;
+        if(tcnt == ocrNb) tifr |= 0x4;
+        if(tcnt == ocrNc) tifr |= 0x8;
         if(count_down)
         {
             uint32_t stop = 0;
@@ -363,6 +366,23 @@ static ABSIM_FORCEINLINE void update_timer16_state(
                 if(com3a == 3) set_portc6(cpu);
             }
         }
+        else if(tcnt == top)
+        {
+            if(phase_correct)
+                count_down = true, --tcnt;
+            else
+                tifr |= 0x1, tcnt = 0;
+            timer_cycles -= 1;
+            if(timer.update_ocrN_at_top)
+            {
+                timer16_update_ocrN(cpu, timer, timer.base_addr);
+                top = timer.top;
+                tov = timer.tov;
+                ocrNa = timer.ocrNa;
+                ocrNb = timer.ocrNb;
+                ocrNc = timer.ocrNc;
+            }
+        }
         else if(tcnt > top)
         {
             uint32_t t = 256;
@@ -374,7 +394,7 @@ static ABSIM_FORCEINLINE void update_timer16_state(
         }
         else
         {
-            uint32_t stop = top + 1;
+            uint32_t stop = top;
             if(ocrNa > tcnt) stop = std::min(stop, ocrNa);
             if(ocrNb > tcnt) stop = std::min(stop, ocrNb);
             if(ocrNc > tcnt) stop = std::min(stop, ocrNc);
@@ -382,13 +402,6 @@ static ABSIM_FORCEINLINE void update_timer16_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt += t;
-            if(tcnt == top + 1)
-            {
-                if(phase_correct)
-                    count_down = true;
-                else
-                    tifr |= 0x1, tcnt = 0;
-            }
             if(&timer == &cpu.timer3 && tcnt == ocrNa)
             {
                 if(com3a == 1) toggle_portc6(cpu);
@@ -402,9 +415,6 @@ static ABSIM_FORCEINLINE void update_timer16_state(
                 if(com3a == 3) clear_portc6(cpu);
             }
         }
-        if(tcnt == ocrNa) tifr |= 0x2;
-        if(tcnt == ocrNb) tifr |= 0x4;
-        if(tcnt == ocrNc) tifr |= 0x8;
     }
 
     timer.tcnt = tcnt;
@@ -452,8 +462,6 @@ static void update_timer16(
 
     if(timer.update_ocrN_at_bottom && timer.tcnt == 0)
         timer16_update_ocrN(cpu, timer, addr);
-    if(timer.update_ocrN_at_top && timer.tcnt == timer.top)
-        timer16_update_ocrN(cpu, timer, addr);
 
     process_wgm16(wgm, timer.top, timer.tov, timer.ocrNa, icrN);
     timer.phase_correct = (wgm_mask & 0x0f0e) != 0;
@@ -481,6 +489,8 @@ static void update_timer16(
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNa - timer.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNb - timer.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNc - timer.tcnt);
+        if(timer.tcnt == timer.top)
+            update_tcycles = 1;
     }
     if(update_tcycles == UINT32_MAX)
     {
@@ -582,6 +592,9 @@ static ABSIM_FORCEINLINE void update_timer10_state(
 
     while(timer_cycles > 0)
     {
+        if(tcnt == ocrNa) tifr |= 0x40;
+        if(tcnt == ocrNb) tifr |= 0x20;
+        if(tcnt == ocrNd) tifr |= 0x80;
         if(count_down)
         {
             uint32_t stop = 0;
@@ -600,6 +613,23 @@ static ABSIM_FORCEINLINE void update_timer10_state(
                 if(com4a == 3) set_portc(cpu, false);
             }
         }
+        else if(tcnt == top)
+        {
+            if(phase_correct)
+                count_down = true, --tcnt;
+            else
+                tifr |= 0x4, tcnt = 0;
+            timer_cycles -= 1;
+            if(timer.update_ocrN_at_top)
+            {
+                timer10_update_ocrN(cpu, timer);
+                top = timer.top;
+                tov = timer.tov;
+                ocrNa = timer.ocrNa;
+                ocrNb = timer.ocrNb;
+                ocrNd = timer.ocrNd;
+            }
+        }
         else if(tcnt > top)
         {
             uint32_t t = 256;
@@ -611,7 +641,7 @@ static ABSIM_FORCEINLINE void update_timer10_state(
         }
         else
         {
-            uint32_t stop = top + 1;
+            uint32_t stop = top;
             if(ocrNa > tcnt) stop = std::min(stop, ocrNa);
             if(ocrNb > tcnt) stop = std::min(stop, ocrNb);
             if(ocrNd > tcnt) stop = std::min(stop, ocrNd);
@@ -619,13 +649,6 @@ static ABSIM_FORCEINLINE void update_timer10_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt += t;
-            if(tcnt == top + 1)
-            {
-                if(phase_correct)
-                    count_down = true;
-                else
-                    tifr |= 0x4, tcnt = 0;
-            }
             if(tcnt == ocrNa)
             {
                 if(com4a == 1) set_portc(cpu, false, true);
@@ -639,9 +662,6 @@ static ABSIM_FORCEINLINE void update_timer10_state(
                 if(com4a == 3) set_portc(cpu, false);
             }
         }
-        if(tcnt == ocrNa) tifr |= 0x40;
-        if(tcnt == ocrNb) tifr |= 0x20;
-        if(tcnt == ocrNd) tifr |= 0x80;
     }
 
     timer.tcnt = tcnt;
@@ -703,8 +723,6 @@ void atmega32u4_t::update_timer4()
     }
 
     if(timer4.update_ocrN_at_bottom && timer4.tcnt == 0)
-        timer10_update_ocrN(*this, timer4);
-    if(timer4.update_ocrN_at_top && timer4.tcnt == timer4.top)
         timer10_update_ocrN(*this, timer4);
 
     timer4.top = std::max<uint32_t>(3, timer4.ocrNc);
@@ -773,6 +791,8 @@ void atmega32u4_t::update_timer4()
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNa - timer4.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNb - timer4.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNd - timer4.tcnt);
+        if(timer4.tcnt == timer4.top)
+            update_tcycles = 1;
     }
     if(update_tcycles == UINT32_MAX)
     {

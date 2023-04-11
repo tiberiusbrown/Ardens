@@ -294,7 +294,8 @@ struct atmega32u4_t
             a(divider_cycle, divider);
             a(top, tov, tcnt, ocrNa, ocrNb, ocrNc);
             a(tifrN_addr, timskN_addr, prr_addr, prr_mask, base_addr);
-            a(phase_correct, count_down, update_ocrN_at_top);
+            a(phase_correct, count_down);
+            a(update_ocrN_at_top, update_ocrN_at_bottom);
         }
     };
     static void timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
