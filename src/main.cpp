@@ -39,8 +39,11 @@
 #include "common.hpp"
 
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
-constexpr uint32_t MAX_AUDIO_LATENCY_MS = 80;
-constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = AUDIO_FREQ * MAX_AUDIO_LATENCY_MS / 1000;
+#ifdef __EMSCRIPTEN__
+constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = 4096;
+#else
+constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = 2048;
+#endif
 
 #if !SDL_VERSION_ATLEAST(2,0,17)
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
@@ -235,24 +238,23 @@ static void main_loop()
             constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
             size_t num_bytes = buf.size() * SAMPLE_SIZE;
             uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
-            constexpr uint32_t BUFFER_BYTES = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE;
+            constexpr uint32_t BUFFER_BYTES = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE * 2;
             if(queued_bytes > BUFFER_BYTES)
-                num_bytes = 0;
-            else if(num_bytes + queued_bytes > BUFFER_BYTES)
-                num_bytes = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE - queued_bytes;
-            else if(num_bytes + queued_bytes < BUFFER_BYTES)
             {
-                size_t b = (BUFFER_BYTES - queued_bytes) / SAMPLE_SIZE;
-                size_t a = buf.size();
-                auto v = buf.back();
-                buf.resize(b);
-                for(size_t i = a; i < b; ++i)
-                    buf[i] = v;
+                buf.clear();
             }
-            SDL_QueueAudio(
-                audio_device,
-                buf.data(),
-                buf.size() * sizeof(buf[0]));
+            else if(num_bytes + queued_bytes > BUFFER_BYTES)
+            {
+                num_bytes = BUFFER_BYTES - queued_bytes;
+                buf.resize(num_bytes / SAMPLE_SIZE);
+            }
+            if(!buf.empty())
+            {
+                SDL_QueueAudio(
+                    audio_device,
+                    buf.data(),
+                    buf.size() * sizeof(buf[0]));
+            }
         }
 #endif
         arduboy->cpu.sound_buffer.clear();
@@ -505,7 +507,7 @@ int main(int argc, char** argv)
         desired.freq = AUDIO_FREQ;
         desired.format = AUDIO_S16SYS;
         desired.channels = 1;
-        desired.samples = AUDIO_FREQ / 50;
+        desired.samples = MAX_AUDIO_LATENCY_SAMPLES;
         audio_device = SDL_OpenAudioDevice(
             nullptr, 0,
             &desired,
