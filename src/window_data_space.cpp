@@ -317,6 +317,19 @@ void window_data_space(bool& open)
         SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
         if(Begin("CPU Data Space", &open) && arduboy->cpu.decoded)
         {
+            if(arduboy->cpu.stack_check > 0x100)
+            {
+                float df = float(arduboy->cpu.stack_check - 0x100) / 2560;
+                Text("Globals: %d bytes (%d%%)",
+                    (int)(arduboy->cpu.stack_check - 0x100),
+                    (int)std::round(df * 100));
+                Text("Stack:   %d/%d bytes used (%d free)",
+                    (int)(2560 + 256 - arduboy->cpu.min_stack),
+                    (int)(2560 + 256 - arduboy->cpu.stack_check),
+                    (int)(arduboy->cpu.min_stack - arduboy->cpu.stack_check));
+                Separator();
+            }
+
             memed_data_space.DrawContents(
                 arduboy->cpu.data.data(),
                 arduboy->cpu.data.size());
