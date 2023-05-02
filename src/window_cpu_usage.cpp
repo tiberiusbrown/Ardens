@@ -67,7 +67,7 @@ static void window_contents()
 
         double z = plot->Axes[ImAxis_X1].Range.Size();
 
-        auto axis_flags =
+        constexpr auto axis_flags =
             ImPlotAxisFlags_NoInitialFit |
             ImPlotAxisFlags_NoMenus |
             ImPlotAxisFlags_NoSideSwitch |

@@ -38,7 +38,6 @@
 
 #include "common.hpp"
 
-constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 #ifdef __EMSCRIPTEN__
 constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = 4096;
 #else
@@ -230,6 +229,7 @@ static void main_loop()
             arduboy->cpu.stack_overflow = false;
 
         // consume sound buffer
+        process_sound_samples();
 #if !PROFILING
         if(!arduboy->cpu.sound_buffer.empty() && simulation_slowdown == 1000)
         {

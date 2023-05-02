@@ -33,7 +33,7 @@ static void hotspot_row(int i)
         Text("%12" PRIu64 "  ", h.count);
         SameLine();
     }
-    Text("%6.2f%%", double(h.count) * 100 / arduboy->cached_profiler_total);
+    Text("%6.2f%%", double(h.count) * 100 / arduboy->cached_profiler_total_with_sleep);
     SameLine();
     Text("0x%04x-0x%04x", addr_begin, addr_end);
     

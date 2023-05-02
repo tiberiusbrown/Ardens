@@ -115,6 +115,7 @@ void view_debugger()
                 }
                 ImGui::Separator();
                 ImGui::MenuItem("LEDs", nullptr, &settings.open_led);
+                ImGui::MenuItem("Sound", nullptr, &settings.open_sound);
                 ImGui::EndMenu();
             }
 
@@ -167,6 +168,7 @@ void view_debugger()
             window_cpu_usage(settings.open_cpu_usage);
             window_led(settings.open_led);
             window_serial(settings.open_serial);
+            window_sound(settings.open_sound);
         }
     }
 }

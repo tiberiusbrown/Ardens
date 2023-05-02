@@ -8,6 +8,8 @@
 #include "absim.hpp"
 #include "settings.hpp"
 
+constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
+
 extern std::unique_ptr<absim::arduboy_t> arduboy;
 extern SDL_Window* window;
 extern SDL_Renderer* renderer;
@@ -49,6 +51,9 @@ void view_debugger();
 void view_player();
 void settings_modal();
 
+constexpr size_t FFT_NUM_SAMPLES = 4096;
+void process_sound_samples();
+
 uint8_t* recording_pixels(bool rgba);
 int filter_zoom(int f);
 int display_filter_zoom();
@@ -74,3 +79,4 @@ void window_eeprom(bool& open);
 void window_cpu_usage(bool& open);
 void window_led(bool& open);
 void window_serial(bool& open);
+void window_sound(bool& open);

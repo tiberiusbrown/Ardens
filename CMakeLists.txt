@@ -150,6 +150,15 @@ set(SOKOL_SOURCES
     src/sokol/sokol_imgui.h
     src/sokol/sokol_time.h
     )
+set(SIMPLE_FFT_SOURCES
+    src/Simple-FFT/include/simple_fft/check_fft.hpp
+    src/Simple-FFT/include/simple_fft/copy_array.hpp
+    src/Simple-FFT/include/simple_fft/error_handling.hpp
+    src/Simple-FFT/include/simple_fft/fft.h
+    src/Simple-FFT/include/simple_fft/fft.hpp
+    src/Simple-FFT/include/simple_fft/fft_impl.hpp
+    src/Simple-FFT/include/simple_fft/fft_settings.h
+    )
 set(ABSIM_SOURCES
     src/absim.hpp
     src/absim_instructions.hpp
@@ -215,6 +224,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_cpu_usage.cpp
     src/window_led.cpp
     src/window_serial.cpp
+    src/window_sound.cpp
 
     ${ABSIM_SOURCES}
 
@@ -223,6 +233,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     ${IMPLOT_SOURCES}
     ${GIFENC_SOURCES}
     ${EM_FILE_BROWSER_SOURCES}
+    ${SIMPLE_FFT_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
@@ -246,7 +257,11 @@ if(ABSIM_LLVM)
     target_compile_definitions(arduboy_sim PRIVATE -DABSIM_LLVM)
 endif()
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
-target_include_directories(arduboy_sim PRIVATE src/imgui src/implot src/gifenc)
+target_include_directories(arduboy_sim PRIVATE
+    src/imgui
+    src/implot
+    src/gifenc
+    src/Simple-FFT/include)
 
 add_executable(arduboy_sim_player ${EXEFLAG}
     .editorconfig

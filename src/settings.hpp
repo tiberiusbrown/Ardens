@@ -34,6 +34,7 @@ struct settings_t
     bool open_cpu_usage = false;
     bool open_led = false;
     bool open_serial = false;
+    bool open_sound = false;
 
     bool fullzoom = false;
 
