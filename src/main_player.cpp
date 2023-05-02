@@ -152,6 +152,8 @@ static void process_sound()
         return;
     if(saudio_sample_rate() <= 0)
         return;
+    if(saudio_suspended())
+        return;
 
     std::vector<float> sbuf;
 
