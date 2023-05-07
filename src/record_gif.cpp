@@ -53,9 +53,11 @@ void screen_recording_toggle(uint8_t const* pixels)
         uint8_t palette[256 * 3];
         for(int i = 0; i < 256; ++i)
         {
-            palette[3 * i + 0] = i;
-            palette[3 * i + 1] = i;
-            palette[3 * i + 2] = i;
+            uint8_t t[4];
+            palette_rgba(settings.recording_palette, uint8_t(i), t);
+            palette[3 * i + 0] = t[0];
+            palette[3 * i + 1] = t[1];
+            palette[3 * i + 2] = t[2];
         }
         int depth = 8;
         char const* fname = gif_fname;

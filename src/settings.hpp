@@ -43,8 +43,10 @@ struct settings_t
     bool enable_step_breaks = true;
     bool enable_stack_breaks = true;
 
+    int display_palette = 0;
     int display_filtering = FILTER_NONE;
     int display_downsample = 1;
+    int recording_palette = 0;
     int recording_filtering = FILTER_NONE;
     int recording_downsample = 1;
     int recording_zoom = 1;

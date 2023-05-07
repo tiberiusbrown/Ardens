@@ -5,6 +5,42 @@ static uint8_t tmpbuf[128 * 64 * 2 * 2];
 
 int display_texture_zoom = -1;
 
+// palette handling
+void palette_rgba(int palette, uint8_t x, uint8_t y[4])
+{
+    switch(palette)
+    {
+    case PALETTE_GAMEBOY:
+    {
+        constexpr uint32_t P0 = 0x071820;
+        constexpr uint32_t P1 = 0x336856;
+        constexpr uint32_t P2 = 0x88c170;
+        constexpr uint32_t P3 = 0xe1f8d0;
+        for(int i = 0; i < 3; ++i)
+        {
+            uint32_t t;
+            uint32_t p0 = uint8_t(P0 >> (8 * i));
+            uint32_t p1 = uint8_t(P1 >> (8 * i));
+            uint32_t p2 = uint8_t(P2 >> (8 * i));
+            uint32_t p3 = uint8_t(P3 >> (8 * i));
+            if(x <= 0x55)
+                t = p0 + (p1 - p0) * (x - 0x00) / 0x55;
+            else if(x <= 0xaa)
+                t = p1 + (p2 - p1) * (x - 0x55) / 0x55;
+            else
+                t = p2 + (p3 - p2) * (x - 0xaa) / 0x55;
+            y[2 - i] = uint8_t(t);
+        }
+        break;
+    }
+    case PALETTE_DEFAULT:
+    default:
+        y[0] = y[1] = y[2] = x;
+        break;
+    }
+    y[3] = 255;
+}
+
 int filter_zoom(int f)
 {
     switch(f)
@@ -146,7 +182,7 @@ static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
     }
 }
 
-static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool rgba)
+static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool rgba, int palette)
 {
     static uint8_t downbuf[128 * 64 * 4 * 4];
 
@@ -192,12 +228,7 @@ static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool 
                 uint8_t p = t / d2;
                 int di = i * 128 * zd + j;
                 if(rgba)
-                {
-                    dst[di * 4 + 0] = p;
-                    dst[di * 4 + 1] = p;
-                    dst[di * 4 + 2] = p;
-                    dst[di * 4 + 3] = 255;
-                }
+                    palette_rgba(palette, p, &dst[di * 4]);
                 else
                     dst[di] = p;
             }
@@ -207,7 +238,12 @@ static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool 
 
 void scalenx(uint8_t* dst, uint8_t const* src, bool rgba)
 {
-    scalenx_filter(settings.display_filtering, settings.display_downsample, dst, src, rgba);
+    scalenx_filter(
+        settings.display_filtering,
+        settings.display_downsample,
+        dst, src,
+        rgba,
+        settings.display_palette);
 }
 
 
@@ -226,7 +262,12 @@ uint8_t* recording_pixels(bool rgba)
 
     pixels.resize(w * h * (rgba ? 4 : 1));
 
-    scalenx_filter(settings.recording_filtering, settings.recording_downsample, tmp, src, false);
+    scalenx_filter(
+        settings.recording_filtering,
+        settings.recording_downsample,
+        tmp, src,
+        false,
+        settings.recording_palette);
 
     // zoom and handle rgba here
     int rz = settings.recording_zoom;
@@ -242,12 +283,7 @@ uint8_t* recording_pixels(bool rgba)
                 {
                     int di = ((i * rz + m) * z * rz * 128) + (j * rz) + n;
                     if(rgba)
-                    {
-                        pixels[di * 4 + 0] = p;
-                        pixels[di * 4 + 1] = p;
-                        pixels[di * 4 + 2] = p;
-                        pixels[di * 4 + 3] = 255;
-                    }
+                        palette_rgba(settings.recording_palette, p, &pixels[di * 4]);
                     else
                         pixels[di] = p;
                 }

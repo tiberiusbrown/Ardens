@@ -11,7 +11,7 @@ void settings_modal()
         !IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopup))
         OpenPopup("Settings");
 
-    if(!BeginPopupModal("Settings", NULL,
+    if(!BeginPopupModal("Settings", nullptr,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
         return;
@@ -20,7 +20,7 @@ void settings_modal()
         ImGuiTableFlags_SizingFixedFit |
         ImGuiTableFlags_BordersH |
         ImGuiTableFlags_ScrollY,
-        ImVec2(0.f, GetFontSize() * 20.f)))
+        ImVec2(0.f, GetFontSize() * 25.f)))
     {
         TableNextRow();
         TableSetColumnIndex(0);
@@ -56,11 +56,28 @@ void settings_modal()
             }
         }
 
+        static char const* const PALETTE_ITEMS[] =
+        {
+                "Default", "Gameboy",
+        };
+        constexpr int NUM_PALETTE_ITEMS = sizeof(PALETTE_ITEMS) / sizeof(PALETTE_ITEMS[0]);
+        static_assert(NUM_PALETTE_ITEMS == PALETTE_MAX + 1, "");
+
         static char const* const FILTER_ITEMS[] =
         {
                 "None", "Scale2x", "Scale3x", "Scale4x",
         };
         constexpr int NUM_FILTER_ITEMS = sizeof(FILTER_ITEMS) / sizeof(FILTER_ITEMS[0]);
+
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
+        TextUnformatted("Display Palette");
+        TableSetColumnIndex(1);
+        SetNextItemWidth(-1.f);
+        if(Combo("##palettecombo", &settings.display_palette,
+            PALETTE_ITEMS, NUM_PALETTE_ITEMS))
+            update_settings();
 
         TableNextRow();
         TableSetColumnIndex(0);
@@ -84,6 +101,16 @@ void settings_modal()
             update_settings();
 
         if(gif_recording) BeginDisabled();
+
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
+        TextUnformatted("Recording Palette");
+        TableSetColumnIndex(1);
+        SetNextItemWidth(-1.f);
+        if(Combo("##recordingpalettecombo", &settings.recording_palette,
+            PALETTE_ITEMS, NUM_PALETTE_ITEMS))
+            update_settings();
 
         TableNextRow();
         TableSetColumnIndex(0);

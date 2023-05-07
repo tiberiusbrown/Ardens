@@ -1,4 +1,5 @@
 #include "settings.hpp"
+#include "common.hpp"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -49,8 +50,10 @@ static void settings_read_line(
     if(settings.n__ > max__) settings.n__ = max__; \
     } while(0)
 
+    ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(display_downsample, 1, 4);
+    ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(recording_downsample, 1, 4);
     ABSIM_INT_SETTING(recording_zoom, 1, 4);
@@ -92,15 +95,17 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
 
 #undef ABSIM_BOOL_SETTING
 
-#define ABSIM_INT_SETTING(n__) \
+#define ABSIM_INT_SETTING(n__, min__, max__) \
     buf->appendf(#n__ "=%d\n", settings.n__)
 
-    ABSIM_INT_SETTING(display_filtering);
-    ABSIM_INT_SETTING(display_downsample);
-    ABSIM_INT_SETTING(recording_filtering);
-    ABSIM_INT_SETTING(recording_downsample);
-    ABSIM_INT_SETTING(recording_zoom);
-    ABSIM_INT_SETTING(num_pixel_history);
+    ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
+    ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
+    ABSIM_INT_SETTING(display_downsample, 1, 4);
+    ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
+    ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
+    ABSIM_INT_SETTING(recording_downsample, 1, 4);
+    ABSIM_INT_SETTING(recording_zoom, 1, 4);
+    ABSIM_INT_SETTING(num_pixel_history, 1, 3);
 
 #undef ABSIM_INT_SETTING
 

@@ -54,6 +54,16 @@ void settings_modal();
 constexpr size_t FFT_NUM_SAMPLES = 4096;
 void process_sound_samples();
 
+enum
+{
+    PALETTE_DEFAULT,
+    PALETTE_GAMEBOY,
+
+    PALETTE_MIN = PALETTE_DEFAULT,
+    PALETTE_MAX = PALETTE_GAMEBOY,
+};
+
+void palette_rgba(int palette, uint8_t x, uint8_t y[4]);
 uint8_t* recording_pixels(bool rgba);
 int filter_zoom(int f);
 int display_filter_zoom();
