@@ -337,10 +337,12 @@ void ssd1306_t::filter_pixels()
         memcpy(&filtered_pixels, &pixels, sizeof(filtered_pixels));
         return;
     }
+    if(num_pixel_history > (int)pixels.size())
+        num_pixel_history = (int)pixels.size();
     memset(&filtered_pixel_counts, 0, sizeof(filtered_pixel_counts));
-    for(auto const& parray : pixels)
+    for(int n = 0; n < num_pixel_history; ++n)
         for(int i = 0; i < 8192; ++i)
-            filtered_pixel_counts[i] += parray[i];
+            filtered_pixel_counts[i] += pixels[n][i];
     for(int i = 0; i < 8192; ++i)
         filtered_pixels[i] = filtered_pixel_counts[i] / num_pixel_history;
 }
