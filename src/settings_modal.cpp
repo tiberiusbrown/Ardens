@@ -103,6 +103,14 @@ void settings_modal()
         if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
             update_settings();
 
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
+        TextUnformatted("Display Scan Lines");
+        TableSetColumnIndex(1);
+        if(Checkbox("##scanlines", &settings.display_scanlines))
+            update_settings();
+
         if(gif_recording) BeginDisabled();
 
         TableNextRow();

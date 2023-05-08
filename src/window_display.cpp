@@ -34,7 +34,12 @@ void window_display(bool& open)
                 display_texture,
                 smaller ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
 
-            Image(display_texture, { w, h });
+            {
+                auto* d = GetWindowDrawList();
+                ImVec2 a = GetCursorScreenPos();
+                ImVec2 b = { a.x + w, a.y + h };
+                display_with_scanlines(d, a, b);
+            }
 #if 0
             AlignTextToFramePadding();
             TextUnformatted("Filter for:");

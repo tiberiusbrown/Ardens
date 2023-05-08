@@ -41,6 +41,7 @@ struct settings_t
     bool open_sound = false;
 
     bool fullzoom = false;
+    bool display_scanlines = false;
 
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;

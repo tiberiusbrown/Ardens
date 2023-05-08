@@ -49,6 +49,9 @@ uint32_t darker_color_for_index(size_t index);
 
 void view_debugger();
 void view_player();
+struct ImDrawList;
+struct ImVec2;
+void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b);
 void settings_modal();
 
 constexpr size_t FFT_NUM_SAMPLES = 4096;

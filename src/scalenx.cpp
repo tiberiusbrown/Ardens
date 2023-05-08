@@ -84,9 +84,10 @@ void recreate_display_texture()
     if(z == display_texture_zoom)
         return;
 
+    display_texture_zoom = z;
+
     if(display_texture)
         SDL_DestroyTexture(display_texture);
-
 
     display_texture = SDL_CreateTexture(
         renderer,
