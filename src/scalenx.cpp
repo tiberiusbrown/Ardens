@@ -1,5 +1,8 @@
 #include "common.hpp"
 
+#include <hqx/HQ2x.hh>
+#include <hqx/HQ3x.hh>
+
 // used for scale4x first stage
 static uint8_t tmpbuf[128 * 64 * 2 * 2];
 
@@ -45,11 +48,14 @@ int filter_zoom(int f)
 {
     switch(f)
     {
-    case FILTER_NONE:    return 1; break;
-    case FILTER_SCALE2X: return 2; break;
-    case FILTER_SCALE3X: return 3; break;
-    case FILTER_SCALE4X: return 4; break;
-    default:             return 1; break;
+    case FILTER_NONE:    return 1;
+    case FILTER_SCALE2X: return 2;
+    case FILTER_SCALE3X: return 3;
+    case FILTER_SCALE4X: return 4;
+    case FILTER_HQ2X:    return 2;
+    case FILTER_HQ3X:    return 3;
+    case FILTER_HQ4X:    return 4;
+    default:             return 1;
     }
 }
 
@@ -182,6 +188,46 @@ static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
     }
 }
 
+static uint32_t hqbuf_src[128 * 64 * 2 * 2];
+static uint32_t hqbuf_dst[128 * 64 * 4 * 4];
+
+static void hqx_convert_src(uint8_t const* src, int n)
+{
+    assert(n <= sizeof(hqbuf_src) * sizeof(uint32_t));
+    for(int i = 0; i < n; ++i)
+    {
+        uint32_t t = src[i];
+        hqbuf_src[i] = t | (t << 8) | (t << 16) | 0xff000000;
+    }
+}
+
+static void hqx_convert_dst(uint8_t* dst, int n)
+{
+    assert(n <= sizeof(hqbuf_dst) * sizeof(uint32_t));
+    for(int i = 0; i < n; ++i)
+        dst[i] = (uint8_t)hqbuf_dst[i];
+}
+
+static void hq2x(uint8_t* dst, uint8_t const* src, int wd, int ht)
+{
+    hqx_convert_src(src, wd * ht);
+
+    HQ2x h;
+    h.resize(hqbuf_src, (uint32_t)wd, (uint32_t)ht, hqbuf_dst);
+
+    hqx_convert_dst(dst, wd * ht * 4);
+}
+
+static void hq3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
+{
+    hqx_convert_src(src, wd * ht);
+
+    HQ3x h;
+    h.resize(hqbuf_src, (uint32_t)wd, (uint32_t)ht, hqbuf_dst);
+
+    hqx_convert_dst(dst, wd * ht * 9);
+}
+
 static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool rgba, int palette)
 {
     static uint8_t downbuf[128 * 64 * 4 * 4];
@@ -207,6 +253,16 @@ static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool 
     case FILTER_SCALE4X:
         scale2x(tmpbuf, src, 128, 64);
         scale2x(tdst, tmpbuf, 256, 128);
+        break;
+    case FILTER_HQ2X:
+        hq2x(tdst, src, 128, 64);
+        break;
+    case FILTER_HQ3X:
+        hq3x(tdst, src, 128, 64);
+        break;
+    case FILTER_HQ4X:
+        hq2x(tmpbuf, src, 128, 64);
+        hq2x(tdst, tmpbuf, 256, 128);
         break;
     default:
         break;

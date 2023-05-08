@@ -159,6 +159,14 @@ set(SIMPLE_FFT_SOURCES
     src/Simple-FFT/include/simple_fft/fft_impl.hpp
     src/Simple-FFT/include/simple_fft/fft_settings.h
     )
+set(HQX_SOURCES
+    src/hqx/include/hqx/HQx.hh
+    src/hqx/include/hqx/HQ2x.hh
+    src/hqx/include/hqx/HQ3x.hh
+    src/hqx/source/HQx.cc
+    src/hqx/source/HQ2x.cc
+    src/hqx/source/HQ3x.cc
+    )
 set(ABSIM_SOURCES
     src/absim.hpp
     src/absim_instructions.hpp
@@ -234,6 +242,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     ${GIFENC_SOURCES}
     ${EM_FILE_BROWSER_SOURCES}
     ${SIMPLE_FFT_SOURCES}
+    ${HQX_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
     SDL2-static
@@ -261,7 +270,8 @@ target_include_directories(arduboy_sim PRIVATE
     src/imgui
     src/implot
     src/gifenc
-    src/Simple-FFT/include)
+    src/Simple-FFT/include
+    src/hqx/include)
 
 add_executable(arduboy_sim_player ${EXEFLAG}
     .editorconfig

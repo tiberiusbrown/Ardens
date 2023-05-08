@@ -65,9 +65,12 @@ void settings_modal()
 
         static char const* const FILTER_ITEMS[] =
         {
-                "None", "Scale2x", "Scale3x", "Scale4x",
+                "None",
+                "Scale2x", "Scale3x", "Scale4x",
+                "HQ2x", "HQ3x", "HQ4x",
         };
         constexpr int NUM_FILTER_ITEMS = sizeof(FILTER_ITEMS) / sizeof(FILTER_ITEMS[0]);
+        static_assert(NUM_FILTER_ITEMS == FILTER_MAX + 1, "");
 
         TableNextRow();
         TableSetColumnIndex(0);
