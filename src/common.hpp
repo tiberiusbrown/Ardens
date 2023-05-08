@@ -61,9 +61,10 @@ enum
 {
     PALETTE_DEFAULT,
     PALETTE_GAMEBOY,
+    PALETTE_LOW_CONTRAST,
 
     PALETTE_MIN = PALETTE_DEFAULT,
-    PALETTE_MAX = PALETTE_GAMEBOY,
+    PALETTE_MAX = PALETTE_LOW_CONTRAST,
 };
 
 void palette_rgba(int palette, uint8_t x, uint8_t y[4]);
