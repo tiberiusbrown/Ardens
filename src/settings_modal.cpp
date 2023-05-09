@@ -78,6 +78,7 @@ void settings_modal()
                 "Off", "Normal",
                 "Red", "Green", "Blue",
                 "Cyan", "Magenta", "Yellow",
+                "White",
         };
         constexpr int NUM_PGRID_ITEMS = sizeof(PGRID_ITEMS) / sizeof(PGRID_ITEMS[0]);
         static_assert(NUM_PGRID_ITEMS == PGRID_MAX + 1, "");
@@ -89,7 +90,7 @@ void settings_modal()
         TableSetColumnIndex(1);
         SetNextItemWidth(W);
         if(Combo("##pgrid", &settings.display_pixel_grid,
-            PGRID_ITEMS, NUM_PGRID_ITEMS))
+            PGRID_ITEMS, NUM_PGRID_ITEMS, NUM_PGRID_ITEMS))
             update_settings();
 
         if(gif_recording) BeginDisabled();

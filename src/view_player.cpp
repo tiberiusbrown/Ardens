@@ -20,6 +20,7 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
     case PGRID_CYAN:    line_color = IM_COL32(0, T, T, A); break;
     case PGRID_MAGENTA: line_color = IM_COL32(T, 0, T, A); break;
     case PGRID_YELLOW:  line_color = IM_COL32(T, T, 0, A); break;
+    case PGRID_WHITE:   line_color = IM_COL32(T, T, T, A); break;
     case PGRID_NORMAL:
     default:
     {
