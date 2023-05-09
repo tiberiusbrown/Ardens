@@ -10,17 +10,22 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
     if(w < 128 * 3) return;
 
     ImU32 line_color;
+    constexpr uint8_t T = 192;
+    constexpr uint8_t A = 128;
     switch(settings.display_pixel_grid)
     {
-    case PGRID_RED:
-        line_color = IM_COL32(192, 0, 0, 128);
-        break;
+    case PGRID_RED:     line_color = IM_COL32(T, 0, 0, A); break;
+    case PGRID_GREEN:   line_color = IM_COL32(0, T, 0, A); break;
+    case PGRID_BLUE:    line_color = IM_COL32(0, 0, T, A); break;
+    case PGRID_CYAN:    line_color = IM_COL32(0, T, T, A); break;
+    case PGRID_MAGENTA: line_color = IM_COL32(T, 0, T, A); break;
+    case PGRID_YELLOW:  line_color = IM_COL32(T, T, 0, A); break;
     case PGRID_NORMAL:
     default:
     {
         uint8_t t[4];
         palette_rgba(settings.display_palette, 0, t);
-        line_color = IM_COL32(t[0], t[1], t[2], 128);
+        line_color = IM_COL32(t[0], t[1], t[2], A);
         break;
     }
     }

@@ -75,7 +75,9 @@ void settings_modal()
 
         static char const* const PGRID_ITEMS[] =
         {
-                "Off", "Normal", "Red",
+                "Off", "Normal",
+                "Red", "Green", "Blue",
+                "Cyan", "Magenta", "Yellow",
         };
         constexpr int NUM_PGRID_ITEMS = sizeof(PGRID_ITEMS) / sizeof(PGRID_ITEMS[0]);
         static_assert(NUM_PGRID_ITEMS == PGRID_MAX + 1, "");
