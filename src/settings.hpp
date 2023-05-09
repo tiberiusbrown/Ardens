@@ -42,6 +42,7 @@ struct settings_t
 
     bool fullzoom = false;
     bool display_scanlines = false;
+    bool display_highvislines = false;
 
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;

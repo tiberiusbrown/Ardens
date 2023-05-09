@@ -42,6 +42,7 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(enable_stack_breaks);
     ABSIM_BOOL_SETTING(fullzoom);
     ABSIM_BOOL_SETTING(display_scanlines);
+    ABSIM_BOOL_SETTING(display_highvislines);
 
 #undef ABSIM_BOOL_SETTING
 
@@ -94,6 +95,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(enable_stack_breaks);
     ABSIM_BOOL_SETTING(fullzoom);
     ABSIM_BOOL_SETTING(display_scanlines);
+    ABSIM_BOOL_SETTING(display_highvislines);
 
 #undef ABSIM_BOOL_SETTING
 

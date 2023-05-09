@@ -18,40 +18,32 @@ void settings_modal()
 
     if(BeginTable("##table", 2,
         ImGuiTableFlags_SizingFixedFit |
-        ImGuiTableFlags_BordersH |
         ImGuiTableFlags_ScrollY,
         ImVec2(0.f, GetFontSize() * 25.f)))
     {
+        static char const* const LEVELS_ITEMS[] =
+        {
+                "Monochrome", "3-Level", "4-Level"
+        };
+        constexpr int NUM_LEVELS_ITEMS = sizeof(LEVELS_ITEMS) / sizeof(LEVELS_ITEMS[0]);
+
+        float const W =
+            CalcTextSize("Low Contrast").x +
+            GetFrameHeight() +
+            GetStyle().FramePadding.x * 2;
+
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
         TextUnformatted("Display Levels");
         TableSetColumnIndex(1);
         {
-            int num = settings.num_pixel_history;
-            if(RadioButton("Monochrome", num <= 1))
-                num = 1;
-            //SameLine();
-            if(RadioButton("3-Level", num == 2))
-                num = 2;
-            if(IsItemHovered())
+            int num = settings.num_pixel_history - 1;
+            SetNextItemWidth(W);
+            if(Combo("##levelscombo", &num,
+                LEVELS_ITEMS, NUM_LEVELS_ITEMS))
             {
-                BeginTooltip();
-                TextUnformatted("Average the last 2 display frames");
-                EndTooltip();
-            }
-            //SameLine();
-            if(RadioButton("4-Level", num >= 3))
-                num = 3;
-            if(IsItemHovered())
-            {
-                BeginTooltip();
-                TextUnformatted("Average the last 3 display frames");
-                EndTooltip();
-            }
-            if(num != settings.num_pixel_history)
-            {
-                settings.num_pixel_history = num;
+                settings.num_pixel_history = num + 1;
                 update_settings();
             }
         }
@@ -77,7 +69,7 @@ void settings_modal()
         AlignTextToFramePadding();
         TextUnformatted("Display Palette");
         TableSetColumnIndex(1);
-        SetNextItemWidth(-1.f);
+        SetNextItemWidth(W);
         if(Combo("##palettecombo", &settings.display_palette,
             PALETTE_ITEMS, NUM_PALETTE_ITEMS))
             update_settings();
@@ -87,7 +79,7 @@ void settings_modal()
         AlignTextToFramePadding();
         TextUnformatted("Display Filter");
         TableSetColumnIndex(1);
-        SetNextItemWidth(-1.f);
+        SetNextItemWidth(W);
         if(Combo("##filtercombo", &settings.display_filtering,
             FILTER_ITEMS, NUM_FILTER_ITEMS))
             update_settings();
@@ -99,26 +91,38 @@ void settings_modal()
         AlignTextToFramePadding();
         TextUnformatted("Display Downsample");
         TableSetColumnIndex(1);
-        SetNextItemWidth(-1.f);
+        SetNextItemWidth(W);
         if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
             update_settings();
 
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
-        TextUnformatted("Display Scan Lines");
+        TextUnformatted("Display Pixel Grid");
         TableSetColumnIndex(1);
         if(Checkbox("##scanlines", &settings.display_scanlines))
             update_settings();
 
+        if(!settings.display_scanlines) BeginDisabled();
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
+        TextUnformatted("High-Vis Pixel Grid");
+        TableSetColumnIndex(1);
+        if(Checkbox("##highvislines", &settings.display_highvislines))
+            update_settings();
+        if(!settings.display_scanlines) EndDisabled();
+
         if(gif_recording) BeginDisabled();
+
+        TableNextRow(0, pixel_ratio * 12);
 
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
         TextUnformatted("Recording Palette");
         TableSetColumnIndex(1);
-        SetNextItemWidth(-1.f);
+        SetNextItemWidth(W);
         if(Combo("##recordingpalettecombo", &settings.recording_palette,
             PALETTE_ITEMS, NUM_PALETTE_ITEMS))
             update_settings();
@@ -140,7 +144,7 @@ void settings_modal()
         AlignTextToFramePadding();
         TextUnformatted("Recording Downsample");
         TableSetColumnIndex(1);
-        SetNextItemWidth(-1.f);
+        SetNextItemWidth(W);
         if(SliderInt("##recordingdown", &settings.recording_downsample, 1, 4, "%dx"))
             update_settings();
 
@@ -149,28 +153,13 @@ void settings_modal()
         AlignTextToFramePadding();
         TextUnformatted("Recording Zoom");
         TableSetColumnIndex(1);
-        SetNextItemWidth(-1.f);
+        SetNextItemWidth(W);
         if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
             update_settings();
 
-        if(gif_recording) EndDisabled();
+        TableNextRow(0, pixel_ratio * 12);
 
-        //{
-        //    int f = settings.display_filtering;
-        //    if(RadioButton("None", f <= FILTER_NONE))
-        //        f = FILTER_NONE;
-        //    if(RadioButton("Scale2x", f == FILTER_SCALE2X))
-        //        f = FILTER_SCALE2X;
-        //    if(RadioButton("Scale3x", f == FILTER_SCALE3X))
-        //        f = FILTER_SCALE3X;
-        //    if(RadioButton("Scale4x", f >= FILTER_SCALE4X))
-        //        f = FILTER_SCALE4X;
-        //    if(f != settings.display_filtering)
-        //    {
-        //        settings.display_filtering = f;
-        //        update_settings();
-        //    }
-        //}
+        if(gif_recording) EndDisabled();
 
         TableNextRow();
         TableSetColumnIndex(0);

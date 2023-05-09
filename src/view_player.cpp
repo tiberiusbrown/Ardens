@@ -10,11 +10,17 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
     if(w < 128 * 3) return;
 
     ImU32 line_color;
+    if(settings.display_highvislines)
+    {
+        line_color = IM_COL32(192, 0, 0, 128);
+    }
+    else
     {
         uint8_t t[4];
         palette_rgba(settings.display_palette, 0, t);
         line_color = IM_COL32(t[0], t[1], t[2], 128);
     }
+
 
     float const inc = w * (1.f / 128);
     float const line_thickness = inc * 0.25f;
