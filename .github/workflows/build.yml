@@ -33,12 +33,12 @@ jobs:
         echo "tag=$tag" >> $GITHUB_OUTPUT
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
+        name: ${{ steps.create_tag.outputs.tag }}
         tag_name: ${{ steps.create_tag.outputs.tag }}
-        release_name: ${{ steps.create_tag.outputs.tag }}
         draft: true
         prerelease: false
 
@@ -108,14 +108,12 @@ jobs:
         folder: ${{github.workspace}}/arduboy_sim_web
   
     - name: Release
-      uses: actions/upload-release-asset@v1
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: ${{github.workspace}}/arduboy_sim_web.zip
-        asset_name: arduboy_sim_web.zip
-        asset_content_type: application/zip
+        files: |
+          arduboy_sim_web.zip
 
   #build_ubuntu:
   #
@@ -161,14 +159,12 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
   
     - name: Release
-      uses: actions/upload-release-asset@v1
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
-        asset_name: arduboy_sim_x86.exe
-        asset_content_type: application/octet-stream
+        files: |
+          arduboy_sim_x86.exe
   
   build_windows_x64:
   
@@ -189,14 +185,12 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
   
     - name: Release
-      uses: actions/upload-release-asset@v1
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ needs.release.outputs.upload_url }}
-        asset_path: ${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe
-        asset_name: arduboy_sim_x64.exe
-        asset_content_type: application/octet-stream
+        files: |
+          arduboy_sim_x64.exe
   
   #build_macos:
   #
