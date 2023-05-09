@@ -110,7 +110,7 @@ void settings_modal()
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
-        TextUnformatted("Recording Filter");
+        TextUnformatted("Recording Upsample");
         TableSetColumnIndex(1);
         SetNextItemWidth(-1.f);
         if(Combo("##recordingfiltercombo", &settings.recording_filtering,
