@@ -309,9 +309,7 @@ void ABSIM_FORCEINLINE ssd1306_t::update_pixels_row()
 
     if((mux_ratio >= 16 && row == mux_ratio) || row >= 63)
     {
-        if(num_pixel_history > MAX_PIXEL_HISTORY)
-            num_pixel_history = MAX_PIXEL_HISTORY;
-        if(++pixel_history_index >= num_pixel_history)
+        if(++pixel_history_index >= 4)
             pixel_history_index = 0;
         vsync = true;
     }
@@ -328,23 +326,22 @@ void ABSIM_FORCEINLINE ssd1306_t::update_pixels_row()
         // decrement because the Arduboy's display is upside-down
         parray[--pindex] = p;
     }
+    if(vsync)
+        filter_pixels();
 }
 
 void ssd1306_t::filter_pixels()
 {
-    if(num_pixel_history <= 1)
-    {
-        memcpy(&filtered_pixels, &pixels, sizeof(filtered_pixels));
-        return;
-    }
-    if(num_pixel_history > (int)pixels.size())
-        num_pixel_history = (int)pixels.size();
     memset(&filtered_pixel_counts, 0, sizeof(filtered_pixel_counts));
-    for(int n = 0; n < num_pixel_history; ++n)
+    static constexpr uint8_t C[4] = { 42, 84, 84, 42 };
+    for(int n = 0; n < 4; ++n)
+    {
+        uint8_t c = C[(7 - n + pixel_history_index) % 4];
         for(int i = 0; i < 8192; ++i)
-            filtered_pixel_counts[i] += pixels[n][i];
+            filtered_pixel_counts[i] += pixels[n][i] * c;
+    }
     for(int i = 0; i < 8192; ++i)
-        filtered_pixels[i] = filtered_pixel_counts[i] / num_pixel_history;
+        filtered_pixels[i] = uint8_t(filtered_pixel_counts[i] / 256);
 }
 
 bool ABSIM_FORCEINLINE ssd1306_t::advance(uint64_t ps)

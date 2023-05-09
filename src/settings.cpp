@@ -18,6 +18,12 @@ static void settings_read_line(
 {
 #define ABSIM_BOOL_SETTING(n__) \
     { int d; if(sscanf(line, #n__ "=%d", &d) == 1) settings.n__ = !!d; }
+
+#define ABSIM_INT_SETTING(n__, min__, max__) do { int d; \
+    if(sscanf(line, #n__ "=%d", &d) == 1) settings.n__ = d; \
+    if(settings.n__ < min__) settings.n__ = min__; \
+    if(settings.n__ > max__) settings.n__ = max__; \
+    } while(0)
     
     ABSIM_BOOL_SETTING(open_display);
     ABSIM_BOOL_SETTING(open_display_buffer);
@@ -41,26 +47,17 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(enable_step_breaks);
     ABSIM_BOOL_SETTING(enable_stack_breaks);
     ABSIM_BOOL_SETTING(fullzoom);
-    ABSIM_BOOL_SETTING(display_scanlines);
-    ABSIM_BOOL_SETTING(display_highvislines);
-
-#undef ABSIM_BOOL_SETTING
-
-#define ABSIM_INT_SETTING(n__, min__, max__) do { int d; \
-    if(sscanf(line, #n__ "=%d", &d) == 1) settings.n__ = d; \
-    if(settings.n__ < min__) settings.n__ = min__; \
-    if(settings.n__ > max__) settings.n__ = max__; \
-    } while(0)
 
     ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(display_downsample, 1, 4);
+    ABSIM_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
     ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(recording_downsample, 1, 4);
     ABSIM_INT_SETTING(recording_zoom, 1, 4);
-    ABSIM_INT_SETTING(num_pixel_history, 1, 3);
 
+#undef ABSIM_BOOL_SETTING
 #undef ABSIM_INT_SETTING
 }
 
@@ -71,6 +68,9 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
 
 #define ABSIM_BOOL_SETTING(n__) \
     buf->appendf(#n__ "=%d\n", (int)settings.n__)
+
+#define ABSIM_INT_SETTING(n__, min__, max__) \
+    buf->appendf(#n__ "=%d\n", settings.n__)
 
     ABSIM_BOOL_SETTING(open_display);
     ABSIM_BOOL_SETTING(open_display_buffer);
@@ -94,23 +94,17 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(enable_step_breaks);
     ABSIM_BOOL_SETTING(enable_stack_breaks);
     ABSIM_BOOL_SETTING(fullzoom);
-    ABSIM_BOOL_SETTING(display_scanlines);
-    ABSIM_BOOL_SETTING(display_highvislines);
-
-#undef ABSIM_BOOL_SETTING
-
-#define ABSIM_INT_SETTING(n__, min__, max__) \
-    buf->appendf(#n__ "=%d\n", settings.n__)
 
     ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(display_downsample, 1, 4);
+    ABSIM_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
     ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(recording_downsample, 1, 4);
     ABSIM_INT_SETTING(recording_zoom, 1, 4);
-    ABSIM_INT_SETTING(num_pixel_history, 1, 3);
 
+#undef ABSIM_BOOL_SETTING
 #undef ABSIM_INT_SETTING
 
     buf->append("\n");

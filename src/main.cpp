@@ -94,15 +94,6 @@ extern "C" int setparam(char const* name, char const* value)
         update_settings();
         return 1;
     }
-    else if(p == "g")
-    {
-        int g = 1;
-        if(*value == '2') g = 2;
-        if(*value == '3') g = 3;
-        settings.num_pixel_history = g;
-        update_settings();
-        return 1;
-    }
     return 0;
 }
 
@@ -218,7 +209,7 @@ static void main_loop()
 #endif
 
         bool prev_paused = arduboy->paused;
-        arduboy->frame_bytes_total = (settings.num_pixel_history == 1 ? 1024 : 0);
+        arduboy->frame_bytes_total = 1024;
         arduboy->cpu.enable_stack_break = settings.enable_stack_breaks;
         arduboy->allow_nonstep_breakpoints =
             arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
@@ -271,9 +262,6 @@ static void main_loop()
     {
         void* pixels = nullptr;
         int pitch = 0;
-        arduboy->display.num_pixel_history = settings.num_pixel_history;
-        arduboy->display.filter_pixels();
-
         recreate_display_texture();
         SDL_LockTexture(display_texture, nullptr, &pixels, &pitch);
         scalenx((uint8_t*)pixels, arduboy->display.filtered_pixels.data(), true);

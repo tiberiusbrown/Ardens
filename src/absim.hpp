@@ -480,10 +480,9 @@ struct ssd1306_t
     std::array<uint16_t, 8192> filtered_pixel_counts;
 
     // moving average
-    static constexpr int MAX_PIXEL_HISTORY = 3;
+    static constexpr int MAX_PIXEL_HISTORY = 4;
     std::array<std::array<uint8_t, 8192>, MAX_PIXEL_HISTORY> pixels;
     int pixel_history_index;
-    int num_pixel_history;
 
     // physical display RAM
     std::array<uint8_t, 1024> ram;

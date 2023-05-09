@@ -4,23 +4,26 @@
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 {
     d->AddImage(display_texture, a, b);
-    if(!settings.display_scanlines) return;
+    if(settings.display_pixel_grid == PGRID_NONE) return;
     if(display_texture_zoom != 1) return;
     float w = b.x - a.x;
     if(w < 128 * 3) return;
 
     ImU32 line_color;
-    if(settings.display_highvislines)
+    switch(settings.display_pixel_grid)
     {
+    case PGRID_RED:
         line_color = IM_COL32(192, 0, 0, 128);
-    }
-    else
+        break;
+    case PGRID_NORMAL:
+    default:
     {
         uint8_t t[4];
         palette_rgba(settings.display_palette, 0, t);
         line_color = IM_COL32(t[0], t[1], t[2], 128);
+        break;
     }
-
+    }
 
     float const inc = w * (1.f / 128);
     float const line_thickness = inc * 0.25f;

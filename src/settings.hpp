@@ -41,8 +41,6 @@ struct settings_t
     bool open_sound = false;
 
     bool fullzoom = false;
-    bool display_scanlines = false;
-    bool display_highvislines = false;
 
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;
@@ -52,11 +50,11 @@ struct settings_t
     int display_palette = 0;
     int display_filtering = FILTER_NONE;
     int display_downsample = 1;
+    int display_pixel_grid = 0;
     int recording_palette = 0;
     int recording_filtering = FILTER_NONE;
     int recording_downsample = 1;
     int recording_zoom = 1;
-    int num_pixel_history = 1;
 };
 
 extern settings_t settings;

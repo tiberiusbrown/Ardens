@@ -37,8 +37,6 @@ static bool btn_right;
 static bool btn_a;
 static bool btn_b;
 
-static int num_pixel_history = 1;
-
 static sg_image framebuffer;
 static uint8_t pixels[128 * 64 * 4];
 
@@ -47,14 +45,6 @@ extern "C" int setparam(char const* name, char const* value)
 {
     if(!name || !value) return 0;
     std::string p(name);
-    if(p == "g")
-    {
-        int g = 1;
-        if(*value == '2') g = 2;
-        if(*value == '3') g = 3;
-        num_pixel_history = g;
-        return 1;
-    }
     return 0;
 }
 
@@ -197,13 +187,12 @@ static void app_frame()
         arduboy->cpu.data[0x2c] = pine;
         arduboy->cpu.data[0x2f] = pinf;
 
-        arduboy->frame_bytes_total = (num_pixel_history == 1 ? 1024 : 0);
+        arduboy->frame_bytes_total = 1024;
         arduboy->cpu.enable_stack_break = false;
         arduboy->allow_nonstep_breakpoints = false;
         arduboy->advance(ps);
 
         {
-            arduboy->display.num_pixel_history = num_pixel_history;
             arduboy->display.filter_pixels();
             uint8_t const* p = arduboy->display.filtered_pixels.data();
             for(int i = 0; i < 128 * 64; ++i)

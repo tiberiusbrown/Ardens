@@ -169,7 +169,6 @@ static std::string serdes(Archive& ar, arduboy_t& a)
     ar(a.display.filtered_pixel_counts);
     ar(a.display.pixels);
     ar(a.display.pixel_history_index);
-    ar(a.display.num_pixel_history);
     ar(a.display.ram);
     ar(a.display.contrast);
     ar(a.display.entire_display_on);

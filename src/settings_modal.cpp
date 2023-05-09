@@ -21,32 +21,10 @@ void settings_modal()
         ImGuiTableFlags_ScrollY,
         ImVec2(0.f, GetFontSize() * 25.f)))
     {
-        static char const* const LEVELS_ITEMS[] =
-        {
-                "Monochrome", "3-Level", "4-Level"
-        };
-        constexpr int NUM_LEVELS_ITEMS = sizeof(LEVELS_ITEMS) / sizeof(LEVELS_ITEMS[0]);
-
         float const W =
             CalcTextSize("Low Contrast").x +
             GetFrameHeight() +
             GetStyle().FramePadding.x * 2;
-
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Display Levels");
-        TableSetColumnIndex(1);
-        {
-            int num = settings.num_pixel_history - 1;
-            SetNextItemWidth(W);
-            if(Combo("##levelscombo", &num,
-                LEVELS_ITEMS, NUM_LEVELS_ITEMS))
-            {
-                settings.num_pixel_history = num + 1;
-                update_settings();
-            }
-        }
 
         static char const* const PALETTE_ITEMS[] =
         {
@@ -77,7 +55,7 @@ void settings_modal()
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
-        TextUnformatted("Display Filter");
+        TextUnformatted("Display Upsample");
         TableSetColumnIndex(1);
         SetNextItemWidth(W);
         if(Combo("##filtercombo", &settings.display_filtering,
@@ -95,23 +73,22 @@ void settings_modal()
         if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
             update_settings();
 
+        static char const* const PGRID_ITEMS[] =
+        {
+                "Off", "Normal", "Red",
+        };
+        constexpr int NUM_PGRID_ITEMS = sizeof(PGRID_ITEMS) / sizeof(PGRID_ITEMS[0]);
+        static_assert(NUM_PGRID_ITEMS == PGRID_MAX + 1, "");
+
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
         TextUnformatted("Display Pixel Grid");
         TableSetColumnIndex(1);
-        if(Checkbox("##scanlines", &settings.display_scanlines))
+        SetNextItemWidth(W);
+        if(Combo("##pgrid", &settings.display_pixel_grid,
+            PGRID_ITEMS, NUM_PGRID_ITEMS))
             update_settings();
-
-        if(!settings.display_scanlines) BeginDisabled();
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("High-Vis Pixel Grid");
-        TableSetColumnIndex(1);
-        if(Checkbox("##highvislines", &settings.display_highvislines))
-            update_settings();
-        if(!settings.display_scanlines) EndDisabled();
 
         if(gif_recording) BeginDisabled();
 

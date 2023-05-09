@@ -67,6 +67,16 @@ enum
     PALETTE_MAX = PALETTE_LOW_CONTRAST,
 };
 
+enum
+{
+    PGRID_NONE,
+    PGRID_NORMAL,
+    PGRID_RED,
+
+    PGRID_MIN = PGRID_NONE,
+    PGRID_MAX = PGRID_RED,
+};
+
 void palette_rgba(int palette, uint8_t x, uint8_t y[4]);
 uint8_t* recording_pixels(bool rgba);
 int filter_zoom(int f);
