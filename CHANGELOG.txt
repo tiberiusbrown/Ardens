@@ -1,3 +1,7 @@
+v0.14.0
+* Display scan lines setting
+* Low contrast palette
+
 v0.13.0
 * HQx family of filters
 
