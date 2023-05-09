@@ -213,7 +213,23 @@ static void main_loop()
         arduboy->cpu.enable_stack_break = settings.enable_stack_breaks;
         arduboy->allow_nonstep_breakpoints =
             arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
-        arduboy->advance(dt * 1000000000000ull / simulation_slowdown);
+
+        if(gif_recording)
+        {
+            uint64_t ms = 20 - gif_ms_rem;
+            while(dt >= ms)
+            {
+                arduboy->advance(ms * 1000000000000ull / simulation_slowdown);
+                send_gif_frame(2, recording_pixels(false));
+                dt -= ms;
+                ms = 20;
+                gif_ms_rem = 0;
+            }
+            gif_ms_rem = dt;
+        }
+        if(dt > 0)
+            arduboy->advance(dt * 1000000000000ull / simulation_slowdown);
+
         if(arduboy->paused && !prev_paused)
             disassembly_scroll_addr = arduboy->cpu.pc * 2;
         if(!settings.enable_stack_breaks)
@@ -317,15 +333,6 @@ static void main_loop()
         else if(simulation_slowdown == 1000 && ImGui::IsKeyPressed(ImGuiKey_F3, false))
         {
             screen_recording_toggle(recording_pixels(false));
-        }
-        else if(gif_recording)
-        {
-            gif_ms_rem += dt;
-            while(gif_ms_rem >= 20)
-            {
-                send_gif_frame(2, recording_pixels(false));
-                gif_ms_rem -= 20;
-            }
         }
 #endif
     }
