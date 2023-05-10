@@ -60,7 +60,7 @@ void process_sound_samples();
 enum
 {
     PALETTE_DEFAULT,
-    PALETTE_GAMEBOY,
+    PALETTE_RETRO,
     PALETTE_LOW_CONTRAST,
 
     PALETTE_MAX_PLUS_ONE,

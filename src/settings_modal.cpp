@@ -28,7 +28,7 @@ void settings_modal()
 
         static char const* const PALETTE_ITEMS[] =
         {
-                "Default", "Gameboy", "Low Contrast"
+                "Default", "Retro", "Low Contrast"
         };
         constexpr int NUM_PALETTE_ITEMS = sizeof(PALETTE_ITEMS) / sizeof(PALETTE_ITEMS[0]);
         static_assert(NUM_PALETTE_ITEMS == PALETTE_MAX + 1, "");
