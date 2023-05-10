@@ -483,6 +483,7 @@ struct ssd1306_t
     static constexpr int MAX_PIXEL_HISTORY = 4;
     std::array<std::array<uint8_t, 8192>, MAX_PIXEL_HISTORY> pixels;
     int pixel_history_index;
+    bool enable_filter;
 
     // physical display RAM
     std::array<uint8_t, 1024> ram;

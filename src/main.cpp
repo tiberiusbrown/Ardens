@@ -213,6 +213,7 @@ static void main_loop()
         arduboy->cpu.enable_stack_break = settings.enable_stack_breaks;
         arduboy->allow_nonstep_breakpoints =
             arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
+        arduboy->display.enable_filter = settings.display_auto_filter;
 
         if(gif_recording)
         {

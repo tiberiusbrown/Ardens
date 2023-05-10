@@ -45,6 +45,20 @@ void settings_modal()
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
+        TextUnformatted("Display Auto Filter");
+        if(IsItemHovered())
+        {
+            BeginTooltip();
+            TextUnformatted("Apply temporal filtering on the display (necessary to show grayscale)");
+            EndTooltip();
+        }
+        TableSetColumnIndex(1);
+        if(Checkbox("##displayautofilter", &settings.display_auto_filter))
+            update_settings();
+
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
         TextUnformatted("Display Palette");
         TableSetColumnIndex(1);
         SetNextItemWidth(W);

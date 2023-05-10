@@ -432,6 +432,14 @@ void arduboy_t::advance(uint64_t ps)
     // track remainder
     if(!paused)
         ps_rem = ps;
+
+    if(!display.enable_filter)
+    {
+        memcpy(
+            display.filtered_pixels.data(),
+            display.pixels[0].data(),
+            sizeof(display.filtered_pixels));
+    }
 }
 
 }

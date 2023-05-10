@@ -190,6 +190,7 @@ static void app_frame()
         arduboy->frame_bytes_total = 1024;
         arduboy->cpu.enable_stack_break = false;
         arduboy->allow_nonstep_breakpoints = false;
+        arduboy->display.enable_filter = true;
         arduboy->advance(ps);
 
         {

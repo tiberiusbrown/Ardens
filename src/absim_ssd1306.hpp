@@ -305,11 +305,14 @@ void ABSIM_FORCEINLINE ssd1306_t::update_pixels_row()
     // the Arduboy's display is upside-down
     size_t pindex = (63 - out_row) * 128 + 128;
 
+    if(!enable_filter)
+        pixel_history_index = 0;
+
     auto& parray = pixels[pixel_history_index];
 
     if((mux_ratio >= 16 && row == mux_ratio) || row >= 63)
     {
-        if(++pixel_history_index >= 4)
+        if(enable_filter && ++pixel_history_index >= 4)
             pixel_history_index = 0;
         vsync = true;
     }
@@ -326,7 +329,7 @@ void ABSIM_FORCEINLINE ssd1306_t::update_pixels_row()
         // decrement because the Arduboy's display is upside-down
         parray[--pindex] = p;
     }
-    if(vsync)
+    if(vsync && enable_filter)
         filter_pixels();
 }
 

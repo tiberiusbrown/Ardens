@@ -43,6 +43,7 @@ struct settings_t
 
     bool fullzoom = false;
 
+    bool display_auto_filter = true;
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;
     bool enable_step_breaks = true;
