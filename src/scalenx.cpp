@@ -13,7 +13,7 @@ void palette_rgba(int palette, uint8_t x, uint8_t y[4])
 {
     switch(palette)
     {
-    case PALETTE_GAMEBOY:
+    case PALETTE_RETRO:
     {
         constexpr uint32_t P0 = 0x071820;
         constexpr uint32_t P1 = 0x336856;
