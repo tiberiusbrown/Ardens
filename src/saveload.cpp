@@ -20,27 +20,26 @@ static std::string savedata_filename()
 void load_savedata()
 {
     auto fname = savedata_filename();
-    printf("Reading %s\n", fname.c_str());
     std::ifstream f(fname, std::ios::in | std::ios::binary);
     if(!f.fail())
+    {
+        printf("Loaded %s\n", fname.c_str());
         arduboy->load_savedata(f);
-    else printf("Failed\n");
+    }
 }
 
 void check_save_savedata()
 {
     if(!arduboy->savedata_dirty) return;
     auto fname = savedata_filename();
-    printf("Writing %s\n", fname.c_str());
     std::ofstream f(fname, std::ios::out | std::ios::binary);
     if(!f.fail())
     {
         arduboy->save_savedata(f);
         f.close();
 #ifdef __EMSCRIPTEN__
-        printf("syncing\n");
         EM_ASM(
-            FS.syncfs(function(err) { console.log("synced: ", err); });
+            FS.syncfs(function(err) {});
         );
 #endif
     }
