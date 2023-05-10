@@ -89,15 +89,9 @@ void recreate_display_texture()
 
     display_texture_zoom = z;
 
-    if(display_texture)
-        SDL_DestroyTexture(display_texture);
+    platform_destroy_texture(display_texture);
 
-    display_texture = SDL_CreateTexture(
-        renderer,
-        SDL_PIXELFORMAT_ABGR8888,
-        SDL_TEXTUREACCESS_STREAMING,
-        128 * z,
-        64 * z);
+    display_texture = platform_create_texture(128 * z, 64 * z);
 }
 
 static void scale2x(uint8_t* dst, uint8_t const* src, int wd, int ht)

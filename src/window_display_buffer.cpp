@@ -16,7 +16,7 @@ static int hex_value(char c)
     return 0;
 }
 
-static void update_texture()
+static void platform_update_texture()
 {
     if(display_buffer_addr < 0) return;
     if(display_buffer_addr >= arduboy->cpu.data.size()) return;
@@ -96,7 +96,7 @@ void window_display_buffer(bool& open)
         SliderInt("Width", &display_buffer_w, 1, 128);
         SliderInt("Height", &display_buffer_h, 1, 64);
 
-        update_texture();
+        platform_update_texture();
 
         {
             auto t = GetContentRegionAvail();

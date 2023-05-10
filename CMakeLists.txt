@@ -202,13 +202,14 @@ endif()
 add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
-    src/main.cpp
+    src/main_sdl.cpp
 
     src/font.cpp
     src/settings.hpp
     src/settings.cpp
     src/settings_modal.cpp
     src/common.hpp
+    src/common.cpp
     src/view_debugger.cpp
     src/view_player.cpp
     src/record_gif.cpp
@@ -267,6 +268,7 @@ if(ABSIM_LLVM)
     target_compile_definitions(arduboy_sim PRIVATE -DABSIM_LLVM)
 endif()
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
+target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SDL)
 target_include_directories(arduboy_sim PRIVATE
     src/imgui
     src/implot
@@ -282,7 +284,11 @@ add_executable(arduboy_sim_player ${EXEFLAG}
     )
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SNAPSHOTS)
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_DEBUGGER)
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_GUI)
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SAVED_SETTINGS)
 #target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_ARDUBOY_FILE)
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_PLATFORM_SOKOL)
 target_link_libraries(arduboy_sim_player PRIVATE
     nlohmann_json::nlohmann_json
     miniz

@@ -25,7 +25,7 @@ void window_serial(bool& open)
         buf.push_back(0);
         SameLine();
         if(Button("Copy to Clipboard"))
-            SDL_SetClipboardText((char*)buf.data());
+            platform_set_clipboard_text((char*)buf.data());
         InputTextMultiline(
             "##serialbuffer",
             (char*)buf.data(),

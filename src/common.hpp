@@ -1,21 +1,47 @@
 #pragma once
 
+#include <string>
+
 #ifndef ABSIM_VERSION
 #define ABSIM_VERSION "[unknown version]"
 #endif
 
-#include <SDL.h>
 #include "absim.hpp"
 #include "settings.hpp"
 
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 
+#ifdef ABSIM_PLATFORM_SDL
+struct SDL_Texture;
+using texture_t = SDL_Texture*;
+#endif
+
 extern std::unique_ptr<absim::arduboy_t> arduboy;
-extern SDL_Window* window;
-extern SDL_Renderer* renderer;
 extern int display_texture_zoom;
-extern SDL_Texture* display_texture;
-extern SDL_Texture* display_buffer_texture;
+extern texture_t display_texture;
+extern texture_t display_buffer_texture;
+extern std::string dropfile_err;
+
+// platform-agnostic functionality (common.cpp)
+void init();
+void frame_logic();
+void imgui_content();
+bool update_pixel_ratio();
+void define_font();
+void rescale_style();
+
+// platform-specific functionality
+void platform_destroy_texture(texture_t t);
+texture_t platform_create_texture(int w, int h);
+void platform_update_texture(texture_t t, void const* data, size_t n);
+void platform_texture_scale_linear(texture_t t);
+void platform_texture_scale_nearest(texture_t t);
+void platform_set_clipboard_text(char const* str);
+void platform_send_sound();
+uint64_t platform_get_ms_dt();
+float platform_pixel_ratio();
+void platform_destroy_fonts_texture();
+void platform_create_fonts_texture();
 
 #ifdef __EMSCRIPTEN__
 void file_download(

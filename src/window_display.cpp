@@ -30,9 +30,10 @@ void window_display(bool& open)
                     w += tw, h += th;
             }
 
-            SDL_SetTextureScaleMode(
-                display_texture,
-                smaller ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+            if(smaller)
+                platform_texture_scale_linear(display_texture);
+            else
+                platform_texture_scale_nearest(display_texture);
 
             {
                 auto* d = GetWindowDrawList();
