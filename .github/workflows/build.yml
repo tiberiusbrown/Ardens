@@ -15,32 +15,29 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     outputs:
-      release_id: ${{ steps.create_release.outputs.id }}
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-      if: github.event_name == 'workflow_dispatch'
-    - name: Create tag
-      id: create_tag
+      if: github.event_name != 'push'
+    - name: Set tag name
+      id: tag
       run: |
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+        if [[ "${{ github.event_name }}" != "push" ]]; then
           tag=v$(date +%Y%m%d.%H%M%S)
         else
           tag=$(basename "${{ github.ref }}")
         fi
         echo "tag=$tag" >> $GITHUB_OUTPUT
     - name: Create Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        name: ${{ steps.create_tag.outputs.tag }}
-        tag_name: ${{ steps.create_tag.outputs.tag }}
-        draft: true
-        prerelease: false
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        tag="${{ steps.tag.outputs.tag }}"
+        body=""
+        gh release create --draft "$tag" --title "$tag" --notes "$body"
 
   build_web:
   
@@ -108,13 +105,10 @@ jobs:
         folder: ${{github.workspace}}/arduboy_sim_web
   
     - name: Release
-      uses: softprops/action-gh-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.create_tag.outputs.tag }}
-        files: |
-          arduboy_sim_web.zip
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/arduboy_sim_web.zip"
 
   #build_ubuntu:
   #
@@ -160,13 +154,10 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
   
     - name: Release
-      uses: softprops/action-gh-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.create_tag.outputs.tag }}
-        files: |
-          arduboy_sim_x86.exe
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe#arduboy_sim_x86.exe"
   
   build_windows_x64:
   
@@ -187,13 +178,10 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
   
     - name: Release
-      uses: softprops/action-gh-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.create_tag.outputs.tag }}
-        files: |
-          arduboy_sim_x64.exe
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe#arduboy_sim_x64.exe"
   
   #build_macos:
   #
