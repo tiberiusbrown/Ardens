@@ -151,13 +151,15 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
+      run: |
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
+        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x86.exe"
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe#arduboy_sim_x86.exe"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x86.exe"
   
   build_windows_x64:
   
@@ -175,13 +177,15 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
+      run: |
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
+        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x64.exe"
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe#arduboy_sim_x64.exe"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x64.exe"
   
   #build_macos:
   #
