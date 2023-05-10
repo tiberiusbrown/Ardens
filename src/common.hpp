@@ -93,6 +93,9 @@ int recording_filter_zoom();
 void recreate_display_texture();
 void scalenx(uint8_t* dst, uint8_t const* src, bool rgba);
 
+void load_savedata();
+void check_save_savedata(); // save savedata if necessary
+
 void window_disassembly(bool& open);
 void window_profiler(bool& open);
 void window_display(bool& open);

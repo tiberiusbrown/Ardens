@@ -109,6 +109,8 @@ void ABSIM_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
             eecr &= ~EEPE;
             eeprom[eeprom_write_addr] = eeprom_write_data;
             eeprom_busy = false;
+            eeprom_modified = true;
+            eeprom_dirty = true;
         }
         else
             eeprom_program_cycles -= cycles;

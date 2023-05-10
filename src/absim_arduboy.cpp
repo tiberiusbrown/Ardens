@@ -1,12 +1,82 @@
 #include "absim.hpp"
 
 #include <algorithm>
+#include <iostream>
+
+#include <bitsery/bitsery.h>
+#include <bitsery/brief_syntax.h>
+#include <bitsery/brief_syntax/array.h>
+#include <bitsery/brief_syntax/string.h>
+#include <bitsery/brief_syntax/tuple.h>
+#include <bitsery/brief_syntax/vector.h>
+#include <bitsery/brief_syntax/map.h>
+#include <bitsery/ext/std_map.h>
+#include <bitsery/adapter/buffer.h>
+#include <bitsery/adapter/stream.h>
+#include <bitsery/traits/vector.h>
 
 #include "absim_atmega32u4.hpp"
 #include "absim_ssd1306.hpp"
 
 namespace absim
 {
+
+void arduboy_t::update_game_hash()
+{
+    // FNV-1a 64-bit
+    constexpr uint64_t OFFSET = 0xcbf29ce484222325;
+    constexpr uint64_t PRIME = 0x100000001b3;
+    uint64_t h = OFFSET;
+    for(auto byte : cpu.prog)
+    {
+        h ^= byte;
+        h *= PRIME;
+    }
+    for(auto byte : fx.data)
+    {
+        h ^= byte;
+        h *= PRIME;
+    }
+
+    game_hash = h;
+}
+
+void arduboy_t::load_savedata(std::istream& f)
+{
+    using StreamAdapter = bitsery::InputStreamAdapter;
+    bitsery::Deserializer<StreamAdapter> ar(f);
+    savedata.clear();
+    ar(savedata);
+    if(savedata.game_hash != game_hash)
+    {
+        savedata.clear();
+        return;
+    }
+
+    // overwrite eeprom / fx with saved data
+
+    auto const& d = savedata;
+    if(d.eeprom.size() == cpu.eeprom.size())
+        memcpy(cpu.eeprom.data(), d.eeprom.data(), sizeof(cpu.eeprom));
+
+    for(auto const& kv : d.fx_sectors)
+    {
+        uint32_t sector = kv.first;
+        auto const& sdata = kv.second;
+        if(sector >= fx.NUM_SECTORS) continue;
+        memcpy(&fx.data[sector * 4096], sdata.data(), 4096);
+    }
+}
+
+void arduboy_t::save_savedata(std::ostream& f)
+{
+    if(!savedata_dirty) return;
+    using StreamAdapter = bitsery::OutputStreamAdapter;
+    bitsery::Serializer<StreamAdapter> ar(f);
+    savedata.game_hash = game_hash;
+    ar(savedata);
+    savedata_dirty = false;
+}
 
 void arduboy_t::reset()
 {
@@ -439,6 +509,26 @@ void arduboy_t::advance(uint64_t ps)
             display.filtered_pixels.data(),
             display.pixels[0].data(),
             sizeof(display.filtered_pixels));
+    }
+
+    // update savedata
+    if(cpu.eeprom_dirty)
+    {
+        savedata.eeprom.resize(cpu.eeprom.size());
+        memcpy(savedata.eeprom.data(), cpu.eeprom.data(), sizeof(savedata.eeprom));
+        cpu.eeprom_dirty = false;
+        savedata_dirty = true;
+    }
+    if(fx.sectors_dirty)
+    {
+        for(size_t i = 0; i < fx.sectors_modified.size(); ++i)
+        {
+            if(!fx.sectors_modified.test(i)) continue;
+            auto& s = savedata.fx_sectors[(uint32_t)i];
+            memcpy(s.data(), &fx.data[i * 4096], 4096);
+        }
+        fx.sectors_dirty = false;
+        savedata_dirty = true;
     }
 }
 

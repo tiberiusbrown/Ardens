@@ -213,6 +213,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/view_player.cpp
     src/record_gif.cpp
     src/scalenx.cpp
+    src/saveload.cpp
     src/dwarf.hpp
     src/dwarf.cpp
 
@@ -285,6 +286,7 @@ target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SNAPSHOTS)
 target_link_libraries(arduboy_sim_player PRIVATE
     nlohmann_json::nlohmann_json
     miniz
+    bitsery
     )
 
 if(MSVC)

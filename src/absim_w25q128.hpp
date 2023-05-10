@@ -7,6 +7,7 @@ void w25q128_t::erase_all_data()
 {
     memset(&data, 0xff, sizeof(data));
     memcpy(&data, "ARDUBOY", 7);
+    sectors_modified.reset();
 }
 
 void w25q128_t::reset()
@@ -25,6 +26,8 @@ void w25q128_t::reset()
 
     busy_ps_rem = 0;
     current_addr = 0;
+
+    sectors_dirty = false;
 }
 
 ABSIM_FORCEINLINE void w25q128_t::set_enabled(bool e)
@@ -92,6 +95,8 @@ ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
         {
             track_page();
             uint32_t page = current_addr & 0xffff00;
+            sectors_modified.set(current_addr >> 12);
+            sectors_dirty = true;
             data[current_addr] &= byte;
             ++current_addr;
             current_addr = page | (current_addr & 0xff);
@@ -121,6 +126,8 @@ ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
             current_addr &= 0xfff000;
             track_page();
             memset(&data[current_addr], 0xff, 0x1000);
+            sectors_modified.set(current_addr >> 12);
+            sectors_dirty = true;
             busy_ps_rem = 100ull * 1000 * 1000 * 1000; // 100 ms
             erasing_sector = 0;
         }

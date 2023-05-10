@@ -233,6 +233,10 @@ static std::string serdes(Archive& ar, arduboy_t& a)
     ar(a.cpu.usb_attached);
     ar(a.cpu.usb_dpram);
 
+    // v0.15.0
+    ar(a.fx.sectors_modified);
+    ar(a.cpu.eeprom_modified);
+
     return "";
 }
 

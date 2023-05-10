@@ -154,6 +154,8 @@ void atmega32u4_t::reset()
     serial_bytes.clear();
     reset_usb();
     memset(&usb_dpram, 0, sizeof(usb_dpram));
+
+    eeprom_dirty = false;
 }
 
 }

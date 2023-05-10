@@ -100,6 +100,7 @@ extern "C" int setparam(char const* name, char const* value)
 extern "C" void postsyncfs()
 {
     fs_ready = true;
+    load_savedata();
 }
 
 #ifdef __EMSCRIPTEN__
@@ -163,6 +164,7 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
     dropfile_err = arduboy->load_file(filename, f);
+    if(dropfile_err.empty()) load_savedata();
     return 0;
 }
 
@@ -230,6 +232,8 @@ static void main_loop()
         }
         if(dt > 0)
             arduboy->advance(dt * 1000000000000ull / simulation_slowdown);
+
+        check_save_savedata();
 
         if(arduboy->paused && !prev_paused)
             disassembly_scroll_addr = arduboy->cpu.pc * 2;
@@ -354,6 +358,7 @@ static void main_loop()
             std::ifstream f(event.drop.file, std::ios::binary);
             dropfile_err = arduboy->load_file(event.drop.file, f);
             SDL_free(event.drop.file);
+            if(dropfile_err.empty()) load_savedata();
         }
     }
 

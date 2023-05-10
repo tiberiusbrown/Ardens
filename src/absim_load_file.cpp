@@ -185,6 +185,8 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
+    memset(&cpu.eeprom, 0xff, sizeof(cpu.eeprom));
+    cpu.eeprom_modified = false;
 
     a.breakpoints.reset();
     a.breakpoints_rd.reset();
@@ -945,7 +947,9 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     if(ends_with(fname, ".bin"))
     {
         reset();
-        return load_bin(*this, f);
+        r = load_bin(*this, f);
+        update_game_hash();
+        return r;
     }
 
 #ifdef ABSIM_LLVM
@@ -980,6 +984,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
         prog_filedata = std::vector<uint8_t>(
             (std::istreambuf_iterator<char>(f)),
             std::istreambuf_iterator<char>());
+        update_game_hash();
     }
 
     return r;

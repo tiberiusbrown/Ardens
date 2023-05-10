@@ -189,6 +189,8 @@ struct atmega32u4_t
 
     std::array<uint8_t, PROG_SIZE_BYTES> prog; // program flash memory
     std::array<uint8_t, 1024>  eeprom; // EEPROM
+    bool eeprom_modified;
+    bool eeprom_dirty;
 
     // SREG after previous instruction (used for interrupt bit)
     uint8_t prev_sreg;
@@ -572,6 +574,10 @@ struct w25q128_t
     static constexpr size_t DATA_BYTES = 16 * 1024 * 1024;
     std::array<uint8_t, DATA_BYTES> data;
 
+    static constexpr size_t NUM_SECTORS = DATA_BYTES / 4096;
+    std::bitset<NUM_SECTORS> sectors_modified;
+    bool sectors_dirty;
+
     bool enabled;
     bool woken_up;
     bool write_enabled;
@@ -705,11 +711,24 @@ struct elf_data_t
 
 };
 
+// game save data
+struct savedata_t
+{
+    uint64_t game_hash;
+    std::vector<uint8_t> eeprom;
+    std::map<uint32_t, std::array<uint8_t, 4096>> fx_sectors;
+    template<class A> void serialize(A& a) { a(game_hash, eeprom, fx_sectors); }
+    void clear() { game_hash = 0; eeprom.clear(); fx_sectors.clear(); }
+};
+
 struct arduboy_t
 {
     atmega32u4_t cpu;
     ssd1306_t display;
     w25q128_t fx;
+
+    uint64_t game_hash;
+    void update_game_hash();
 
     std::string prog_filename;
     std::vector<uint8_t> prog_filedata;
@@ -759,6 +778,12 @@ struct arduboy_t
 
     // paused at breakpoint
     bool paused;
+
+    // saved data
+    savedata_t savedata;
+    bool savedata_dirty;
+    void load_savedata(std::istream& f);
+    void save_savedata(std::ostream& f);
 
     void reset();
 
