@@ -981,6 +981,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     {
         reset();
         r = load_elf(*this, f, fname);
+        check_for_fx_usage_in_prog(*this);
     }
 #endif
 
