@@ -941,13 +941,17 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
     // if none, erase FX data to ensure correct game hash
     constexpr uint8_t fxport = 0x0b;
     constexpr uint8_t fxbit = 1 << 1;
+    bool found_sbi = false;
+    bool found_cbi = false;
     for(auto const& di : a.cpu.decoded_prog)
     {
-        // check for cbi %[fxport], %[fxbit]
-        if(di.func != INSTR_CBI) continue;
+        // check for cbi/sbi %[fxport], %[fxbit]
+        if(di.func != INSTR_CBI && di.func != INSTR_SBI) continue;
         if(di.dst != fxport) continue;
         if(di.src != fxbit) continue;
-        return;
+        if(di.func == INSTR_CBI) found_cbi = true;
+        if(di.func == INSTR_SBI) found_sbi = true;
+        if(found_cbi && found_sbi) return;
     }
     a.fx.erase_all_data();
 }
