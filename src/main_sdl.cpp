@@ -155,6 +155,11 @@ void platform_create_fonts_texture()
     ImGui_ImplSDLRenderer_CreateFontsTexture();
 }
 
+void platform_open_url(char const* url)
+{
+    SDL_OpenURL(url);
+}
+
 #ifdef __EMSCRIPTEN__
 void file_download(
     char const* fname,
@@ -326,12 +331,12 @@ int main(int argc, char** argv)
 
     if(display_texture)
     {
-        SDL_DestroyTexture(display_texture);
+        SDL_DestroyTexture((SDL_Texture*)display_texture);
         display_texture = nullptr;
     }
     if(display_buffer_texture)
     {
-        SDL_DestroyTexture(display_buffer_texture);
+        SDL_DestroyTexture((SDL_Texture*)display_buffer_texture);
         display_buffer_texture = nullptr;
     }
 

@@ -44,6 +44,7 @@ uint64_t platform_get_ms_dt();
 float platform_pixel_ratio();
 void platform_destroy_fonts_texture();
 void platform_create_fonts_texture();
+void platform_open_url(char const* url);
 
 #ifdef __EMSCRIPTEN__
 void file_download(

@@ -49,8 +49,8 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
-#add_subdirectory(deps/SDL)
-#set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
+add_subdirectory(deps/SDL)
+set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
 
 add_subdirectory(deps/json)
 add_subdirectory(deps/fmt)
@@ -101,10 +101,6 @@ if(MSVC)
     set(EXEFLAG WIN32)
 endif()
 set(IMGUI_SOURCES
-    #src/imgui/imgui_impl_sdl.h
-    #src/imgui/imgui_impl_sdl.cpp
-    #src/imgui/imgui_impl_sdlrenderer.h
-    #src/imgui/imgui_impl_sdlrenderer.cpp
     src/imgui/imconfig.h
     src/imgui/imgui_internal.h
     src/imgui/imgui.h
@@ -117,6 +113,12 @@ set(IMGUI_SOURCES
     src/imgui/imstb_textedit.h
     src/imgui/imstb_truetype.h
     src/imgui/imgui_memory_editor.h
+    )
+set(IMGUI_SDL_SOURCES
+    src/imgui/imgui_impl_sdl.h
+    src/imgui/imgui_impl_sdl.cpp
+    src/imgui/imgui_impl_sdlrenderer.h
+    src/imgui/imgui_impl_sdlrenderer.cpp
     )
 set(IMPLOT_SOURCES
     src/implot/implot.h
@@ -235,6 +237,8 @@ add_executable(arduboy_sim ${EXEFLAG}
     ${SIMPLE_FFT_SOURCES}
     ${HQX_SOURCES}
     ${SOKOL_SOURCES}
+
+    #${IMGUI_SDL_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
     #SDL2-static

@@ -2,6 +2,12 @@
 
 #include <fstream>
 #include <strstream>
+#include <algorithm>
+
+#include <string.h>
+#include <stdlib.h>
+
+#include <fmt/format.h>
 
 #include <imgui.h>
 
@@ -76,6 +82,31 @@ void file_download(
 }
 #endif
 
+#ifndef ABSIM_PLATFORM_SDL
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#include <shellapi.h>
+#endif
+void platform_open_url(char const *url)
+{
+#ifdef __EMSCRIPTEN__
+    EM_ASM(
+        { window.open(UTF8ToString($0), "_blank"); },
+        url);
+#endif
+#ifdef _WIN32
+    ShellExecuteA(0, NULL, url, NULL, NULL, SW_SHOWNORMAL);
+#endif
+#if defined(__APPLE__) || defined(__MACH__)
+    system(fmt::format("open {}", url).c_str());
+#endif
+#if defined(__linux__) || defined(__FreeBSD__)
+    system(fmt::format("xdg-open {}", url).c_str());
+#endif
+}
+#endif
+
 extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
@@ -87,14 +118,31 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 extern "C" int setparam(char const* name, char const* value)
 {
     if(!name || !value) return 0;
-    std::string p(name);
-    if(p == "z")
+    int nvalue = atoi(value);
+    bool bvalue = (nvalue != 0);
+    int r = 0;
+    if(!strcmp(name, "z"))
     {
-        settings.fullzoom = (*value == '1');
-        update_settings();
-        return 1;
+        settings.fullzoom = bvalue;
+        r = 1;
     }
-    return 0;
+    else if(!strcmp(name, "grid"))
+    {
+        settings.display_pixel_grid = std::clamp<int>(nvalue, PGRID_MIN, PGRID_MAX);
+        r = 1;
+    }
+    else if(!strcmp(name, "palette"))
+    {
+        settings.display_palette = std::clamp<int>(nvalue, PALETTE_MIN, PALETTE_MAX);
+        r = 1;
+    }
+    else if(!strcmp(name, "autofilter"))
+    {
+        settings.display_auto_filter = bvalue;
+        r = 1;
+    }
+    if(r) update_settings();
+    return r;
 }
 
 extern "C" void postsyncfs()
