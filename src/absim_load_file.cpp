@@ -941,10 +941,9 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
     // if none, erase FX data to ensure correct game hash
     constexpr uint8_t fxport = 0x0b;
     constexpr uint8_t fxbit = 1 << 1;
-    for(uint32_t i = 0; i < a.cpu.num_instrs; ++i)
+    for(auto const& di : a.cpu.decoded_prog)
     {
         // check for cbi %[fxport], %[fxbit]
-        auto const& di = a.cpu.decoded_prog[i];
         if(di.func != INSTR_CBI) continue;
         if(di.dst != fxport) continue;
         if(di.src != fxbit) continue;
