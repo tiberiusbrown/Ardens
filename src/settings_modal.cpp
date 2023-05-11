@@ -107,7 +107,7 @@ void settings_modal()
             PGRID_ITEMS, NUM_PGRID_ITEMS, NUM_PGRID_ITEMS))
             update_settings();
 
-        if(gif_recording) BeginDisabled();
+        if(gif_recording || wav_recording) BeginDisabled();
 
         TableNextRow(0, pixel_ratio * 12);
 
@@ -151,10 +151,6 @@ void settings_modal()
         if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
             update_settings();
 
-        if(gif_recording) EndDisabled();
-
-        if(wav_recording) BeginDisabled();
-
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
@@ -163,7 +159,7 @@ void settings_modal()
         if(Checkbox("##recordwav", &settings.record_wav))
             update_settings();
 
-        if(wav_recording) EndDisabled();
+        if(gif_recording || wav_recording) EndDisabled();
 
         TableNextRow(0, pixel_ratio * 12);
 
