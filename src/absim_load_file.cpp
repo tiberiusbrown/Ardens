@@ -943,15 +943,42 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
     constexpr uint8_t fxbit = 1 << 1;
     bool found_sbi = false;
     bool found_cbi = false;
-    for(auto const& di : a.cpu.decoded_prog)
+    auto const& p = a.cpu.decoded_prog;
+    for(size_t i = 0; i < p.size(); ++i)
     {
-        // check for cbi/sbi %[fxport], %[fxbit]
-        if(di.func != INSTR_CBI && di.func != INSTR_SBI) continue;
-        if(di.dst != fxport) continue;
-        if(di.src != fxbit) continue;
-        if(di.func == INSTR_CBI) found_cbi = true;
-        if(di.func == INSTR_SBI) found_sbi = true;
-        if(found_cbi && found_sbi) return;
+
+        // check for instruction sequence in FX::begin
+        //     lpm  r18, Z+
+        //     lpm  r19, Z+
+        //     lpm  r21, Z+
+        //     lpm  r20, Z+
+        //     subi r18, 0x18
+        //     sbci r19, 0x95
+        //     brne .+2
+        if(i + 6 < p.size() &&
+            p[i + 0].func == INSTR_LPM  && p[i + 0].word == 1 && p[i + 0].dst == 18 &&
+            p[i + 1].func == INSTR_LPM  && p[i + 1].word == 1 && p[i + 1].dst == 19 &&
+            p[i + 2].func == INSTR_LPM  && p[i + 2].word == 1 && p[i + 2].dst == 21 &&
+            p[i + 3].func == INSTR_LPM  && p[i + 3].word == 1 && p[i + 3].dst == 20 &&
+            p[i + 4].func == INSTR_SUBI && p[i + 4].dst == 18 && p[i + 4].src == 0x18 &&
+            p[i + 5].func == INSTR_SBCI && p[i + 5].dst == 19 && p[i + 5].src == 0x95 &&
+            p[i + 6].func == INSTR_BRBC && p[i + 6].src == 1  && p[i + 6].word == 1 &&
+            true)
+        {
+            return;
+        }
+
+        // check for BOTH cbi/sbi %[fxport], %[fxbit]
+        {
+            auto const& di = p[i];
+            if(di.dst == fxport && di.src != fxbit)
+            {
+                if(di.func == INSTR_CBI) found_cbi = true;
+                if(di.func == INSTR_SBI) found_sbi = true;
+            }
+            if(found_cbi && found_sbi)
+                return;
+        }
     }
     a.fx.erase_all_data();
 }
