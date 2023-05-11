@@ -24,6 +24,7 @@ extern std::string dropfile_err;
 extern "C" int setparam(char const* name, char const* value);
 extern "C" int load_file(char const* filename, uint8_t const* data, size_t size);
 void init();
+void shutdown();
 void frame_logic();
 void imgui_content();
 bool update_pixel_ratio();

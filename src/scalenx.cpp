@@ -1,7 +1,9 @@
 #include "common.hpp"
 
+#ifndef ABSIM_NO_SCALING
 #include <hqx/HQ2x.hh>
 #include <hqx/HQ3x.hh>
+#endif
 
 // used for scale4x first stage
 static uint8_t tmpbuf[128 * 64 * 2 * 2];
@@ -51,6 +53,7 @@ int filter_zoom(int f)
 {
     switch(f)
     {
+#ifndef ABSIM_NO_SCALING
     case FILTER_NONE:    return 1;
     case FILTER_SCALE2X: return 2;
     case FILTER_SCALE3X: return 3;
@@ -58,6 +61,7 @@ int filter_zoom(int f)
     case FILTER_HQ2X:    return 2;
     case FILTER_HQ3X:    return 3;
     case FILTER_HQ4X:    return 4;
+#endif
     default:             return 1;
     }
 }
@@ -94,6 +98,7 @@ void recreate_display_texture()
     display_texture = platform_create_texture(128 * z, 64 * z);
 }
 
+#ifndef ABSIM_NO_SCALING
 static void scale2x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 {
     for(int ni = 0; ni < ht; ++ni)
@@ -131,7 +136,9 @@ static void scale2x(uint8_t* dst, uint8_t const* src, int wd, int ht)
         }
     }
 }
+#endif
 
+#ifndef ABSIM_NO_SCALING
 static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 {
     for(int ni = 0; ni < ht; ++ni)
@@ -185,6 +192,9 @@ static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
         }
     }
 }
+#endif
+
+#ifndef ABSIM_NO_SCALING
 
 static uint32_t hqbuf_src[128 * 64 * 2 * 2];
 static uint32_t hqbuf_dst[128 * 64 * 4 * 4];
@@ -226,13 +236,20 @@ static void hq3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
     hqx_convert_dst(dst, wd * ht * 9);
 }
 
+#endif
+
 static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool rgba, int palette)
 {
     static uint8_t downbuf[128 * 64 * 4 * 4];
+    int z = filter_zoom(f);
+
+#ifdef ABSIM_NO_SCALING
+    uint8_t* tdst = rgba ? downbuf : dst;
+    memcpy(tdst, src, 128 * 64);
+#else
 
     if(!dst || !src) return;
 
-    int z = filter_zoom(f);
     if(z % d != 0) d = 1;
 
     uint8_t* tdst = (d != 1 || rgba ? downbuf : dst);
@@ -265,6 +282,7 @@ static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool 
     default:
         break;
     }
+#endif
 
     if(d != 1 || rgba)
     {
@@ -306,9 +324,6 @@ uint8_t* recording_pixels(bool rgba)
     static std::vector<uint8_t> pixels;
     static uint8_t tmp[128 * 64 * 4 * 4];
     uint8_t const* src = arduboy->display.filtered_pixels.data();
-
-    // someday we'll enable this
-    //settings.recording_zoom = 1;
 
     int z = recording_filter_zoom();
     int w = 128 * z;

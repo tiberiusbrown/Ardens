@@ -270,20 +270,46 @@ target_include_directories(arduboy_sim PRIVATE
 
 add_executable(arduboy_sim_player ${EXEFLAG}
     .editorconfig
-    src/main_player.cpp
+
+    src/main_sdl.cpp
+    src/main_sokol.cpp
+
+    src/settings.hpp
+    src/settings.cpp
+    src/common.hpp
+    src/common.cpp
+    src/view_player.cpp
+    src/record_gif.cpp
+    src/scalenx.cpp
+    src/saveload.cpp
+    src/dwarf.hpp
+    src/dwarf.cpp
+
     ${ABSIM_SOURCES}
+
+    src/stb_image_write.h
+    ${IMGUI_SOURCES}
+    ${GIFENC_SOURCES}
+    ${EM_FILE_BROWSER_SOURCES}
     ${SOKOL_SOURCES}
     )
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_PLAYER)
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SNAPSHOTS)
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_DEBUGGER)
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_GUI)
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SAVED_SETTINGS)
+target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SCALING)
 #target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_ARDUBOY_FILE)
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_PLATFORM_SOKOL)
+target_include_directories(arduboy_sim_player PRIVATE
+    src/imgui
+    src/gifenc
+    )
 target_link_libraries(arduboy_sim_player PRIVATE
     nlohmann_json::nlohmann_json
     miniz
+    fmt
     bitsery
     )
 
@@ -294,4 +320,5 @@ endif()
 
 if(EMSCRIPTEN)
     target_link_options(arduboy_sim PRIVATE "-lidbfs.js")
+    target_link_options(arduboy_sim_player PRIVATE "-lidbfs.js")
 endif()

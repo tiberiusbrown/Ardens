@@ -4,7 +4,10 @@
 #include <strstream>
 
 #include <imgui.h>
+
+#ifndef ABSIM_NO_DEBUGGER
 #include <implot.h>
+#endif
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -23,7 +26,13 @@
 #include "stb_image_write.h"
 #endif
 
+#ifdef ABSIM_NO_DEBUGGER
+void process_sound_samples() {}
+#endif
+
+#ifndef ABSIM_NO_GUI
 extern unsigned char const ProggyVector[198188];
+#endif
 
 texture_t display_texture{};
 texture_t display_buffer_texture{};
@@ -111,8 +120,10 @@ void define_font()
     cfg.OversampleH = 2;
     cfg.OversampleV = 2;
     io.Fonts->Clear();
+#ifndef ABSIM_NO_GUI
     io.Fonts->AddFontFromMemoryTTF(
         (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
+#endif
 }
 
 void rebuild_fonts()
@@ -129,6 +140,13 @@ void rescale_style()
     style.ScaleAllSizes(pixel_ratio);
 }
 
+void shutdown()
+{
+#ifndef ABSIM_NO_DEBUGGER
+    ImPlot::DestroyContext();
+#endif
+}
+
 void init()
 {
 #ifdef __EMSCRIPTEN__
@@ -141,7 +159,9 @@ void init()
 
     arduboy = std::make_unique<absim::arduboy_t>();
 
+#ifndef ABSIM_NO_DEBUGGER
     ImPlot::CreateContext();
+#endif
 
 #ifndef ABSIM_NO_SAVED_SETTINGS
     init_settings();

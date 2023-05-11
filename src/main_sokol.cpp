@@ -121,6 +121,7 @@ static void app_event(sapp_event const* e)
 
 static void app_cleanup()
 {
+    shutdown();
     saudio_shutdown();
     simgui_shutdown();
     platform_destroy_texture(display_texture);
@@ -257,9 +258,15 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.frame_cb = app_frame;
     desc.cleanup_cb = app_cleanup;
 #ifndef __EMSCRIPTEN__
+#ifdef ABSIM_PLAYER
+    desc.width = 512;
+    desc.height = 256;
+    desc.window_title = "arduboy_sim (player)";
+#else
     desc.width = 1280;
     desc.height = 720;
     desc.window_title = "arduboy_sim";
+#endif
     desc.enable_dragndrop = true;
     desc.max_dropped_files = 2;
 #endif

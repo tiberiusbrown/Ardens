@@ -79,4 +79,13 @@ void view_player()
     };
     display_with_scanlines(d, dstart,
         { dstart.x + dsize.x, dstart.y + dsize.y });
+
+    if(gif_recording)
+    {
+        float const F1 = 10.f * pixel_ratio;
+        float const F2 = 20.f * pixel_ratio;
+        d->AddRectFilled(
+            { F1, F1 }, { F2, F2 },
+            IM_COL32(255, 0, 0, 128));
+    }
 }

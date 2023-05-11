@@ -322,6 +322,8 @@ int main(int argc, char** argv)
         main_loop();
 #endif
 
+    shutdown();
+
     if(display_texture)
     {
         SDL_DestroyTexture(display_texture);
@@ -335,7 +337,6 @@ int main(int argc, char** argv)
 
     ImGui_ImplSDLRenderer_Shutdown();
     ImGui_ImplSDL2_Shutdown();
-    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     SDL_CloseAudioDevice(audio_device);
