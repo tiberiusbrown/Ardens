@@ -910,6 +910,12 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         std::string err = load_bin(a, ss);
         if(!err.empty()) return err;
     }
+    else
+    {
+        // this game has no FX data.
+        // erase any existing data to ensure correct game hash
+        a.fx.erase_all_data();
+    }
 
     return "";
 }
@@ -929,6 +935,24 @@ static bool ends_with(std::string const& str, std::string const& end)
     return str.substr(str.size() - end.size()) == end;
 }
 
+static void check_for_fx_usage_in_prog(arduboy_t& a)
+{
+    // analyze instructions to detect FX usage.
+    // if none, erase FX data to ensure correct game hash
+    constexpr uint8_t fxport = 0x0b;
+    constexpr uint8_t fxbit = 1 << 1;
+    for(uint32_t i = 0; i < a.cpu.num_instrs; ++i)
+    {
+        // check for cbi %[fxport], %[fxbit]
+        auto const& di = a.cpu.decoded_prog[i];
+        if(di.func != INSTR_CBI) continue;
+        if(di.dst != fxport) continue;
+        if(di.src != fxbit) continue;
+        return;
+    }
+    a.fx.erase_all_data();
+}
+
 std::string arduboy_t::load_file(char const* filename, std::istream& f)
 {
     if(f.fail())
@@ -942,6 +966,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
         reset();
         elf.reset();
         r = load_hex(*this, f);
+        check_for_fx_usage_in_prog(*this);
     }
 
     if(ends_with(fname, ".bin"))
