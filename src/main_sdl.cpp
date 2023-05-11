@@ -53,15 +53,13 @@ constexpr ImVec4 clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 static SDL_AudioDeviceID audio_device;
 static SDL_AudioSpec audio_spec;
 
-static bool done = false;
-
 static SDL_Window* window;
 static SDL_Renderer* renderer;
 
 void platform_destroy_texture(texture_t t)
 {
     if(t != nullptr)
-        SDL_DestroyTexture(t);
+        SDL_DestroyTexture((SDL_Texture*)t);
 }
 
 texture_t platform_create_texture(int w, int h)
@@ -78,19 +76,19 @@ void platform_update_texture(texture_t t, void const* data, size_t n)
 {
     void* pixels;
     int pitch;
-    SDL_LockTexture(t, nullptr, &pixels, &pitch);
+    SDL_LockTexture((SDL_Texture*)t, nullptr, &pixels, &pitch);
     memcpy(pixels, data, n);
-    SDL_UnlockTexture(t);
+    SDL_UnlockTexture((SDL_Texture*)t);
 }
 
 void platform_texture_scale_linear(texture_t t)
 {
-    SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);
+    SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_ScaleModeLinear);
 }
 
 void platform_texture_scale_nearest(texture_t t)
 {
-    SDL_SetTextureScaleMode(t, SDL_ScaleModeNearest);
+    SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_ScaleModeNearest);
 }
 
 void platform_set_clipboard_text(char const* str)
@@ -157,25 +155,6 @@ void platform_create_fonts_texture()
     ImGui_ImplSDLRenderer_CreateFontsTexture();
 }
 
-extern "C" int setparam(char const* name, char const* value)
-{
-    if(!name || !value) return 0;
-    std::string p(name);
-    if(p == "z")
-    {
-        settings.fullzoom = (*value == '1');
-        update_settings();
-        return 1;
-    }
-    return 0;
-}
-
-extern "C" void postsyncfs()
-{
-    fs_ready = true;
-    load_savedata();
-}
-
 #ifdef __EMSCRIPTEN__
 void file_download(
     char const* fname,
@@ -221,6 +200,8 @@ static void main_loop()
 
     imgui_content();
 
+    ImGui::Render();
+
     SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
     SDL_RenderClear(renderer);
     ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
@@ -257,6 +238,9 @@ static void main_loop()
 
 int main(int argc, char** argv)
 {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
     init();
 
 #ifdef _WIN32

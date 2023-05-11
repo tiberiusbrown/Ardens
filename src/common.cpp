@@ -25,8 +25,8 @@
 
 extern unsigned char const ProggyVector[198188];
 
-texture_t display_texture = nullptr;
-texture_t display_buffer_texture = nullptr;
+texture_t display_texture{};
+texture_t display_buffer_texture{};
 std::unique_ptr<absim::arduboy_t> arduboy;
 
 int profiler_selected_hotspot = -1;
@@ -44,6 +44,7 @@ static ImGuiStyle default_style;
 float pixel_ratio = 1.f;
 std::string dropfile_err;
 
+bool done = false;
 bool layout_done = false;
 bool settings_loaded = false;
 #ifdef __EMSCRIPTEN__
@@ -52,12 +53,45 @@ bool fs_ready = false;
 bool fs_ready = true;
 #endif
 
+#ifdef __EMSCRIPTEN__
+void file_download(
+    char const* fname,
+    char const* download_fname,
+    char const* mime_type)
+{
+    std::ifstream f(fname, std::ios::binary);
+    std::vector<char> data(
+        (std::istreambuf_iterator<char>(f)),
+        std::istreambuf_iterator<char>());
+    emscripten_browser_file::download(download_fname, mime_type, data.data(), data.size());
+}
+#endif
+
 extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
     dropfile_err = arduboy->load_file(filename, f);
     if(dropfile_err.empty()) load_savedata();
     return 0;
+}
+
+extern "C" int setparam(char const* name, char const* value)
+{
+    if(!name || !value) return 0;
+    std::string p(name);
+    if(p == "z")
+    {
+        settings.fullzoom = (*value == '1');
+        update_settings();
+        return 1;
+    }
+    return 0;
+}
+
+extern "C" void postsyncfs()
+{
+    fs_ready = true;
+    load_savedata();
 }
 
 bool update_pixel_ratio()
@@ -74,15 +108,14 @@ void define_font()
     ImFontConfig cfg;
     cfg.FontDataOwnedByAtlas = false;
     cfg.RasterizerMultiply = 1.5f;
+    cfg.OversampleH = 2;
+    cfg.OversampleV = 2;
     io.Fonts->Clear();
     io.Fonts->AddFontFromMemoryTTF(
         (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
-#ifdef __EMSCRIPTEN__
-    //io.FontGlobalScale = 1.f / pixel_ratio;
-#endif
 }
 
-static void rebuild_fonts()
+void rebuild_fonts()
 {
     platform_destroy_fonts_texture();
     define_font();
@@ -108,8 +141,6 @@ void init()
 
     arduboy = std::make_unique<absim::arduboy_t>();
 
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
     ImPlot::CreateContext();
 
 #ifndef ABSIM_NO_SAVED_SETTINGS
@@ -382,12 +413,4 @@ void imgui_content()
 #endif
     //ImGui::ShowDemoWindow();
 #endif
-
-    ImGui::Render();
-
-    if(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        ImGui::UpdatePlatformWindows();
-        ImGui::RenderPlatformWindowsDefault();
-    }
 }

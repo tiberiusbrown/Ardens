@@ -2,8 +2,6 @@
 
 #include "imgui.h"
 
-#include <SDL.h>
-
 #include <algorithm>
 
 static char addr_buf[5];
@@ -20,10 +18,10 @@ static void platform_update_texture()
 {
     if(display_buffer_addr < 0) return;
     if(display_buffer_addr >= arduboy->cpu.data.size()) return;
-    void* pixels = nullptr;
-    int pitch = 0;
-    SDL_LockTexture(display_buffer_texture, nullptr, &pixels, &pitch);
+
+    static uint8_t pixels[128 * 64 * 4];
     uint8_t* bpixels = (uint8_t*)pixels;
+
     display_buffer_w = std::min(display_buffer_w, 128);
     display_buffer_h = std::min(display_buffer_h, 64);
     for(int i = 0; i < display_buffer_h; ++i)
@@ -43,7 +41,8 @@ static void platform_update_texture()
             *bpixels++ = 255;
         }
     }
-    SDL_UnlockTexture(display_buffer_texture);
+
+    platform_update_texture(display_buffer_texture, pixels, sizeof(pixels));
 }
 
 void window_display_buffer(bool& open)

@@ -69,7 +69,7 @@ void view_player()
     while(w > size.x || h > size.y)
         w *= 0.5f, h *= 0.5f, smaller = true;
 
-    while(w + tw < size.x && h + th < size.y)
+    while(w + tw <= size.x && h + th <= size.y)
         w += tw, h += th;
     ImVec2 dsize = { w, h };
 

@@ -8,7 +8,6 @@
 #define SOKOL_GLCORE33
 #endif
 
-
 #define SOKOL_IMPL
 #include "sokol/sokol_app.h"
 #include "sokol/sokol_audio.h"
@@ -41,10 +40,9 @@ static sg_image framebuffer;
 static uint8_t pixels[128 * 64 * 4];
 
 extern "C" void postsyncfs() {}
+
 extern "C" int setparam(char const* name, char const* value)
 {
-    if(!name || !value) return 0;
-    std::string p(name);
     return 0;
 }
 

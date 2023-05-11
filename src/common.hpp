@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <stdint.h>
 
 #ifndef ABSIM_VERSION
 #define ABSIM_VERSION "[unknown version]"
@@ -11,10 +12,7 @@
 
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 
-#ifdef ABSIM_PLATFORM_SDL
-struct SDL_Texture;
-using texture_t = SDL_Texture*;
-#endif
+using texture_t = void*;
 
 extern std::unique_ptr<absim::arduboy_t> arduboy;
 extern int display_texture_zoom;
@@ -23,11 +21,14 @@ extern texture_t display_buffer_texture;
 extern std::string dropfile_err;
 
 // platform-agnostic functionality (common.cpp)
+extern "C" int setparam(char const* name, char const* value);
+extern "C" int load_file(char const* filename, uint8_t const* data, size_t size);
 void init();
 void frame_logic();
 void imgui_content();
 bool update_pixel_ratio();
 void define_font();
+void rebuild_fonts();
 void rescale_style();
 
 // platform-specific functionality
@@ -56,6 +57,7 @@ void send_gif_frame(int ds, uint8_t const* pixels);
 void screen_recording_toggle(uint8_t const* pixels);
 
 extern float pixel_ratio;
+extern bool done;
 extern bool layout_done;
 extern bool settings_loaded;
 extern bool fs_ready;

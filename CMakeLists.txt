@@ -8,26 +8,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(arduboy_sim)
 
-#if(NOT EMSCRIPTEN)
-#    include(CheckIPOSupported)
-#    check_ipo_supported(RESULT IPO_SUPPORTED OUTPUT IPO_ERROR)
-#    if(IPO_SUPPORTED)
-#        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-#        cmake_policy(SET CMP0069 NEW) 
-#        set(CMAKE_POLICY_DEFAULT_CMP0069 NEW)
-#    else()
-#        message(STATUS "IPO not supported: ${IPO_ERROR}")
-#    endif()
-#endif()
-
 if(MSVC)
     add_link_options(
         /DEBUG
-        /INCREMENTAL:NO                           # Disable incremental linking.
-        $<$<NOT:$<CONFIG:DEBUG>>:/OPT:REF>        # Remove unreferenced functions and data.
-        $<$<NOT:$<CONFIG:DEBUG>>:/OPT:ICF>        # Identical COMDAT folding.
-        $<$<CONFIG:DEBUG>:/OPT:NOREF>             # No unreferenced data elimination.
-        $<$<CONFIG:DEBUG>:/OPT:NOICF>             # No Identical COMDAT folding.
+        /INCREMENTAL:NO                     # Disable incremental linking.
+        $<$<NOT:$<CONFIG:DEBUG>>:/OPT:REF>  # Remove unreferenced functions and data.
+        $<$<NOT:$<CONFIG:DEBUG>>:/OPT:ICF>  # Identical COMDAT folding.
+        $<$<CONFIG:DEBUG>:/OPT:NOREF>       # No unreferenced data elimination.
+        $<$<CONFIG:DEBUG>:/OPT:NOICF>       # No Identical COMDAT folding.
     )
 endif()
 
@@ -113,10 +101,10 @@ if(MSVC)
     set(EXEFLAG WIN32)
 endif()
 set(IMGUI_SOURCES
-    src/imgui/imgui_impl_sdl.h
-    src/imgui/imgui_impl_sdl.cpp
-    src/imgui/imgui_impl_sdlrenderer.h
-    src/imgui/imgui_impl_sdlrenderer.cpp
+    #src/imgui/imgui_impl_sdl.h
+    #src/imgui/imgui_impl_sdl.cpp
+    #src/imgui/imgui_impl_sdlrenderer.h
+    #src/imgui/imgui_impl_sdlrenderer.cpp
     src/imgui/imconfig.h
     src/imgui/imgui_internal.h
     src/imgui/imgui.h
@@ -203,6 +191,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
     src/main_sdl.cpp
+    src/main_sokol.cpp
 
     src/font.cpp
     src/settings.hpp
@@ -245,10 +234,11 @@ add_executable(arduboy_sim ${EXEFLAG}
     ${EM_FILE_BROWSER_SOURCES}
     ${SIMPLE_FFT_SOURCES}
     ${HQX_SOURCES}
+    ${SOKOL_SOURCES}
     )
 target_link_libraries(arduboy_sim PRIVATE
-    SDL2-static
-    SDL2main
+    #SDL2-static
+    #SDL2main
     nlohmann_json::nlohmann_json
     miniz
     fmt
@@ -268,13 +258,15 @@ if(ABSIM_LLVM)
     target_compile_definitions(arduboy_sim PRIVATE -DABSIM_LLVM)
 endif()
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
-target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SDL)
+#target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SDL)
+target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SOKOL)
 target_include_directories(arduboy_sim PRIVATE
     src/imgui
     src/implot
     src/gifenc
     src/Simple-FFT/include
-    src/hqx/include)
+    src/hqx/include
+    )
 
 add_executable(arduboy_sim_player ${EXEFLAG}
     .editorconfig
