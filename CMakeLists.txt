@@ -49,8 +49,8 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
-add_subdirectory(deps/SDL)
-set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
+#add_subdirectory(deps/SDL)
+#set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
 
 add_subdirectory(deps/json)
 add_subdirectory(deps/fmt)
