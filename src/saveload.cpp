@@ -14,7 +14,7 @@ static std::string savedata_filename()
 #ifdef __EMSCRIPTEN__
         "/offline/"
 #endif
-        "absim_{:#016x}.save", arduboy->game_hash);
+        "absim_{:016x}.save", arduboy->game_hash);
 }
 
 void load_savedata()
