@@ -151,9 +151,21 @@ void settings_modal()
         if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
             update_settings();
 
-        TableNextRow(0, pixel_ratio * 12);
-
         if(gif_recording) EndDisabled();
+
+        if(wav_recording) BeginDisabled();
+
+        TableNextRow();
+        TableSetColumnIndex(0);
+        AlignTextToFramePadding();
+        TextUnformatted("Record Audio (WAV)");
+        TableSetColumnIndex(1);
+        if(Checkbox("##recordwav", &settings.record_wav))
+            update_settings();
+
+        if(wav_recording) EndDisabled();
+
+        TableNextRow(0, pixel_ratio * 12);
 
         TableNextRow();
         TableSetColumnIndex(0);

@@ -314,6 +314,7 @@ void frame_logic()
             arduboy->cpu.stack_overflow = false;
 
         // consume sound buffer
+        send_wav_audio();
         process_sound_samples();
 #if !PROFILING
         if(!arduboy->cpu.sound_buffer.empty() && simulation_slowdown == 1000)
@@ -382,13 +383,13 @@ void frame_logic()
 #endif
         }
         if(gif_recording && arduboy->paused)
-        {
             screen_recording_toggle(recording_pixels(false));
-        }
         else if(simulation_slowdown == 1000 && ImGui::IsKeyPressed(ImGuiKey_F3, false))
-        {
             screen_recording_toggle(recording_pixels(false));
-        }
+        if(wav_recording && arduboy->paused)
+            wav_recording_toggle();
+        else if(simulation_slowdown == 1000 && ImGui::IsKeyPressed(ImGuiKey_F3, false))
+            wav_recording_toggle();
 #endif
     }
 

@@ -58,6 +58,10 @@ extern uint32_t gif_ms_rem;
 void send_gif_frame(int ds, uint8_t const* pixels);
 void screen_recording_toggle(uint8_t const* pixels);
 
+extern bool wav_recording;
+void send_wav_audio();
+void wav_recording_toggle();
+
 extern float pixel_ratio;
 extern bool done;
 extern bool layout_done;

@@ -204,6 +204,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/view_debugger.cpp
     src/view_player.cpp
     src/record_gif.cpp
+    src/record_wav.cpp
     src/scalenx.cpp
     src/saveload.cpp
     src/dwarf.hpp
@@ -284,6 +285,7 @@ add_executable(arduboy_sim_player ${EXEFLAG}
     src/common.cpp
     src/view_player.cpp
     src/record_gif.cpp
+    src/record_wav.cpp
     src/scalenx.cpp
     src/saveload.cpp
     src/dwarf.hpp

@@ -1,3 +1,6 @@
+v0.16.0
+* Record audio to WAV
+
 v0.15.0
 * Add auto save of EEPROM and saved FX sectors
 * Player and debugger now share same logic

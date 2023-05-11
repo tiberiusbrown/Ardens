@@ -42,7 +42,7 @@ struct settings_t
     bool open_sound = false;
 
     bool fullzoom = false;
-
+    bool record_wav = false;
     bool display_auto_filter = true;
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;
