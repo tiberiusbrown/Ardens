@@ -78,6 +78,7 @@ void view_debugger()
     if(layout_done)
     {
         bool do_settings_modal = false;
+        bool do_about_modal = false;
 
         if(ImGui::BeginMainMenuBar())
         {
@@ -123,6 +124,8 @@ void view_debugger()
             {
                 if(ImGui::MenuItem("Settings"))
                     do_settings_modal = true;
+                if(ImGui::MenuItem("About"))
+                    do_about_modal = true;
                 ImGui::EndMenu();
             }
 
@@ -147,6 +150,8 @@ void view_debugger()
 
         if(do_settings_modal)
             ImGui::OpenPopup("Settings");
+        if(do_about_modal)
+            ImGui::OpenPopup("About");
 
         if(arduboy->cpu.decoded)
         {

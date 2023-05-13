@@ -199,6 +199,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/settings.hpp
     src/settings.cpp
     src/settings_modal.cpp
+    src/modal_about.cpp
     src/common.hpp
     src/common.cpp
     src/view_debugger.cpp

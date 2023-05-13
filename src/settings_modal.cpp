@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 
-void settings_modal()
+void modal_settings()
 {
     using namespace ImGui;
 

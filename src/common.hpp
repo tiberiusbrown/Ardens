@@ -86,7 +86,8 @@ void view_player();
 struct ImDrawList;
 struct ImVec2;
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b);
-void settings_modal();
+void modal_settings();
+void modal_about();
 
 constexpr size_t FFT_NUM_SAMPLES = 4096;
 void process_sound_samples();

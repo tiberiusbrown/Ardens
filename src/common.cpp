@@ -434,7 +434,7 @@ void imgui_content()
 #endif
 
 #ifndef ABSIM_NO_GUI
-    settings_modal();
+    modal_settings();
 #endif
 
 #ifndef ABSIM_NO_GUI
@@ -474,6 +474,10 @@ void imgui_content()
             ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
+#endif
+
+#ifndef ABSIM_NO_GUI
+    modal_about();
 #endif
 
 #ifndef ABSIM_NO_GUI
