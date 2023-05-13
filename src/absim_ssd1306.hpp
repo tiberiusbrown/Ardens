@@ -19,8 +19,8 @@ void ssd1306_t::send_command(uint8_t byte)
     case 0x04: case 0x05: case 0x06: case 0x07:
     case 0x08: case 0x09: case 0x0a: case 0x0b:
     case 0x0c: case 0x0d: case 0x0e: case 0x0f:
-        page_col_start &= 0xf0;
-        page_col_start |= current_command;
+        data_col &= 0xf0;
+        data_col |= current_command;
         processing_command = false;
         break;
 
@@ -28,8 +28,9 @@ void ssd1306_t::send_command(uint8_t byte)
     case 0x14: case 0x15: case 0x16: case 0x17:
     case 0x18: case 0x19: case 0x1a: case 0x1b:
     case 0x1c: case 0x1d: case 0x1e: case 0x1f:
-        page_col_start &= 0x0f;
-        page_col_start |= current_command << 4;
+        data_col &= 0x0f;
+        data_col |= current_command << 4;
+        data_col &= 0x7f;
         processing_command = false;
         break;
 
@@ -116,7 +117,7 @@ void ssd1306_t::send_command(uint8_t byte)
 
     case 0xb0: case 0xb1 : case 0xb2 : case 0xb3:
     case 0xb4: case 0xb5 : case 0xb6 : case 0xb7:
-        page_page_start = byte & 0x7;
+        data_page = byte & 0x7;
         processing_command = false;
         break;
 
@@ -246,7 +247,7 @@ void ssd1306_t::send_data(uint8_t byte)
     uint8_t mapped_col = segment_remap ? 127 - data_col : data_col;
     size_t i = data_page * 128 + mapped_col;
 
-    ram[i] = byte;
+    ram[i & 1023] = byte;
 
     switch(addressing_mode)
     {
@@ -403,9 +404,6 @@ void ssd1306_t::reset()
     col_end = 127;
     page_start = 0;
     page_end = 7;
-
-    page_col_start = 0;
-    page_page_start = 0;
 
     mux_ratio = 63;
 

@@ -66,8 +66,6 @@ void window_display_internals(bool& open)
             Text("Column End             %d", d.col_end);
             Text("Page Start             %d", d.page_start);
             Text("Page End               %d", d.page_end);
-            Text("Column Start (Page)    %d", d.page_col_start);
-            Text("Page Start (Page)      %d", d.page_page_start);
             Text("Segment Remap          %s", d.segment_remap ? "ON" : "OFF");
         }
         Separator();

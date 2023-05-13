@@ -511,10 +511,6 @@ struct ssd1306_t
     uint8_t page_start;
     uint8_t page_end;
 
-    // for page addressing mode
-    uint8_t page_col_start;
-    uint8_t page_page_start;
-
     uint8_t mux_ratio;
 
     uint8_t display_offset;

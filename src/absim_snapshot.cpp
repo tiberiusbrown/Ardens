@@ -180,8 +180,6 @@ static std::string serdes(Archive& ar, arduboy_t& a)
     ar(a.display.col_end);
     ar(a.display.page_start);
     ar(a.display.page_end);
-    ar(a.display.page_col_start);
-    ar(a.display.page_page_start);
     ar(a.display.mux_ratio);
     ar(a.display.display_offset);
     ar(a.display.display_start);
