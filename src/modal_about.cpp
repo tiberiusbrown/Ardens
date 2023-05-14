@@ -10,7 +10,7 @@ static char const MARKDOWN[] = R"(*arduboy_sim*
 
 [Arduboy](https://www.arduboy.com/) simulator for profiling and debugging ([source Code](https://github.com/tiberiusbrown/arduboy_sim)).
 
-Drap and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (.hex/.elf/.arduboy) and any FX data (.bin) onto this window.
+Drap and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (hex/elf/arduboy) and any FX data (bin) onto this window.
 
 *Libraries Used*
 ***
