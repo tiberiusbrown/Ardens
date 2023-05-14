@@ -413,19 +413,39 @@ void imgui_content()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-#ifndef ABSIM_NO_GUI
     if(!arduboy->cpu.decoded)
     {
         auto* d = ImGui::GetBackgroundDrawList(ImGui::GetMainViewport());
-        static char const* const MSG = "Drag a .hex or .arduboy file onto this window";
-        auto t = ImGui::CalcTextSize(MSG);
         auto size = ImGui::GetMainViewport()->Size;
-        d->AddText(
-            ImVec2((size.x - t.x) * 0.5f, (size.y - t.y) * 0.5f),
-            ImGui::ColorConvertFloat4ToU32(ImGui::GetStyle().Colors[ImGuiCol_Text]),
-            MSG);
+        float w = 100.f * pixel_ratio;
+        float pad = 25.f * pixel_ratio;
+        w = std::min(w, size.x - pad);
+        w = std::min(w, size.y - pad);
+        w = std::max(w, pad);
+        float w2 = w * 0.5f;
+        float cx = size.x * 0.5f;
+        float cy = size.y * 0.5f;
+        auto color = IM_COL32(200, 200, 200, 255);
+        float thickness = 4.f * pixel_ratio;
+        d->AddRect(
+            { cx - w2, cy - w2 },
+            { cx + w2, cy + w2 },
+            color,
+            10.f * pixel_ratio,
+            0,
+            thickness);
+        d->AddLine(
+            { cx, cy - w2 * 0.5f },
+            { cx, cy },
+            color,
+            thickness);
+        d->AddTriangle(
+            { cx - w2 * 0.5f, cy },
+            { cx + w2 * 0.5f, cy },
+            { cx, cy + w2 * 0.5f },
+            color,
+            thickness);
     }
-#endif
 
 #ifndef ABSIM_NO_DEBUGGER
     if(settings.fullzoom)
