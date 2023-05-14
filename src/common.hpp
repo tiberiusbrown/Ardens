@@ -3,10 +3,6 @@
 #include <string>
 #include <stdint.h>
 
-#ifndef ABSIM_VERSION
-#define ABSIM_VERSION "[unknown version]"
-#endif
-
 #include "absim.hpp"
 #include "settings.hpp"
 

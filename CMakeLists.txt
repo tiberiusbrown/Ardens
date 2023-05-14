@@ -189,6 +189,14 @@ set(EM_FILE_BROWSER_SOURCES)
 if(EMSCRIPTEN)
     set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
 endif()
+
+set_source_files_properties(
+    src/absim_snapshot.cpp
+    src/view_debugger.cpp
+    PROPERTIES
+        COMPILE_OPTIONS "-DABSIM_VERSION=\"${ABSIM_VERSION}\""
+    )
+
 add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
@@ -263,7 +271,6 @@ if(ABSIM_LLVM)
         )
     target_compile_definitions(arduboy_sim PRIVATE -DABSIM_LLVM)
 endif()
-target_compile_definitions(arduboy_sim PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
 #target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SDL)
 target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SOKOL)
 target_include_directories(arduboy_sim PRIVATE
@@ -300,7 +307,6 @@ add_executable(arduboy_sim_player ${EXEFLAG}
     ${EM_FILE_BROWSER_SOURCES}
     ${SOKOL_SOURCES}
     )
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_VERSION="${ABSIM_VERSION}")
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_PLAYER)
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SNAPSHOTS)
 target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_DEBUGGER)
