@@ -249,6 +249,21 @@ void platform_create_fonts_texture()
     io.Fonts->TexID = (ImTextureID)(uintptr_t)_simgui.img.id;
 }
 
+void platform_toggle_fullscreen()
+{
+#ifdef __EMSCRIPTEN__
+    EmscriptenFullscreenChangeEvent e{};
+    if(emscripten_get_fullscreen_status(&e) != EMSCRIPTEN_RESULT_SUCCESS)
+        return;
+    if(e.isFullscreen)
+        emscripten_exit_fullscreen();
+    else
+        emscripten_request_fullscreen("#canvas", true);
+#else
+    sapp_toggle_fullscreen();
+#endif
+}
+
 sapp_desc sokol_main(int argc, char** argv)
 {
     sapp_desc desc{};
@@ -257,7 +272,9 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.event_cb = app_event;
     desc.frame_cb = app_frame;
     desc.cleanup_cb = app_cleanup;
-#ifndef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
+    desc.html5_canvas_name = "canvas";
+#else
 #ifdef ABSIM_PLAYER
     desc.width = 512;
     desc.height = 256;

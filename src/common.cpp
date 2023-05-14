@@ -399,6 +399,9 @@ void frame_logic()
         update_settings();
     }
 
+    if(ImGui::IsKeyPressed(ImGuiKey_F11, false))
+        platform_toggle_fullscreen();
+
     if(update_pixel_ratio())
     {
         rescale_style();

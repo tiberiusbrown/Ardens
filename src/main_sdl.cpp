@@ -174,6 +174,13 @@ void file_download(
 }
 #endif
 
+void platform_toggle_fullscreen()
+{
+    static bool fs = false;
+    SDL_SetWindowFullscreen(window, fs ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    fs = !fs;
+}
+
 static void main_loop()
 {
     SDL_Event event;
