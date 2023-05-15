@@ -2,19 +2,21 @@
 
 #include <fstream>
 
-#include <fmt/format.h>
-
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
 
+#include <inttypes.h>
+
 static std::string savedata_filename()
 {
-    return fmt::format(
+    char buf[128];
+    snprintf(buf, sizeof(buf),
 #ifdef __EMSCRIPTEN__
         "/offline/"
 #endif
-        "absim_{:016x}.save", arduboy->game_hash);
+        "absim_%" PRIx64 ".save", arduboy->game_hash);
+    return std::string(buf);
 }
 
 void load_savedata()

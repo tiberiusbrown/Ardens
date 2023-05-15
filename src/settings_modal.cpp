@@ -66,6 +66,7 @@ void modal_settings()
             PALETTE_ITEMS, NUM_PALETTE_ITEMS))
             update_settings();
 
+#ifndef ABSIM_NO_SCALING
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
@@ -86,6 +87,7 @@ void modal_settings()
         SetNextItemWidth(W);
         if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
             update_settings();
+#endif
 
         static char const* const PGRID_ITEMS[] =
         {
@@ -121,6 +123,7 @@ void modal_settings()
             PALETTE_ITEMS, NUM_PALETTE_ITEMS))
             update_settings();
 
+#ifndef ABSIM_NO_SCALING
         TableNextRow();
         TableSetColumnIndex(0);
         AlignTextToFramePadding();
@@ -141,6 +144,7 @@ void modal_settings()
         SetNextItemWidth(W);
         if(SliderInt("##recordingdown", &settings.recording_downsample, 1, 4, "%dx"))
             update_settings();
+#endif
 
         TableNextRow();
         TableSetColumnIndex(0);

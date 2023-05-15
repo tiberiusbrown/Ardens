@@ -608,10 +608,22 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         { elf.fdata.data(), elf.fdata.size() },
         { fname.c_str(), fname.size() });
 
-    auto bin_or_err = object::createBinary(mbuf);
+    switch(identify_magic(mbuf.getBuffer()))
+    {
+    case file_magic::elf:
+    case file_magic::elf_relocatable:
+    case file_magic::elf_executable:
+    case file_magic::elf_shared_object:
+    case file_magic::elf_core:
+        break;
+    default:
+        return "ELF: non-ELF magic";
+    }
+    auto bin_or_err = llvm::object::ObjectFile::createELFObjectFile(mbuf);
     if(!bin_or_err) return "ELF: could not load file";
 
     auto* obj = dyn_cast<object::ELFObjectFileBase>(bin_or_err->get());
+
     if(!obj)
         return "ELF: could not load object file";
 

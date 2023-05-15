@@ -33,10 +33,7 @@
 namespace llvm
 {
 class DWARFContext;
-namespace object
-{
-class Binary;
-}
+namespace object { class ObjectFile; }
 }
 #endif
 
@@ -689,7 +686,7 @@ struct elf_data_t
 
     std::vector<char> fdata;
 #ifdef ABSIM_LLVM
-    std::unique_ptr<llvm::object::Binary> obj;
+    std::unique_ptr<llvm::object::ObjectFile> obj;
     std::unique_ptr<llvm::DWARFContext> dwarf_ctx;
 #endif
 

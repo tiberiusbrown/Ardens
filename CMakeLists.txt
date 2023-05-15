@@ -14,8 +14,18 @@ if(MSVC)
         /INCREMENTAL:NO                     # Disable incremental linking.
         $<$<NOT:$<CONFIG:DEBUG>>:/OPT:REF>  # Remove unreferenced functions and data.
         $<$<NOT:$<CONFIG:DEBUG>>:/OPT:ICF>  # Identical COMDAT folding.
+        $<$<NOT:$<CONFIG:DEBUG>>:/LTCG>     # Link-Time Code Generation.
         $<$<CONFIG:DEBUG>:/OPT:NOREF>       # No unreferenced data elimination.
         $<$<CONFIG:DEBUG>:/OPT:NOICF>       # No Identical COMDAT folding.
+    )
+    add_compile_options(
+        $<$<NOT:$<CONFIG:DEBUG>>:/GL>
+        $<$<NOT:$<CONFIG:DEBUG>>:/Gy>
+        $<$<NOT:$<CONFIG:DEBUG>>:/Gw>
+        $<$<NOT:$<CONFIG:DEBUG>>:/GF>
+        $<$<NOT:$<CONFIG:DEBUG>>:/Oy>
+        $<$<NOT:$<CONFIG:DEBUG>>:/Ot>
+        $<$<NOT:$<CONFIG:DEBUG>>:/Ox>
     )
 endif()
 
@@ -262,7 +272,7 @@ if(ABSIM_LLVM)
     target_link_libraries(arduboy_sim PRIVATE
         LLVMDebugInfoDWARF
         LLVMDemangle
-        LLVMObject
+        #LLVMObject
         )
     target_include_directories(arduboy_sim PRIVATE
         "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
@@ -335,3 +345,24 @@ if(EMSCRIPTEN)
     target_link_options(arduboy_sim PRIVATE "-lidbfs.js")
     target_link_options(arduboy_sim_player PRIVATE "-lidbfs.js")
 endif()
+
+#if(MSVC)
+#    include(CheckIPOSupported)
+#    check_ipo_supported(RESULT ipo_result OUTPUT ipo_err)
+#    if(ipo_result)
+#        message(STATUS "IPO is supported")
+#        set_property(
+#            TARGET
+#                arduboy_sim
+#                arduboy_sim_player
+#                miniz
+#                fmt
+#                bitsery
+#                LLVMDebugInfoDWARF
+#                LLVMDemangle
+#                LLVMObject
+#            PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+#    else()
+#        message(STATUS "IPO is NOT supported")
+#    endif()
+#endif()
