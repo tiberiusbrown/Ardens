@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include <fmt/format.h>
 
@@ -58,6 +59,7 @@ static ImGuiStyle default_style;
 
 float pixel_ratio = 1.f;
 std::string dropfile_err;
+bool loading_indicator = false;
 
 bool done = false;
 bool layout_done = false;
@@ -124,24 +126,31 @@ extern "C" int setparam(char const* name, char const* value)
     if(!strcmp(name, "z"))
     {
         settings.fullzoom = bvalue;
+        update_settings();
         r = 1;
     }
     else if(!strcmp(name, "grid"))
     {
         settings.display_pixel_grid = std::clamp<int>(nvalue, PGRID_MIN, PGRID_MAX);
+        update_settings();
         r = 1;
     }
     else if(!strcmp(name, "palette"))
     {
         settings.display_palette = std::clamp<int>(nvalue, PALETTE_MIN, PALETTE_MAX);
+        update_settings();
         r = 1;
     }
     else if(!strcmp(name, "autofilter"))
     {
         settings.display_auto_filter = bvalue;
+        update_settings();
         r = 1;
     }
-    if(r) update_settings();
+    else if(!strcmp(name, "loading"))
+    {
+        loading_indicator = bvalue;
+    }
     return r;
 }
 
@@ -425,26 +434,49 @@ void imgui_content()
         float w2 = w * 0.5f;
         float cx = size.x * 0.5f;
         float cy = size.y * 0.5f;
-        auto color = IM_COL32(200, 200, 200, 255);
+        constexpr uint8_t shade = 200;
+        auto color = IM_COL32(shade, shade, shade, 255);
         float thickness = 4.f * pixel_ratio;
-        d->AddRect(
-            { cx - w2, cy - w2 },
-            { cx + w2, cy + w2 },
-            color,
-            10.f * pixel_ratio,
-            0,
-            thickness);
-        d->AddLine(
-            { cx, cy - w2 * 0.5f },
-            { cx, cy },
-            color,
-            thickness);
-        d->AddTriangle(
-            { cx - w2 * 0.5f, cy },
-            { cx + w2 * 0.5f, cy },
-            { cx, cy + w2 * 0.5f },
-            color,
-            thickness);
+        if(loading_indicator)
+        {
+            for(int i = 0; i < 12; ++i)
+            {
+                float tx = cosf(3.1415926536f / 6 * i) * 0.5f;
+                float ty = sinf(3.1415926536f / 6 * i) * 0.5f;
+                int ti = (int)round(fmod(ImGui::GetTime(), 1.0) * 12);
+                if(ti > 11) ti = 11;
+                if(ti < 0) ti = 0;
+                ti -= i;
+                if(ti < 0) ti += 12;
+                int tf = (int)roundf((float)(11 - ti - 6) * (255.f / 5));
+                if(tf < 0) tf = 0;
+                d->AddCircleFilled(
+                    { cx + tx * w2, cy + ty * w2 },
+                    thickness,
+                    IM_COL32(shade, shade, shade, tf));
+            }
+        }
+        else
+        {
+            d->AddRect(
+                { cx - w2, cy - w2 },
+                { cx + w2, cy + w2 },
+                color,
+                10.f * pixel_ratio,
+                0,
+                thickness);
+            d->AddLine(
+                { cx, cy - w2 * 0.5f },
+                { cx, cy },
+                color,
+                thickness);
+            d->AddTriangle(
+                { cx - w2 * 0.5f, cy },
+                { cx + w2 * 0.5f, cy },
+                { cx, cy + w2 * 0.5f },
+                color,
+                thickness);
+        }
     }
 
 #ifndef ABSIM_NO_DEBUGGER

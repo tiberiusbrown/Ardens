@@ -67,6 +67,7 @@
                 if(p.length != 2) continue;
                 if(Module.ccall('setparam', null, ['string', 'string'], [p[0], p[1]]))
                     continue;
+                Module.ccall('setparam', null, ['string', 'string'], ['loading', '1'])
                 const fname = p[1];
                 const fetchURL = 'https://api.combee.net/arduboyGet?url=' + fname;
                 fetch(fetchURL)

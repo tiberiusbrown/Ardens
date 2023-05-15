@@ -15,6 +15,7 @@ extern int display_texture_zoom;
 extern texture_t display_texture;
 extern texture_t display_buffer_texture;
 extern std::string dropfile_err;
+extern bool loading_indicator;
 
 // platform-agnostic functionality (common.cpp)
 extern "C" int setparam(char const* name, char const* value);
