@@ -134,7 +134,7 @@ set(IMPLOT_SOURCES
     src/implot/implot.h
     src/implot/implot.cpp
     src/implot/implot_internal.h
-    src/implot/implot_demo.cpp
+    #src/implot/implot_demo.cpp
     src/implot/implot_items.cpp
     )
 set(GIFENC_SOURCES
