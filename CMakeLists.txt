@@ -144,8 +144,8 @@ set(GIFENC_SOURCES
 set(SOKOL_SOURCES
     src/sokol/sokol_app.h
     src/sokol/sokol_audio.h
+    src/sokol/sokol_fetch.h
     src/sokol/sokol_gfx.h
-    src/sokol/sokol_gl.h
     src/sokol/sokol_glue.h
     src/sokol/sokol_imgui.h
     src/sokol/sokol_time.h
