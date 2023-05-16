@@ -32,7 +32,7 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
     }
 
     float const inc = w * (1.f / 128);
-    float const line_thickness = inc * 0.25f;
+    float const line_thickness = inc * 0.125f;
     float const off = line_thickness * 0.5f;
 
     // draw pixel grid
