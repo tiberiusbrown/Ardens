@@ -237,13 +237,11 @@ void init()
 #endif
 
     ImGui::StyleColorsDark();
-
+    ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.06f, 0.06f, 1.00f);
     ImGuiStyle& style = ImGui::GetStyle();
-    if(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-    {
-        style.WindowRounding = 0.0f;
-        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-    }
+    style.WindowRounding = 0.0f;
+    style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    style.Colors[ImGuiCol_PopupBg].w = 1.0f;
 
     default_style = style;
 

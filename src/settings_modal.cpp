@@ -2,6 +2,28 @@
 
 #include "imgui.h"
 
+static bool settings_begin_table()
+{
+    float const A = 300.f * pixel_ratio;
+    float const B = 120.f * pixel_ratio;
+    float const Y = 200.f * pixel_ratio;
+
+    bool r = ImGui::BeginTable(
+        "##table", 2,
+        ImGuiTableFlags_NoSavedSettings |
+        ImGuiTableFlags_RowBg |
+        ImGuiTableFlags_ScrollY,
+        { A + B, Y });
+
+    if(r)
+    {
+        ImGui::TableSetupColumn("##colA", ImGuiTableColumnFlags_WidthFixed, A);
+        ImGui::TableSetupColumn("##colB", ImGuiTableColumnFlags_WidthFixed, B);
+    }
+
+    return r;
+}
+
 void modal_settings()
 {
     using namespace ImGui;
@@ -16,174 +38,189 @@ void modal_settings()
         ImGuiWindowFlags_NoSavedSettings))
         return;
 
-    if(BeginTable("##table", 2,
-        ImGuiTableFlags_SizingFixedFit |
-        ImGuiTableFlags_ScrollY,
-        ImVec2(0.f, GetFontSize() * 25.f)))
+    static char const* const PALETTE_ITEMS[] =
     {
-        float const W =
-            CalcTextSize("Low Contrast").x +
-            GetFrameHeight() +
-            GetStyle().FramePadding.x * 2;
+            "Default", "Retro", "Low Contrast"
+    };
+    constexpr int NUM_PALETTE_ITEMS = sizeof(PALETTE_ITEMS) / sizeof(PALETTE_ITEMS[0]);
+    static_assert(NUM_PALETTE_ITEMS == PALETTE_MAX + 1, "");
 
-        static char const* const PALETTE_ITEMS[] =
-        {
-                "Default", "Retro", "Low Contrast"
-        };
-        constexpr int NUM_PALETTE_ITEMS = sizeof(PALETTE_ITEMS) / sizeof(PALETTE_ITEMS[0]);
-        static_assert(NUM_PALETTE_ITEMS == PALETTE_MAX + 1, "");
+    static char const* const FILTER_ITEMS[] =
+    {
+            "None",
+            "Scale2x", "Scale3x", "Scale4x",
+            "HQ2x", "HQ3x", "HQ4x",
+    };
+    constexpr int NUM_FILTER_ITEMS = sizeof(FILTER_ITEMS) / sizeof(FILTER_ITEMS[0]);
+    static_assert(NUM_FILTER_ITEMS == FILTER_MAX + 1, "");
 
-        static char const* const FILTER_ITEMS[] =
+    if(BeginTabBar("##tabs"))
+    {
+        if(BeginTabItem("Display"))
         {
-                "None",
-                "Scale2x", "Scale3x", "Scale4x",
-                "HQ2x", "HQ3x", "HQ4x",
-        };
-        constexpr int NUM_FILTER_ITEMS = sizeof(FILTER_ITEMS) / sizeof(FILTER_ITEMS[0]);
-        static_assert(NUM_FILTER_ITEMS == FILTER_MAX + 1, "");
+            if(settings_begin_table())
+            {
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Display Auto Filter");
+                if(IsItemHovered())
+                {
+                    BeginTooltip();
+                    TextUnformatted("Apply temporal filtering on the display (necessary to show grayscale)");
+                    EndTooltip();
+                }
+                TableSetColumnIndex(1);
+                if(Checkbox("##displayautofilter", &settings.display_auto_filter))
+                    update_settings();
 
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Display Auto Filter");
-        if(IsItemHovered())
-        {
-            BeginTooltip();
-            TextUnformatted("Apply temporal filtering on the display (necessary to show grayscale)");
-            EndTooltip();
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Display Palette");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##palettecombo", &settings.display_palette,
+                    PALETTE_ITEMS, NUM_PALETTE_ITEMS))
+                    update_settings();
+
+#ifndef ABSIM_NO_SCALING
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Display Upsample");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##filtercombo", &settings.display_filtering,
+                    FILTER_ITEMS, NUM_FILTER_ITEMS))
+                    update_settings();
+
+                TableNextRow();
+                if(filter_zoom(settings.display_filtering) % settings.display_downsample != 0)
+                    TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Display Downsample");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
+                    update_settings();
+#endif
+
+                static char const* const PGRID_ITEMS[] =
+                {
+                        "Off", "Normal",
+                        "Red", "Green", "Blue",
+                        "Cyan", "Magenta", "Yellow",
+                        "White",
+                };
+                constexpr int NUM_PGRID_ITEMS = sizeof(PGRID_ITEMS) / sizeof(PGRID_ITEMS[0]);
+                static_assert(NUM_PGRID_ITEMS == PGRID_MAX + 1, "");
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Display Pixel Grid");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##pgrid", &settings.display_pixel_grid,
+                    PGRID_ITEMS, NUM_PGRID_ITEMS, NUM_PGRID_ITEMS))
+                    update_settings();
+
+                EndTable();
+            }
+            EndTabItem();
         }
-        TableSetColumnIndex(1);
-        if(Checkbox("##displayautofilter", &settings.display_auto_filter))
-            update_settings();
 
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Display Palette");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(W);
-        if(Combo("##palettecombo", &settings.display_palette,
-            PALETTE_ITEMS, NUM_PALETTE_ITEMS))
-            update_settings();
-
-#ifndef ABSIM_NO_SCALING
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Display Upsample");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(W);
-        if(Combo("##filtercombo", &settings.display_filtering,
-            FILTER_ITEMS, NUM_FILTER_ITEMS))
-            update_settings();
-
-        TableNextRow();
-        if(filter_zoom(settings.display_filtering) % settings.display_downsample != 0)
-            TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Display Downsample");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(W);
-        if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
-            update_settings();
-#endif
-
-        static char const* const PGRID_ITEMS[] =
+        if(BeginTabItem("Recording"))
         {
-                "Off", "Normal",
-                "Red", "Green", "Blue",
-                "Cyan", "Magenta", "Yellow",
-                "White",
-        };
-        constexpr int NUM_PGRID_ITEMS = sizeof(PGRID_ITEMS) / sizeof(PGRID_ITEMS[0]);
-        static_assert(NUM_PGRID_ITEMS == PGRID_MAX + 1, "");
+            if(settings_begin_table())
+            {
+                if(gif_recording || wav_recording) BeginDisabled();
 
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Display Pixel Grid");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(W);
-        if(Combo("##pgrid", &settings.display_pixel_grid,
-            PGRID_ITEMS, NUM_PGRID_ITEMS, NUM_PGRID_ITEMS))
-            update_settings();
-
-        if(gif_recording || wav_recording) BeginDisabled();
-
-        TableNextRow(0, pixel_ratio * 12);
-
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Recording Palette");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(W);
-        if(Combo("##recordingpalettecombo", &settings.recording_palette,
-            PALETTE_ITEMS, NUM_PALETTE_ITEMS))
-            update_settings();
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Recording Palette");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##recordingpalettecombo", &settings.recording_palette,
+                    PALETTE_ITEMS, NUM_PALETTE_ITEMS))
+                    update_settings();
 
 #ifndef ABSIM_NO_SCALING
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Recording Upsample");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(-1.f);
-        if(Combo("##recordingfiltercombo", &settings.recording_filtering,
-            FILTER_ITEMS, NUM_FILTER_ITEMS))
-            update_settings();
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Recording Upsample");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##recordingfiltercombo", &settings.recording_filtering,
+                    FILTER_ITEMS, NUM_FILTER_ITEMS))
+                    update_settings();
 
-        TableNextRow();
-        if(filter_zoom(settings.recording_filtering) % settings.recording_downsample != 0)
-            TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Recording Downsample");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(W);
-        if(SliderInt("##recordingdown", &settings.recording_downsample, 1, 4, "%dx"))
-            update_settings();
+                TableNextRow();
+                if(filter_zoom(settings.recording_filtering) % settings.recording_downsample != 0)
+                    TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Recording Downsample");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(SliderInt("##recordingdown", &settings.recording_downsample, 1, 4, "%dx"))
+                    update_settings();
 #endif
 
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Recording Zoom");
-        TableSetColumnIndex(1);
-        SetNextItemWidth(W);
-        if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
-            update_settings();
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Recording Zoom");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
+                    update_settings();
 
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Record Audio (WAV)");
-        TableSetColumnIndex(1);
-        if(Checkbox("##recordwav", &settings.record_wav))
-            update_settings();
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Record Audio (WAV)");
+                TableSetColumnIndex(1);
+                if(Checkbox("##recordwav", &settings.record_wav))
+                    update_settings();
 
-        if(gif_recording || wav_recording) EndDisabled();
+                if(gif_recording || wav_recording) EndDisabled();
 
-        TableNextRow(0, pixel_ratio * 12);
+                EndTable();
+            }
+            EndTabItem();
+        }
 
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Auto-break on stack overflow");
-        TableSetColumnIndex(1);
-        if(Checkbox("##autobreak", &settings.enable_stack_breaks))
-            update_settings();
+        if(BeginTabItem("Simulation"))
+        {
+            if(settings_begin_table())
+            {
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Auto-break on stack overflow");
+                TableSetColumnIndex(1);
+                if(Checkbox("##autobreak", &settings.enable_stack_breaks))
+                    update_settings();
 
-        TableNextRow();
-        TableSetColumnIndex(0);
-        AlignTextToFramePadding();
-        TextUnformatted("Enable breakpoints while stepping over/out");
-        TableSetColumnIndex(1);
-        if(Checkbox("##stepbreak", &settings.enable_step_breaks))
-            update_settings();
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Enable breakpoints while stepping over/out");
+                TableSetColumnIndex(1);
+                if(Checkbox("##stepbreak", &settings.enable_step_breaks))
+                    update_settings();
 
-        EndTable();
+                EndTable();
+            }
+            EndTabItem();
+        }
+
+        EndTabBar();
     }
 
     if(Button("OK", ImVec2(120, 0)))
