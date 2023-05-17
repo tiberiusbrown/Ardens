@@ -6,8 +6,8 @@
 Drag and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (.hex/.elf/.arduboy) and any FX data (.bin) onto the page. Or, try one of the game URLs below:
 
 - [ArduChess](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduchess/master/arduchess/arduchess.hex)
-- [ArduGolf](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
-- [ArduRogue](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
+- [ArduGolf](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
+- [ArduRogue](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
 
 ![screenshot](img/screenshot.png)
 
