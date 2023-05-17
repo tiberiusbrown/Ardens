@@ -57,7 +57,7 @@ void arduboy_t::load_savedata(std::istream& f)
 
     auto const& d = savedata;
     if(d.eeprom.size() == cpu.eeprom.size())
-        memcpy(cpu.eeprom.data(), d.eeprom.data(), sizeof(cpu.eeprom));
+        memcpy(cpu.eeprom.data(), d.eeprom.data(), array_bytes(cpu.eeprom));
 
     for(auto const& kv : d.fx_sectors)
     {
@@ -70,12 +70,10 @@ void arduboy_t::load_savedata(std::istream& f)
 
 void arduboy_t::save_savedata(std::ostream& f)
 {
-    if(!savedata_dirty) return;
     using StreamAdapter = bitsery::OutputStreamAdapter;
     bitsery::Serializer<StreamAdapter> ar(f);
     savedata.game_hash = game_hash;
     ar(savedata);
-    savedata_dirty = false;
 }
 
 void arduboy_t::reset()
@@ -508,14 +506,14 @@ void arduboy_t::advance(uint64_t ps)
         memcpy(
             display.filtered_pixels.data(),
             display.pixels[0].data(),
-            sizeof(display.filtered_pixels));
+            array_bytes(display.filtered_pixels));
     }
 
     // update savedata
     if(cpu.eeprom_dirty)
     {
         savedata.eeprom.resize(cpu.eeprom.size());
-        memcpy(savedata.eeprom.data(), cpu.eeprom.data(), sizeof(savedata.eeprom));
+        memcpy(savedata.eeprom.data(), cpu.eeprom.data(), array_bytes(savedata.eeprom));
         cpu.eeprom_dirty = false;
         savedata_dirty = true;
     }

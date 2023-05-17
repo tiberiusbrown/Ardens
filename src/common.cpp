@@ -60,6 +60,7 @@ static ImGuiStyle default_style;
 float pixel_ratio = 1.f;
 std::string dropfile_err;
 bool loading_indicator = false;
+uint64_t ms_since_start;
 
 bool done = false;
 bool layout_done = false;
@@ -249,6 +250,8 @@ void init()
     arduboy->reset();
     arduboy->fx.min_page = 0xffff;
     arduboy->fx.max_page = 0xffff;
+
+    ms_since_start = 0;
 }
 
 void frame_logic()
@@ -261,6 +264,7 @@ void frame_logic()
 
     // advance simulation
     uint64_t dt = platform_get_ms_dt();
+    ms_since_start += dt;
     if(dt > 30) dt = 30;
     arduboy->cpu.stack_overflow = false;
     if(!arduboy->paused)

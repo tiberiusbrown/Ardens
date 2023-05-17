@@ -29,7 +29,7 @@ namespace absim
 
 void atmega32u4_t::merge_instrs()
 {
-    memcpy(&merged_prog, &decoded_prog, sizeof(merged_prog));
+    memcpy(merged_prog.data(), &decoded_prog, array_bytes(merged_prog));
 
     for(size_t n = 0; n < merged_prog.size(); ++n)
     {

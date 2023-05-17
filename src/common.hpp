@@ -16,6 +16,7 @@ extern texture_t display_texture;
 extern texture_t display_buffer_texture;
 extern std::string dropfile_err;
 extern bool loading_indicator;
+extern uint64_t ms_since_start;
 
 // platform-agnostic functionality (common.cpp)
 extern "C" int setparam(char const* name, char const* value);

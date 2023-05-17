@@ -821,4 +821,9 @@ static ABSIM_FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t i
     return n;
 }
 
+template<class T> size_t array_bytes(T const& a)
+{
+    return a.size() * sizeof(*a.data());
+}
+
 }

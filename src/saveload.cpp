@@ -8,6 +8,11 @@
 
 #include <inttypes.h>
 
+constexpr uint64_t SAVE_INTERVAL_MS = 500;
+
+static bool need_save = false;
+static uint64_t need_save_time;
+
 static std::string savedata_filename()
 {
     char buf[128];
@@ -32,17 +37,27 @@ void load_savedata()
 
 void check_save_savedata()
 {
-    if(!arduboy->savedata_dirty) return;
-    auto fname = savedata_filename();
-    std::ofstream f(fname, std::ios::out | std::ios::binary);
-    if(!f.fail())
+    if(arduboy->savedata_dirty)
     {
-        arduboy->save_savedata(f);
-        f.close();
+        need_save = true;
+        need_save_time = ms_since_start + SAVE_INTERVAL_MS;
+        arduboy->savedata_dirty = false;
+    }
+
+    if(need_save && ms_since_start >= need_save_time)
+    {
+        need_save = false;
+        auto fname = savedata_filename();
+        std::ofstream f(fname, std::ios::out | std::ios::binary);
+        if(!f.fail())
+        {
+            arduboy->save_savedata(f);
+            f.close();
 #ifdef __EMSCRIPTEN__
-        EM_ASM(
-            FS.syncfs(function(err) {});
-        );
+            EM_ASM(
+                FS.syncfs(function(err) {});
+            );
 #endif
+        }
     }
 }

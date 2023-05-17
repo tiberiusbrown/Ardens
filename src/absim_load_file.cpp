@@ -649,7 +649,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
             sec_text = section;
             if(size > cpu.prog.size())
                 return "ELF: Section .text too large";
-            memcpy(&cpu.prog, data.data(), data.size());
+            memcpy(cpu.prog.data(), data.data(), array_bytes(data));
             cpu.last_addr = (uint16_t)size;
             found_text = true;
         }
