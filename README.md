@@ -2,8 +2,10 @@
 
 [Arduboy](https://www.arduboy.com/) simulator for profiling and debugging.
 
-[Try it out here.](https://tiberiusbrown.github.io/arduboy_sim/)
-Drag and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (.hex/.elf/.arduboy) and any FX data (.bin) onto the page. Or, try one of the game URLs below:
+[Try out the full debugger here.](https://tiberiusbrown.github.io/arduboy_sim/)
+Drag and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (.hex/.elf/.arduboy) and any FX data (.bin) onto the page.
+
+Try the minimal player with one of the game URLs below:
 
 - [ArduChess](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduchess/master/arduchess/arduchess.hex)
 - [ArduGolf](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
