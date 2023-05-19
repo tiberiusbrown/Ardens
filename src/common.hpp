@@ -29,6 +29,8 @@ bool update_pixel_ratio();
 void define_font();
 void rebuild_fonts();
 void rescale_style();
+void save_screenshot();
+void toggle_recording();
 
 // platform-specific functionality
 void platform_destroy_texture(texture_t t);
@@ -53,7 +55,7 @@ void file_download(
 #endif
 
 extern bool gif_recording;
-extern uint32_t gif_ms_rem;
+extern uint64_t gif_ps_rem;
 void send_gif_frame(int ds, uint8_t const* pixels);
 void screen_recording_toggle(uint8_t const* pixels);
 

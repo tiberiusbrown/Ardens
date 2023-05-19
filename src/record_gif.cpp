@@ -3,7 +3,7 @@
 #include "gifenc.h"
 
 bool gif_recording = false;
-uint32_t gif_ms_rem = 0;
+uint64_t gif_ps_rem = 0;
 static ge_GIF* gif = nullptr;
 static char gif_fname[256];
 
@@ -67,7 +67,7 @@ void screen_recording_toggle(uint8_t const* pixels)
         int z = recording_filter_zoom();
         gif = ge_new_gif(fname, 128 * z, 64 * z, palette, depth, -1, 0);
         send_gif_frame(0, pixels);
-        gif_ms_rem = 0;
+        gif_ps_rem = 0;
     }
     gif_recording = !gif_recording;
 }

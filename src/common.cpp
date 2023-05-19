@@ -256,6 +256,33 @@ void init()
     ms_since_start = 0;
 }
 
+void save_screenshot()
+{
+    char fname[256];
+    time_t rawtime;
+    struct tm* ti;
+    time(&rawtime);
+    ti = localtime(&rawtime);
+    (void)snprintf(fname, sizeof(fname),
+        "screenshot_%04d%02d%02d%02d%02d%02d.png",
+        ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+        ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+    int z = recording_filter_zoom();
+#ifdef __EMSCRIPTEN__
+    stbi_write_png("screenshot.png", 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
+    file_download("screenshot.png", fname, "image/x-png");
+#else
+    stbi_write_png(fname, 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
+#endif
+}
+
+void toggle_recording()
+{
+    screen_recording_toggle(recording_pixels(false));
+    if(wav_recording || settings.record_wav)
+        wav_recording_toggle();
+}
+
 void frame_logic()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -303,21 +330,24 @@ void frame_logic()
             arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
         arduboy->display.enable_filter = settings.display_auto_filter;
 
+        constexpr uint64_t MS_TO_PS = 1000000000ull;
+        uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;
         if(gif_recording)
         {
-            uint64_t ms = 20 - gif_ms_rem;
-            while(dt >= ms)
+            constexpr uint64_t DT_20_MS = 20 * MS_TO_PS;
+            uint64_t ps = DT_20_MS - gif_ps_rem;
+            while(dtps >= ps)
             {
-                arduboy->advance(ms * 1000000000000ull / simulation_slowdown);
+                arduboy->advance(ps);
                 send_gif_frame(2, recording_pixels(false));
-                dt -= ms;
-                ms = 20;
-                gif_ms_rem = 0;
+                dtps -= ps;
+                ps = DT_20_MS;
+                gif_ps_rem = 0;
             }
-            gif_ms_rem = dt;
+            gif_ps_rem += dtps;
         }
-        if(dt > 0)
-            arduboy->advance(dt * 1000000000000ull / simulation_slowdown);
+        if(dtps > 0)
+            arduboy->advance(dtps);
 
         check_save_savedata();
 
@@ -377,30 +407,9 @@ void frame_logic()
         }
 #endif
         if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
-        {
-            char fname[256];
-            time_t rawtime;
-            struct tm* ti;
-            time(&rawtime);
-            ti = localtime(&rawtime);
-            (void)snprintf(fname, sizeof(fname),
-                "screenshot_%04d%02d%02d%02d%02d%02d.png",
-                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
-            int z = recording_filter_zoom();
-#ifdef __EMSCRIPTEN__
-            stbi_write_png("screenshot.png", 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
-            file_download("screenshot.png", fname, "image/x-png");
-#else
-            stbi_write_png(fname, 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
-#endif
-        }
-        if(ImGui::IsKeyPressed(ImGuiKey_F3, false))
-        {
-            screen_recording_toggle(recording_pixels(false));
-            if(wav_recording || settings.record_wav)
-                wav_recording_toggle();
-        }
+            save_screenshot();
+        if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
+            toggle_recording();
 #endif
     }
 

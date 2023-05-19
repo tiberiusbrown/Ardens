@@ -127,7 +127,9 @@ void view_debugger()
                 if(ImGui::MenuItem("About"))
                     do_about_modal = true;
                 if(ImGui::MenuItem("Take Screenshot (PNG)", "F2"))
-
+                    save_screenshot();
+                if(ImGui::MenuItem("Take Screenshot (PNG)", "F2"))
+                    toggle_recording();
                 ImGui::EndMenu();
             }
 
