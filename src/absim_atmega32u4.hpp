@@ -194,59 +194,65 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         if(cycle_count >= usb_next_update_cycle)
             update_usb();
 
-        // handle interrupts here
-        uint8_t i;
-
-        // usb general
-        i = (data[0xe1] & data[0xe2]) | (data[0xd8] & data[0xda]);
-        if(i)
+        if(prev_sreg & SREG_I)
         {
-            uint8_t dummy = 0;
-            check_interrupt(0x14, i, dummy);
-        }
+            // check for stack overflow only when interrupts are enabled
+            check_stack_overflow();
 
-        //i = (data[0xe1] & data[0xe2]);
-        //if(i) check_interrupt(0x14, i, data[0xe1]);
-        //i = (data[0xd8] & data[0xda] & 0x1);
-        //if(i) check_interrupt(0x14, i, data[0xda]);
+            // handle interrupts here
+            uint8_t i;
 
-        // usb endpoint
-        i = data[0xf4];
-        if(i) check_interrupt(0x16, i, data[0xf4]);
+            // usb general
+            i = (data[0xe1] & data[0xe2]) | (data[0xd8] & data[0xda]);
+            if(i)
+            {
+                uint8_t dummy = 0;
+                check_interrupt(0x14, i, dummy);
+            }
 
-        i = tifr1() & timsk1();
-        if(i)
-        {
-            check_interrupt(0x22, i & 0x02, tifr1()); // TIMER1 COMPA
-            check_interrupt(0x24, i & 0x04, tifr1()); // TIMER1 COMPB
-            check_interrupt(0x26, i & 0x08, tifr1()); // TIMER1 COMPC
-            check_interrupt(0x28, i & 0x01, tifr1()); // TIMER1 OVF
-        }
+            //i = (data[0xe1] & data[0xe2]);
+            //if(i) check_interrupt(0x14, i, data[0xe1]);
+            //i = (data[0xd8] & data[0xda] & 0x1);
+            //if(i) check_interrupt(0x14, i, data[0xda]);
 
-        i = tifr0() & timsk0();
-        if(i)
-        {
-            check_interrupt(0x2a, i & 0x02, tifr0()); // TIMER0 COMPA
-            check_interrupt(0x2c, i & 0x04, tifr0()); // TIMER0 COMPB
-            check_interrupt(0x2e, i & 0x01, tifr0()); // TIMER0 OVF
-        }
+            // usb endpoint
+            i = data[0xf4];
+            if(i) check_interrupt(0x16, i, data[0xf4]);
 
-        i = tifr3() & timsk3();
-        if(i)
-        {
-            check_interrupt(0x40, i & 0x02, tifr3()); // TIMER3 COMPA
-            check_interrupt(0x42, i & 0x04, tifr3()); // TIMER3 COMPB
-            check_interrupt(0x44, i & 0x08, tifr3()); // TIMER3 COMPC
-            check_interrupt(0x46, i & 0x01, tifr3()); // TIMER3 OVF
-        }
+            i = tifr1() & timsk1();
+            if(i)
+            {
+                check_interrupt(0x22, i & 0x02, tifr1()); // TIMER1 COMPA
+                check_interrupt(0x24, i & 0x04, tifr1()); // TIMER1 COMPB
+                check_interrupt(0x26, i & 0x08, tifr1()); // TIMER1 COMPC
+                check_interrupt(0x28, i & 0x01, tifr1()); // TIMER1 OVF
+            }
 
-        i = tifr4() & timsk4();
-        if(i)
-        {
-            check_interrupt(0x4c, i & 0x40, tifr4()); // TIMER4 COMPA
-            check_interrupt(0x4e, i & 0x20, tifr4()); // TIMER4 COMPB
-            check_interrupt(0x50, i & 0x80, tifr4()); // TIMER4 COMPD
-            check_interrupt(0x52, i & 0x04, tifr4()); // TIMER4 OVF
+            i = tifr0() & timsk0();
+            if(i)
+            {
+                check_interrupt(0x2a, i & 0x02, tifr0()); // TIMER0 COMPA
+                check_interrupt(0x2c, i & 0x04, tifr0()); // TIMER0 COMPB
+                check_interrupt(0x2e, i & 0x01, tifr0()); // TIMER0 OVF
+            }
+
+            i = tifr3() & timsk3();
+            if(i)
+            {
+                check_interrupt(0x40, i & 0x02, tifr3()); // TIMER3 COMPA
+                check_interrupt(0x42, i & 0x04, tifr3()); // TIMER3 COMPB
+                check_interrupt(0x44, i & 0x08, tifr3()); // TIMER3 COMPC
+                check_interrupt(0x46, i & 0x01, tifr3()); // TIMER3 OVF
+            }
+
+            i = tifr4() & timsk4();
+            if(i)
+            {
+                check_interrupt(0x4c, i & 0x40, tifr4()); // TIMER4 COMPA
+                check_interrupt(0x4e, i & 0x20, tifr4()); // TIMER4 COMPB
+                check_interrupt(0x50, i & 0x80, tifr4()); // TIMER4 COMPD
+                check_interrupt(0x52, i & 0x04, tifr4()); // TIMER4 OVF
+            }
         }
     }
 

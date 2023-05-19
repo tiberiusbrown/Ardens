@@ -150,6 +150,7 @@ void atmega32u4_t::reset()
     cycle_count = 0;
 
     min_stack = 0xffff;
+    pushed_at_least_once = false;
 
     serial_bytes.clear();
     reset_usb();

@@ -235,6 +235,9 @@ static std::string serdes(Archive& ar, arduboy_t& a)
     ar(a.fx.sectors_modified);
     ar(a.cpu.eeprom_modified);
 
+    // v0.16.8
+    ar(a.cpu.pushed_at_least_once);
+
     return "";
 }
 
