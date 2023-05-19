@@ -126,6 +126,8 @@ void view_debugger()
                     do_settings_modal = true;
                 if(ImGui::MenuItem("About"))
                     do_about_modal = true;
+                if(ImGui::MenuItem("Take Screenshot (PNG)", "F2"))
+
                 ImGui::EndMenu();
             }
 

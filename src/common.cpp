@@ -395,14 +395,12 @@ void frame_logic()
             stbi_write_png(fname, 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
 #endif
         }
-        if(gif_recording && arduboy->paused)
+        if(ImGui::IsKeyPressed(ImGuiKey_F3, false))
+        {
             screen_recording_toggle(recording_pixels(false));
-        else if(simulation_slowdown == 1000 && ImGui::IsKeyPressed(ImGuiKey_F3, false))
-            screen_recording_toggle(recording_pixels(false));
-        if(wav_recording && arduboy->paused)
-            wav_recording_toggle();
-        else if(simulation_slowdown == 1000 && ImGui::IsKeyPressed(ImGuiKey_F3, false))
-            wav_recording_toggle();
+            if(wav_recording || settings.record_wav)
+                wav_recording_toggle();
+        }
 #endif
     }
 
