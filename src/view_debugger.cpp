@@ -126,10 +126,12 @@ void view_debugger()
                     do_settings_modal = true;
                 if(ImGui::MenuItem("About"))
                     do_about_modal = true;
-                if(ImGui::MenuItem("Take Screenshot (PNG)", "F2"))
+                if(!arduboy->cpu.decoded) ImGui::BeginDisabled();
+                if(ImGui::MenuItem("Take PNG Screenshot", "F2"))
                     save_screenshot();
-                if(ImGui::MenuItem("Take Screenshot (PNG)", "F2"))
+                if(ImGui::MenuItem("Toggle GIF Recording", "F3"))
                     toggle_recording();
+                if(!arduboy->cpu.decoded) ImGui::EndDisabled();
                 ImGui::EndMenu();
             }
 
