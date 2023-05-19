@@ -207,6 +207,8 @@ void shutdown()
 
 void init()
 {
+    printf("absim " ABSIM_VERSION " by Peter Brown\n");
+
 #ifdef __EMSCRIPTEN__
     EM_ASM(
         FS.mkdir('/offline');

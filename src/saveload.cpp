@@ -58,6 +58,7 @@ void check_save_savedata()
                 FS.syncfs(function(err) {});
             );
 #endif
+            printf("Saved %s\n", fname.c_str());
         }
     }
 }

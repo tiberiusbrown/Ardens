@@ -203,6 +203,7 @@ endif()
 set_source_files_properties(
     src/absim_snapshot.cpp
     src/view_debugger.cpp
+    src/common.cpp
     PROPERTIES
         COMPILE_OPTIONS "-DABSIM_VERSION=\"${ABSIM_VERSION}\""
     )
