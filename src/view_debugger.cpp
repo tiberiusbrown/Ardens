@@ -131,6 +131,10 @@ void view_debugger()
                     save_screenshot();
                 if(ImGui::MenuItem("Toggle GIF Recording", "F3"))
                     toggle_recording();
+#ifndef ABSIM_NO_SNAPSHOTS
+                if(ImGui::MenuItem("Take Snapshot", "F4"))
+                    take_snapshot();
+#endif
                 if(!arduboy->cpu.decoded) ImGui::EndDisabled();
                 ImGui::EndMenu();
             }

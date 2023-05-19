@@ -31,6 +31,7 @@ void rebuild_fonts();
 void rescale_style();
 void save_screenshot();
 void toggle_recording();
+void take_snapshot();
 
 // platform-specific functionality
 void platform_destroy_texture(texture_t t);

@@ -283,6 +283,32 @@ void toggle_recording()
         wav_recording_toggle();
 }
 
+void take_snapshot()
+{
+#ifndef ABSIM_NO_SNAPSHOTS
+    char fname[256];
+    time_t rawtime;
+    struct tm* ti;
+    time(&rawtime);
+    ti = localtime(&rawtime);
+    (void)snprintf(fname, sizeof(fname),
+        "absim_%04d%02d%02d%02d%02d%02d.snapshot",
+        ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+        ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+#ifdef __EMSCRIPTEN__
+    std::ofstream f("absim.snapshot", std::ios::binary);
+    if(arduboy->save_snapshot(f))
+    {
+        f.close();
+        file_download("absim.snapshot", fname, "application/octet-stream");
+    }
+#else
+    std::ofstream f(fname, std::ios::binary);
+    arduboy->save_snapshot(f);
+#endif
+#endif
+}
+
 void frame_logic()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -381,31 +407,8 @@ void frame_logic()
         platform_update_texture(display_texture, pixels.data(), pixels.size());
 
 #if ALLOW_SCREENSHOTS
-#ifndef ABSIM_NO_SNAPSHOTS
         if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
-        {
-            char fname[256];
-            time_t rawtime;
-            struct tm* ti;
-            time(&rawtime);
-            ti = localtime(&rawtime);
-            (void)snprintf(fname, sizeof(fname),
-                "absim_%04d%02d%02d%02d%02d%02d.snapshot",
-                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
-#ifdef __EMSCRIPTEN__
-            std::ofstream f("absim.snapshot", std::ios::binary);
-            if(arduboy->save_snapshot(f))
-            {
-                f.close();
-                file_download("absim.snapshot", fname, "application/octet-stream");
-            }
-#else
-            std::ofstream f(fname, std::ios::binary);
-            arduboy->save_snapshot(f);
-#endif
-        }
-#endif
+            take_snapshot();
         if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
             save_screenshot();
         if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
