@@ -559,11 +559,11 @@ void imgui_content()
     {
         int ab = 0;
         auto mask = arduboy->cpu.autobreaks & arduboy->cpu.enabled_autobreaks;
-        for(int i = 1; i < absim::AB_NUM; ++i)
+        for(size_t i = 1; i < mask.size(); ++i)
         {
-            if(mask & (1 << i))
+            if(mask.test(i))
             {
-                ab = 0;
+                ab = i;
                 break;
             }
         }

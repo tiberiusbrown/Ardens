@@ -57,7 +57,6 @@ enum autobreak_t
 
     AB_NUM
 };
-static_assert(AB_NUM <= 32, "revisit mask scheme");
 
 struct int_vector_info_t
 {
@@ -181,17 +180,17 @@ struct atmega32u4_t
     uint32_t stack_check; // max allowable value for SP
     bool pushed_at_least_once;
 
-    uint32_t autobreaks;
-    uint32_t enabled_autobreaks;
+    std::bitset<AB_NUM> autobreaks;
+    std::bitset<AB_NUM> enabled_autobreaks;
     //autobreak_t autobreak;
     //std::array<bool, AB_NUM> enable_autobreaks;
     ABSIM_FORCEINLINE void autobreak(autobreak_t t)
     {
-        autobreaks |= (1 << t);
+        autobreaks.set(t);
     }
     ABSIM_FORCEINLINE bool should_autobreak() const
     {
-        return (autobreaks & enabled_autobreaks) != 0;
+        return (autobreaks & enabled_autobreaks).any();
     }
 
     ABSIM_FORCEINLINE void check_deref(uint16_t addr)
