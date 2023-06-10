@@ -55,7 +55,7 @@ void atmega32u4_t::spi_handle_st_spdr(
     if(cpu.spi_busy)
     {
         spsr |= WCOL;
-        cpu.autobreak = AB_SPI_WCOL;
+        cpu.autobreak(AB_SPI_WCOL);
     }
     else
     {

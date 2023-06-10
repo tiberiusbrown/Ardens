@@ -40,7 +40,7 @@ namespace object { class ObjectFile; }
 namespace absim
 {
 
-enum autobreak_type_t
+enum autobreak_t
 {
     AB_NONE,
 
@@ -57,6 +57,7 @@ enum autobreak_type_t
 
     AB_NUM
 };
+static_assert(AB_NUM <= 32, "revisit mask scheme");
 
 struct int_vector_info_t
 {
@@ -180,19 +181,25 @@ struct atmega32u4_t
     uint32_t stack_check; // max allowable value for SP
     bool pushed_at_least_once;
 
-    autobreak_type_t autobreak;
-    std::array<bool, AB_NUM> enable_autobreaks;
+    uint32_t autobreaks;
+    uint32_t enabled_autobreaks;
+    //autobreak_t autobreak;
+    //std::array<bool, AB_NUM> enable_autobreaks;
+    ABSIM_FORCEINLINE void autobreak(autobreak_t t)
+    {
+        autobreaks |= (1 << t);
+    }
     ABSIM_FORCEINLINE bool should_autobreak() const
     {
-        return enable_autobreaks[autobreak];
+        return (autobreaks & enabled_autobreaks) != 0;
     }
 
     ABSIM_FORCEINLINE void check_deref(uint16_t addr)
     {
         if(addr == 0)
-            autobreak = AB_NULL_DEREF;
+            autobreak(AB_NULL_DEREF);
         else if(addr >= data.size())
-            autobreak = AB_OOB_DEREF;
+            autobreak(AB_OOB_DEREF);
     }
 
     ABSIM_FORCEINLINE void check_stack_overflow(uint16_t tsp)
@@ -201,7 +208,7 @@ struct atmega32u4_t
         // check min stack
         min_stack = std::min<uint32_t>(min_stack, tsp);
         if(tsp < stack_check)
-            autobreak = AB_STACK_OVERFLOW;
+            autobreak(AB_STACK_OVERFLOW);
     }
 
     ABSIM_FORCEINLINE void check_stack_overflow()

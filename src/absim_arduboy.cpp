@@ -392,7 +392,7 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
 
         cpu.spi_datain_byte = fx.spi_transceive(byte);
         if(fx.busy_ps_rem != 0 && !fx.reading_status)
-            cpu.autobreak = AB_FX_BUSY;
+            cpu.autobreak(AB_FX_BUSY);
         cpu.spi_done_shifting = false;
     }
 
@@ -453,7 +453,7 @@ void arduboy_t::advance_instr()
 
 void arduboy_t::advance(uint64_t ps)
 {
-    cpu.autobreak = AB_NONE;
+    cpu.autobreaks = 0;
 
     ps += ps_rem;
     ps_rem = 0;

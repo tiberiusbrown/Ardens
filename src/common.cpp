@@ -351,11 +351,11 @@ void frame_logic()
         bool prev_paused = arduboy->paused;
         arduboy->frame_bytes_total = 1024;
 
-        for(auto& ab : arduboy->cpu.enable_autobreaks)
-            ab = false;
+        arduboy->cpu.enabled_autobreaks = 0;
 #ifndef ABSIM_NO_GUI
         for(int i = 1; i < absim::AB_NUM; ++i)
-            arduboy->cpu.enable_autobreaks[i] = settings.ab.index(i);
+            if(settings.ab.index(i))
+                arduboy->cpu.enabled_autobreaks |= (1 << i);
 #endif
 
         arduboy->allow_nonstep_breakpoints =
@@ -557,14 +557,25 @@ void imgui_content()
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
+        int ab = 0;
+        auto mask = arduboy->cpu.autobreaks & arduboy->cpu.enabled_autobreaks;
+        for(int i = 1; i < absim::AB_NUM; ++i)
+        {
+            if(mask & (1 << i))
+            {
+                ab = 0;
+                break;
+            }
+        }
+
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted("A runtime error was caught.");
         ImGui::Separator();
-        ImGui::TextUnformatted(AB_REASONS[arduboy->cpu.autobreak]);
+        ImGui::TextUnformatted(AB_REASONS[ab]);
         ImGui::PopTextWrapPos();
         if(ImGui::Button("OK", ImVec2(120, 0)))
         {
-            arduboy->cpu.autobreak = absim::AB_NONE;
+            arduboy->cpu.autobreaks = 0;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

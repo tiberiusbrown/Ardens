@@ -119,7 +119,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             {
                 if(pc >= last_pc)
                 {
-                    autobreak = AB_OOB_PC;
+                    autobreak(AB_OOB_PC);
                     return cycles + 1;
                 }
                 auto const& i = merged_prog[pc];

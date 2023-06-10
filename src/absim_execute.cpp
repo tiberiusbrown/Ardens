@@ -186,7 +186,7 @@ uint32_t instr_ijmp(atmega32u4_t& cpu, avr_instr_t const& i)
     uint16_t z = cpu.z_word();
     cpu.pc = z;
     if(z >= cpu.last_addr / 2)
-        cpu.autobreak = absim::AB_OOB_IJMP;
+        cpu.autobreak(AB_OOB_IJMP);
     return 2;
 }
 
@@ -511,7 +511,7 @@ uint32_t instr_ldd_std(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     uint16_t ptr = (i.word & 0x8) ? cpu.y_word() : cpu.z_word();
     if(ptr == 0)
-        cpu.autobreak = absim::AB_NULL_REL_DEREF;
+        cpu.autobreak(AB_NULL_REL_DEREF);
     ptr += i.dst;
     if(!(i.word & 0x200))
         cpu.gpr(i.src) = cpu.ld(ptr);
