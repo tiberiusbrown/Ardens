@@ -45,10 +45,19 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(profiler_group_symbols);
     ABSIM_BOOL_SETTING(enable_step_breaks);
-    ABSIM_BOOL_SETTING(enable_stack_breaks);
     ABSIM_BOOL_SETTING(fullzoom);
     ABSIM_BOOL_SETTING(display_auto_filter);
     ABSIM_BOOL_SETTING(record_wav);
+
+    ABSIM_BOOL_SETTING(ab.stack_overflow);
+    ABSIM_BOOL_SETTING(ab.null_deref);
+    ABSIM_BOOL_SETTING(ab.oob_deref);
+    ABSIM_BOOL_SETTING(ab.oob_eeprom);
+    ABSIM_BOOL_SETTING(ab.oob_ijmp);
+    ABSIM_BOOL_SETTING(ab.oob_pc);
+    ABSIM_BOOL_SETTING(ab.unknown_instr);
+    ABSIM_BOOL_SETTING(ab.spi_wcol);
+    ABSIM_BOOL_SETTING(ab.fx_busy);
 
     ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
@@ -94,10 +103,19 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(profiler_group_symbols);
     ABSIM_BOOL_SETTING(enable_step_breaks);
-    ABSIM_BOOL_SETTING(enable_stack_breaks);
     ABSIM_BOOL_SETTING(fullzoom);
     ABSIM_BOOL_SETTING(display_auto_filter);
     ABSIM_BOOL_SETTING(record_wav);
+
+    ABSIM_BOOL_SETTING(ab.stack_overflow);
+    ABSIM_BOOL_SETTING(ab.null_deref);
+    ABSIM_BOOL_SETTING(ab.oob_deref);
+    ABSIM_BOOL_SETTING(ab.oob_eeprom);
+    ABSIM_BOOL_SETTING(ab.oob_ijmp);
+    ABSIM_BOOL_SETTING(ab.oob_pc);
+    ABSIM_BOOL_SETTING(ab.unknown_instr);
+    ABSIM_BOOL_SETTING(ab.spi_wcol);
+    ABSIM_BOOL_SETTING(ab.fx_busy);
 
     ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);

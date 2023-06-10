@@ -321,7 +321,6 @@ void frame_logic()
     uint64_t dt = platform_get_ms_dt();
     ms_since_start += dt;
     if(dt > 30) dt = 30;
-    arduboy->cpu.stack_overflow = false;
     if(!arduboy->paused)
     {
         // PINF: 4,5,6,7=D,L,R,U
@@ -351,7 +350,14 @@ void frame_logic()
 
         bool prev_paused = arduboy->paused;
         arduboy->frame_bytes_total = 1024;
-        arduboy->cpu.enable_stack_break = settings.enable_stack_breaks;
+
+        for(auto& ab : arduboy->cpu.enable_autobreaks)
+            ab = false;
+#ifndef ABSIM_NO_GUI
+        for(int i = 1; i < absim::AB_NUM; ++i)
+            arduboy->cpu.enable_autobreaks[i] = settings.ab.index(i);
+#endif
+
         arduboy->allow_nonstep_breakpoints =
             arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
         arduboy->display.enable_filter = settings.display_auto_filter;
@@ -379,8 +385,8 @@ void frame_logic()
 
         if(arduboy->paused && !prev_paused)
             disassembly_scroll_addr = arduboy->cpu.pc * 2;
-        if(!settings.enable_stack_breaks)
-            arduboy->cpu.stack_overflow = false;
+        //if(!settings.enable_stack_breaks)
+        //    arduboy->cpu.stack_overflow = false;
 
         // consume sound buffer
         send_wav_audio();
@@ -528,19 +534,39 @@ void imgui_content()
 #endif
 
 #ifndef ABSIM_NO_GUI
-    if(arduboy->cpu.stack_overflow)
-        ImGui::OpenPopup("Stack Overflow");
+    if(arduboy->cpu.should_autobreak())
+        ImGui::OpenPopup("Auto-Break");
+
+    static std::array<char const*, absim::AB_NUM> const AB_REASONS =
+    {
+        "None",
+        "Stack Overflow",
+        "Null Dereference: a load/store was executed at address 0x0000.",
+        "Null-Relative Dereference: a load/store with displacement (ldd/std) was executed with a null base pointer.",
+        "Out-of-bounds Dereference: a load/store was executed at an address outside of RAM bounds.",
+        "EEPROM Out-of-bounds: EEPROM was accessed at an address greater than 0x3ff.",
+        "Out-of-bounds Indirect Jump: an indirect jump (ijmp) was executed to an address outside of program memory.",
+        "Out-of-bounds PC: the PC is now pointing past the last byte of program memory.",
+        "Unknown Instruction: encountered an instruction that is invalid or currently unsupported.",
+        "SPI Write Collision: attempted to write to SPI data register before SPI was ready.",
+        "FX Busy: attempted to execute FX command while flash chip was busy."
+    };
 
     ImGui::SetNextWindowSize({ 300, 0 });
-    if(ImGui::BeginPopupModal("Stack Overflow", NULL,
+    if(ImGui::BeginPopupModal("Auto-Break", NULL,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextUnformatted("Auto-break due to stack overflow!");
+        ImGui::TextUnformatted("A runtime error was caught.");
+        ImGui::Separator();
+        ImGui::TextUnformatted(AB_REASONS[arduboy->cpu.autobreak]);
         ImGui::PopTextWrapPos();
         if(ImGui::Button("OK", ImVec2(120, 0)))
+        {
+            arduboy->cpu.autobreak = absim::AB_NONE;
             ImGui::CloseCurrentPopup();
+        }
         ImGui::EndPopup();
     }
 #endif

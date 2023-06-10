@@ -391,6 +391,8 @@ ABSIM_FORCEINLINE uint32_t arduboy_t::cycle()
         }
 
         cpu.spi_datain_byte = fx.spi_transceive(byte);
+        if(fx.busy_ps_rem != 0 && !fx.reading_status)
+            cpu.autobreak = AB_FX_BUSY;
         cpu.spi_done_shifting = false;
     }
 
@@ -451,6 +453,8 @@ void arduboy_t::advance_instr()
 
 void arduboy_t::advance(uint64_t ps)
 {
+    cpu.autobreak = AB_NONE;
+
     ps += ps_rem;
     ps_rem = 0;
 
@@ -465,7 +469,6 @@ void arduboy_t::advance(uint64_t ps)
         break_step != 0xffffffff;
 
     cpu.no_merged = profiler_enabled || any_breakpoints;
-    cpu.stack_overflow = false;
 
     while(ps >= PS_BUFFER)
     {
@@ -487,7 +490,7 @@ void arduboy_t::advance(uint64_t ps)
             }
         }
 
-        if(cpu.stack_overflow && cpu.enable_stack_break)
+        if(cpu.should_autobreak())
         {
             paused = true;
             break;

@@ -43,7 +43,7 @@ uint32_t instr_merged_push_n(atmega32u4_t& cpu, avr_instr_t const& i)
         ++ip;
         r += 2;
         cpu.pc += 1;
-    } while(!cpu.stack_overflow && n != 0);
+    } while(!cpu.should_autobreak() && n != 0);
     return r;
 }
 

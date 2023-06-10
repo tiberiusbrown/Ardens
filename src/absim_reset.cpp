@@ -24,8 +24,8 @@ void atmega32u4_t::reset()
 
     pc = 0;
 
-    just_read = 0;
-    just_written = 0;
+    just_read = 0xffffffff;
+    just_written = 0xffffffff;
 
     active = true;
     wakeup_cycles = false;

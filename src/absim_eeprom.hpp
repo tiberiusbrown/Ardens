@@ -22,7 +22,10 @@ void atmega32u4_t::eeprom_handle_st_eecr(
 
     uint16_t eearl = cpu.data[0x41];
     uint16_t eearh = cpu.data[0x42];
-    uint16_t addr = (eearl | (eearh << 8)) & 0x3ff;
+    uint16_t addr = (eearl | (eearh << 8));
+    if(addr >= 0x400)
+        cpu.autobreak = AB_OOB_EEPROM;
+    addr &= 0x3ff;
 
     if(cpu.eeprom_program_cycles == 0 && (x & EEPE))
     {

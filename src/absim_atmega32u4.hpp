@@ -73,8 +73,8 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
 ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 {
     uint32_t cycles = 1;
-    just_read = 0xffff;
-    just_written = 0xffff;
+    just_read = 0xffffffff;
+    just_written = 0xffffffff;
     just_interrupted = false;
     bool single_instr_only = true;
     uint32_t max_merged_cycles;
@@ -114,10 +114,14 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         else
         {
             cycles = 0;
+            uint16_t last_pc = last_addr / 2;
             do
             {
-                if(pc >= decoded_prog.size())
+                if(pc >= last_pc)
+                {
+                    autobreak = AB_OOB_PC;
                     return cycles + 1;
+                }
                 auto const& i = merged_prog[pc];
                 prev_sreg = sreg();
                 if(i.func == INSTR_UNKNOWN)
@@ -126,8 +130,7 @@ ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                     break;
                 }
                 cycles += INSTR_MAP[i.func](*this, i);
-                if((stack_overflow && enable_stack_break) ||
-                    just_written < 0x100 || just_read < 0x100)
+                if(should_autobreak() || just_written < 0x100 || just_read < 0x100)
                 {
                     // need to check peripherals below
                     single_instr_only = true;

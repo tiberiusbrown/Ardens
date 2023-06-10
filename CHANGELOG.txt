@@ -1,3 +1,6 @@
+v0.17.0
+* Add auto-breaks for a variety of runtime errors
+
 v0.16.0
 * Record audio to WAV
 

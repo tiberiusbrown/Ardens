@@ -40,6 +40,24 @@ namespace object { class ObjectFile; }
 namespace absim
 {
 
+enum autobreak_type_t
+{
+    AB_NONE,
+
+    AB_STACK_OVERFLOW,
+    AB_NULL_DEREF,
+    AB_NULL_REL_DEREF,
+    AB_OOB_DEREF,
+    AB_OOB_EEPROM,
+    AB_OOB_IJMP,
+    AB_OOB_PC,
+    AB_UNKNOWN_INSTR,
+    AB_SPI_WCOL,
+    AB_FX_BUSY,
+
+    AB_NUM
+};
+
 struct int_vector_info_t
 {
     char const* name;
@@ -80,8 +98,8 @@ struct atmega32u4_t
         return data[n];
     }
 
-    uint16_t just_read;
-    uint16_t just_written;
+    uint32_t just_read;
+    uint32_t just_written;
 
     using ld_handler_t = uint8_t(*)(atmega32u4_t& cpu, uint16_t ptr);
     using st_handler_t = void(*)(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -90,6 +108,7 @@ struct atmega32u4_t
 
     ABSIM_FORCEINLINE uint8_t ld(uint16_t ptr)
     {
+        check_deref(ptr);
         just_read = ptr;
         if(ptr < ld_handlers.size() && ld_handlers[ptr])
             return ld_handlers[ptr](*this, ptr);
@@ -97,6 +116,7 @@ struct atmega32u4_t
     }
     ABSIM_FORCEINLINE void st(uint16_t ptr, uint8_t x)
     {
+        check_deref(ptr);
         just_written = ptr;
         if(ptr < st_handlers.size() && st_handlers[ptr])
             return st_handlers[ptr](*this, ptr, x);
@@ -158,9 +178,22 @@ struct atmega32u4_t
 
     uint32_t min_stack; // lowest value for SP
     uint32_t stack_check; // max allowable value for SP
-    bool stack_overflow;
-    bool enable_stack_break;
     bool pushed_at_least_once;
+
+    autobreak_type_t autobreak;
+    std::array<bool, AB_NUM> enable_autobreaks;
+    ABSIM_FORCEINLINE bool should_autobreak() const
+    {
+        return enable_autobreaks[autobreak];
+    }
+
+    ABSIM_FORCEINLINE void check_deref(uint16_t addr)
+    {
+        if(addr == 0)
+            autobreak = AB_NULL_DEREF;
+        else if(addr >= data.size())
+            autobreak = AB_OOB_DEREF;
+    }
 
     ABSIM_FORCEINLINE void check_stack_overflow(uint16_t tsp)
     {
@@ -168,7 +201,7 @@ struct atmega32u4_t
         // check min stack
         min_stack = std::min<uint32_t>(min_stack, tsp);
         if(tsp < stack_check)
-            stack_overflow = true;
+            autobreak = AB_STACK_OVERFLOW;
     }
 
     ABSIM_FORCEINLINE void check_stack_overflow()

@@ -2,11 +2,13 @@
 
 #include "imgui.h"
 
+static_assert(sizeof(settings_t::ab) + 1 == absim::AB_NUM, "update settings_t::ab");
+
 static bool settings_begin_table()
 {
     float const A = 300.f * pixel_ratio;
     float const B = 120.f * pixel_ratio;
-    float const Y = 200.f * pixel_ratio;
+    float const Y = 260.f * pixel_ratio;
 
     bool r = ImGui::BeginTable(
         "##table", 2,
@@ -202,18 +204,39 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Auto-break on stack overflow");
-                TableSetColumnIndex(1);
-                if(Checkbox("##autobreak", &settings.enable_stack_breaks))
-                    update_settings();
-
-                TableNextRow();
-                TableSetColumnIndex(0);
-                AlignTextToFramePadding();
                 TextUnformatted("Enable breakpoints while stepping over/out");
                 TableSetColumnIndex(1);
                 if(Checkbox("##stepbreak", &settings.enable_step_breaks))
                     update_settings();
+
+                static std::array<char const*, absim::AB_NUM> const ABSTRS =
+                {
+                    nullptr,
+                    "Stack Overflow",
+                    "Null Dereference",
+                    "Null-Relative Dereference",
+                    "Out-of-bounds Dereference",
+                    "EEPROM Out-of-bounds",
+                    "Out-of-bounds Indirect Jump",
+                    "Out-of-bounds PC",
+                    "Unknown Instruction",
+                    "SPI Write Collision",
+                    "FX Busy",
+                };
+
+                for(int i = 1; i < absim::AB_NUM; ++i)
+                {
+                    TableNextRow();
+                    TableSetColumnIndex(0);
+                    AlignTextToFramePadding();
+                    Text("Auto-break: %s", ABSTRS[i]);
+                    TableSetColumnIndex(1);
+                    PushID(i);
+                    if(Checkbox("##autobreak", &settings.ab.index(i)))
+                        update_settings();
+                    PopID();
+                }
+
 
                 EndTable();
             }

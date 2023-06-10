@@ -47,7 +47,25 @@ struct settings_t
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;
     bool enable_step_breaks = true;
-    bool enable_stack_breaks = true;
+
+    struct
+    {
+        bool stack_overflow = true;
+        bool null_deref = true;
+        bool null_rel_deref = true;
+        bool oob_deref = true;
+        bool oob_eeprom = true;
+        bool oob_ijmp = true;
+        bool oob_pc = true;
+        bool unknown_instr = true;
+        bool spi_wcol = true;
+        bool fx_busy = true;
+
+        bool& index(int i)
+        {
+            return reinterpret_cast<bool*>(this)[i - 1];
+        }
+    } ab;
 
     int display_palette = 0;
     int display_filtering = FILTER_NONE;
