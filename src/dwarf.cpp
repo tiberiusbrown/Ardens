@@ -19,7 +19,9 @@ std::vector<dwarf_member_t> dwarf_members(llvm::DWARFDie die)
     {
         if(child.getTag() != DW_TAG_member) continue;
         uint32_t offset = 0;
-        if(!dwarf_member_addr(offset, child)) continue;
+        uint32_t bit_offset = 0;
+        uint32_t bit_size = 0;
+        if(!dwarf_member_addr(offset, bit_offset, bit_size, child)) continue;
         if(dwarf_name(child).empty())
         {
             // anonymous union
@@ -30,7 +32,7 @@ std::vector<dwarf_member_t> dwarf_members(llvm::DWARFDie die)
                 for(auto gchild : type)
                 {
                     if(gchild.getTag() != DW_TAG_member) continue;
-                    r.push_back({ offset, gchild });
+                    r.push_back({ offset, bit_offset, bit_size, gchild });
                 }
             }
             // anonymous struct
@@ -40,20 +42,34 @@ std::vector<dwarf_member_t> dwarf_members(llvm::DWARFDie die)
                 {
                     if(gchild.getTag() != DW_TAG_member) continue;
                     uint32_t toff = offset;
-                    if(!dwarf_member_addr(toff, gchild)) continue;
-                    r.push_back({ toff, gchild });
+                    if(!dwarf_member_addr(toff, bit_offset, bit_size, gchild)) continue;
+                    r.push_back({ toff, bit_offset, bit_size, gchild });
                 }
             }
             continue;
         }
-        r.push_back({ offset, child });
+        r.push_back({ offset, bit_offset, bit_size, child });
     }
 
     return r;
 }
 
-bool dwarf_member_addr(uint32_t& addr, llvm::DWARFDie die)
+bool dwarf_member_addr(
+    uint32_t& addr, uint32_t& bit_offset, uint32_t& bit_size,
+    llvm::DWARFDie die)
 {
+    if(auto a = die.find(llvm::dwarf::DW_AT_bit_size))
+        if(auto v = a->getAsUnsignedConstant())
+            bit_size = (uint32_t)v.getValue();
+    if(bit_size != 0)
+    {
+        if(auto t = die.find(llvm::dwarf::DW_AT_bit_offset))
+            if(auto v = t->getAsUnsignedConstant())
+                bit_offset = dwarf_size(die) * 8 - bit_size - (uint32_t)v.getValue();
+        if(auto t = die.find(llvm::dwarf::DW_AT_data_bit_offset))
+            if(auto v = t->getAsUnsignedConstant())
+                bit_offset = (uint32_t)v.getValue();
+    }
     if(auto tloc = die.find(llvm::dwarf::DW_AT_data_member_location))
     {
         auto expr = *tloc->getAsBlock();
@@ -294,7 +310,9 @@ std::string dwarf_type_string(llvm::DWARFDie die)
     return recurse_type(die);
 }
 
-static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
+static std::string recurse_value(
+    uint32_t addr, bool text, llvm::DWARFDie die,
+    uint32_t bit_offset = 0, uint32_t bit_size = 0)
 {
     if(!die.isValid())
         return "";
@@ -303,7 +321,7 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
     case llvm::dwarf::DW_TAG_const_type:
     case llvm::dwarf::DW_TAG_volatile_type:
     case llvm::dwarf::DW_TAG_typedef:
-        return recurse_value(addr, text, dwarf_type(die));
+        return recurse_value(addr, text, dwarf_type(die), bit_offset, bit_size);
     case llvm::dwarf::DW_TAG_structure_type:
     case llvm::dwarf::DW_TAG_union_type:
     {
@@ -320,7 +338,9 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
             }
             uint32_t child_addr = addr + child.offset;
             if(!first) r += ", ";
-            r += recurse_value(child_addr, text, dwarf_type(child.die));
+            r += recurse_value(
+                child_addr, text, dwarf_type(child.die),
+                child.bit_offset, child.bit_size);
             first = false;
             size += dwarf_size(child.die);
         }
@@ -368,19 +388,23 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
     case llvm::dwarf::DW_TAG_pointer_type:
     case llvm::dwarf::DW_TAG_enumeration_type:
     {
-        int bytes = 0, enc = llvm::dwarf::DW_ATE_unsigned;
+        int bits = bit_size, enc = llvm::dwarf::DW_ATE_unsigned;
         bool is_enum =
             (die.getTag() == llvm::dwarf::DW_TAG_enumeration_type);
         auto old_die = die;
         if(is_enum) die = dwarf_type(die);
-        if(auto a = die.find(llvm::dwarf::DW_AT_byte_size))
-            if(auto v = a->getAsUnsignedConstant())
-                bytes = (int)v.getValue();
+        if(bits == 0)
+            if(auto a = die.find(llvm::dwarf::DW_AT_byte_size))
+                if(auto v = a->getAsUnsignedConstant())
+                    bits = (int)v.getValue() * 8;
         if(auto a = die.find(llvm::dwarf::DW_AT_encoding))
             if(auto v = a->getAsUnsignedConstant())
                 enc = (int)v.getValue();
-        if(bytes == 0 || bytes > 8)
+        if(bits == 0 || bits > 64)
             break;
+        addr += bit_offset / 8;
+        bit_offset %= 8;
+        int bytes = (bits + 7) / 8;
         if(text && addr + bytes >= arduboy->cpu.prog.size())
             break;
         if(!text && addr + bytes >= arduboy->cpu.data.size())
@@ -389,8 +413,20 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
             arduboy->cpu.prog.data() :
             arduboy->cpu.data.data();
         uint64_t x = 0;
-        for(int i = bytes - 1; i >= 0; --i)
-            x = (x << 8) + d[addr + i];
+
+        // extract data bits from RAM
+        // (may not be byte-aligned for bitfields)
+        for(int i = 0, j = 0; i < bits; ++j)
+        {
+            uint8_t byte = d[addr + j];
+            byte >>= bit_offset;
+            if(bits - i < 8)
+                byte &= ((1 << (bits - i)) - 1);
+            x |= (uint64_t(byte) << i);
+            i += (8 - bit_offset);
+            bit_offset = 0;
+        }
+
         if(die.getTag() == llvm::dwarf::DW_TAG_pointer_type)
             return fmt::format("{:#06x}", x);
         if(is_enum)
@@ -430,9 +466,9 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
                 return fmt::format("'{}'", (char)x);
             return fmt::format("(char){}", (int)x);
         case llvm::dwarf::DW_ATE_signed:
-            if(bytes < 8)
+            if(bits < 64)
             {
-                uint64_t mask = 1ull << (bytes * 8 - 1);
+                uint64_t mask = 1ull << (bits - 1);
                 if(x & mask)
                     x |= ~(mask - 1);
             }
@@ -451,9 +487,11 @@ static std::string recurse_value(uint32_t addr, bool text, llvm::DWARFDie die)
     return "<unknown>";
 }
 
-std::string dwarf_value_string(llvm::DWARFDie die, uint32_t addr, bool prog)
+std::string dwarf_value_string(
+    llvm::DWARFDie die, uint32_t addr, bool prog,
+    uint32_t bit_offset, uint32_t bit_size)
 {
-    return recurse_value(addr, prog, die);
+    return recurse_value(addr, prog, die, bit_offset, bit_size);
 }
 
 bool dwarf_find_primitive(llvm::DWARFDie die, uint32_t offset, dwarf_primitive_t& prim)
@@ -471,6 +509,8 @@ bool dwarf_find_primitive(llvm::DWARFDie die, uint32_t offset, dwarf_primitive_t
             auto size = dwarf_size(p.die);
             if(!(offset >= p.offset && offset < p.offset + size)) continue;
             prim.expr += fmt::format(".{}", dwarf_name(p.die));
+            prim.bit_offset = p.bit_offset;
+            prim.bit_size = p.bit_size;
             return dwarf_find_primitive(dwarf_type(p.die), offset - p.offset, prim);
         }
         return false;

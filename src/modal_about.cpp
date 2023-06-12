@@ -32,6 +32,7 @@ Drap and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (hex/e
   * [Emscripten Browser File Library](https://github.com/Armchair-Software/emscripten-browser-file) (MIT)
 
 *License*
+***
 
 MIT License
 

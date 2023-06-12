@@ -88,6 +88,8 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
     if(!name) return false;
 
     dwarf_primitive_t prim;
+    prim.bit_offset = 0;
+    prim.bit_size = 0;
     prim.expr = name;
     if(dwarf_find_primitive(type, offset, prim))
     {
@@ -98,8 +100,12 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
             ImGui::Text(" [offset %d]", (int)prim.offset);
         }
         ImGui::Separator();
-        ImGui::Text("Type:   %s", dwarf_type_string(prim.die).c_str());
-        ImGui::Text("Value:  %s", dwarf_value_string(prim.die, addr - prim.offset, false).c_str());
+        auto type_str = dwarf_type_string(prim.die);
+        if(prim.bit_size != 0)
+            type_str += fmt::format(" : {}", prim.bit_size);
+        ImGui::Text("Type:   %s", type_str.c_str());
+        ImGui::Text("Value:  %s", dwarf_value_string(
+            prim.die, addr - prim.offset, false, prim.bit_offset, prim.bit_size).c_str());
         auto size = dwarf_size(prim.die);
         if(size <= 4)
         {

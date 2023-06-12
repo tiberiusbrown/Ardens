@@ -50,7 +50,8 @@ static llvm::DWARFDie remove_cv_typedefs_die(llvm::DWARFDie die)
 static bool do_var_row(
     int id,
     char const* name, bool root,
-    uint32_t addr, bool text, llvm::DWARFDie die)
+    uint32_t addr, bool text, llvm::DWARFDie die,
+    uint32_t bit_offset = 0, uint32_t bit_size = 0)
 {
     using namespace ImGui;
     std::string t;
@@ -113,7 +114,7 @@ static bool do_var_row(
 
     if(TableSetColumnIndex(1))
     {
-        t = dwarf_value_string(die, addr, text);
+        t = dwarf_value_string(die, addr, text, bit_offset, bit_size);
         if(t.empty())
             TextDisabled("???");
         else
@@ -126,7 +127,11 @@ static bool do_var_row(
         if(t.empty())
             TextDisabled("???");
         else
+        {
+            if(bit_size != 0)
+                t += fmt::format(" : {}", bit_size);
             TextUnformatted(t.c_str());
+        }
     }
 
     if(tree)
@@ -139,7 +144,8 @@ static bool do_var_row(
             {
                 do_var_row(
                     child_id++, dwarf_name(child.die).c_str(), false,
-                    addr + child.offset, text, dwarf_type(child.die));
+                    addr + child.offset, text, dwarf_type(child.die),
+                    child.bit_offset, child.bit_size);
             }
 			Unindent(GetTreeNodeToLabelSpacing());
         }
