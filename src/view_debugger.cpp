@@ -122,10 +122,15 @@ void view_debugger()
 
             if(ImGui::BeginMenu("Tools"))
             {
-                if(ImGui::MenuItem("Settings"))
+                if(ImGui::MenuItem("Settings", "O"))
                     do_settings_modal = true;
                 if(ImGui::MenuItem("About"))
                     do_about_modal = true;
+                if(ImGui::MenuItem("Toggle Player View", "P"))
+                {
+                    settings.fullzoom = !settings.fullzoom;
+                    update_settings();
+                }
                 if(!arduboy->cpu.decoded) ImGui::BeginDisabled();
                 if(ImGui::MenuItem("Take PNG Screenshot", "F2"))
                     save_screenshot();
