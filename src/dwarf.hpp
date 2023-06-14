@@ -4,6 +4,8 @@
 
 #include <string>
 #include <vector>
+#include <array>
+#include <assert.h>
 
 #ifdef _MSC_VER
 #pragma warning(push, 1)
@@ -17,6 +19,34 @@
 #ifdef _MSC_VER
 #pragma warning(pop) 
 #endif
+
+struct memory_span
+{
+    uint8_t* begin;
+    uint8_t* end;
+    memory_span offset(size_t offset)
+    {
+        return { begin + offset, end };
+    }
+    uint8_t& operator[](size_t i)
+    {
+        assert(begin + i < end);
+        return begin[i];
+    }
+    uint8_t operator[](size_t i) const
+    {
+        assert(begin + i < end);
+        return begin[i];
+    }
+    size_t size() const
+    {
+        return end < begin ? 0 : size_t(end - begin);
+    }
+};
+template<size_t N> memory_span to_memory_span(std::array<uint8_t, N>& a)
+{
+    return memory_span{ a.data(), a.data() + a.size() };
+}
 
 uint32_t dwarf_size(llvm::DWARFDie die);
 std::string dwarf_name(llvm::DWARFDie die);
@@ -42,8 +72,13 @@ std::vector<uint32_t> dwarf_array_bounds(llvm::DWARFDie die);
 std::vector<uint32_t> dwarf_array_index(llvm::DWARFDie die, uint32_t index);
 
 std::string dwarf_type_string(llvm::DWARFDie die);
+
 std::string dwarf_value_string(
     llvm::DWARFDie die, uint32_t addr, bool prog,
+    uint32_t bit_offset = 0, uint32_t bit_size = 0);
+
+std::string dwarf_value_string(
+    llvm::DWARFDie die, memory_span mem,
     uint32_t bit_offset = 0, uint32_t bit_size = 0);
 
 struct dwarf_primitive_t

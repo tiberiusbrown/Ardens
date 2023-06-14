@@ -311,7 +311,7 @@ std::string dwarf_type_string(llvm::DWARFDie die)
 }
 
 static std::string recurse_value(
-    uint32_t addr, bool text, llvm::DWARFDie die,
+    llvm::DWARFDie die, memory_span mem,
     uint32_t bit_offset = 0, uint32_t bit_size = 0)
 {
     if(!die.isValid())
@@ -321,7 +321,7 @@ static std::string recurse_value(
     case llvm::dwarf::DW_TAG_const_type:
     case llvm::dwarf::DW_TAG_volatile_type:
     case llvm::dwarf::DW_TAG_typedef:
-        return recurse_value(addr, text, dwarf_type(die), bit_offset, bit_size);
+        return recurse_value(dwarf_type(die), mem, bit_offset, bit_size);
     case llvm::dwarf::DW_TAG_structure_type:
     case llvm::dwarf::DW_TAG_union_type:
     {
@@ -336,10 +336,9 @@ static std::string recurse_value(
                 r += ", ...";
                 break;
             }
-            uint32_t child_addr = addr + child.offset;
             if(!first) r += ", ";
             r += recurse_value(
-                child_addr, text, dwarf_type(child.die),
+                dwarf_type(child.die), mem.offset(child.offset),
                 child.bit_offset, child.bit_size);
             first = false;
             size += dwarf_size(child.die);
@@ -375,7 +374,7 @@ static std::string recurse_value(
             for(int i = 0; i < n; ++i)
             {
                 if(!first) r += ", ";
-                r += recurse_value(addr + size * i, text, type);
+                r += recurse_value(type, mem.offset(size * i));
                 first = false;
             }
         }
@@ -402,23 +401,18 @@ static std::string recurse_value(
                 enc = (int)v.getValue();
         if(bits == 0 || bits > 64)
             break;
-        addr += bit_offset / 8;
+        mem = mem.offset(bit_offset / 8);
+        //addr += bit_offset / 8;
         bit_offset %= 8;
         int bytes = (bits + 7) / 8;
-        if(text && addr + bytes >= arduboy->cpu.prog.size())
-            break;
-        if(!text && addr + bytes >= arduboy->cpu.data.size())
-            break;
-        uint8_t const* d = text ?
-            arduboy->cpu.prog.data() :
-            arduboy->cpu.data.data();
+        if(bytes > mem.size()) break;
         uint64_t x = 0;
 
         // extract data bits from RAM
         // (may not be byte-aligned for bitfields)
         for(int i = 0, j = 0; i < bits; ++j)
         {
-            uint8_t byte = d[addr + j];
+            uint8_t byte = mem[j];
             byte >>= bit_offset;
             if(bits - i < 8)
                 byte &= ((1 << (bits - i)) - 1);
@@ -491,7 +485,17 @@ std::string dwarf_value_string(
     llvm::DWARFDie die, uint32_t addr, bool prog,
     uint32_t bit_offset, uint32_t bit_size)
 {
-    return recurse_value(addr, prog, die, bit_offset, bit_size);
+    memory_span mem;
+    if(prog) mem = to_memory_span(arduboy->cpu.prog);
+    else     mem = to_memory_span(arduboy->cpu.data);
+    return recurse_value(die, mem.offset(addr), bit_offset, bit_size);
+}
+
+std::string dwarf_value_string(
+    llvm::DWARFDie die, memory_span mem,
+    uint32_t bit_offset, uint32_t bit_size)
+{
+    return recurse_value(die, mem, bit_offset, bit_size);
 }
 
 bool dwarf_find_primitive(llvm::DWARFDie die, uint32_t offset, dwarf_primitive_t& prim)
