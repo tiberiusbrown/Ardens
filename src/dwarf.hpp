@@ -20,18 +20,13 @@
 #pragma warning(pop) 
 #endif
 
-struct memory_span
+struct dwarf_span
 {
-    uint8_t* begin;
-    uint8_t* end;
-    memory_span offset(size_t offset)
+    uint8_t const* begin;
+    uint8_t const* end;
+    dwarf_span offset(size_t offset)
     {
         return { begin + offset, end };
-    }
-    uint8_t& operator[](size_t i)
-    {
-        assert(begin + i < end);
-        return begin[i];
     }
     uint8_t operator[](size_t i) const
     {
@@ -43,9 +38,13 @@ struct memory_span
         return end < begin ? 0 : size_t(end - begin);
     }
 };
-template<size_t N> memory_span to_memory_span(std::array<uint8_t, N>& a)
+template<size_t N> dwarf_span to_dwarf_span(std::array<uint8_t, N> const& a)
 {
-    return memory_span{ a.data(), a.data() + a.size() };
+    return dwarf_span{ a.data(), a.data() + a.size() };
+}
+template<class... R> dwarf_span to_dwarf_span(std::vector<uint8_t, R...> const& v)
+{
+    return dwarf_span{ v.data(), v.data() + v.size() };
 }
 
 uint32_t dwarf_size(llvm::DWARFDie die);
@@ -78,8 +77,22 @@ std::string dwarf_value_string(
     uint32_t bit_offset = 0, uint32_t bit_size = 0);
 
 std::string dwarf_value_string(
-    llvm::DWARFDie die, memory_span mem,
+    llvm::DWARFDie die, dwarf_span mem,
     uint32_t bit_offset = 0, uint32_t bit_size = 0);
+
+struct dwarf_var_data
+{
+    std::vector<uint8_t> data;
+    std::vector<uint8_t> unavailable; // mask: 1 bits mean optimized out
+
+    // int: how many bytes
+    // str: expression for those bytes
+    std::vector<std::pair<int, std::string>> exprs;
+};
+
+dwarf_var_data dwarf_evaluate_expression(
+    llvm::DWARFDie type,
+    llvm::DWARFExpression expr);
 
 struct dwarf_primitive_t
 {

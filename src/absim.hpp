@@ -176,6 +176,11 @@ struct atmega32u4_t
         return (uint16_t)spl() | ((uint16_t)sph() << 8);
     }
 
+    ABSIM_FORCEINLINE uint16_t sp() const
+    {
+        return (uint16_t)data[0x5d] | ((uint16_t)data[0x5e] << 8);
+    }
+
     uint32_t min_stack; // lowest value for SP
     uint32_t stack_check; // max allowable value for SP
     bool pushed_at_least_once;

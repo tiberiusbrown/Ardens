@@ -229,6 +229,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/saveload.cpp
     src/dwarf.hpp
     src/dwarf.cpp
+    src/dwarf_expr.cpp
 
     src/window_disassembly.cpp
     src/window_profiler.cpp

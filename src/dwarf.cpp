@@ -164,6 +164,8 @@ uint32_t dwarf_size(llvm::DWARFDie die)
     using namespace llvm;
     using namespace llvm::dwarf;
 
+    if(!die.isValid()) return 0;
+
     if(auto SizeAttr = die.find(DW_AT_byte_size))
         if(auto Size = SizeAttr->getAsUnsignedConstant())
             return (uint32_t)Size.getValue();
@@ -232,7 +234,13 @@ std::string dwarf_name(llvm::DWARFDie die)
 
 llvm::DWARFDie dwarf_type(llvm::DWARFDie die)
 {
-    return die.getAttributeValueAsReferencedDie(llvm::dwarf::DW_AT_type);
+    auto type = die.getAttributeValueAsReferencedDie(llvm::dwarf::DW_AT_type);
+    if(type.isValid())
+        return type;
+    type = die.getAttributeValueAsReferencedDie(llvm::dwarf::DW_AT_abstract_origin);
+    if(type.isValid())
+        return dwarf_type(type);
+    return type;
 }
 
 static std::string recurse_type(llvm::DWARFDie die)
@@ -311,7 +319,7 @@ std::string dwarf_type_string(llvm::DWARFDie die)
 }
 
 static std::string recurse_value(
-    llvm::DWARFDie die, memory_span mem,
+    llvm::DWARFDie die, dwarf_span mem,
     uint32_t bit_offset = 0, uint32_t bit_size = 0)
 {
     if(!die.isValid())
@@ -385,6 +393,7 @@ static std::string recurse_value(
     }
     case llvm::dwarf::DW_TAG_base_type:
     case llvm::dwarf::DW_TAG_pointer_type:
+    case llvm::dwarf::DW_TAG_reference_type:
     case llvm::dwarf::DW_TAG_enumeration_type:
     {
         int bits = bit_size, enc = llvm::dwarf::DW_ATE_unsigned;
@@ -421,7 +430,8 @@ static std::string recurse_value(
             bit_offset = 0;
         }
 
-        if(die.getTag() == llvm::dwarf::DW_TAG_pointer_type)
+        if(die.getTag() == llvm::dwarf::DW_TAG_pointer_type ||
+            die.getTag() == llvm::dwarf::DW_TAG_reference_type)
             return fmt::format("{:#06x}", x);
         if(is_enum)
         {
@@ -456,9 +466,10 @@ static std::string recurse_value(
             }
             break;
         case llvm::dwarf::DW_ATE_signed_char:
-            if(x >= 32 && x < 127)
-                return fmt::format("'{}'", (char)x);
-            return fmt::format("(char){}", (int)x);
+            //if(x >= 32 && x < 127)
+            //    return fmt::format("'{}'", (char)x);
+            //return fmt::format("(char){}", (int)x);
+            return fmt::format("{}", (int8_t)x);
         case llvm::dwarf::DW_ATE_signed:
             if(bits < 64)
             {
@@ -485,14 +496,14 @@ std::string dwarf_value_string(
     llvm::DWARFDie die, uint32_t addr, bool prog,
     uint32_t bit_offset, uint32_t bit_size)
 {
-    memory_span mem;
-    if(prog) mem = to_memory_span(arduboy->cpu.prog);
-    else     mem = to_memory_span(arduboy->cpu.data);
+    dwarf_span mem;
+    if(prog) mem = to_dwarf_span(arduboy->cpu.prog);
+    else     mem = to_dwarf_span(arduboy->cpu.data);
     return recurse_value(die, mem.offset(addr), bit_offset, bit_size);
 }
 
 std::string dwarf_value_string(
-    llvm::DWARFDie die, memory_span mem,
+    llvm::DWARFDie die, dwarf_span mem,
     uint32_t bit_offset, uint32_t bit_size)
 {
     return recurse_value(die, mem, bit_offset, bit_size);

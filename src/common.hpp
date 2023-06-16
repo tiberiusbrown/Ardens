@@ -144,6 +144,7 @@ void window_call_stack(bool& open);
 void window_symbols(bool& open);
 #ifdef ABSIM_LLVM
 void window_globals(bool& open);
+void window_locals(bool& open);
 #endif
 void window_fx_data(bool& open);
 void window_fx_internals(bool& open);

@@ -49,8 +49,8 @@ static llvm::DWARFDie remove_cv_typedefs_die(llvm::DWARFDie die)
 
 static bool do_var_row(
     int id,
-    char const* name, bool root,
-    uint32_t addr, bool text, llvm::DWARFDie die,
+    char const* name, bool root, bool local,
+    dwarf_span mem, bool text, llvm::DWARFDie die,
     uint32_t bit_offset = 0, uint32_t bit_size = 0)
 {
     using namespace ImGui;
@@ -72,7 +72,7 @@ static bool do_var_row(
             GetStyle().FramePadding.x * 2.f +
             GetStyle().ItemSpacing.x +
             CalcTextSize("-").x;
-        if(root)
+        if(!local && root)
         {
             if(SmallButton("-"))
                 remove = true;
@@ -104,17 +104,17 @@ static bool do_var_row(
         }
         if(indent != 0.f) Unindent(indent);
 
-        if(IsItemHovered())
+        if(!local && IsItemHovered())
         {
             BeginTooltip();
-            Text("Address: 0x%04x%s", addr, text ? " [PROG]" : "");
+            Text("Address: 0x%04x%s", mem.begin, text ? " [PROG]" : "");
             EndTooltip();
         }
     }
 
     if(TableSetColumnIndex(1))
     {
-        t = dwarf_value_string(die, addr, text, bit_offset, bit_size);
+        t = dwarf_value_string(die, mem, bit_offset, bit_size);
         if(t.empty())
             TextDisabled("???");
         else
@@ -143,8 +143,8 @@ static bool do_var_row(
             for(auto const& child : dwarf_members(resolved_die))
             {
                 do_var_row(
-                    child_id++, dwarf_name(child.die).c_str(), false,
-                    addr + child.offset, text, dwarf_type(child.die),
+                    child_id++, dwarf_name(child.die).c_str(), false, local,
+                    mem.offset(child.offset), text, dwarf_type(child.die),
                     child.bit_offset, child.bit_size);
             }
 			Unindent(GetTreeNodeToLabelSpacing());
@@ -159,7 +159,7 @@ static bool do_var_row(
 
             for(uint32_t i = 0; i < n; ++i)
             {
-                uint32_t child_addr = addr + i * size;
+                auto child_mem = mem.offset(i * size);
                 auto v = dwarf_array_index(resolved_die, i);
                 if(v.empty()) continue;
                 name.clear();
@@ -167,7 +167,7 @@ static bool do_var_row(
                     name += fmt::format("[{}]", n);
                 //name = fmt::format("[{}]", i);
                 Indent(GetTreeNodeToLabelSpacing());
-                do_var_row((int)i, name.c_str(), false, child_addr, text, type);
+                do_var_row((int)i, name.c_str(), false, local, child_mem, text, type);
                 Unindent(GetTreeNodeToLabelSpacing());
             }
         }
@@ -191,7 +191,125 @@ static bool do_global(
 
     auto type = cu->getDIEForOffset(g.type);
 
-    return do_var_row(id, name.c_str(), true, g.addr, g.text, type);
+    dwarf_span mem;
+    if(g.text)
+        mem = to_dwarf_span(arduboy->cpu.prog);
+    else
+        mem = to_dwarf_span(arduboy->cpu.data);
+
+    return do_var_row(id, name.c_str(), true, false, mem.offset(g.addr), g.text, type);
+}
+
+struct local_var_t
+{
+    std::string name;
+    uint32_t id;
+    llvm::DWARFDie type;
+    dwarf_var_data var_data;
+};
+
+static void gather_locals(
+    llvm::DWARFDie die,
+    std::vector<local_var_t>& locals)
+{
+    if(!die.isValid()) return;
+
+    uint64_t pc = uint64_t(arduboy->cpu.pc) * 2;
+
+    llvm::DWARFAddressRangesVector ranges;
+    if(auto eranges = die.getAddressRanges())
+        ranges = std::move(*eranges);
+
+    for(auto child : die)
+    {
+        if(child.getTag() == llvm::dwarf::DW_TAG_inlined_subroutine ||
+            child.getTag() == llvm::dwarf::DW_TAG_lexical_block)
+        {
+            gather_locals(child, locals);
+        }
+        else if(child.getTag() == llvm::dwarf::DW_TAG_variable ||
+            child.getTag() == llvm::dwarf::DW_TAG_formal_parameter)
+        {
+            if(ranges.empty()) continue;
+            auto name = dwarf_name(child);
+            auto tag = child.getTag();
+            if(auto elocs = child.getLocations(llvm::dwarf::DW_AT_location))
+            {
+                for(auto const& loc : *elocs)
+                {
+                    bool valid = true;
+                    for(auto const& range : ranges)
+                        if(pc < range.LowPC || pc >= range.HighPC)
+                            valid = false;
+                    if(!valid) continue;
+                    if(loc.Range && (pc < loc.Range->LowPC || pc >= loc.Range->HighPC))
+                        continue;
+                    llvm::DataExtractor data(llvm::toStringRef(loc.Expr),
+                        die.getDwarfUnit()->getContext().isLittleEndian(), 0);
+                    llvm::DWARFExpression expr(data,
+                        child.getDwarfUnit()->getAddressByteSize(),
+                        child.getDwarfUnit()->getFormParams().Format);
+                    auto type = dwarf_type(child);
+                    auto vd = dwarf_evaluate_expression(type, expr);
+                    if(!vd.data.empty())
+                    {
+                        locals.resize(locals.size() + 1);
+                        auto& local = locals.back();
+                        local.name = dwarf_name(child);
+                        local.id = (uint32_t)child.getOffset();
+                        local.type = type;
+                        local.var_data = std::move(vd);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void window_locals(bool& open)
+{
+    using namespace ImGui;
+    if(!open) return;
+    SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
+    ImGuiWindowFlags wflags = 0;
+    if(Begin("Locals", &open, wflags) && arduboy->cpu.decoded && arduboy->elf)
+    {
+        auto& e = *arduboy->elf;
+        auto& dwarf = *e.dwarf_ctx;
+        uint64_t pc = uint64_t(arduboy->cpu.pc) * 2;
+
+        auto dies = dwarf.getDIEsForAddress(pc);
+        std::vector<local_var_t> locals;
+        gather_locals(dies.FunctionDIE, locals);
+
+        ImGuiTableFlags flags = 0;
+        flags |= ImGuiTableFlags_ScrollY;
+        flags |= ImGuiTableFlags_Resizable;
+        flags |= ImGuiTableFlags_RowBg;
+        flags |= ImGuiTableFlags_BordersOuter;
+        flags |= ImGuiTableFlags_BordersInnerV;
+        if(BeginTable("##globals", 3, flags, { -1, -1 }))
+        {
+            TableSetupColumn("Name",
+                ImGuiTableColumnFlags_WidthStretch);
+            TableSetupColumn("Value",
+                ImGuiTableColumnFlags_WidthStretch);
+            TableSetupColumn("Type",
+                ImGuiTableColumnFlags_WidthStretch);
+            TableHeadersRow();
+
+            for(auto const& local : locals)
+            {
+                do_var_row(
+                    (int)local.id, local.name.c_str(), true, true,
+                    to_dwarf_span(local.var_data.data), false, local.type);
+            }
+
+            EndTable();
+        }
+    }
+    End();
 }
 
 void window_globals(bool& open)
@@ -288,7 +406,6 @@ void window_globals(bool& open)
 
             EndTable();
         }
-
 
     }
     End();

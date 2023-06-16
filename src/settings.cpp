@@ -32,6 +32,7 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(open_disassembly);
     ABSIM_BOOL_SETTING(open_symbols);
     ABSIM_BOOL_SETTING(open_globals);
+    ABSIM_BOOL_SETTING(open_locals);
     ABSIM_BOOL_SETTING(open_call_stack);
     ABSIM_BOOL_SETTING(open_profiler);
     ABSIM_BOOL_SETTING(open_data_space);
@@ -90,6 +91,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(open_disassembly);
     ABSIM_BOOL_SETTING(open_symbols);
     ABSIM_BOOL_SETTING(open_globals);
+    ABSIM_BOOL_SETTING(open_locals);
     ABSIM_BOOL_SETTING(open_call_stack);
     ABSIM_BOOL_SETTING(open_profiler);
     ABSIM_BOOL_SETTING(open_data_space);
