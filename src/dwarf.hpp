@@ -87,12 +87,12 @@ struct dwarf_var_data
 
     // int: how many bytes
     // str: expression for those bytes
-    std::vector<std::pair<int, std::string>> exprs;
+    std::vector<std::pair<int, std::string>> formulas;
 };
 
-dwarf_var_data dwarf_evaluate_expression(
+dwarf_var_data dwarf_evaluate_location(
     llvm::DWARFDie type,
-    llvm::DWARFExpression expr);
+    llvm::StringRef loc);
 
 struct dwarf_primitive_t
 {

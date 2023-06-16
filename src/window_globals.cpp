@@ -244,13 +244,8 @@ static void gather_locals(
                     if(!valid) continue;
                     if(loc.Range && (pc < loc.Range->LowPC || pc >= loc.Range->HighPC))
                         continue;
-                    llvm::DataExtractor data(llvm::toStringRef(loc.Expr),
-                        die.getDwarfUnit()->getContext().isLittleEndian(), 0);
-                    llvm::DWARFExpression expr(data,
-                        child.getDwarfUnit()->getAddressByteSize(),
-                        child.getDwarfUnit()->getFormParams().Format);
                     auto type = dwarf_type(child);
-                    auto vd = dwarf_evaluate_expression(type, expr);
+                    auto vd = dwarf_evaluate_location(type, llvm::toStringRef(loc.Expr));
                     if(!vd.data.empty())
                     {
                         locals.resize(locals.size() + 1);

@@ -46,10 +46,13 @@ static uint64_t regval(uint64_t i)
         if(!(cond__)) return {}; \
     } while(0)
 
-dwarf_var_data dwarf_evaluate_expression(
+dwarf_var_data dwarf_evaluate_location(
     llvm::DWARFDie type,
-    llvm::DWARFExpression expr)
+    llvm::StringRef loc)
 {
+    // TODO: use DWARFExpression::iterator::skipBytes for branching
+    // TODO: fbreg
+
     dwarf_var_data vd;
     auto& d = vd.data;
     size_t i = 0;
@@ -61,6 +64,12 @@ dwarf_var_data dwarf_evaluate_expression(
     expr_stack stack;
 
     auto const& cpu = arduboy->cpu;
+
+    auto extractor = llvm::DataExtractor(loc,
+        type.getDwarfUnit()->getContext().isLittleEndian(), 0);
+    llvm::DWARFExpression expr(extractor,
+        type.getDwarfUnit()->getAddressByteSize(),
+        type.getDwarfUnit()->getFormParams().Format);
 
     for(auto const& op : expr)
     {
@@ -261,6 +270,48 @@ dwarf_var_data dwarf_evaluate_expression(
             auto b = stack.pop();
             CHECK(a.data != 0);
             stack.push({ uint16_t((int16_t)b.data >> a.data), a.is_addr || b.is_addr });
+        }
+        else if(code == DW_OP_le)
+        {
+            CHECK(stack.has_two());
+            auto a = stack.pop();
+            auto b = stack.pop();
+            stack.push_data((int16_t)b.data <= (int16_t)a.data);
+        }
+        else if(code == DW_OP_ge)
+        {
+            CHECK(stack.has_two());
+            auto a = stack.pop();
+            auto b = stack.pop();
+            stack.push_data((int16_t)b.data >= (int16_t)a.data);
+        }
+        else if(code == DW_OP_eq)
+        {
+            CHECK(stack.has_two());
+            auto a = stack.pop();
+            auto b = stack.pop();
+            stack.push_data((int16_t)b.data == (int16_t)a.data);
+        }
+        else if(code == DW_OP_lt)
+        {
+            CHECK(stack.has_two());
+            auto a = stack.pop();
+            auto b = stack.pop();
+            stack.push_data((int16_t)b.data < (int16_t)a.data);
+        }
+        else if(code == DW_OP_gt)
+        {
+            CHECK(stack.has_two());
+            auto a = stack.pop();
+            auto b = stack.pop();
+            stack.push_data((int16_t)b.data > (int16_t)a.data);
+        }
+        else if(code == DW_OP_ne)
+        {
+            CHECK(stack.has_two());
+            auto a = stack.pop();
+            auto b = stack.pop();
+            stack.push_data((int16_t)b.data != (int16_t)a.data);
         }
         else if(code == DW_OP_nop)
         {
