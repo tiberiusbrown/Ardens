@@ -96,8 +96,19 @@ void view_debugger()
                     ImGui::MenuItem("Display Internals", nullptr, &settings.open_display_internals);
                     ImGui::EndMenu();
                 }
-                if(ImGui::BeginMenu("CPU"))
+                if(ImGui::BeginMenu("Flash Chip"))
                 {
+                    ImGui::MenuItem("FX Data", nullptr, &settings.open_fx_data);
+                    ImGui::MenuItem("FX Internals", nullptr, &settings.open_fx_internals);
+                    ImGui::EndMenu();
+                }
+                ImGui::MenuItem("EEPROM", nullptr, &settings.open_eeprom);
+                ImGui::MenuItem("LEDs", nullptr, &settings.open_led);
+                ImGui::MenuItem("Sound", nullptr, &settings.open_sound);
+                ImGui::Separator();
+                if(ImGui::BeginMenu("Debugger"))
+                {
+                    ImGui::MenuItem("Source", nullptr, &settings.open_source);
                     ImGui::MenuItem("Disassembly", nullptr, &settings.open_disassembly);
                     ImGui::MenuItem("Symbols", nullptr, &settings.open_symbols);
                     ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
@@ -106,18 +117,8 @@ void view_debugger()
                     ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
                     ImGui::MenuItem("Locals", nullptr, &settings.open_locals);
 #endif
-                    ImGui::MenuItem("EEPROM", nullptr, &settings.open_eeprom);
                     ImGui::EndMenu();
                 }
-                if(ImGui::BeginMenu("Flash Chip"))
-                {
-                    ImGui::MenuItem("FX Data", nullptr, &settings.open_fx_data);
-                    ImGui::MenuItem("FX Internals", nullptr, &settings.open_fx_internals);
-                    ImGui::EndMenu();
-                }
-                ImGui::Separator();
-                ImGui::MenuItem("LEDs", nullptr, &settings.open_led);
-                ImGui::MenuItem("Sound", nullptr, &settings.open_sound);
                 ImGui::EndMenu();
             }
 
@@ -174,6 +175,7 @@ void view_debugger()
             window_display(settings.open_display);
             window_display_buffer(settings.open_display_buffer);
             window_simulation(settings.open_simulation);
+            window_source(settings.open_source);
             window_disassembly(settings.open_disassembly);
             window_symbols(settings.open_symbols);
 #ifdef ABSIM_LLVM

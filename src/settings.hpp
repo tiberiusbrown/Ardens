@@ -41,6 +41,7 @@ struct settings_t
     bool open_led = false;
     bool open_serial = false;
     bool open_sound = false;
+    bool open_source = false;
 
     bool fullzoom = false;
     bool record_wav = false;

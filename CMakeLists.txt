@@ -248,6 +248,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_led.cpp
     src/window_serial.cpp
     src/window_sound.cpp
+    src/window_source.cpp
 
     ${ABSIM_SOURCES}
 
@@ -259,6 +260,9 @@ add_executable(arduboy_sim ${EXEFLAG}
     ${SIMPLE_FFT_SOURCES}
     ${HQX_SOURCES}
     ${SOKOL_SOURCES}
+
+    src/ImGuiColorTextEdit/TextEditor.h
+    src/ImGuiColorTextEdit/TextEditor.cpp
 
     #${IMGUI_SDL_SOURCES}
     )

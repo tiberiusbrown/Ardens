@@ -217,6 +217,7 @@ static void gather_locals(
     uint64_t pc = uint64_t(arduboy->cpu.pc) * 2;
 
     llvm::DWARFAddressRangesVector ranges;
+    ranges.push_back({ 0, UINT64_MAX });
     if(auto eranges = die.getAddressRanges())
         ranges = std::move(*eranges);
 
@@ -237,10 +238,10 @@ static void gather_locals(
             {
                 for(auto const& loc : *elocs)
                 {
-                    bool valid = true;
+                    bool valid = false;
                     for(auto const& range : ranges)
-                        if(pc < range.LowPC || pc >= range.HighPC)
-                            valid = false;
+                        if(pc >= range.LowPC && pc < range.HighPC)
+                            valid = true;
                     if(!valid) continue;
                     if(loc.Range && (pc < loc.Range->LowPC || pc >= loc.Range->HighPC))
                         continue;
@@ -268,7 +269,8 @@ void window_locals(bool& open)
     if(!open) return;
     SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
     ImGuiWindowFlags wflags = 0;
-    if(Begin("Locals", &open, wflags) && arduboy->cpu.decoded && arduboy->elf)
+    if(Begin("Locals", &open, wflags) &&
+        arduboy->cpu.decoded && arduboy->elf && arduboy->paused)
     {
         auto& e = *arduboy->elf;
         auto& dwarf = *e.dwarf_ctx;
@@ -323,7 +325,6 @@ void window_globals(bool& open)
         SameLine();
         if(Button("Add IO register..."))
             OpenPopup("##addio");
-
 
         if(BeginPopup("##addvar"))
         {

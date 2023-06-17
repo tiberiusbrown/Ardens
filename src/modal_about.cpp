@@ -20,6 +20,7 @@ Drap and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (hex/e
   * [Dear ImGui](https://github.com/ocornut/imgui) (MIT)
   * [ImPlot](https://github.com/epezent/implot) (MIT)
   * [imgui_markdown](https://github.com/juliettef/imgui_markdown) (zlib)
+  * [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) (MIT)
   * [Simple-FFT](https://github.com/d1vanov/Simple-FFT) (MIT)
   * [brunexgeek/hqx](https://github.com/brunexgeek/hqx) (Apache v2.0)
   * [{fmt}](https://github.com/fmtlib/fmt) (MIT)
