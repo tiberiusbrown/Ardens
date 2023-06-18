@@ -9,7 +9,7 @@
 
 static TextEditor editor;
 
-static void init()
+static void init_texteditor()
 {
     static bool did_init = false;
     if(did_init) return;
@@ -53,7 +53,7 @@ void window_source(bool& open)
         && arduboy->cpu.decoded && arduboy->elf && arduboy->paused)
     {
         auto pc = arduboy->cpu.pc;
-        init();
+        init_texteditor();
         auto& dwarf = *arduboy->elf->dwarf_ctx;
         auto info = dwarf.getLineInfoForAddress(
             { uint64_t(pc) * 2 },
