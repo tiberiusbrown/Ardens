@@ -743,6 +743,12 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         for(auto& sym : elf.data_symbols)
             sym.second.color_index = index++;
     }
+    {
+        uint16_t index = 0;
+        for(auto& sym : elf.text_symbols)
+            if(sym.second.object)
+                sym.second.color_index = index++;
+    }
 
     // sort symbols by name
     for(auto const& kv : elf.text_symbols)
