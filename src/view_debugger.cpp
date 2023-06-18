@@ -113,6 +113,7 @@ void view_debugger()
                     ImGui::MenuItem("Symbols", nullptr, &settings.open_symbols);
                     ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
                     ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
+                    ImGui::MenuItem("CPU PROGMEM Space", nullptr, &settings.open_progmem);
 #ifdef ABSIM_LLVM
                     ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
                     ImGui::MenuItem("Locals", nullptr, &settings.open_locals);
@@ -186,6 +187,7 @@ void view_debugger()
             window_display_internals(settings.open_display_internals);
             window_profiler(settings.open_profiler);
             window_data_space(settings.open_data_space);
+            window_progmem(settings.open_progmem);
             window_fx_data(settings.open_fx_data);
             window_fx_internals(settings.open_fx_internals);
             window_eeprom(settings.open_eeprom);

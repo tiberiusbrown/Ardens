@@ -133,12 +133,17 @@ void scalenx(uint8_t* dst, uint8_t const* src, bool rgba);
 void load_savedata();
 void check_save_savedata(); // save savedata if necessary
 
+// defined in window_data_space.cpp
+void symbol_tooltip(
+    uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog = false);
+
 void window_disassembly(bool& open);
 void window_profiler(bool& open);
 void window_display(bool& open);
 void window_display_buffer(bool& open);
 void window_display_internals(bool& open);
 void window_data_space(bool& open);
+void window_progmem(bool& open);
 void window_simulation(bool& open);
 void window_call_stack(bool& open);
 void window_symbols(bool& open);

@@ -6,60 +6,9 @@
 
 #include <fmt/format.h>
 
-#ifdef ABSIM_LLVM
-
-#ifdef _MSC_VER
-#pragma warning(push, 1)
-#pragma warning(disable: 4624)
-#endif
-
-#include <llvm/DebugInfo/DWARF/DWARFContext.h>
-#include <llvm/DebugInfo/DWARF/DWARFCompileUnit.h>
-#include <llvm/DebugInfo/DWARF/DWARFExpression.h>
-
-#ifdef _MSC_VER
-#pragma warning(pop) 
-#endif
-
-#endif
-
 static MemoryEditor memed_data_space;
 
-static int recurse_type(std::string& expr, uint16_t offset, llvm::DWARFDie die)
-{
-    if(!die.isValid()) return -1;
-    switch(die.getTag())
-    {
-    case llvm::dwarf::DW_TAG_const_type:
-    case llvm::dwarf::DW_TAG_volatile_type:
-        return recurse_type(expr, offset, dwarf_type(die));
-    case llvm::dwarf::DW_TAG_structure_type:
-        for(auto const& p : dwarf_members(die))
-        {
-            auto size = dwarf_size(p.die);
-            if(!(offset >= p.offset && offset < p.offset + size)) continue;
-            expr += fmt::format(".{}", dwarf_name(p.die));
-            return recurse_type(expr, offset - p.offset, dwarf_type(p.die));
-        }
-        return offset;
-    case llvm::dwarf::DW_TAG_array_type:
-    {
-        auto type = dwarf_type(die);
-        auto size = dwarf_size(type);
-        if(size <= 0) break;
-        size_t i = offset / size;
-        offset %= size;
-        expr += fmt::format("[{}]", i);
-        return recurse_type(expr, offset, type);
-    }
-    default:
-        if(dwarf_size(die) == 1) return -1;
-        break;
-    }
-    return offset;
-}
-
-static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym)
+static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog)
 {
 #ifdef ABSIM_LLVM
 
@@ -76,7 +25,7 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
     for(auto const& kv : arduboy->elf->globals)
     {
         auto const& g = kv.second;
-        if(g.text) continue;
+        if(prog != g.text) continue;
         auto* cu = dwarf->getCompileUnitForOffset(g.cu_offset);
         if(!cu) continue;
         type = cu->getDIEForOffset(g.type);
@@ -105,7 +54,7 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
             type_str += fmt::format(" : {}", prim.bit_size);
         ImGui::Text("Type:   %s", type_str.c_str());
         ImGui::Text("Value:  %s", dwarf_value_string(
-            prim.die, addr - prim.offset, false, prim.bit_offset, prim.bit_size).c_str());
+            prim.die, addr - prim.offset, prog, prim.bit_offset, prim.bit_size).c_str());
         auto size = dwarf_size(prim.die);
         if(size <= 4)
         {
@@ -117,7 +66,15 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
                 auto j = size - i - 1;
                 if(size > 1 && j == prim.offset)
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 255, 255));
-                ImGui::Text("%02x", arduboy->cpu.data[a + j]);
+                if(prog && a + j < arduboy->cpu.prog.size() ||
+                    !prog && a + j < arduboy->cpu.data.size())
+                {
+                    ImGui::Text("%02x", prog ?
+                        arduboy->cpu.prog[a + j] :
+                        arduboy->cpu.data[a + j]);
+                }
+                else
+                    ImGui::TextUnformatted("??");
                 if(size > 1 && j == prim.offset)
                     ImGui::PopStyleColor();
                 ImGui::SameLine(0.f, 0.f);
@@ -135,11 +92,11 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
 #endif
 }
 
-static void symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym)
+void symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog)
 {
     using namespace ImGui;
 
-    if(dwarf_symbol_tooltip(addr, sym))
+    if(dwarf_symbol_tooltip(addr, sym, prog))
         return;
     
     if(sym.size > 1)

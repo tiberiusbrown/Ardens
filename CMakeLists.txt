@@ -237,6 +237,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_display_buffer.cpp
     src/window_display_internals.cpp
     src/window_data_space.cpp
+    src/window_progmem.cpp
     src/window_simulation.cpp
     src/window_call_stack.cpp
     src/window_symbols.cpp

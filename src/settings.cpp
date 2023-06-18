@@ -44,6 +44,8 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(open_serial);
     ABSIM_BOOL_SETTING(open_sound);
     ABSIM_BOOL_SETTING(open_source);
+    ABSIM_BOOL_SETTING(open_progmem);
+
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(profiler_group_symbols);
     ABSIM_BOOL_SETTING(enable_step_breaks);
@@ -104,6 +106,8 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(open_serial);
     ABSIM_BOOL_SETTING(open_sound);
     ABSIM_BOOL_SETTING(open_source);
+    ABSIM_BOOL_SETTING(open_progmem);
+
     ABSIM_BOOL_SETTING(profiler_cycle_counts);
     ABSIM_BOOL_SETTING(profiler_group_symbols);
     ABSIM_BOOL_SETTING(enable_step_breaks);
