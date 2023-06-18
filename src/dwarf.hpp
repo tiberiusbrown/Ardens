@@ -107,4 +107,6 @@ bool dwarf_find_primitive(llvm::DWARFDie die, uint32_t offset, dwarf_primitive_t
 
 std::string dwarf_function_args_string(llvm::DWARFDie die);
 
+int recurse_varname(std::string& expr, uint16_t offset, llvm::DWARFDie die);
+
 #endif

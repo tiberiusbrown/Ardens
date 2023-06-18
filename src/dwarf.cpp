@@ -243,7 +243,7 @@ llvm::DWARFDie dwarf_type(llvm::DWARFDie die)
     return type;
 }
 
-static std::string recurse_type(llvm::DWARFDie die)
+static std::string recurse_varname(llvm::DWARFDie die)
 {
     if(!die.isValid())
         return "void";
@@ -258,15 +258,15 @@ static std::string recurse_type(llvm::DWARFDie die)
     case llvm::dwarf::DW_TAG_union_type:
         return fmt::format("union {}", dwarf_name(die));
     case llvm::dwarf::DW_TAG_const_type:
-        return recurse_type(dwarf_type(die)) + " const";
+        return recurse_varname(dwarf_type(die)) + " const";
     case llvm::dwarf::DW_TAG_volatile_type:
-        return recurse_type(dwarf_type(die)) + " volatile";
+        return recurse_varname(dwarf_type(die)) + " volatile";
     case llvm::dwarf::DW_TAG_pointer_type:
     {
         auto type = dwarf_type(die);
         if(type.isValid() && type.getTag() == llvm::dwarf::DW_TAG_subroutine_type)
         {
-            std::string r = recurse_type(dwarf_type(type));
+            std::string r = recurse_varname(dwarf_type(type));
             r += "(*)(";
             bool found = false;
             bool first = true;
@@ -276,16 +276,16 @@ static std::string recurse_type(llvm::DWARFDie die)
                     continue;
                 if(!first) r += ", ";
                 first = false;
-                r += recurse_type(p);
+                r += recurse_varname(p);
             }
             if(!found) r += "void";
             r += ")";
             return r;
         }
-        return recurse_type(type) + "*";
+        return recurse_varname(type) + "*";
     }
     case llvm::dwarf::DW_TAG_reference_type:
-        return recurse_type(dwarf_type(die)) + "&";
+        return recurse_varname(dwarf_type(die)) + "&";
     case llvm::dwarf::DW_TAG_array_type:
     {
         std::string brackets;
@@ -305,7 +305,7 @@ static std::string recurse_type(llvm::DWARFDie die)
             else
                 brackets += fmt::format("[{}]", n + 1);
         }
-        return recurse_type(dwarf_type(die)) + brackets;
+        return recurse_varname(dwarf_type(die)) + brackets;
     }
     default:
         break;
@@ -315,7 +315,7 @@ static std::string recurse_type(llvm::DWARFDie die)
 
 std::string dwarf_type_string(llvm::DWARFDie die)
 {
-    return recurse_type(die);
+    return recurse_varname(die);
 }
 
 static std::string recurse_value(
@@ -564,6 +564,40 @@ std::string dwarf_function_args_string(llvm::DWARFDie die)
     }
     r += ")";
     return r;
+}
+
+int recurse_varname(std::string& expr, uint16_t offset, llvm::DWARFDie die)
+{
+    if(!die.isValid()) return -1;
+    switch(die.getTag())
+    {
+    case llvm::dwarf::DW_TAG_const_type:
+    case llvm::dwarf::DW_TAG_volatile_type:
+        return recurse_varname(expr, offset, dwarf_type(die));
+    case llvm::dwarf::DW_TAG_structure_type:
+        for(auto const& p : dwarf_members(die))
+        {
+            auto size = dwarf_size(p.die);
+            if(!(offset >= p.offset && offset < p.offset + size)) continue;
+            expr += fmt::format(".{}", dwarf_name(p.die));
+            return recurse_varname(expr, offset - p.offset, dwarf_type(p.die));
+        }
+        return offset;
+    case llvm::dwarf::DW_TAG_array_type:
+    {
+        auto type = dwarf_type(die);
+        auto size = dwarf_size(type);
+        if(size <= 0) break;
+        size_t i = offset / size;
+        offset %= size;
+        expr += fmt::format("[{}]", i);
+        return recurse_varname(expr, offset, type);
+    }
+    default:
+        if(dwarf_size(die) == 1) return -1;
+        break;
+    }
+    return offset;
 }
 
 #endif
