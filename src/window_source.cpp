@@ -45,11 +45,12 @@ static void load_file_to_editor(absim::elf_data_t::source_file_t const& sf)
 void window_source(bool& open)
 {
     using namespace ImGui;
+    if(!open) return;
 
     static uint16_t prev_pc = -1;
 
     SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
-    if(Begin("Source", &open)
+    if(Begin("Source##SourceWindow", &open)
         && arduboy->cpu.decoded && arduboy->elf && arduboy->paused)
     {
         auto pc = arduboy->cpu.pc;
