@@ -24,8 +24,9 @@ if(MSVC)
         $<$<NOT:$<CONFIG:DEBUG>>:/Gw>
         $<$<NOT:$<CONFIG:DEBUG>>:/GF>
         $<$<NOT:$<CONFIG:DEBUG>>:/Oy>
-        $<$<NOT:$<CONFIG:DEBUG>>:/Ot>
-        $<$<NOT:$<CONFIG:DEBUG>>:/Ox>
+        $<$<CONFIG:RELEASE>:/Ot>
+        $<$<CONFIG:MINSIZEREL>:/Os>
+        $<$<CONFIG:RELEASE>:/Ox>
     )
 endif()
 
@@ -68,36 +69,50 @@ add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
 if(ABSIM_LLVM)
-    if(MSVC)
+    if(MSVC AND NOT ABSIM_DEV)
         set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
         set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
         set(LLVM_USE_CRT_RELEASE        "MT"  CACHE STRING "" FORCE)
         set(LLVM_USE_CRT_RELWITHDEBINFO "MT"  CACHE STRING "" FORCE)
         set(LLVM_BUILD_LLVM_C_DYLIB     OFF   CACHE BOOL   "" FORCE)
     endif()
-    set(LLVM_BUILD_TESTS                   OFF CACHE BOOL   "" FORCE)
-    set(LLVM_BUILD_TOOLS                   OFF CACHE BOOL   "" FORCE)
-    set(LLVM_BUILD_UTILS                   OFF CACHE BOOL   "" FORCE)
-    set(LLVM_INCLUDE_TESTS                 OFF CACHE BOOL   "" FORCE)
-    set(LLVM_INCLUDE_TOOLS                 OFF CACHE BOOL   "" FORCE)
-    set(LLVM_INCLUDE_UTILS                 OFF CACHE BOOL   "" FORCE)
-    set(LLVM_INCLUDE_BENCHMARKS            OFF CACHE BOOL   "" FORCE)
-    set(LLVM_INCLUDE_DOCS                  OFF CACHE BOOL   "" FORCE)
-    set(LLVM_INCLUDE_EXAMPLES              OFF CACHE BOOL   "" FORCE)
-    set(LLVM_INCLUDE_RUNTIMES              OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_BINDINGS               OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_LIBEDIT                OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_LIBPFM                 OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_OCAMLDOC               OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_TIMESTAMPS             OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_TERMINFO               OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_ZLIB                   OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_LIBXML2                OFF CACHE BOOL   "" FORCE)
-    set(_ENABLE_LLVM_NATIVE_BUILD          OFF CACHE BOOL   "" FORCE)
-    set(LLVM_TARGETS_TO_BUILD              ";" CACHE STRING "" FORCE)
-    set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD ";" CACHE STRING "" FORCE)
+    set(LLVM_BUILD_TESTS                   OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_BUILD_TOOLS                   ON          CACHE BOOL   "" FORCE)
+    set(LLVM_BUILD_UTILS                   ON          CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_TESTS                 OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_TOOLS                 ON          CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_UTILS                 ON          CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_BENCHMARKS            OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_DOCS                  OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_EXAMPLES              OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_INCLUDE_RUNTIMES              OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_BINDINGS               OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_LIBEDIT                OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_LIBPFM                 OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_OCAMLDOC               OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_TIMESTAMPS             OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_TERMINFO               OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_PIC                    OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_THREADS                OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_UNWIND_TABLES          OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_ZLIB                   "OFF"       CACHE STRING "" FORCE)
+    set(LLVM_ENABLE_ZSTD                   "OFF"       CACHE STRING "" FORCE)
+    set(LLVM_ENABLE_LIBXML2                OFF         CACHE BOOL   "" FORCE)
+    #set(LLVM_ENABLE_LTO                    "Full"      CACHE STRING "" FORCE)
+    set(LLVM_TARGET_ARCH                   "AVR"       CACHE STRING "" FORCE)
+    set(LLVM_DEFAULT_TARGET_TRIPLE         "avr"       CACHE STRING "" FORCE)
+    set(_ENABLE_LLVM_NATIVE_BUILD          OFF         CACHE BOOL   "" FORCE)
+    set(LLVM_ENABLE_PROJECTS               "clang;lld" CACHE STRING "" FORCE)
+    set(LLVM_TARGETS_TO_BUILD              ";"         CACHE STRING "" FORCE)
+    set(LLVM_EXPERIMENTAL_TARGETS_TO_BUILD "AVR"       CACHE STRING "" FORCE)
+    set(CLANG_ENABLE_ARCMT                 OFF         CACHE BOOL   "" FORCE)
+    set(CLANG_ENABLE_STATIC_ANALYZER       OFF         CACHE BOOL   "" FORCE)
+    set(CLANG_BUILD_TOOLS                  OFF         CACHE BOOL   "" FORCE)
+    set(CLANG_TOOL_HANDLE_CXX_BUILD        OFF         CACHE BOOL   "" FORCE)
+    set(CLANG_TOOL_HANDLE_LLVM_BUILD       OFF         CACHE BOOL   "" FORCE)
+    set(LLD_BUILD_TOOLS                    OFF         CACHE BOOL   "" FORCE)
     if(EMSCRIPTEN)
-        set(LLVM_TARGET_ARCH "wasm64" CACHE STRING "" FORCE)
+        #set(LLVM_TARGET_ARCH "wasm64" CACHE STRING "" FORCE)
         set(LLVM_NATIVE_ARCH "wasm64" CACHE STRING "" FORCE)
         set(LLVM_HOST_TRIPLE "wasm64-unknown-emscripten" CACHE STRING "" FORCE)
         set(LLVM_OPTIMIZED_TABLEGEN OFF CACHE BOOL "" FORCE)
@@ -230,6 +245,8 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/dwarf.hpp
     src/dwarf.cpp
     src/dwarf_expr.cpp
+    src/clang.hpp
+    src/clang.cpp
 
     src/window_disassembly.cpp
     src/window_profiler.cpp
@@ -276,16 +293,19 @@ target_link_libraries(arduboy_sim PRIVATE
     bitsery
     )
 if(ABSIM_LLVM)
-    target_link_libraries(arduboy_sim PRIVATE
+    set(LLVM_LIBS
         LLVMDebugInfoDWARF
         LLVMDemangle
-        #LLVMObject
+        LLVMObject
+        LLVMAVRCodeGen
+        clangCodeGen
+        lldCommon
+        lldELF
         )
-    target_include_directories(arduboy_sim PRIVATE
-        "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
-        "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
-        "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
-        )
+    foreach(L ${LLVM_LIBS})
+        target_link_libraries(arduboy_sim PRIVATE ${L})
+        target_include_directories(arduboy_sim PRIVATE "$<TARGET_PROPERTY:${L},INCLUDE_DIRECTORIES>")
+    endforeach()
     target_compile_definitions(arduboy_sim PRIVATE -DABSIM_LLVM)
 endif()
 #target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SDL)

@@ -3,6 +3,8 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+#include "clang.hpp"
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -144,6 +146,8 @@ void view_debugger()
                     take_snapshot();
 #endif
                 if(!arduboy->cpu.decoded) ImGui::EndDisabled();
+                if(ImGui::MenuItem("test_clang"))
+                    test_clang();
                 ImGui::EndMenu();
             }
 
