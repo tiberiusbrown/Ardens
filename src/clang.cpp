@@ -21,7 +21,15 @@
 #include <memory>
 
 static char const* const filename = "test.cpp";
-static char const* const code = "int test(int x) { return x + 1; }";
+static char const* const code = "int test(int x, int y) { return x / y + 1; }";
+
+/*
+
+E:\ProjectBuilds\llvm_subproject\Release\bin\clang.exe -c --target=avr -mmcu=atmega32u4 -Os -DF_CPU=16000000L -D__AVR_ARCH__ -DUSB_VID=0x2341 -DUSB_PID=0x8036 -DUSB_MANUFACTURER="ArduboyInc" -DUSB_PRODUCT="Arduboy" -DARDUBOY_10 -DCART_CS_SDA -ffunction-sections -fdata-sections -fno-threadsafe-statics -fno-exceptions -isystem E:\Brown\Downloads\toolchain\include\std  -isystem E:\Brown\Downloads\toolchain\include\core -D__ATTR_PROGMEM__=__attribute__((section(\".progmem1.data\"))) test.cpp
+
+E:\ProjectBuilds\llvm_subproject\Release\bin\ld.lld.exe -TE:\Brown\Downloads\toolchain\avr5.xn --static --defsym=_start=0 --defsym=__DATA_REGION_ORIGIN__=0x800100 --defsym=__TEXT_REGION_LENGTH__=32768 --defsym=__DATA_REGION_LENGTH__=2560 --gc-sections E:\Brown\Downloads\toolchain\lib\crtatmega32u4.o test.o -LE:\Brown\Downloads\toolchain\lib --start-group -lgcc -lm -lc -latmega32u4 -lcore --end-group -o test.elf
+
+*/
 
 std::string test_clang()
 {
@@ -39,6 +47,19 @@ std::string test_clang()
 
     std::vector<char const*> args;
     args.push_back("-Os");
+    args.push_back("-ffunction-sections");
+    args.push_back("-fdata-sections");
+    //args.push_back("-fno-exceptions");
+    args.push_back("-fno-threadsafe-statics");
+    args.push_back("-D__AVR_ARCH__");
+    args.push_back("-DF_CPU=16000000L");
+    args.push_back("-DUSB_VID=0x2341");
+    args.push_back("-DUSB_PID=0x8036");
+    args.push_back("-DUSB_MANUFACTURER=\"Arduboy Inc\"");
+    args.push_back("-DUSB_PRODUCT=\"Arduboy\"");
+    args.push_back("-DARDUBOY_10");
+    args.push_back("-DCART_CS_SDA");
+    args.push_back("-D__ATTR_PROGMEM__=__attribute__((section(\".progmem1.data\")))");
     args.push_back(filename);
 
     std::string err_string;
@@ -64,6 +85,9 @@ std::string test_clang()
     cinst.setInvocation(ci);
     cinst.createDiagnostics();
 
+    ci->getLangOpts()->setExceptionHandling(
+        clang::LangOptions::ExceptionHandlingKind::None);
+
     //auto fm = std::make_unique<clang::FileManager>(
     //    clang::FileSystemOptions{""},
     //    llvm::makeIntrusiveRefCnt<clang_vfs>());
@@ -76,8 +100,8 @@ std::string test_clang()
     auto* target_info = clang::TargetInfo::CreateTargetInfo(*diag_engine, target_opts);
     cinst.setTarget(target_info);
 
-    //auto compiler_action = std::make_unique<clang::EmitAssemblyAction>();
-    auto compiler_action = std::make_unique<clang::EmitObjAction>();
+    auto compiler_action = std::make_unique<clang::EmitAssemblyAction>();
+    //auto compiler_action = std::make_unique<clang::EmitObjAction>();
     cinst.ExecuteAction(*compiler_action);
 
     return err_string;
