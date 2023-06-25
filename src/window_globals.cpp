@@ -106,8 +106,10 @@ static bool do_var_row(
 
         if(!local && IsItemHovered())
         {
+            uint16_t addr = (uint16_t)(ptrdiff_t)(mem.begin -
+                (text ? arduboy->cpu.prog.data() : arduboy->cpu.data.data()));
             BeginTooltip();
-            Text("Address: 0x%04x%s", mem.begin, text ? " [PROG]" : "");
+            Text("Address: 0x%04x%s", addr, text ? " [PROG]" : "");
             EndTooltip();
         }
     }

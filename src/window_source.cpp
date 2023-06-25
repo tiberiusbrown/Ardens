@@ -42,6 +42,44 @@ static void load_file_to_editor(absim::elf_data_t::source_file_t const& sf)
     editor.SetTextLines(sf.lines);
 }
 
+struct line_info_t
+{
+    std::string FileName;
+    int Line;
+};
+
+static line_info_t get_line_info(llvm::DWARFContext& dwarf, uint64_t addr)
+{
+    line_info_t r;
+    auto* cu = dwarf.getCompileUnitForAddress(addr);
+    if(!cu) return {};
+
+    if(auto const* table = dwarf.getLineTableForUnit(cu))
+    {
+        for(auto const& seq : table->Sequences)
+        {
+            if(seq.containsPC({ addr }))
+            {
+                llvm::DWARFDebugLine::Row row;
+                row.Address = { addr };
+                auto first_row = table->Rows.begin() + seq.FirstRowIndex;
+                auto last_row = table->Rows.begin() + seq.LastRowIndex;
+                auto row_pos = std::upper_bound(first_row + 1, last_row - 1, row,
+                    llvm::DWARFDebugLine::Row::orderByAddress) - 1;
+                uint32_t row_index = row_pos - table->Rows.begin();
+                auto const& tr = table->Rows[row_index];
+                table->getFileNameByIndex(tr.File,
+                    cu->getCompilationDir(),
+                    llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath,
+                     r.FileName);
+                r.Line = tr.Line;
+            }
+        }
+    }
+
+    return r;
+}
+
 void window_source(bool& open)
 {
     using namespace ImGui;
@@ -56,10 +94,11 @@ void window_source(bool& open)
         auto pc = arduboy->cpu.pc;
         init_texteditor();
         auto& dwarf = *arduboy->elf->dwarf_ctx;
-        auto info = dwarf.getLineInfoForAddress(
-            { uint64_t(pc) * 2 },
-            { llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath });
-
+        //auto info = dwarf.getLineInfoForAddress(
+        //    { uint64_t(pc) * 2 },
+        //    { llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath });
+        auto info = get_line_info(dwarf, uint64_t(pc) * 2);
+       
         auto it = arduboy->elf->source_file_names.find(info.FileName);
         if(it != arduboy->elf->source_file_names.end() &&
             it->second >= 0 && it->second < arduboy->elf->source_files.size())
