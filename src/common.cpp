@@ -130,27 +130,81 @@ extern "C" int setparam(char const* name, char const* value)
         update_settings();
         r = 1;
     }
-    else if(!strcmp(name, "grid"))
+    else if(!strcmp(name, "g") || !strcmp(name, "grid"))
     {
-        settings.display_pixel_grid = std::clamp<int>(nvalue, PGRID_MIN, PGRID_MAX);
+        if(!strcmp(value, "none"))
+            settings.display_pixel_grid = PGRID_NONE;
+        else if(!strcmp(value, "normal"))
+            settings.display_pixel_grid = PGRID_NORMAL;
+        else if(!strcmp(value, "red"))
+            settings.display_pixel_grid = PGRID_RED;
+        else if(!strcmp(value, "green"))
+            settings.display_pixel_grid = PGRID_GREEN;
+        else if(!strcmp(value, "blue"))
+            settings.display_pixel_grid = PGRID_BLUE;
+        else if(!strcmp(value, "cyan"))
+            settings.display_pixel_grid = PGRID_CYAN;
+        else if(!strcmp(value, "magenta"))
+            settings.display_pixel_grid = PGRID_MAGENTA;
+        else if(!strcmp(value, "yellow"))
+            settings.display_pixel_grid = PGRID_YELLOW;
+        else if(!strcmp(value, "white"))
+            settings.display_pixel_grid = PGRID_WHITE;
+        else
+            settings.display_pixel_grid = std::clamp<int>(nvalue, PGRID_MIN, PGRID_MAX);
         update_settings();
         r = 1;
     }
-    else if(!strcmp(name, "palette"))
+    else if(!strcmp(name, "p") || !strcmp(name, "palette"))
     {
-        settings.display_palette = std::clamp<int>(nvalue, PALETTE_MIN, PALETTE_MAX);
+        if(!strcmp(value, "default"))
+            settings.display_palette = PALETTE_DEFAULT;
+        else if(!strcmp(value, "retro"))
+            settings.display_palette = PALETTE_RETRO;
+        else if(!strcmp(value, "lowcontrast"))
+            settings.display_palette = PALETTE_LOW_CONTRAST;
+        else
+            settings.display_palette = std::clamp<int>(nvalue, PALETTE_MIN, PALETTE_MAX);
         update_settings();
         r = 1;
     }
-    else if(!strcmp(name, "autofilter"))
+    else if(!strcmp(name, "af") || !strcmp(name, "autofilter"))
     {
         settings.display_auto_filter = bvalue;
+        update_settings();
+        r = 1;
+    }
+    else if(!strcmp(name, "f") || !strcmp(name, "filter"))
+    {
+        if(!strcmp(value, "none"))
+            settings.display_filtering = FILTER_NONE;
+        else if(!strcmp(value, "scale2x"))
+            settings.display_filtering = FILTER_SCALE2X;
+        else if(!strcmp(value, "scale3x"))
+            settings.display_filtering = FILTER_SCALE3X;
+        else if(!strcmp(value, "scale4x"))
+            settings.display_filtering = FILTER_SCALE4X;
+        else if(!strcmp(value, "hq2x"))
+            settings.display_filtering = FILTER_HQ2X;
+        else if(!strcmp(value, "hq3x"))
+            settings.display_filtering = FILTER_HQ3X;
+        else if(!strcmp(value, "hq4x"))
+            settings.display_filtering = FILTER_HQ4X;
+        else
+            settings.display_filtering = std::clamp<int>(nvalue, FILTER_MIN, FILTER_MAX);
+        update_settings();
+        r = 1;
+    }
+    else if(!strcmp(name, "ds") || !strcmp(name, "downsample"))
+    {
+        settings.display_downsample = std::clamp<int>(nvalue, 1, 4);
         update_settings();
         r = 1;
     }
     else if(!strcmp(name, "loading"))
     {
         loading_indicator = bvalue;
+        r = 1;
     }
     return r;
 }
