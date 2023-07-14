@@ -411,10 +411,21 @@ void frame_logic()
 
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
-            if(ImGui::IsKeyDown(ImGuiKey_DownArrow)) pinf &= ~0x10;
-            if(ImGui::IsKeyDown(ImGuiKey_LeftArrow)) pinf &= ~0x20;
-            if(ImGui::IsKeyDown(ImGuiKey_RightArrow)) pinf &= ~0x40;
-            if(ImGui::IsKeyDown(ImGuiKey_UpArrow)) pinf &= ~0x80;
+            std::array<ImGuiKey, 4> keys =
+            {
+                ImGuiKey_UpArrow,
+                ImGuiKey_RightArrow,
+                ImGuiKey_DownArrow,
+                ImGuiKey_LeftArrow,
+            };
+
+            std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
+
+            if(ImGui::IsKeyDown(keys[0])) pinf &= ~0x80;
+            if(ImGui::IsKeyDown(keys[1])) pinf &= ~0x40;
+            if(ImGui::IsKeyDown(keys[2])) pinf &= ~0x10;
+            if(ImGui::IsKeyDown(keys[3])) pinf &= ~0x20;
+
             if(ImGui::IsKeyDown(ImGuiKey_A)) pine &= ~0x40;
             if(ImGui::IsKeyDown(ImGuiKey_B) || ImGui::IsKeyDown(ImGuiKey_S)) pinb &= ~0x10;
 
