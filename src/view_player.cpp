@@ -1,13 +1,32 @@
 #include "common.hpp"
 #include "imgui.h"
 
+#include <algorithm>
+
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 {
-    d->AddImage(display_texture, a, b);
+    {
+        std::array<ImVec2, 4> vs;
+        vs[0] = {a.x, a.y};
+        vs[1] = {b.x, a.y};
+        vs[2] = {b.x, b.y};
+        vs[3] = {a.x, b.y};
+        std::rotate(vs.begin(), vs.begin() + settings.display_orientation, vs.end());
+        d->AddImageQuad(
+            display_texture,
+            vs[0], vs[1], vs[2], vs[3]);
+    }
+
     if(settings.display_pixel_grid == PGRID_NONE) return;
     if(display_texture_zoom != 1) return;
     float w = b.x - a.x;
-    if(w < 128 * 3) return;
+
+    int numh = 128;
+    int numv = 64;
+    if(settings.display_orientation & 1)
+        std::swap(numh, numv);
+
+    if(w < numh * 3) return;
 
     ImU32 line_color;
     constexpr uint8_t T = 192;
@@ -31,19 +50,19 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
     }
     }
 
-    float const inc = w * (1.f / 128);
+    float const inc = w / numh;
     float const line_thickness = inc * 0.125f;
     float const off = line_thickness * 0.5f;
 
     // draw pixel grid
-    for(int i = 0; i <= 128; ++i)
+    for(int i = 0; i <= numh; ++i)
     {
         ImVec2 p1 = { a.x + inc * i - off, a.y };
         ImVec2 p2 = { a.x + inc * i + off, b.y };
         d->PathRect(p1, p2);
         d->PathFillConvex(line_color);
     }
-    for(int i = 0; i <= 64; ++i)
+    for(int i = 0; i <= numv; ++i)
     {
         ImVec2 p1 = { a.x, a.y + inc * i - off };
         ImVec2 p2 = { b.x, a.y + inc * i + off };
@@ -63,6 +82,8 @@ void view_player()
     int z = display_filter_zoom();
     float tw = 128 * z;
     float th = 64 * z;
+    if(settings.display_orientation & 1)
+        std::swap(tw, th);
     float w = tw, h = th;
     bool smaller = false;
 

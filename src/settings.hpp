@@ -74,10 +74,12 @@ struct settings_t
     int display_filtering = FILTER_NONE;
     int display_downsample = 1;
     int display_pixel_grid = 0;
+    int display_orientation = 0;
     int recording_palette = 0;
     int recording_filtering = FILTER_NONE;
     int recording_downsample = 1;
     int recording_zoom = 1;
+    int recording_orientation = 0;
 };
 
 extern settings_t settings;

@@ -1,6 +1,7 @@
 #include "imgui.h"
-
 #include "common.hpp"
+
+#include <algorithm>
 
 void window_display(bool& open)
 {
@@ -18,6 +19,8 @@ void window_display(bool& open)
             float z = display_filter_zoom();
             float tw = 128 * z;
             float th = 64 * z;
+            if(settings.display_orientation & 1)
+                std::swap(tw, th);
             float w = tw, h = th;
             bool smaller = false;
 

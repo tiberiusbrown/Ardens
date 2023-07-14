@@ -41,6 +41,9 @@ void palette_rgba(int palette, uint8_t x, uint8_t y[4])
     case PALETTE_LOW_CONTRAST:
         y[0] = y[1] = y[2] = uint8_t(16 + x * 192 / 256);
         break;
+    case PALETTE_HIGH_CONTRAST:
+        y[0] = y[1] = y[2] = uint8_t(std::min(255, x * 320 / 256));
+        break;
     case PALETTE_DEFAULT:
     default:
         y[0] = y[1] = y[2] = x;
@@ -325,11 +328,12 @@ uint8_t* recording_pixels(bool rgba)
     static uint8_t tmp[128 * 64 * 4 * 4];
     uint8_t const* src = arduboy->display.filtered_pixels.data();
 
-    int z = recording_filter_zoom();
+    int z = filter_zoom(settings.recording_filtering);
     int w = 128 * z;
     int h = 64 * z;
+    int rz = settings.recording_zoom;
 
-    pixels.resize(w * h * (rgba ? 4 : 1));
+    pixels.resize(w * h * rz * rz * (rgba ? 4 : 1));
 
     scalenx_filter(
         settings.recording_filtering,
@@ -338,19 +342,59 @@ uint8_t* recording_pixels(bool rgba)
         false,
         settings.recording_palette);
 
-    // zoom and handle rgba here
-    int rz = settings.recording_zoom;
-    z /= rz;
-    for(int i = 0; i < z * 64; ++i)
+    // adjust orientation here
+    switch(settings.recording_orientation)
     {
-        for(int j = 0; j < z * 128; ++j)
+    case 0:
+        break;
+    case 1:
+    {
+        std::vector<uint8_t> tmp2(w * h);
+        for(int i = 0; i < h; ++i)
+            for(int j = 0; j < w; ++j)
+            {
+                int ti = j;
+                int tj = h - 1 - i;
+                tmp2[ti * h + tj] = tmp[i * w + j];
+            }
+        memcpy(tmp, tmp2.data(), sizeof(uint8_t) * w * h);
+        std::swap(w, h);
+        break;
+    }
+    case 2:
+        for(int i = 0; i < h / 2; ++i)
+            for(int j = 0; j < w; ++j)
+                std::swap(tmp[i * w + j], tmp[(h - 1 - i) * w + (w - 1 - j)]);
+        break;
+    case 3:
+    {
+        std::vector<uint8_t> tmp2(w * h);
+        for(int i = 0; i < h; ++i)
+            for(int j = 0; j < w; ++j)
+            {
+                int ti = w - 1 - j;
+                int tj = i;
+                tmp2[ti * h + tj] = tmp[i * w + j];
+            }
+        memcpy(tmp, tmp2.data(), sizeof(uint8_t) * w * h);
+        std::swap(w, h);
+        break;
+    }
+    default:
+        break;
+    }
+
+    // zoom and handle rgba here
+    for(int i = 0; i < h; ++i)
+    {
+        for(int j = 0; j < w; ++j)
         {
-            uint8_t p = tmp[i * z * 128 + j];
+            uint8_t p = tmp[i * w + j];
             for(int m = 0; m < rz; ++m)
             {
                 for(int n = 0; n < rz; ++n)
                 {
-                    int di = ((i * rz + m) * z * rz * 128) + (j * rz) + n;
+                    int di = ((i * rz + m) * rz * w) + (j * rz) + n;
                     if(rgba)
                         palette_rgba(settings.recording_palette, p, &pixels[di * 4]);
                     else

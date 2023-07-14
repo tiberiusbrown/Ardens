@@ -1,6 +1,7 @@
 #include "common.hpp"
-
 #include "gifenc.h"
+
+#include <algorithm>
 
 bool gif_recording = false;
 uint64_t gif_ps_rem = 0;
@@ -65,7 +66,10 @@ void screen_recording_toggle(uint8_t const* pixels)
         fname = "recording.gif";
 #endif
         int z = recording_filter_zoom();
-        gif = ge_new_gif(fname, 128 * z, 64 * z, palette, depth, -1, 0);
+        int w = 128, h = 64;
+        if(settings.recording_orientation & 1)
+            std::swap(w, h);
+        gif = ge_new_gif(fname, w * z, h * z, palette, depth, -1, 0);
         send_gif_frame(0, pixels);
         gif_ps_rem = 0;
     }

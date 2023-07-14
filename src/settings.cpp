@@ -67,10 +67,12 @@ static void settings_read_line(
     ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(display_downsample, 1, 4);
     ABSIM_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
+    ABSIM_INT_SETTING(display_orientation, 0, 3);
     ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(recording_downsample, 1, 4);
     ABSIM_INT_SETTING(recording_zoom, 1, 4);
+    ABSIM_INT_SETTING(recording_orientation, 0, 3);
 
 #undef ABSIM_BOOL_SETTING
 #undef ABSIM_INT_SETTING
@@ -129,10 +131,12 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(display_downsample, 1, 4);
     ABSIM_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
+    ABSIM_INT_SETTING(display_orientation, 0, 3);
     ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
     ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
     ABSIM_INT_SETTING(recording_downsample, 1, 4);
     ABSIM_INT_SETTING(recording_zoom, 1, 4);
+    ABSIM_INT_SETTING(recording_orientation, 0, 3);
 
 #undef ABSIM_BOOL_SETTING
 #undef ABSIM_INT_SETTING

@@ -163,6 +163,8 @@ extern "C" int setparam(char const* name, char const* value)
             settings.display_palette = PALETTE_RETRO;
         else if(!strcmp(value, "lowcontrast"))
             settings.display_palette = PALETTE_LOW_CONTRAST;
+        else if(!strcmp(value, "highcontrast"))
+            settings.display_palette = PALETTE_HIGH_CONTRAST;
         else
             settings.display_palette = std::clamp<int>(nvalue, PALETTE_MIN, PALETTE_MAX);
         update_settings();
@@ -198,6 +200,21 @@ extern "C" int setparam(char const* name, char const* value)
     else if(!strcmp(name, "ds") || !strcmp(name, "downsample"))
     {
         settings.display_downsample = std::clamp<int>(nvalue, 1, 4);
+        update_settings();
+        r = 1;
+    }
+    else if(!strcmp(name, "ori") || !strcmp(name, "orientation"))
+    {
+        if(!strcmp(value, "0") || !strcmp(value, "normal"))
+            settings.display_orientation = 0;
+        else if(!strcmp(value, "90") || !strcmp(value, "cw90"))
+            settings.display_orientation = 1;
+        else if(!strcmp(value, "180") || !strcmp(value, "flip"))
+            settings.display_orientation = 2;
+        else if(!strcmp(value, "270") || !strcmp(value, "ccw90"))
+            settings.display_orientation = 3;
+        else
+            settings.display_orientation = std::clamp<int>(nvalue, 0, 3);
         update_settings();
         r = 1;
     }
@@ -322,11 +339,19 @@ void save_screenshot()
         ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
         ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
     int z = recording_filter_zoom();
+    int w = 128 * z;
+    int h = 64 * z;
+    int stride = 128 * 4 * z;
+    if(settings.recording_orientation & 1)
+    {
+        stride /= 2;
+        std::swap(w, h);
+    }
 #ifdef __EMSCRIPTEN__
-    stbi_write_png("screenshot.png", 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
+    stbi_write_png("screenshot.png", w, h, 4, recording_pixels(true), stride);
     file_download("screenshot.png", fname, "image/x-png");
 #else
-    stbi_write_png(fname, 128 * z, 64 * z, 4, recording_pixels(true), 128 * 4 * z);
+    stbi_write_png(fname, w, h, 4, recording_pixels(true), stride);
 #endif
 }
 

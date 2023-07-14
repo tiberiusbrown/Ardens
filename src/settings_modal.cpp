@@ -42,7 +42,7 @@ void modal_settings()
 
     static char const* const PALETTE_ITEMS[] =
     {
-            "Default", "Retro", "Low Contrast"
+            "Default", "Retro", "Low Contrast", "High Contrast",
     };
     constexpr int NUM_PALETTE_ITEMS = sizeof(PALETTE_ITEMS) / sizeof(PALETTE_ITEMS[0]);
     static_assert(NUM_PALETTE_ITEMS == PALETTE_MAX + 1, "");
@@ -55,6 +55,12 @@ void modal_settings()
     };
     constexpr int NUM_FILTER_ITEMS = sizeof(FILTER_ITEMS) / sizeof(FILTER_ITEMS[0]);
     static_assert(NUM_FILTER_ITEMS == FILTER_MAX + 1, "");
+
+    static char const* const ROTATION_ITEMS[] =
+    {
+        "Normal", "CW 90", "180", "CCW 90",
+    };
+    constexpr int NUM_ROTATION_ITEMS = sizeof(ROTATION_ITEMS) / sizeof(ROTATION_ITEMS[0]);
 
     if(BeginTabBar("##tabs"))
     {
@@ -129,6 +135,16 @@ void modal_settings()
                     PGRID_ITEMS, NUM_PGRID_ITEMS, NUM_PGRID_ITEMS))
                     update_settings();
 
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Display Orientation");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##porient", &settings.display_orientation,
+                    ROTATION_ITEMS, NUM_ROTATION_ITEMS, NUM_ROTATION_ITEMS))
+                    update_settings();
+
                 EndTable();
             }
             EndTabItem();
@@ -180,6 +196,16 @@ void modal_settings()
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
+                    update_settings();
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Recording Orientation");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##recordingorient", &settings.recording_orientation,
+                    ROTATION_ITEMS, NUM_ROTATION_ITEMS, NUM_ROTATION_ITEMS))
                     update_settings();
 
                 TableNextRow();
