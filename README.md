@@ -2,6 +2,8 @@
 
 [Arduboy](https://www.arduboy.com/) simulator for profiling and debugging.
 
+![screenshot](img/screenshot.png)
+
 [Try out the full debugger here.](https://tiberiusbrown.github.io/arduboy_sim/)
 Drag and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (.hex/.elf/.arduboy) and any FX data (.bin) onto the page.
 
@@ -11,7 +13,37 @@ Try the minimal player with one of the game URLs below:
 - [ArduGolf](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
 - [ArduRogue](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
 
-![screenshot](img/screenshot.png)
+## URL parameters
+
+The web builds of the debugger and player accept the following URL parameters (e.g., add `?param1=value1&param2=value2` to the URL):
+
+#### `g` or `grid`
+Overlays the display with a grid to allow easier disambiguation of adjacent pixels.
+Values: `none`, `normal`, `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`
+
+#### `p` or `palette`
+Adjusts the color palette of the display.
+Values: `default`, `retro`, `lowcontrast`, `highcontrast`
+
+#### `af` or `autofilter`
+If enabled, applies temporal filtering to the display to help properly render grayscale games.
+Values: `0`, `1`
+
+#### `f` or `filter`
+Conditionally applies an upscaling filter (hqx filters are not available in the player currently).
+Values: `none`, `scale2x`, `scale3x`, `scale4x`, `hq2x`, `hq3x`, `hq4x`
+
+#### `ds` or `downsample`
+Downsamples by an integer ratio after applying an upsample filter.
+Values: `0`, `1`, `2`, `3`
+
+#### `ori` or `orientation`
+Rotates the display in 90 degree increments (directional button mapping is also rotated as if playing on a rotated Arduboy).
+Values:
+- `0` or `normal`
+- `90` or `cw` or `cw90`
+- `180` or `flip`
+- `270` or `ccw` or `ccw90`
 
 ## Libraries Used
 
