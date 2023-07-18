@@ -80,6 +80,8 @@ struct settings_t
     int recording_downsample = 1;
     int recording_zoom = 1;
     int recording_orientation = 0;
+
+    bool recording_sameasdisplay = true;
 };
 
 extern settings_t settings;

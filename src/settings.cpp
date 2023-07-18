@@ -52,6 +52,7 @@ static void settings_read_line(
     ABSIM_BOOL_SETTING(fullzoom);
     ABSIM_BOOL_SETTING(display_auto_filter);
     ABSIM_BOOL_SETTING(record_wav);
+    ABSIM_BOOL_SETTING(recording_sameasdisplay);
 
     ABSIM_BOOL_SETTING(ab.stack_overflow);
     ABSIM_BOOL_SETTING(ab.null_deref);
@@ -116,6 +117,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ABSIM_BOOL_SETTING(fullzoom);
     ABSIM_BOOL_SETTING(display_auto_filter);
     ABSIM_BOOL_SETTING(record_wav);
+    ABSIM_BOOL_SETTING(recording_sameasdisplay);
 
     ABSIM_BOOL_SETTING(ab.stack_overflow);
     ABSIM_BOOL_SETTING(ab.null_deref);
@@ -156,5 +158,12 @@ void init_settings()
 
 void update_settings()
 {
+    if(settings.recording_sameasdisplay)
+    {
+        settings.recording_palette = settings.display_palette;
+        settings.recording_filtering = settings.display_filtering;
+        settings.recording_downsample = settings.display_downsample;
+        settings.recording_orientation = settings.display_orientation;
+    }
     ImGui::MarkIniSettingsDirty();
 }

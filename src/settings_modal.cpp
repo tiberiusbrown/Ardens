@@ -71,7 +71,7 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Display Auto Filter");
+                TextUnformatted("Auto Filter");
                 if(IsItemHovered())
                 {
                     BeginTooltip();
@@ -85,7 +85,7 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Display Palette");
+                TextUnformatted("Palette");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##palettecombo", &settings.display_palette,
@@ -96,7 +96,7 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Display Upsample");
+                TextUnformatted("Upsample");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##filtercombo", &settings.display_filtering,
@@ -108,7 +108,7 @@ void modal_settings()
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Display Downsample");
+                TextUnformatted("Downsample");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(SliderInt("##displaydown", &settings.display_downsample, 1, 4, "%dx"))
@@ -128,7 +128,7 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Display Pixel Grid");
+                TextUnformatted("Pixel Grid");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##pgrid", &settings.display_pixel_grid,
@@ -138,7 +138,7 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Display Orientation");
+                TextUnformatted("Orientation");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##porient", &settings.display_orientation,
@@ -159,7 +159,18 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Recording Palette");
+                TextUnformatted("Sync With Display Settings");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Checkbox("##recordingpalettecombo", &settings.recording_sameasdisplay))
+                    update_settings();
+
+                if(settings.recording_sameasdisplay) BeginDisabled();
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Palette");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##recordingpalettecombo", &settings.recording_palette,
@@ -170,7 +181,7 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Recording Upsample");
+                TextUnformatted("Upsample");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##recordingfiltercombo", &settings.recording_filtering,
@@ -182,7 +193,7 @@ void modal_settings()
                     TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(255, 0, 0, 75));
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Recording Downsample");
+                TextUnformatted("Downsample");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(SliderInt("##recordingdown", &settings.recording_downsample, 1, 4, "%dx"))
@@ -192,20 +203,22 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Recording Zoom");
-                TableSetColumnIndex(1);
-                SetNextItemWidth(-1.f);
-                if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
-                    update_settings();
-
-                TableNextRow();
-                TableSetColumnIndex(0);
-                AlignTextToFramePadding();
-                TextUnformatted("Recording Orientation");
+                TextUnformatted("Orientation");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##recordingorient", &settings.recording_orientation,
                     ROTATION_ITEMS, NUM_ROTATION_ITEMS, NUM_ROTATION_ITEMS))
+                    update_settings();
+
+                if(settings.recording_sameasdisplay) EndDisabled();
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Zoom");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(SliderInt("##recordingzoom", &settings.recording_zoom, 1, RECORDING_ZOOM_MAX, "%dx"))
                     update_settings();
 
                 TableNextRow();
