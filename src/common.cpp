@@ -521,6 +521,12 @@ void frame_logic()
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))
         platform_toggle_fullscreen();
 
+    if(!gif_recording && ImGui::IsKeyPressed(ImGuiKey_R, false))
+    {
+        settings.display_orientation = (settings.display_orientation + 1) % 4;
+        update_settings();
+    }
+
     if(update_pixel_ratio())
     {
         rescale_style();

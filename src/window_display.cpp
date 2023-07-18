@@ -40,7 +40,10 @@ void window_display(bool& open)
 
             {
                 auto* d = GetWindowDrawList();
+                ImVec2 avail = GetContentRegionAvail();
                 ImVec2 a = GetCursorScreenPos();
+                a.x += (avail.x - w) * 0.5f;
+                a.y += (avail.y - h) * 0.5f;
                 ImVec2 b = { a.x + w, a.y + h };
                 display_with_scanlines(d, a, b);
             }

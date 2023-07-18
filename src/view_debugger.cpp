@@ -53,24 +53,8 @@ void view_debugger()
 
         if(!dockspace_created && !layout_done)
         {
-            // default docked layout
-            using namespace ImGui;
-            ImGuiID c01, c01u, c01d, c0, c1, c2, c1r01, c1r0, c1r1, c1r2, c2r0, c2r1;
-            DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.35f, &c2, &c01);
-            DockBuilderSplitNode(c01, ImGuiDir_Up, 0.65f, &c01u, &c01d);
-            DockBuilderSplitNode(c01u, ImGuiDir_Left, 0.5f, &c0, &c1);
-            DockBuilderSplitNode(c1, ImGuiDir_Down, 0.25f, &c1r2, &c1r01);
-            DockBuilderSplitNode(c1r01, ImGuiDir_Down, 0.25f, &c1r1, &c1r0);
-            DockBuilderSplitNode(c2, ImGuiDir_Down, 0.75f, &c2r1, &c2r0);
-            DockBuilderDockWindow("CPU Data Space", c0);
-            DockBuilderDockWindow("Display Internals", c0);
-            DockBuilderDockWindow("Symbols", c0);
-            DockBuilderDockWindow("Display", c1r0);
-            DockBuilderDockWindow("Simulation", c1r1);
-            DockBuilderDockWindow("Profiler", c1r2);
-            DockBuilderDockWindow("Call Stack", c2r0);
-            DockBuilderDockWindow("Disassembly", c2r1);
-            DockBuilderDockWindow("Globals", c01d);
+            // default docked layout is just display
+            ImGui::DockBuilderDockWindow("Display", dockspace_id);
         }
         layout_done = true;
     }
@@ -145,6 +129,15 @@ void view_debugger()
 #endif
                 if(!arduboy->cpu.decoded) ImGui::EndDisabled();
                 ImGui::EndMenu();
+            }
+
+            if(arduboy->paused)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 255, 255));
+                float w = ImGui::CalcTextSize("PAUSED").x;
+                if(ImGui::Selectable("PAUSED##paused", false, 0, { w, 0.f }))
+                    arduboy->paused = false;
+                ImGui::PopStyleColor();
             }
 
             if(gif_recording)

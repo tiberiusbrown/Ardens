@@ -128,21 +128,21 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Pixel Grid");
-                TableSetColumnIndex(1);
-                SetNextItemWidth(-1.f);
-                if(Combo("##pgrid", &settings.display_pixel_grid,
-                    PGRID_ITEMS, NUM_PGRID_ITEMS, NUM_PGRID_ITEMS))
-                    update_settings();
-
-                TableNextRow();
-                TableSetColumnIndex(0);
-                AlignTextToFramePadding();
                 TextUnformatted("Orientation");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(Combo("##porient", &settings.display_orientation,
                     ROTATION_ITEMS, NUM_ROTATION_ITEMS, NUM_ROTATION_ITEMS))
+                    update_settings();
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Pixel Grid");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##pgrid", &settings.display_pixel_grid,
+                    PGRID_ITEMS, NUM_PGRID_ITEMS, NUM_PGRID_ITEMS))
                     update_settings();
 
                 EndTable();

@@ -23,16 +23,16 @@ constexpr int RECORDING_ZOOM_MAX = 4;
 struct settings_t
 {
 
-    bool open_disassembly = true;
+    bool open_disassembly = false;
     bool open_display = true;
     bool open_display_buffer = false;
-    bool open_display_internals = true;
-    bool open_data_space = true;
-    bool open_profiler = true;
-    bool open_simulation = true;
-    bool open_call_stack = true;
-    bool open_symbols = true;
-    bool open_globals = true;
+    bool open_display_internals = false;
+    bool open_data_space = false;
+    bool open_profiler = false;
+    bool open_simulation = false;
+    bool open_call_stack = false;
+    bool open_symbols = false;
+    bool open_globals = false;
     bool open_locals = false;
     bool open_fx_data = false;
     bool open_fx_internals = false;
