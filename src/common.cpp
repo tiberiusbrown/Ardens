@@ -207,11 +207,11 @@ extern "C" int setparam(char const* name, char const* value)
     {
         if(!strcmp(value, "0") || !strcmp(value, "normal"))
             settings.display_orientation = 0;
-        else if(!strcmp(value, "90") || !strcmp(value, "cw90"))
+        else if(!strcmp(value, "90") || !strcmp(value, "cw") || !strcmp(value, "cw90"))
             settings.display_orientation = 1;
         else if(!strcmp(value, "180") || !strcmp(value, "flip"))
             settings.display_orientation = 2;
-        else if(!strcmp(value, "270") || !strcmp(value, "ccw90"))
+        else if(!strcmp(value, "270") || !strcmp(value, "ccw") || !strcmp(value, "ccw90"))
             settings.display_orientation = 3;
         else
             settings.display_orientation = std::clamp<int>(nvalue, 0, 3);
