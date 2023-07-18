@@ -26,6 +26,7 @@ Try the minimal player with one of the game URLs below:
 |   F11  | Toggle fullscreen                  |
 |    O   | (Debugger only) Settings window    |
 |    P   | (Debugger only) Toggle player mode |
+|    R   | Rotate display                     |
 
 ## URL Parameters
 
