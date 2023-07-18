@@ -30,11 +30,11 @@ If enabled, applies temporal filtering to the display to help properly render gr
 Values: `0`, `1`
 
 #### `f` or `filter`
-Conditionally applies an upscaling filter (hqx filters are not available in the player currently).
+(Debugger only) Conditionally applies an upscaling filter.
 Values: `none`, `scale2x`, `scale3x`, `scale4x`, `hq2x`, `hq3x`, `hq4x`
 
 #### `ds` or `downsample`
-Downsamples by an integer ratio after applying an upsample filter.
+(Debugger only) Downsamples by an integer ratio after applying an upsample filter.
 Values: `0`, `1`, `2`, `3`
 
 #### `ori` or `orientation`
