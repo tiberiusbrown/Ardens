@@ -13,7 +13,21 @@ Try the minimal player with one of the game URLs below:
 - [ArduGolf](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
 - [ArduRogue](https://tiberiusbrown.github.io/arduboy_sim/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
 
-## URL parameters
+## Keyboard Bindings
+
+|   Key  | Purpose                            |
+|:------:|------------------------------------|
+| Arrows | Arduboy: directional buttons       |
+|    A   | Arduboy: A button                  |
+|   S/B  | Arduboy: B button                  |
+|   F2   | Save screenshot                    |
+|   F3   | Toggle GIF recording               |
+|   F4   | (Debugger only) Save snapshot      |
+|   F11  | Toggle fullscreen                  |
+|    O   | (Debugger only) Settings window    |
+|    P   | (Debugger only) Toggle player mode |
+
+## URL Parameters
 
 The web builds of the debugger and player accept the following URL parameters (e.g., add `?param1=value1&param2=value2` to the URL):
 
