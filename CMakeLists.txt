@@ -200,14 +200,6 @@ if(EMSCRIPTEN)
     set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
 endif()
 
-set_source_files_properties(
-    src/absim_snapshot.cpp
-    src/view_debugger.cpp
-    src/common.cpp
-    PROPERTIES
-        COMPILE_OPTIONS "-DABSIM_VERSION=\"${ABSIM_VERSION}\""
-    )
-
 add_executable(arduboy_sim ${EXEFLAG}
     .editorconfig
 
@@ -341,6 +333,37 @@ target_link_libraries(arduboy_sim_player PRIVATE
     miniz
     fmt
     bitsery
+    )
+
+add_library(arduboy_sim_libretro SHARED
+	.editorconfig
+	${ABSIM_SOURCES}
+	src/libretro_core/libretro.h
+	src/libretro_core/libretro_impl.cpp
+	)
+target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_PLAYER)
+target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_DEBUGGER)
+target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_GUI)
+target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_SAVED_SETTINGS)
+target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_SCALING)
+target_link_libraries(arduboy_sim_libretro PRIVATE
+    nlohmann_json::nlohmann_json
+    miniz
+    fmt
+	bitsery
+	)
+# WHY IS THIS NECESSARY???
+if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
+    target_compile_options(arduboy_sim_libretro PRIVATE "/Zc:__cplusplus")
+endif()
+
+set_source_files_properties(
+    src/absim_snapshot.cpp
+    src/view_debugger.cpp
+    src/common.cpp
+    src/libretro_core/libretro_impl.cpp
+    PROPERTIES
+        COMPILE_OPTIONS "-DABSIM_VERSION=\"${ABSIM_VERSION}\""
     )
 
 if(MSVC)

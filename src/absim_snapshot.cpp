@@ -88,39 +88,9 @@ public:
     }
 };
 
-template<bool is_load, class Archive>
-static std::string serdes(Archive& ar, arduboy_t& a)
+template<class Archive>
+static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 {
-    ar(a.prog_filename);
-    ar(a.prog_filedata);
-
-    if(is_load)
-    {
-        vectorwrapbuf<uint8_t> vb(a.prog_filedata);
-        std::istream is(&vb);
-        auto r = a.load_file(a.prog_filename.c_str(), is);
-        if(!r.empty())
-            return r;
-    }
-
-    ar(a.profiler_total);
-    ar(a.profiler_total_with_sleep);
-    ar(a.prev_frame_cycles);
-    ar(a.total_frames);
-    ar(a.frame_bytes_total);
-    ar(a.frame_bytes);
-    ar(a.frame_cpu_usage);
-    ar(a.profiler_enabled);
-    ar(a.cached_profiler_total);
-    ar(a.cached_profiler_total_with_sleep);
-    ar(a.profiler_hotspots);
-    ar(a.num_hotspots);
-
-    ar(a.breakpoints);
-    ar(a.breakpoints_rd);
-    ar(a.breakpoints_wr);
-    ar(a.paused);
-
     ar(a.cpu.active);
     ar(a.cpu.wakeup_cycles);
     ar(a.cpu.min_stack);
@@ -241,6 +211,56 @@ static std::string serdes(Archive& ar, arduboy_t& a)
     return "";
 }
 
+template<bool is_load, class Archive>
+static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
+{
+    ar(a.prog_filename);
+    ar(a.prog_filedata);
+
+    if(is_load)
+    {
+        vectorwrapbuf<uint8_t> vb(a.prog_filedata);
+        std::istream is(&vb);
+        auto r = a.load_file(a.prog_filename.c_str(), is);
+        if(!r.empty())
+            return r;
+    }
+
+    ar(a.profiler_total);
+    ar(a.profiler_total_with_sleep);
+    ar(a.prev_frame_cycles);
+    ar(a.total_frames);
+    ar(a.frame_bytes_total);
+    ar(a.frame_bytes);
+    ar(a.frame_cpu_usage);
+    ar(a.profiler_enabled);
+    ar(a.cached_profiler_total);
+    ar(a.cached_profiler_total_with_sleep);
+    ar(a.profiler_hotspots);
+    ar(a.num_hotspots);
+
+    ar(a.breakpoints);
+    ar(a.breakpoints_rd);
+    ar(a.breakpoints_wr);
+    ar(a.paused);
+
+    return serdes_savestate(ar, a);
+}
+
+bool arduboy_t::save_savestate(std::ostream& f)
+{
+    bitsery::Serializer<bitsery::OutputStreamAdapter> ar(f);
+    auto r = serdes_savestate(ar, *this);
+    return !r.empty();
+}
+
+std::string arduboy_t::load_savestate(std::istream& f)
+{
+    bitsery::Deserializer<bitsery::InputStreamAdapter> ar(f);
+    auto r = serdes_savestate(ar, *this);
+    return r;
+}
+
 bool arduboy_t::save_snapshot(std::ostream& f)
 {
     using Buffer = std::vector<uint8_t>;
@@ -253,7 +273,7 @@ bool arduboy_t::save_snapshot(std::ostream& f)
     // serialize
     {
         bitsery::Serializer<BufferAdapter> ar(data);
-        auto r = serdes<false>(ar, *this);
+        auto r = serdes_snapshot<false>(ar, *this);
         if(!r.empty()) return false;
     }
 
@@ -326,7 +346,7 @@ std::string arduboy_t::load_snapshot(std::istream& f)
     // deserialize
     {
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
-        auto r = serdes<true>(ar, *this);
+        auto r = serdes_snapshot<true>(ar, *this);
         if(!r.empty()) return r;
     }
 

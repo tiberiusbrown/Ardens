@@ -3,6 +3,15 @@
 #include <algorithm>
 #include <iostream>
 
+#if __cplusplus < 201703L
+#error these utils requires c++17
+// in theory, it could be implemented using C++11
+// but without class template argument deduction guides that would be very
+// inconvenient to use these are very helpul for sum types (e.g. std::variant),
+// but for product types (e.g. std::tuple) you can you can easily do it your
+// self with lambda, without extension
+#endif
+
 #include <bitsery/bitsery.h>
 #include <bitsery/brief_syntax.h>
 #include <bitsery/brief_syntax/array.h>

@@ -854,8 +854,13 @@ struct arduboy_t
     // returns an error string on error or empty string on success
     std::string load_file(char const* filename, std::istream& f);
 
+    // snapshots contain full debugger and device state and are compressed
     bool save_snapshot(std::ostream& f);
     std::string load_snapshot(std::istream& f);
+
+    // savestates only contain device state and are not compressed (e.g., for RetroArch)
+    bool save_savestate(std::ostream& f);
+    std::string load_savestate(std::istream& f);
 };
 
 
