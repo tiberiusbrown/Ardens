@@ -9,7 +9,8 @@
 #include <cctype>
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
-#include <nlohmann/json.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
 #include <miniz.h>
 #include <miniz_zip.h>
 #endif
@@ -827,25 +828,6 @@ static std::string load_bin(arduboy_t& a, std::string const& fname)
 }
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
-class sax_no_exception : public nlohmann::detail::json_sax_dom_parser<nlohmann::json>
-{
-public:
-    std::string json_parse_error;
-    sax_no_exception(nlohmann::json& j)
-        : nlohmann::detail::json_sax_dom_parser<nlohmann::json>(j, false)
-    {}
-
-    bool parse_error(std::size_t position,
-                     const std::string& last_token,
-                     const nlohmann::json::exception& ex)
-    {
-        char buf[512];
-        snprintf(buf, sizeof(buf), "ARDUBOY: JSON parse error at input byte %d (%s)",
-            (int)position, ex.what());
-        json_parse_error = buf;
-        return false;
-    }
-};
 
 static std::string load_arduboy(arduboy_t& a, std::istream& f)
 {
@@ -873,26 +855,29 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         mz_zip_reader_extract_to_mem(z, i, info.data(), info.size(), 0);
     }
 
-    nlohmann::json j;
-    sax_no_exception sax(j);
-    if(!nlohmann::json::sax_parse(info, &sax))
-        return sax.json_parse_error;
-    if(!j.contains("binaries"))
+    rapidjson::Document doc;
+    rapidjson::ParseResult ok = doc.Parse<
+        rapidjson::kParseCommentsFlag |
+        rapidjson::kParseTrailingCommasFlag |
+        0>(info.data(), info.size());
+    if(!ok)
+        return std::string("ARDUBOY: ") + rapidjson::GetParseError_En(ok.Code());
+    if(!doc.HasMember("binaries"))
         return "ARDUBOY: info.json missing 'binaries'";
-    auto const& bins = j["binaries"];
-    if(!bins.is_array())
+    auto const& bins = doc["binaries"];
+    if(!bins.IsArray())
         return "ARDUBOY: 'binaries' not array";
     auto const& bin = bins[0];
-    if(!bin.contains("filename"))
+    if(!bin.HasMember("filename"))
         return "ARDUBOY: primary binary missing 'filename'";
-    auto const hexfile = bin["filename"];
-    if(!hexfile.is_string())
+    auto const& hexfile = bin["filename"];
+    if(!hexfile.IsString())
         return "ARDUBOY: primary binary filename not string type";
 
     std::vector<char> data;
     {
-        char const* hexfilename = hexfile.get_ref<std::string const&>().c_str();
-        int i = mz_zip_reader_locate_file(z, hexfilename, nullptr, 0);
+        std::string hexfilename(hexfile.GetString(), hexfile.GetStringLength());
+        int i = mz_zip_reader_locate_file(z, hexfilename.c_str(), nullptr, 0);
         if(i == -1)
             return "ARDUBOY: missing hex file indicated in info.json";
         mz_zip_archive_file_stat stat{};
@@ -907,15 +892,15 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         if(!err.empty()) return err;
     }
 
-    if(bin.contains("flashdata"))
+    if(bin.HasMember("flashdata"))
     {
         auto const& binfile = bin["flashdata"];
-        if(!binfile.is_string())
+        if(!binfile.IsString())
             return "ARDUBOY: FX data filename not string type";
 
         {
-            char const* binfilename = binfile.get_ref<std::string const&>().c_str();
-            int i = mz_zip_reader_locate_file(z, binfilename, nullptr, 0);
+            std::string binfilename(binfile.GetString(), binfile.GetStringLength());
+            int i = mz_zip_reader_locate_file(z, binfilename.c_str(), nullptr, 0);
             if(i == -1)
                 return "ARDUBOY: missing FX data file indicated in info.json";
             mz_zip_archive_file_stat stat{};

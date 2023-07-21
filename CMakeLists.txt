@@ -57,7 +57,6 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
-add_subdirectory(deps/json)
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
@@ -268,7 +267,6 @@ add_executable(${ARDENS_PROJ} ${EXEFLAG}
     src/ImGuiColorTextEdit/TextEditor.cpp
     )
 target_link_libraries(${ARDENS_PROJ} PRIVATE
-    nlohmann_json::nlohmann_json
     miniz
     fmt
     bitsery
@@ -292,6 +290,7 @@ target_include_directories(${ARDENS_PROJ} PRIVATE
     src/gifenc
     src/Simple-FFT/include
     src/hqx/include
+    src/rapidjson/include
     )
 
 add_executable(${ARDENS_PROJ}Player ${EXEFLAG}
@@ -332,9 +331,9 @@ target_include_directories(${ARDENS_PROJ}Player PRIVATE
 	src
     src/imgui
     src/gifenc
+    src/rapidjson/include
     )
 target_link_libraries(${ARDENS_PROJ}Player PRIVATE
-    nlohmann_json::nlohmann_json
     miniz
     fmt
     bitsery
@@ -356,12 +355,12 @@ target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_GUI)
 target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
 target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_SCALING)
 target_link_libraries(${ARDENS_PROJ}_libretro PRIVATE
-    nlohmann_json::nlohmann_json
     miniz
     fmt
 	bitsery
 	)
-target_include_directories(${ARDENS_PROJ}Player PUBLIC src)
+target_include_directories(${ARDENS_PROJ}_libretro PUBLIC src)
+target_include_directories(${ARDENS_PROJ}_libretro PRIVATE src/rapidjson/include)
 # WHY IS THIS NECESSARY???
 if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
     target_compile_options(${ARDENS_PROJ}_libretro PRIVATE "/Zc:__cplusplus")

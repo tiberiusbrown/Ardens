@@ -72,7 +72,7 @@ Values:
 - [Simple-FFT](https://github.com/d1vanov/Simple-FFT) (MIT)
 - [brunexgeek/hqx](https://github.com/brunexgeek/hqx) (Apache v2.0)
 - [{fmt}](https://github.com/fmtlib/fmt) (MIT)
-- [JSON for Modern C++](https://github.com/nlohmann/json) (MIT)
+- [rapidjson](https://github.com/Tencent/rapidjson) (MIT)
 - [Miniz](https://github.com/richgel999/miniz) (MIT)
 - [Bitsery](https://github.com/fraillt/bitsery) (MIT)
 - [stb_image_write](https://github.com/nothings/stb/blob/master/stb_image_write.h) (Public Domain)
