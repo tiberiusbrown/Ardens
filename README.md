@@ -1,6 +1,6 @@
-# arduboy_sim
+# Ardens
 
-[Arduboy](https://www.arduboy.com/) simulator for profiling and debugging.
+Ardens is an [Arduboy](https://www.arduboy.com/) simulator that is useful for profiling and debugging.
 
 ![screenshot](img/screenshot.png)
 
