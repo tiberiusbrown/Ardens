@@ -1,12 +1,6 @@
-[submodule "deps/SDL"]
-	path = deps/SDL
-	url = https://github.com/libsdl-org/SDL.git
 [submodule "deps/json"]
 	path = deps/json
 	url = https://github.com/nlohmann/json.git
-[submodule "deps/llvm-project"]
-	path = deps/llvm-project
-	url = https://github.com/llvm/llvm-project.git
 [submodule "deps/miniz"]
 	path = deps/miniz
 	url = https://github.com/richgel999/miniz.git

@@ -1,5 +1,7 @@
 #include "dwarf.hpp"
 
+#ifdef ARDENS_LLVM
+
 #include "common.hpp"
 
 #include <assert.h>
@@ -392,3 +394,5 @@ dwarf_var_data dwarf_evaluate_location(
 
     return vd;
 }
+
+#endif

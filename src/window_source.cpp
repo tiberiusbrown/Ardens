@@ -48,6 +48,7 @@ struct line_info_t
     int Line;
 };
 
+#ifdef ARDENS_LLVM
 static line_info_t get_line_info(llvm::DWARFContext& dwarf, uint64_t addr)
 {
     line_info_t r;
@@ -79,6 +80,7 @@ static line_info_t get_line_info(llvm::DWARFContext& dwarf, uint64_t addr)
 
     return r;
 }
+#endif
 
 void window_source(bool& open)
 {
@@ -92,6 +94,8 @@ void window_source(bool& open)
         && arduboy->cpu.decoded && arduboy->elf && arduboy->paused)
     {
         auto pc = arduboy->cpu.pc;
+
+#ifdef ARDENS_LLVM
         init_texteditor();
         auto& dwarf = *arduboy->elf->dwarf_ctx;
         //auto info = dwarf.getLineInfoForAddress(
@@ -112,6 +116,7 @@ void window_source(bool& open)
             }
             prev_pc = pc;
         }
+#endif
      }
     End();
 }

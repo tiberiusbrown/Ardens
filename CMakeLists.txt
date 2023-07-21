@@ -10,6 +10,8 @@ set(ARDENS_PROJ "Ardens" CACHE STRING "Basename of build targets")
 
 project(${ARDENS_PROJ})
 
+include(FetchContent)
+
 if(MSVC)
     add_link_options(
         /DEBUG
@@ -55,15 +57,24 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
-add_subdirectory(deps/SDL)
-set_property(DIRECTORY deps/SDL PROPERTY EXCLUDE_FROM_ALL YES)
-
 add_subdirectory(deps/json)
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
 if(ARDENS_LLVM)
+	
+	# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
+	if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+		cmake_policy(SET CMP0135 NEW)
+	endif()
+
+	message(STATUS "Fetching llvm-project")
+	FetchContent_Declare(
+		llvm-project
+		URL https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-project-15.0.7.src.tar.xz
+		)
+
     if(MSVC)
         set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
         set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
@@ -98,8 +109,11 @@ if(ARDENS_LLVM)
         set(LLVM_HOST_TRIPLE "wasm64-unknown-emscripten" CACHE STRING "" FORCE)
         set(LLVM_OPTIMIZED_TABLEGEN OFF CACHE BOOL "" FORCE)
     endif()
-    add_subdirectory(deps/llvm-project/llvm)
-    set_property(DIRECTORY deps/llvm-project/llvm PROPERTY EXCLUDE_FROM_ALL YES)
+	
+	if(NOT llvm-project_POPULATED)
+		FetchContent_Populate(llvm-project)
+		add_subdirectory(${llvm-project_SOURCE_DIR}/llvm ${llvm-project_BINARY_DIR} EXCLUDE_FROM_ALL)
+	endif()
 endif()
 
 set(EXEFLAG)
