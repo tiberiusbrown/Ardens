@@ -153,13 +153,14 @@ jobs:
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x86.exe"
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens_libretro
+        cmake -E tar "cfv" "Ardens_win32.zip" --format=zip "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_libretro.dll"
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x86.exe"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_win32.zip"
   
   build_windows_x64:
   
@@ -179,13 +180,14 @@ jobs:
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x64.exe"
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens_libretro
+        cmake -E tar "cfv" "Ardens_win64.zip" --format=zip "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_libretro.dll"
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x64.exe"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_win64.zip"
   
   #build_macos:
   #
