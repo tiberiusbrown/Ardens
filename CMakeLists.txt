@@ -366,13 +366,13 @@ target_include_directories(${ARDENS_PROJ}Player PUBLIC src)
 if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
     target_compile_options(${ARDENS_PROJ}_libretro PRIVATE "/Zc:__cplusplus")
 endif()
-if (ANDROID)
-    set_target_properties(arduous_libretro PROPERTIES SUFFIX "_android.so")
+if(ANDROID)
+    set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES SUFFIX "_android.so")
 elseif(EMSCRIPTEN)
-    set_target_properties(arduous_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.bc")
+    set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.bc")
 elseif(LIBRETRO_STATIC)
-    set_target_properties(arduous_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
-endif ()
+    set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
+endif()
 
 set_source_files_properties(
     src/absim_snapshot.cpp
