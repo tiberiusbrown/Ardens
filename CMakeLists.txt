@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(PROJ Ardens)
+set(ARDENS_PROJ "Ardens" CACHE STRING "Basename of build targets")
 
-project(${PROJ})
+project(${ARDENS_PROJ})
 
 if(MSVC)
     add_link_options(
@@ -39,12 +39,6 @@ git_describe(ARDENS_VERSION)
 message(STATUS "ARDENS_VERSION: ${ARDENS_VERSION}")
 
 if(EMSCRIPTEN)
-    #set(EXTRA_FLAGS "${EXTRA_FLAGS} -O0 -g3 -gsource-map")
-    #add_link_options("-gsource-map")
-    #add_link_options("--profiling")
-    #add_link_options("--profiling-funcs")
-    #add_link_options("--cpuprofiler")
-    
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -O3")
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -flto")
     add_link_options("--closure 1")
@@ -202,7 +196,7 @@ if(EMSCRIPTEN)
     set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
 endif()
 
-add_executable(${PROJ} ${EXEFLAG}
+add_executable(${ARDENS_PROJ} ${EXEFLAG}
     .editorconfig
 
     src/main_sdl.cpp
@@ -258,33 +252,27 @@ add_executable(${PROJ} ${EXEFLAG}
 
     src/ImGuiColorTextEdit/TextEditor.h
     src/ImGuiColorTextEdit/TextEditor.cpp
-
-    #${IMGUI_SDL_SOURCES}
     )
-target_link_libraries(${PROJ} PRIVATE
-    #SDL2-static
-    #SDL2main
+target_link_libraries(${ARDENS_PROJ} PRIVATE
     nlohmann_json::nlohmann_json
     miniz
     fmt
     bitsery
     )
 if(ARDENS_LLVM)
-    target_link_libraries(${PROJ} PRIVATE
+    target_link_libraries(${ARDENS_PROJ} PRIVATE
         LLVMDebugInfoDWARF
         LLVMDemangle
-        #LLVMObject
         )
-    target_include_directories(${PROJ} PRIVATE
+    target_include_directories(${ARDENS_PROJ} PRIVATE
         "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
         )
-    target_compile_definitions(${PROJ} PRIVATE -DARDENS_LLVM)
+    target_compile_definitions(${ARDENS_PROJ} PRIVATE -DARDENS_LLVM)
 endif()
-#target_compile_definitions(${PROJ} PRIVATE -DARDENS_PLATFORM_SDL)
-target_compile_definitions(${PROJ} PRIVATE -DARDENS_PLATFORM_SOKOL)
-target_include_directories(${PROJ} PRIVATE
+target_compile_definitions(${ARDENS_PROJ} PRIVATE -DARDENS_PLATFORM_SOKOL)
+target_include_directories(${ARDENS_PROJ} PRIVATE
     src/imgui
     src/implot
     src/gifenc
@@ -292,7 +280,7 @@ target_include_directories(${PROJ} PRIVATE
     src/hqx/include
     )
 
-add_executable(${PROJ}Player ${EXEFLAG}
+add_executable(${ARDENS_PROJ}Player ${EXEFLAG}
     .editorconfig
 
     src/main_sdl.cpp
@@ -318,46 +306,59 @@ add_executable(${PROJ}Player ${EXEFLAG}
     ${EM_FILE_BROWSER_SOURCES}
     ${SOKOL_SOURCES}
     )
-target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_PLAYER)
-target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_SNAPSHOTS)
-target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_DEBUGGER)
-target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_GUI)
-target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_SCALING)
-#target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_ARDUBOY_FILE)
-target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_PLATFORM_SOKOL)
-target_include_directories(${PROJ}Player PRIVATE
+target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_PLAYER)
+target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_SNAPSHOTS)
+target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_DEBUGGER)
+target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_GUI)
+target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_SCALING)
+#target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_ARDUBOY_FILE)
+target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_PLATFORM_SOKOL)
+target_include_directories(${ARDENS_PROJ}Player PRIVATE
+	src
     src/imgui
     src/gifenc
     )
-target_link_libraries(${PROJ}Player PRIVATE
+target_link_libraries(${ARDENS_PROJ}Player PRIVATE
     nlohmann_json::nlohmann_json
     miniz
     fmt
     bitsery
     )
 
-add_library(${PROJ}_libretro SHARED
+set(ARDENS_LIBRETRO_TYPE SHARED)
+if(LIBRETRO_STATIC)
+	set(ARDENS_LIBRETRO_TYPE STATIC)
+endif()
+add_library(${ARDENS_PROJ}_libretro ${ARDENS_LIBRETRO_TYPE}
 	.editorconfig
 	${ARDENS_SOURCES}
 	src/libretro_core/libretro.h
 	src/libretro_core/libretro_impl.cpp
 	)
-target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_PLAYER)
-target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_DEBUGGER)
-target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_GUI)
-target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_SCALING)
-target_link_libraries(${PROJ}_libretro PRIVATE
+target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_PLAYER)
+target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_DEBUGGER)
+target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_GUI)
+target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_SCALING)
+target_link_libraries(${ARDENS_PROJ}_libretro PRIVATE
     nlohmann_json::nlohmann_json
     miniz
     fmt
 	bitsery
 	)
+target_include_directories(${ARDENS_PROJ}Player PUBLIC src)
 # WHY IS THIS NECESSARY???
 if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
-    target_compile_options(${PROJ}_libretro PRIVATE "/Zc:__cplusplus")
+    target_compile_options(${ARDENS_PROJ}_libretro PRIVATE "/Zc:__cplusplus")
 endif()
+if (ANDROID)
+    set_target_properties(arduous_libretro PROPERTIES SUFFIX "_android.so")
+elseif(EMSCRIPTEN)
+    set_target_properties(arduous_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.bc")
+elseif(LIBRETRO_STATIC)
+    set_target_properties(arduous_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
+endif ()
 
 set_source_files_properties(
     src/absim_snapshot.cpp
@@ -369,32 +370,11 @@ set_source_files_properties(
     )
 
 if(MSVC)
-    target_compile_options(${PROJ} PRIVATE /Zc:__cplusplus)
-    target_compile_options(${PROJ}Player PRIVATE /Zc:__cplusplus)
+    target_compile_options(${ARDENS_PROJ} PRIVATE /Zc:__cplusplus)
+    target_compile_options(${ARDENS_PROJ}Player PRIVATE /Zc:__cplusplus)
 endif()
 
 if(EMSCRIPTEN)
-    target_link_options(${PROJ} PRIVATE "-lidbfs.js")
-    target_link_options(${PROJ}Player PRIVATE "-lidbfs.js")
+    target_link_options(${ARDENS_PROJ} PRIVATE "-lidbfs.js")
+    target_link_options(${ARDENS_PROJ}Player PRIVATE "-lidbfs.js")
 endif()
-
-#if(MSVC)
-#    include(CheckIPOSupported)
-#    check_ipo_supported(RESULT ipo_result OUTPUT ipo_err)
-#    if(ipo_result)
-#        message(STATUS "IPO is supported")
-#        set_property(
-#            TARGET
-#                ${PROJ}
-#                ${PROJ}Player
-#                miniz
-#                fmt
-#                bitsery
-#                LLVMDebugInfoDWARF
-#                LLVMDemangle
-#                LLVMObject
-#            PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-#    else()
-#        message(STATUS "IPO is NOT supported")
-#    endif()
-#endif()
