@@ -4,14 +4,14 @@ Ardens is an [Arduboy](https://www.arduboy.com/) simulator that is useful for pr
 
 ![screenshot](img/screenshot.png)
 
-[Try out the full debugger here.](https://tiberiusbrown.github.io/ardens/)
+[Try out the full debugger here.](https://tiberiusbrown.github.io/Ardens/)
 Drag and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (.hex/.elf/.arduboy) and any FX data (.bin) onto the page.
 
 Try the minimal player with one of the game URLs below:
 
-- [ArduChess](https://tiberiusbrown.github.io/ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduchess/master/arduchess/arduchess.hex)
-- [ArduGolf](https://tiberiusbrown.github.io/ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
-- [ArduRogue](https://tiberiusbrown.github.io/ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
+- [ArduChess](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduchess/master/arduchess/arduchess.hex)
+- [ArduGolf](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
+- [ArduRogue](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
 
 ## Keyboard Bindings
 
