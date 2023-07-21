@@ -1,4 +1,4 @@
-#ifndef ABSIM_NO_SNAPSHOTS
+#ifndef ARDENS_NO_SNAPSHOTS
 
 #include "absim.hpp"
 
@@ -55,7 +55,7 @@ static std::string version_str(version_t const& v)
     return fmt::format("v{}.{}.{}", std::get<0>(v), std::get<1>(v), std::get<2>(v));
 }
 
-constexpr auto VERSION_INFO = ct_version(ABSIM_VERSION);
+constexpr auto VERSION_INFO = ct_version(ARDENS_VERSION);
 
 namespace bitsery
 {

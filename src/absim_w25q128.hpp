@@ -30,7 +30,7 @@ void w25q128_t::reset()
     sectors_dirty = false;
 }
 
-ABSIM_FORCEINLINE void w25q128_t::set_enabled(bool e)
+ARDENS_FORCEINLINE void w25q128_t::set_enabled(bool e)
 {
     if(enabled != e)
     {
@@ -48,7 +48,7 @@ ABSIM_FORCEINLINE void w25q128_t::set_enabled(bool e)
     }
 }
 
-ABSIM_FORCEINLINE void w25q128_t::advance(uint64_t ps)
+ARDENS_FORCEINLINE void w25q128_t::advance(uint64_t ps)
 {
     if(ps >= busy_ps_rem)
     {
@@ -60,7 +60,7 @@ ABSIM_FORCEINLINE void w25q128_t::advance(uint64_t ps)
         busy_ps_rem -= ps;
 }
 
-ABSIM_FORCEINLINE void w25q128_t::track_page()
+ARDENS_FORCEINLINE void w25q128_t::track_page()
 {
     current_addr &= 0xffffff;
     uint32_t page = current_addr / 256;
@@ -68,7 +68,7 @@ ABSIM_FORCEINLINE void w25q128_t::track_page()
     max_page = std::max(max_page, page);
 }
 
-ABSIM_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
+ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
 {
     if(!enabled) return 0;
 

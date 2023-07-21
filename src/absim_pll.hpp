@@ -32,7 +32,7 @@ void atmega32u4_t::pll_handle_st_pllcsr(
 }
 
 
-void ABSIM_FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
+void ARDENS_FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
 {
     if(!pll_busy)
         return;

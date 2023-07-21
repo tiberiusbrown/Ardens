@@ -85,30 +85,30 @@ jobs:
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-        mkdir ${{github.workspace}}/arduboy_sim_web
+        mkdir ${{github.workspace}}/Ardens_web
         
     - name: Create zip file
       run: |
-        cp ${{github.workspace}}/build/arduboy_sim.js ${{github.workspace}}/arduboy_sim_web
-        cp ${{github.workspace}}/build/arduboy_sim.wasm ${{github.workspace}}/arduboy_sim_web
-        cp ${{github.workspace}}/build/arduboy_sim_player.js ${{github.workspace}}/arduboy_sim_web
-        cp ${{github.workspace}}/build/arduboy_sim_player.wasm ${{github.workspace}}/arduboy_sim_web
-        cp ${{github.workspace}}/src/arduboy_sim.html ${{github.workspace}}/arduboy_sim_web/index.html
-        cp ${{github.workspace}}/src/arduboy_sim_player.html ${{github.workspace}}/arduboy_sim_web/player.html
-        cd ${{github.workspace}}/arduboy_sim_web
-        zip -r ${{github.workspace}}/arduboy_sim_web.zip *
+        cp ${{github.workspace}}/build/Ardens.js ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/build/Ardens.wasm ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/build/ArdensPlayer.js ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/build/ArdensPlayer.wasm ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/src/Ardens.html ${{github.workspace}}/Ardens_web/index.html
+        cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
+        cd ${{github.workspace}}/Ardens_web
+        zip -r ${{github.workspace}}/Ardens_web.zip *
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        folder: ${{github.workspace}}/arduboy_sim_web
+        folder: ${{github.workspace}}/Ardens_web
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/arduboy_sim_web.zip"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/Ardens_web.zip"
 
   #build_ubuntu:
   #
@@ -133,7 +133,7 @@ jobs:
   #    uses: actions/upload-artifact@v3.1.2
   #    with:
   #      name: Release_Ubuntu
-  #      path: ${{github.workspace}}/build/arduboy_sim
+  #      path: ${{github.workspace}}/build/Ardens
 
   build_windows_x86:
   
@@ -152,14 +152,14 @@ jobs:
   
     - name: Build
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
-        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x86.exe"
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
+        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x86.exe"
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x86.exe"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x86.exe"
   
   build_windows_x64:
   
@@ -178,14 +178,14 @@ jobs:
   
     - name: Build
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target arduboy_sim
-        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x64.exe"
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
+        cmake -E rename "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x64.exe"
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/arduboy_sim_x64.exe"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens_x64.exe"
   
   #build_macos:
   #
@@ -207,4 +207,4 @@ jobs:
   #    uses: actions/upload-artifact@v3.1.2
   #    with:
   #      name: Release_MacOS
-  #      path: ${{github.workspace}}/build/arduboy_sim
+  #      path: ${{github.workspace}}/build/Ardens

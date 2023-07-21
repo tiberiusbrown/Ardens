@@ -5,26 +5,26 @@
 namespace absim
 {
 
-static ABSIM_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
+static ARDENS_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
     if(x) cpu.sreg() |= mask;
     else cpu.sreg() &= ~mask;
 }
 
-static ABSIM_FORCEINLINE void set_flag_s(atmega32u4_t& cpu)
+static ARDENS_FORCEINLINE void set_flag_s(atmega32u4_t& cpu)
 {
     uint8_t f = cpu.sreg();
     set_flag(cpu, SREG_S, (f ^ (f >> 1)) & 0x4);
 }
 
-static ABSIM_FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
+static ARDENS_FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
 {
     set_flag(cpu, SREG_H, h);
     set_flag(cpu, SREG_C, c);
     set_flag(cpu, SREG_V, v);
 }
 
-static ABSIM_FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
+static ARDENS_FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
 {
     set_flag(cpu, SREG_N, x & 0x80);
     set_flag(cpu, SREG_Z, x == 0);

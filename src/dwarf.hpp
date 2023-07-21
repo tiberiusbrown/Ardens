@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 
 #include <string>
 #include <vector>

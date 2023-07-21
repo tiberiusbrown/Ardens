@@ -16,67 +16,67 @@ static void* settings_read_open(
 static void settings_read_line(
     ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line)
 {
-#define ABSIM_BOOL_SETTING(n__) \
+#define ARDENS_BOOL_SETTING(n__) \
     { int d; if(sscanf(line, #n__ "=%d", &d) == 1) settings.n__ = !!d; }
 
-#define ABSIM_INT_SETTING(n__, min__, max__) do { int d; \
+#define ARDENS_INT_SETTING(n__, min__, max__) do { int d; \
     if(sscanf(line, #n__ "=%d", &d) == 1) settings.n__ = d; \
     if(settings.n__ < min__) settings.n__ = min__; \
     if(settings.n__ > max__) settings.n__ = max__; \
     } while(0)
     
-    ABSIM_BOOL_SETTING(open_display);
-    ABSIM_BOOL_SETTING(open_display_buffer);
-    ABSIM_BOOL_SETTING(open_display_internals);
-    ABSIM_BOOL_SETTING(open_simulation);
-    ABSIM_BOOL_SETTING(open_disassembly);
-    ABSIM_BOOL_SETTING(open_symbols);
-    ABSIM_BOOL_SETTING(open_globals);
-    ABSIM_BOOL_SETTING(open_locals);
-    ABSIM_BOOL_SETTING(open_call_stack);
-    ABSIM_BOOL_SETTING(open_profiler);
-    ABSIM_BOOL_SETTING(open_data_space);
-    ABSIM_BOOL_SETTING(open_fx_data);
-    ABSIM_BOOL_SETTING(open_fx_internals);
-    ABSIM_BOOL_SETTING(open_eeprom);
-    ABSIM_BOOL_SETTING(open_cpu_usage);
-    ABSIM_BOOL_SETTING(open_led);
-    ABSIM_BOOL_SETTING(open_serial);
-    ABSIM_BOOL_SETTING(open_sound);
-    ABSIM_BOOL_SETTING(open_source);
-    ABSIM_BOOL_SETTING(open_progmem);
+    ARDENS_BOOL_SETTING(open_display);
+    ARDENS_BOOL_SETTING(open_display_buffer);
+    ARDENS_BOOL_SETTING(open_display_internals);
+    ARDENS_BOOL_SETTING(open_simulation);
+    ARDENS_BOOL_SETTING(open_disassembly);
+    ARDENS_BOOL_SETTING(open_symbols);
+    ARDENS_BOOL_SETTING(open_globals);
+    ARDENS_BOOL_SETTING(open_locals);
+    ARDENS_BOOL_SETTING(open_call_stack);
+    ARDENS_BOOL_SETTING(open_profiler);
+    ARDENS_BOOL_SETTING(open_data_space);
+    ARDENS_BOOL_SETTING(open_fx_data);
+    ARDENS_BOOL_SETTING(open_fx_internals);
+    ARDENS_BOOL_SETTING(open_eeprom);
+    ARDENS_BOOL_SETTING(open_cpu_usage);
+    ARDENS_BOOL_SETTING(open_led);
+    ARDENS_BOOL_SETTING(open_serial);
+    ARDENS_BOOL_SETTING(open_sound);
+    ARDENS_BOOL_SETTING(open_source);
+    ARDENS_BOOL_SETTING(open_progmem);
 
-    ABSIM_BOOL_SETTING(profiler_cycle_counts);
-    ABSIM_BOOL_SETTING(profiler_group_symbols);
-    ABSIM_BOOL_SETTING(enable_step_breaks);
-    ABSIM_BOOL_SETTING(fullzoom);
-    ABSIM_BOOL_SETTING(display_auto_filter);
-    ABSIM_BOOL_SETTING(record_wav);
-    ABSIM_BOOL_SETTING(recording_sameasdisplay);
+    ARDENS_BOOL_SETTING(profiler_cycle_counts);
+    ARDENS_BOOL_SETTING(profiler_group_symbols);
+    ARDENS_BOOL_SETTING(enable_step_breaks);
+    ARDENS_BOOL_SETTING(fullzoom);
+    ARDENS_BOOL_SETTING(display_auto_filter);
+    ARDENS_BOOL_SETTING(record_wav);
+    ARDENS_BOOL_SETTING(recording_sameasdisplay);
 
-    ABSIM_BOOL_SETTING(ab.stack_overflow);
-    ABSIM_BOOL_SETTING(ab.null_deref);
-    ABSIM_BOOL_SETTING(ab.oob_deref);
-    ABSIM_BOOL_SETTING(ab.oob_eeprom);
-    ABSIM_BOOL_SETTING(ab.oob_ijmp);
-    ABSIM_BOOL_SETTING(ab.oob_pc);
-    ABSIM_BOOL_SETTING(ab.unknown_instr);
-    ABSIM_BOOL_SETTING(ab.spi_wcol);
-    ABSIM_BOOL_SETTING(ab.fx_busy);
+    ARDENS_BOOL_SETTING(ab.stack_overflow);
+    ARDENS_BOOL_SETTING(ab.null_deref);
+    ARDENS_BOOL_SETTING(ab.oob_deref);
+    ARDENS_BOOL_SETTING(ab.oob_eeprom);
+    ARDENS_BOOL_SETTING(ab.oob_ijmp);
+    ARDENS_BOOL_SETTING(ab.oob_pc);
+    ARDENS_BOOL_SETTING(ab.unknown_instr);
+    ARDENS_BOOL_SETTING(ab.spi_wcol);
+    ARDENS_BOOL_SETTING(ab.fx_busy);
 
-    ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
-    ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
-    ABSIM_INT_SETTING(display_downsample, 1, 4);
-    ABSIM_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
-    ABSIM_INT_SETTING(display_orientation, 0, 3);
-    ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
-    ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
-    ABSIM_INT_SETTING(recording_downsample, 1, 4);
-    ABSIM_INT_SETTING(recording_zoom, 1, 4);
-    ABSIM_INT_SETTING(recording_orientation, 0, 3);
+    ARDENS_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
+    ARDENS_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
+    ARDENS_INT_SETTING(display_downsample, 1, 4);
+    ARDENS_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
+    ARDENS_INT_SETTING(display_orientation, 0, 3);
+    ARDENS_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
+    ARDENS_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
+    ARDENS_INT_SETTING(recording_downsample, 1, 4);
+    ARDENS_INT_SETTING(recording_zoom, 1, 4);
+    ARDENS_INT_SETTING(recording_orientation, 0, 3);
 
-#undef ABSIM_BOOL_SETTING
-#undef ABSIM_INT_SETTING
+#undef ARDENS_BOOL_SETTING
+#undef ARDENS_INT_SETTING
 }
 
 static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
@@ -84,64 +84,64 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     buf->reserve(buf->size() + 1024);
     buf->append("[UserData][Settings]\n");
 
-#define ABSIM_BOOL_SETTING(n__) \
+#define ARDENS_BOOL_SETTING(n__) \
     buf->appendf(#n__ "=%d\n", (int)settings.n__)
 
-#define ABSIM_INT_SETTING(n__, min__, max__) \
+#define ARDENS_INT_SETTING(n__, min__, max__) \
     buf->appendf(#n__ "=%d\n", settings.n__)
 
-    ABSIM_BOOL_SETTING(open_display);
-    ABSIM_BOOL_SETTING(open_display_buffer);
-    ABSIM_BOOL_SETTING(open_display_internals);
-    ABSIM_BOOL_SETTING(open_simulation);
-    ABSIM_BOOL_SETTING(open_disassembly);
-    ABSIM_BOOL_SETTING(open_symbols);
-    ABSIM_BOOL_SETTING(open_globals);
-    ABSIM_BOOL_SETTING(open_locals);
-    ABSIM_BOOL_SETTING(open_call_stack);
-    ABSIM_BOOL_SETTING(open_profiler);
-    ABSIM_BOOL_SETTING(open_data_space);
-    ABSIM_BOOL_SETTING(open_fx_data);
-    ABSIM_BOOL_SETTING(open_fx_internals);
-    ABSIM_BOOL_SETTING(open_eeprom);
-    ABSIM_BOOL_SETTING(open_cpu_usage);
-    ABSIM_BOOL_SETTING(open_led);
-    ABSIM_BOOL_SETTING(open_serial);
-    ABSIM_BOOL_SETTING(open_sound);
-    ABSIM_BOOL_SETTING(open_source);
-    ABSIM_BOOL_SETTING(open_progmem);
+    ARDENS_BOOL_SETTING(open_display);
+    ARDENS_BOOL_SETTING(open_display_buffer);
+    ARDENS_BOOL_SETTING(open_display_internals);
+    ARDENS_BOOL_SETTING(open_simulation);
+    ARDENS_BOOL_SETTING(open_disassembly);
+    ARDENS_BOOL_SETTING(open_symbols);
+    ARDENS_BOOL_SETTING(open_globals);
+    ARDENS_BOOL_SETTING(open_locals);
+    ARDENS_BOOL_SETTING(open_call_stack);
+    ARDENS_BOOL_SETTING(open_profiler);
+    ARDENS_BOOL_SETTING(open_data_space);
+    ARDENS_BOOL_SETTING(open_fx_data);
+    ARDENS_BOOL_SETTING(open_fx_internals);
+    ARDENS_BOOL_SETTING(open_eeprom);
+    ARDENS_BOOL_SETTING(open_cpu_usage);
+    ARDENS_BOOL_SETTING(open_led);
+    ARDENS_BOOL_SETTING(open_serial);
+    ARDENS_BOOL_SETTING(open_sound);
+    ARDENS_BOOL_SETTING(open_source);
+    ARDENS_BOOL_SETTING(open_progmem);
 
-    ABSIM_BOOL_SETTING(profiler_cycle_counts);
-    ABSIM_BOOL_SETTING(profiler_group_symbols);
-    ABSIM_BOOL_SETTING(enable_step_breaks);
-    ABSIM_BOOL_SETTING(fullzoom);
-    ABSIM_BOOL_SETTING(display_auto_filter);
-    ABSIM_BOOL_SETTING(record_wav);
-    ABSIM_BOOL_SETTING(recording_sameasdisplay);
+    ARDENS_BOOL_SETTING(profiler_cycle_counts);
+    ARDENS_BOOL_SETTING(profiler_group_symbols);
+    ARDENS_BOOL_SETTING(enable_step_breaks);
+    ARDENS_BOOL_SETTING(fullzoom);
+    ARDENS_BOOL_SETTING(display_auto_filter);
+    ARDENS_BOOL_SETTING(record_wav);
+    ARDENS_BOOL_SETTING(recording_sameasdisplay);
 
-    ABSIM_BOOL_SETTING(ab.stack_overflow);
-    ABSIM_BOOL_SETTING(ab.null_deref);
-    ABSIM_BOOL_SETTING(ab.oob_deref);
-    ABSIM_BOOL_SETTING(ab.oob_eeprom);
-    ABSIM_BOOL_SETTING(ab.oob_ijmp);
-    ABSIM_BOOL_SETTING(ab.oob_pc);
-    ABSIM_BOOL_SETTING(ab.unknown_instr);
-    ABSIM_BOOL_SETTING(ab.spi_wcol);
-    ABSIM_BOOL_SETTING(ab.fx_busy);
+    ARDENS_BOOL_SETTING(ab.stack_overflow);
+    ARDENS_BOOL_SETTING(ab.null_deref);
+    ARDENS_BOOL_SETTING(ab.oob_deref);
+    ARDENS_BOOL_SETTING(ab.oob_eeprom);
+    ARDENS_BOOL_SETTING(ab.oob_ijmp);
+    ARDENS_BOOL_SETTING(ab.oob_pc);
+    ARDENS_BOOL_SETTING(ab.unknown_instr);
+    ARDENS_BOOL_SETTING(ab.spi_wcol);
+    ARDENS_BOOL_SETTING(ab.fx_busy);
 
-    ABSIM_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
-    ABSIM_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
-    ABSIM_INT_SETTING(display_downsample, 1, 4);
-    ABSIM_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
-    ABSIM_INT_SETTING(display_orientation, 0, 3);
-    ABSIM_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
-    ABSIM_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
-    ABSIM_INT_SETTING(recording_downsample, 1, 4);
-    ABSIM_INT_SETTING(recording_zoom, 1, 4);
-    ABSIM_INT_SETTING(recording_orientation, 0, 3);
+    ARDENS_INT_SETTING(display_palette, PALETTE_MIN, PALETTE_MAX);
+    ARDENS_INT_SETTING(display_filtering, FILTER_MIN, FILTER_MAX);
+    ARDENS_INT_SETTING(display_downsample, 1, 4);
+    ARDENS_INT_SETTING(display_pixel_grid, PGRID_MIN, PGRID_MAX);
+    ARDENS_INT_SETTING(display_orientation, 0, 3);
+    ARDENS_INT_SETTING(recording_palette, PALETTE_MIN, PALETTE_MAX);
+    ARDENS_INT_SETTING(recording_filtering, FILTER_MIN, FILTER_MAX);
+    ARDENS_INT_SETTING(recording_downsample, 1, 4);
+    ARDENS_INT_SETTING(recording_zoom, 1, 4);
+    ARDENS_INT_SETTING(recording_orientation, 0, 3);
 
-#undef ABSIM_BOOL_SETTING
-#undef ABSIM_INT_SETTING
+#undef ARDENS_BOOL_SETTING
+#undef ARDENS_INT_SETTING
 
     buf->append("\n");
 }

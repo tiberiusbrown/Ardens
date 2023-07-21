@@ -10,7 +10,7 @@ static MemoryEditor memed_data_space;
 
 static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog)
 {
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 
     if(!(addr >= sym.addr && addr < sym.addr + sym.size))
         return false;

@@ -18,7 +18,7 @@ void atmega32u4_t::sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_
     cpu.data[ptr] = x;
 }
     
-ABSIM_FORCEINLINE void atmega32u4_t::cycle_sound(uint32_t cycles)
+ARDENS_FORCEINLINE void atmega32u4_t::cycle_sound(uint32_t cycles)
 {
     auto pins = sound_enabled;
 

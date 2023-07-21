@@ -92,7 +92,7 @@ void modal_settings()
                     PALETTE_ITEMS, NUM_PALETTE_ITEMS))
                     update_settings();
 
-#ifndef ABSIM_NO_SCALING
+#ifndef ARDENS_NO_SCALING
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
@@ -177,7 +177,7 @@ void modal_settings()
                     PALETTE_ITEMS, NUM_PALETTE_ITEMS))
                     update_settings();
 
-#ifndef ABSIM_NO_SCALING
+#ifndef ARDENS_NO_SCALING
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();

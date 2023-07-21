@@ -35,7 +35,7 @@ void atmega32u4_t::st_handle_port(
     cpu.data[ptr] = x;
 }
 
-ABSIM_FORCEINLINE void atmega32u4_t::check_interrupt(
+ARDENS_FORCEINLINE void atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
     if(!flag) return;
@@ -70,7 +70,7 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
     return (size_t)index;
 }
 
-ABSIM_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
+ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 {
     uint32_t cycles = 1;
     just_read = 0xffffffff;

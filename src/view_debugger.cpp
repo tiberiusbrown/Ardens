@@ -98,7 +98,7 @@ void view_debugger()
                     ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
                     ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
                     ImGui::MenuItem("CPU PROGMEM Space", nullptr, &settings.open_progmem);
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
                     ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
                     ImGui::MenuItem("Locals", nullptr, &settings.open_locals);
 #endif
@@ -123,7 +123,7 @@ void view_debugger()
                     save_screenshot();
                 if(ImGui::MenuItem("Toggle GIF Recording", "F3"))
                     toggle_recording();
-#ifndef ABSIM_NO_SNAPSHOTS
+#ifndef ARDENS_NO_SNAPSHOTS
                 if(ImGui::MenuItem("Take Snapshot", "F4"))
                     take_snapshot();
 #endif
@@ -150,10 +150,10 @@ void view_debugger()
             }
 
             {
-                float w = ImGui::CalcTextSize(ABSIM_VERSION, NULL, true).x;
+                float w = ImGui::CalcTextSize(ARDENS_VERSION, NULL, true).x;
                 w += ImGui::GetStyle().ItemSpacing.x;
                 ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - w);
-                ImGui::MenuItem(ABSIM_VERSION "##version", nullptr, nullptr, false);
+                ImGui::MenuItem(ARDENS_VERSION "##version", nullptr, nullptr, false);
             }
 
             ImGui::EndMainMenuBar();
@@ -172,7 +172,7 @@ void view_debugger()
             window_source(settings.open_source);
             window_disassembly(settings.open_disassembly);
             window_symbols(settings.open_symbols);
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
             window_globals(settings.open_globals);
             window_locals(settings.open_locals);
 #endif

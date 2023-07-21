@@ -1,4 +1,4 @@
-#ifdef ABSIM_PLATFORM_SOKOL
+#ifdef ARDENS_PLATFORM_SOKOL
 
 #include "common.hpp"
 
@@ -125,7 +125,7 @@ static void app_cleanup()
     saudio_shutdown();
     simgui_shutdown();
     platform_destroy_texture(display_texture);
-#ifndef ABSIM_NO_DEBUGGER
+#ifndef ARDENS_NO_DEBUGGER
     platform_destroy_texture(display_buffer_texture);
 #endif
     sg_shutdown();
@@ -275,7 +275,7 @@ sapp_desc sokol_main(int argc, char** argv)
 #ifdef __EMSCRIPTEN__
     desc.html5_canvas_name = "canvas";
 #else
-#ifdef ABSIM_PLAYER
+#ifdef ARDENS_PLAYER
     desc.width = 512;
     desc.height = 256;
     desc.window_title = "arduboy_sim (player)";

@@ -89,7 +89,7 @@ void retro_get_system_info(struct retro_system_info* info)
     if(!info) return;
     *info = {};
     info->library_name = "arduboy_sim";
-    info->library_version = ABSIM_VERSION;
+    info->library_version = ARDENS_VERSION;
     info->need_fullpath = false;
     info->valid_extensions = "hex|arduboy";
     info->block_extract = true;

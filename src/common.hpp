@@ -148,7 +148,7 @@ void window_progmem(bool& open);
 void window_simulation(bool& open);
 void window_call_stack(bool& open);
 void window_symbols(bool& open);
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 void window_globals(bool& open);
 void window_locals(bool& open);
 #endif

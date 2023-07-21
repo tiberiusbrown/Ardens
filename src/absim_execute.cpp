@@ -108,7 +108,7 @@ bool instr_is_ret(avr_instr_t const& i)
         i.func == INSTR_RETI;
 }
 
-static ABSIM_FORCEINLINE bool next_instr_is_two_words(atmega32u4_t const& cpu)
+static ARDENS_FORCEINLINE bool next_instr_is_two_words(atmega32u4_t const& cpu)
 {
     if(cpu.pc + 1 >= cpu.decoded_prog.size())
         return false;
@@ -130,19 +130,19 @@ uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-static ABSIM_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
+static ARDENS_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
     if(x) cpu.sreg() |= mask;
     else cpu.sreg() &= ~mask;
 }
 
-static ABSIM_FORCEINLINE uint8_t flag_s(uint8_t sreg)
+static ARDENS_FORCEINLINE uint8_t flag_s(uint8_t sreg)
 {
     sreg |= (((sreg ^ (sreg >> 1)) & 0x4) << 2);
     return sreg;
 }
 
-static ABSIM_FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
+static ARDENS_FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
 {
     uint8_t sreg = cpu.sreg() & ~(SREG_H | SREG_C | SREG_V);
 
@@ -153,7 +153,7 @@ static ABSIM_FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_
     cpu.sreg() = sreg;
 }
 
-static ABSIM_FORCEINLINE uint8_t flags_nzs(uint8_t sreg, uint32_t x)
+static ARDENS_FORCEINLINE uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 {
     sreg |= ((x & 0x80) >> 5); // N
     if(x == 0) sreg |= SREG_Z; // Z
@@ -161,7 +161,7 @@ static ABSIM_FORCEINLINE uint8_t flags_nzs(uint8_t sreg, uint32_t x)
     return sreg;
 }
 
-static ABSIM_FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint32_t x)
+static ARDENS_FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint32_t x)
 {
     uint8_t sreg = cpu.sreg() & ~(SREG_N | SREG_Z | SREG_S);
     sreg = flags_nzs(sreg, x);
@@ -338,7 +338,7 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-static ABSIM_FORCEINLINE void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst, unsigned src)
+static ARDENS_FORCEINLINE void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst, unsigned src)
 {
     unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
     unsigned v = (dst & ~src & ~res) | (~dst & src & res);
@@ -350,7 +350,7 @@ static ABSIM_FORCEINLINE void sub_flags(atmega32u4_t& cpu, unsigned res, unsigne
     cpu.sreg() = (uint8_t)sreg;
 }
 
-static ABSIM_FORCEINLINE void sub_imm(atmega32u4_t& cpu, unsigned rdst, unsigned imm, unsigned c)
+static ARDENS_FORCEINLINE void sub_imm(atmega32u4_t& cpu, unsigned rdst, unsigned imm, unsigned c)
 {
     unsigned dst = cpu.gpr(rdst);
     unsigned src = imm;

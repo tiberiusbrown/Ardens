@@ -1,4 +1,4 @@
-#ifdef ABSIM_PLATFORM_SDL
+#ifdef ARDENS_PLATFORM_SDL
 
 #include "imgui.h"
 #include "imgui_internal.h"

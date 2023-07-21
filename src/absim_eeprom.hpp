@@ -76,7 +76,7 @@ void atmega32u4_t::eeprom_handle_st_eecr(
 }
 
 
-void ABSIM_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
+void ARDENS_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
 {
     if(!eeprom_busy)
         return;

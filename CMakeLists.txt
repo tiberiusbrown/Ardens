@@ -6,7 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-project(arduboy_sim)
+set(PROJ Ardens)
+
+project(${PROJ})
 
 if(MSVC)
     add_link_options(
@@ -29,12 +31,12 @@ if(MSVC)
     )
 endif()
 
-option(ABSIM_LLVM "Build and link LLVM (enables loading ELF and debug info)" ON)
+option(ARDENS_LLVM "Build and link LLVM (enables loading ELF and debug info)" ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(GetGitRevisionDescription)
-git_describe(ABSIM_VERSION)
-message(STATUS "ABSIM_VERSION: ${ABSIM_VERSION}")
+git_describe(ARDENS_VERSION)
+message(STATUS "ARDENS_VERSION: ${ARDENS_VERSION}")
 
 if(EMSCRIPTEN)
     #set(EXTRA_FLAGS "${EXTRA_FLAGS} -O0 -g3 -gsource-map")
@@ -67,7 +69,7 @@ add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
-if(ABSIM_LLVM)
+if(ARDENS_LLVM)
     if(MSVC)
         set(LLVM_USE_CRT_DEBUG          "MTd" CACHE STRING "" FORCE)
         set(LLVM_USE_CRT_MINSIZEREL     "MT"  CACHE STRING "" FORCE)
@@ -167,7 +169,7 @@ set(HQX_SOURCES
     src/hqx/source/HQ2x.cc
     src/hqx/source/HQ3x.cc
     )
-set(ABSIM_SOURCES
+set(ARDENS_SOURCES
     src/absim.hpp
     src/absim_instructions.hpp
     src/absim_cpu_data.cpp
@@ -200,7 +202,7 @@ if(EMSCRIPTEN)
     set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
 endif()
 
-add_executable(arduboy_sim ${EXEFLAG}
+add_executable(${PROJ} ${EXEFLAG}
     .editorconfig
 
     src/main_sdl.cpp
@@ -243,7 +245,7 @@ add_executable(arduboy_sim ${EXEFLAG}
     src/window_sound.cpp
     src/window_source.cpp
 
-    ${ABSIM_SOURCES}
+    ${ARDENS_SOURCES}
 
     src/stb_image_write.h
     ${IMGUI_SOURCES}
@@ -259,7 +261,7 @@ add_executable(arduboy_sim ${EXEFLAG}
 
     #${IMGUI_SDL_SOURCES}
     )
-target_link_libraries(arduboy_sim PRIVATE
+target_link_libraries(${PROJ} PRIVATE
     #SDL2-static
     #SDL2main
     nlohmann_json::nlohmann_json
@@ -267,22 +269,22 @@ target_link_libraries(arduboy_sim PRIVATE
     fmt
     bitsery
     )
-if(ABSIM_LLVM)
-    target_link_libraries(arduboy_sim PRIVATE
+if(ARDENS_LLVM)
+    target_link_libraries(${PROJ} PRIVATE
         LLVMDebugInfoDWARF
         LLVMDemangle
         #LLVMObject
         )
-    target_include_directories(arduboy_sim PRIVATE
+    target_include_directories(${PROJ} PRIVATE
         "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
         )
-    target_compile_definitions(arduboy_sim PRIVATE -DABSIM_LLVM)
+    target_compile_definitions(${PROJ} PRIVATE -DARDENS_LLVM)
 endif()
-#target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SDL)
-target_compile_definitions(arduboy_sim PRIVATE -DABSIM_PLATFORM_SOKOL)
-target_include_directories(arduboy_sim PRIVATE
+#target_compile_definitions(${PROJ} PRIVATE -DARDENS_PLATFORM_SDL)
+target_compile_definitions(${PROJ} PRIVATE -DARDENS_PLATFORM_SOKOL)
+target_include_directories(${PROJ} PRIVATE
     src/imgui
     src/implot
     src/gifenc
@@ -290,7 +292,7 @@ target_include_directories(arduboy_sim PRIVATE
     src/hqx/include
     )
 
-add_executable(arduboy_sim_player ${EXEFLAG}
+add_executable(${PROJ}Player ${EXEFLAG}
     .editorconfig
 
     src/main_sdl.cpp
@@ -308,7 +310,7 @@ add_executable(arduboy_sim_player ${EXEFLAG}
     src/dwarf.hpp
     src/dwarf.cpp
 
-    ${ABSIM_SOURCES}
+    ${ARDENS_SOURCES}
 
     src/stb_image_write.h
     ${IMGUI_SOURCES}
@@ -316,37 +318,37 @@ add_executable(arduboy_sim_player ${EXEFLAG}
     ${EM_FILE_BROWSER_SOURCES}
     ${SOKOL_SOURCES}
     )
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_PLAYER)
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SNAPSHOTS)
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_DEBUGGER)
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_GUI)
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SAVED_SETTINGS)
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_SCALING)
-#target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_NO_ARDUBOY_FILE)
-target_compile_definitions(arduboy_sim_player PRIVATE -DABSIM_PLATFORM_SOKOL)
-target_include_directories(arduboy_sim_player PRIVATE
+target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_PLAYER)
+target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_SNAPSHOTS)
+target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_DEBUGGER)
+target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_GUI)
+target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_SCALING)
+#target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_NO_ARDUBOY_FILE)
+target_compile_definitions(${PROJ}Player PRIVATE -DARDENS_PLATFORM_SOKOL)
+target_include_directories(${PROJ}Player PRIVATE
     src/imgui
     src/gifenc
     )
-target_link_libraries(arduboy_sim_player PRIVATE
+target_link_libraries(${PROJ}Player PRIVATE
     nlohmann_json::nlohmann_json
     miniz
     fmt
     bitsery
     )
 
-add_library(arduboy_sim_libretro SHARED
+add_library(${PROJ}_libretro SHARED
 	.editorconfig
-	${ABSIM_SOURCES}
+	${ARDENS_SOURCES}
 	src/libretro_core/libretro.h
 	src/libretro_core/libretro_impl.cpp
 	)
-target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_PLAYER)
-target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_DEBUGGER)
-target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_GUI)
-target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_SAVED_SETTINGS)
-target_compile_definitions(arduboy_sim_libretro PRIVATE -DABSIM_NO_SCALING)
-target_link_libraries(arduboy_sim_libretro PRIVATE
+target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_PLAYER)
+target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_DEBUGGER)
+target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_GUI)
+target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+target_compile_definitions(${PROJ}_libretro PRIVATE -DARDENS_NO_SCALING)
+target_link_libraries(${PROJ}_libretro PRIVATE
     nlohmann_json::nlohmann_json
     miniz
     fmt
@@ -354,7 +356,7 @@ target_link_libraries(arduboy_sim_libretro PRIVATE
 	)
 # WHY IS THIS NECESSARY???
 if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
-    target_compile_options(arduboy_sim_libretro PRIVATE "/Zc:__cplusplus")
+    target_compile_options(${PROJ}_libretro PRIVATE "/Zc:__cplusplus")
 endif()
 
 set_source_files_properties(
@@ -363,17 +365,17 @@ set_source_files_properties(
     src/common.cpp
     src/libretro_core/libretro_impl.cpp
     PROPERTIES
-        COMPILE_OPTIONS "-DABSIM_VERSION=\"${ABSIM_VERSION}\""
+        COMPILE_OPTIONS "-DARDENS_VERSION=\"${ARDENS_VERSION}\""
     )
 
 if(MSVC)
-    target_compile_options(arduboy_sim PRIVATE /Zc:__cplusplus)
-    target_compile_options(arduboy_sim_player PRIVATE /Zc:__cplusplus)
+    target_compile_options(${PROJ} PRIVATE /Zc:__cplusplus)
+    target_compile_options(${PROJ}Player PRIVATE /Zc:__cplusplus)
 endif()
 
 if(EMSCRIPTEN)
-    target_link_options(arduboy_sim PRIVATE "-lidbfs.js")
-    target_link_options(arduboy_sim_player PRIVATE "-lidbfs.js")
+    target_link_options(${PROJ} PRIVATE "-lidbfs.js")
+    target_link_options(${PROJ}Player PRIVATE "-lidbfs.js")
 endif()
 
 #if(MSVC)
@@ -383,8 +385,8 @@ endif()
 #        message(STATUS "IPO is supported")
 #        set_property(
 #            TARGET
-#                arduboy_sim
-#                arduboy_sim_player
+#                ${PROJ}
+#                ${PROJ}Player
 #                miniz
 #                fmt
 #                bitsery

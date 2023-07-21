@@ -91,7 +91,7 @@ uint8_t atmega32u4_t::spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr)
     return cpu.data[0x4e];
 }
 
-ABSIM_FORCEINLINE void atmega32u4_t::cycle_spi(uint32_t cycles)
+ARDENS_FORCEINLINE void atmega32u4_t::cycle_spi(uint32_t cycles)
 {
     if(!spi_busy)
         return;

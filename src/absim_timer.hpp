@@ -3,14 +3,14 @@
 namespace absim
 {
 
-static ABSIM_FORCEINLINE uint32_t word(atmega32u4_t const& cpu, uint32_t addr)
+static ARDENS_FORCEINLINE uint32_t word(atmega32u4_t const& cpu, uint32_t addr)
 {
     uint32_t lo = cpu.data[addr + 0];
     uint32_t hi = cpu.data[addr + 1];
     return lo | (hi << 8);
 }
 
-static ABSIM_FORCEINLINE uint32_t get_divider(uint32_t cs)
+static ARDENS_FORCEINLINE uint32_t get_divider(uint32_t cs)
 {
     assert((cs & ~7) == 0);
     static constexpr uint32_t DIVIDERS[8] =
@@ -20,13 +20,13 @@ static ABSIM_FORCEINLINE uint32_t get_divider(uint32_t cs)
     return DIVIDERS[cs];
 }
 
-static ABSIM_FORCEINLINE uint32_t min_nonzero(uint32_t a, uint32_t top, int32_t b)
+static ARDENS_FORCEINLINE uint32_t min_nonzero(uint32_t a, uint32_t top, int32_t b)
 {
     if(b <= 0) return std::min(a, top);
     return std::min(a, (uint32_t)b);
 }
 
-static ABSIM_FORCEINLINE void process_wgm8(
+static ARDENS_FORCEINLINE void process_wgm8(
     uint32_t wgm, uint32_t& top, uint32_t& tov, uint32_t ocr)
 {
     top = 0xff;
@@ -58,7 +58,7 @@ static ABSIM_FORCEINLINE void process_wgm8(
     top = std::max<uint32_t>(3, top);
 }
 
-static ABSIM_FORCEINLINE void timer8_update_ocrN(
+static ARDENS_FORCEINLINE void timer8_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer8_t& timer)
 {
@@ -71,7 +71,7 @@ static ABSIM_FORCEINLINE void timer8_update_ocrN(
     process_wgm8(wgm, timer.top, timer.tov, timer.ocrNa);
 }
 
-static ABSIM_FORCEINLINE void update_timer8_state(
+static ARDENS_FORCEINLINE void update_timer8_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer8_t& timer,
     uint64_t cycles)
@@ -207,7 +207,7 @@ void atmega32u4_t::update_timer0()
     timer0.next_update_cycle = cycle_count + update_cycles;
 }
 
-static ABSIM_FORCEINLINE void process_wgm16(
+static ARDENS_FORCEINLINE void process_wgm16(
     uint32_t wgm, uint32_t& top, uint32_t& tov, uint32_t ocr, uint32_t icr)
 {
     uint32_t ttop = 0xffff;
@@ -276,7 +276,7 @@ static ABSIM_FORCEINLINE void process_wgm16(
     tov = ttov;
 }
 
-static ABSIM_FORCEINLINE void timer16_update_ocrN(
+static ARDENS_FORCEINLINE void timer16_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
     uint32_t addr)
@@ -293,7 +293,7 @@ static ABSIM_FORCEINLINE void timer16_update_ocrN(
     process_wgm16(wgm, timer.top, timer.tov, timer.ocrNa, icrN);
 }
 
-static ABSIM_FORCEINLINE uint32_t timer16_period(
+static ARDENS_FORCEINLINE uint32_t timer16_period(
     atmega32u4_t const& cpu,
     atmega32u4_t::timer16_t const& timer)
 {
@@ -306,25 +306,25 @@ static ABSIM_FORCEINLINE uint32_t timer16_period(
     return period;
 }
 
-static ABSIM_FORCEINLINE void toggle_portc6(atmega32u4_t& cpu)
+static ARDENS_FORCEINLINE void toggle_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.data[0x28] ^= (1 << 6);
 }
 
-static ABSIM_FORCEINLINE void clear_portc6(atmega32u4_t& cpu)
+static ARDENS_FORCEINLINE void clear_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.data[0x28] &= ~(1 << 6);
 }
 
-static ABSIM_FORCEINLINE void set_portc6(atmega32u4_t& cpu)
+static ARDENS_FORCEINLINE void set_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.data[0x28] |= (1 << 6);
 }
 
-static ABSIM_FORCEINLINE void update_timer16_state(
+static ARDENS_FORCEINLINE void update_timer16_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
     uint64_t cycles)
@@ -509,7 +509,7 @@ static void update_timer16(
     }
 }
 
-static ABSIM_FORCEINLINE void timer10_update_ocrN(
+static ARDENS_FORCEINLINE void timer10_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer10_t& timer)
 {
@@ -527,7 +527,7 @@ static ABSIM_FORCEINLINE void timer10_update_ocrN(
     }
 }
 
-static ABSIM_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
+static ARDENS_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
 {
     uint8_t c = 0;
     if(c6) c |= 0x40;
@@ -540,7 +540,7 @@ static ABSIM_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
     cpu.data[0x28] = t;
 }
 
-static ABSIM_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6)
+static ARDENS_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6)
 {
     uint8_t c = 0;
     if(c6) c |= 0x40;
@@ -552,7 +552,7 @@ static ABSIM_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6)
     cpu.data[0x28] = t;
 }
 
-static ABSIM_FORCEINLINE void update_timer10_state(
+static ARDENS_FORCEINLINE void update_timer10_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer10_t& timer,
     uint64_t cycles)
@@ -835,12 +835,12 @@ uint8_t atmega32u4_t::timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
     return cpu.data[ptr];
 }
 
-ABSIM_FORCEINLINE void atmega32u4_t::update_timer1()
+ARDENS_FORCEINLINE void atmega32u4_t::update_timer1()
 {
     update_timer16(*this, timer1);
 }
 
-ABSIM_FORCEINLINE void atmega32u4_t::update_timer3()
+ARDENS_FORCEINLINE void atmega32u4_t::update_timer3()
 {
     update_timer16(*this, timer3);
 }

@@ -1,4 +1,4 @@
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 
 #include "common.hpp"
 #include "dwarf.hpp"

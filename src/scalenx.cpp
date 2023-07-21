@@ -1,6 +1,6 @@
 #include "common.hpp"
 
-#ifndef ABSIM_NO_SCALING
+#ifndef ARDENS_NO_SCALING
 #include <hqx/HQ2x.hh>
 #include <hqx/HQ3x.hh>
 #endif
@@ -56,7 +56,7 @@ int filter_zoom(int f)
 {
     switch(f)
     {
-#ifndef ABSIM_NO_SCALING
+#ifndef ARDENS_NO_SCALING
     case FILTER_NONE:    return 1;
     case FILTER_SCALE2X: return 2;
     case FILTER_SCALE3X: return 3;
@@ -101,7 +101,7 @@ void recreate_display_texture()
     display_texture = platform_create_texture(128 * z, 64 * z);
 }
 
-#ifndef ABSIM_NO_SCALING
+#ifndef ARDENS_NO_SCALING
 static void scale2x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 {
     for(int ni = 0; ni < ht; ++ni)
@@ -141,7 +141,7 @@ static void scale2x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 }
 #endif
 
-#ifndef ABSIM_NO_SCALING
+#ifndef ARDENS_NO_SCALING
 static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 {
     for(int ni = 0; ni < ht; ++ni)
@@ -197,7 +197,7 @@ static void scale3x(uint8_t* dst, uint8_t const* src, int wd, int ht)
 }
 #endif
 
-#ifndef ABSIM_NO_SCALING
+#ifndef ARDENS_NO_SCALING
 
 static uint32_t hqbuf_src[128 * 64 * 2 * 2];
 static uint32_t hqbuf_dst[128 * 64 * 4 * 4];
@@ -246,7 +246,7 @@ static void scalenx_filter(int f, int d, uint8_t* dst, uint8_t const* src, bool 
     static uint8_t downbuf[128 * 64 * 4 * 4];
     int z = filter_zoom(f);
 
-#ifdef ABSIM_NO_SCALING
+#ifdef ARDENS_NO_SCALING
     uint8_t* tdst = rgba ? downbuf : dst;
     memcpy(tdst, src, 128 * 64);
 #else

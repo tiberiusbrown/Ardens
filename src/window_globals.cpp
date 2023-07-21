@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 
 #include "dwarf.hpp"
 

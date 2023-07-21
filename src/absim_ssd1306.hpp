@@ -289,7 +289,7 @@ void ssd1306_t::send_data(uint8_t byte)
     }
 }
 
-void ABSIM_FORCEINLINE ssd1306_t::update_pixels_row()
+void ARDENS_FORCEINLINE ssd1306_t::update_pixels_row()
 {
     uint8_t ram_row = row;
     ram_row += display_start;
@@ -348,7 +348,7 @@ void ssd1306_t::filter_pixels()
         filtered_pixels[i] = uint8_t(filtered_pixel_counts[i] / 256);
 }
 
-bool ABSIM_FORCEINLINE ssd1306_t::advance(uint64_t ps)
+bool ARDENS_FORCEINLINE ssd1306_t::advance(uint64_t ps)
 {
     vsync = false;
     ps += ps_rem;
@@ -380,7 +380,7 @@ constexpr std::array<double, 16> FOSC =
     392, 416, 440, 464, 488, 512, 536, 570,
 };
 
-void ABSIM_FORCEINLINE ssd1306_t::update_clocking()
+void ARDENS_FORCEINLINE ssd1306_t::update_clocking()
 {
     cycles_per_row = phase_1 + phase_2 + 50;
     ps_per_clk = (uint64_t)std::round(1e12 * (divide_ratio + 1) / fosc());

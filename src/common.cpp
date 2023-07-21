@@ -12,7 +12,7 @@
 
 #include <imgui.h>
 
-#ifndef ABSIM_NO_DEBUGGER
+#ifndef ARDENS_NO_DEBUGGER
 #include <implot.h>
 #endif
 
@@ -33,11 +33,11 @@
 #include "stb_image_write.h"
 #endif
 
-#ifdef ABSIM_NO_DEBUGGER
+#ifdef ARDENS_NO_DEBUGGER
 void process_sound_samples() {}
 #endif
 
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
 extern unsigned char const ProggyVector[198188];
 #endif
 
@@ -85,7 +85,7 @@ void file_download(
 }
 #endif
 
-#ifndef ABSIM_PLATFORM_SDL
+#ifndef ARDENS_PLATFORM_SDL
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
@@ -249,7 +249,7 @@ void define_font()
     cfg.OversampleH = 2;
     cfg.OversampleV = 2;
     io.Fonts->Clear();
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
     io.Fonts->AddFontFromMemoryTTF(
         (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
 #endif
@@ -271,14 +271,14 @@ void rescale_style()
 
 void shutdown()
 {
-#ifndef ABSIM_NO_DEBUGGER
+#ifndef ARDENS_NO_DEBUGGER
     ImPlot::DestroyContext();
 #endif
 }
 
 void init()
 {
-    printf("absim " ABSIM_VERSION " by Peter Brown\n");
+    printf("absim " ARDENS_VERSION " by Peter Brown\n");
 
 #ifdef __EMSCRIPTEN__
     EM_ASM(
@@ -290,23 +290,23 @@ void init()
 
     arduboy = std::make_unique<absim::arduboy_t>();
 
-#ifndef ABSIM_NO_DEBUGGER
+#ifndef ARDENS_NO_DEBUGGER
     ImPlot::CreateContext();
 #endif
 
-#ifndef ABSIM_NO_SAVED_SETTINGS
+#ifndef ARDENS_NO_SAVED_SETTINGS
     init_settings();
 #endif
 
     ImGuiIO& io = ImGui::GetIO();
-#if !defined(__EMSCRIPTEN__) && !defined(ABSIM_NO_SAVED_SETTINGS)
+#if !defined(__EMSCRIPTEN__) && !defined(ARDENS_NO_SAVED_SETTINGS)
     ImGui::LoadIniSettingsFromDisk(io.IniFilename);
     settings_loaded = true;
 #endif
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-#if defined(__EMSCRIPTEN__) || defined(ABSIM_NO_SAVED_SETTINGS)
+#if defined(__EMSCRIPTEN__) || defined(ARDENS_NO_SAVED_SETTINGS)
     io.IniFilename = nullptr;
 #endif
 
@@ -364,7 +364,7 @@ void toggle_recording()
 
 void take_snapshot()
 {
-#ifndef ABSIM_NO_SNAPSHOTS
+#ifndef ARDENS_NO_SNAPSHOTS
     char fname[256];
     time_t rawtime;
     struct tm* ti;
@@ -442,7 +442,7 @@ void frame_logic()
         arduboy->frame_bytes_total = 1024;
 
         arduboy->cpu.enabled_autobreaks = 0;
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
         for(int i = 1; i < absim::AB_NUM; ++i)
             if(settings.ab.index(i))
                 arduboy->cpu.enabled_autobreaks |= (1 << i);
@@ -595,7 +595,7 @@ void imgui_content()
         }
     }
 
-#ifndef ABSIM_NO_DEBUGGER
+#ifndef ARDENS_NO_DEBUGGER
     if(settings.fullzoom)
         view_player();
     else
@@ -604,11 +604,11 @@ void imgui_content()
     view_player();
 #endif
 
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
     modal_settings();
 #endif
 
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
     if(!dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
         ImGui::OpenPopup("File Load Error");
 
@@ -629,7 +629,7 @@ void imgui_content()
     }
 #endif
 
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
     if(arduboy->cpu.should_autobreak())
         ImGui::OpenPopup("Auto-Break");
 
@@ -678,11 +678,11 @@ void imgui_content()
     }
 #endif
 
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
     modal_about();
 #endif
 
-#ifndef ABSIM_NO_GUI
+#ifndef ARDENS_NO_GUI
 #if PROFILING
     ImGui::ShowMetricsWindow();
 #endif

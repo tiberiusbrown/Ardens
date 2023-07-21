@@ -29,7 +29,7 @@ void atmega32u4_t::adc_st_handle_adcsra(
     cpu.data[0x7a] = x;
 }
 
-ABSIM_FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
+ARDENS_FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
 {
     if(!adc_busy)
         return;

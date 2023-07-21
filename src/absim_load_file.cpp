@@ -8,13 +8,13 @@
 #include <algorithm>
 #include <cctype>
 
-#ifndef ABSIM_NO_ARDUBOY_FILE
+#ifndef ARDENS_NO_ARDUBOY_FILE
 #include <nlohmann/json.hpp>
 #include <miniz.h>
 #include <miniz_zip.h>
 #endif
 
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 #ifdef _MSC_VER
 #pragma warning(push, 1)
 #pragma warning(disable: 4624)
@@ -60,7 +60,7 @@ size_t elf_data_t::addr_to_disassembled_index(uint16_t addr)
 
 elf_data_t::~elf_data_t() {}
 
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 static std::string demangle(char const* sym)
 {
     size_t size = 0;
@@ -259,7 +259,7 @@ static std::string load_hex(arduboy_t& a, std::string const& fname)
     return load_hex(a, f);
 }
 
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
 struct Elf32_Sym
 {
     uint32_t  st_name;
@@ -826,7 +826,7 @@ static std::string load_bin(arduboy_t& a, std::string const& fname)
     return load_bin(a, f);
 }
 
-#ifndef ABSIM_NO_ARDUBOY_FILE
+#ifndef ARDENS_NO_ARDUBOY_FILE
 class sax_no_exception : public nlohmann::detail::json_sax_dom_parser<nlohmann::json>
 {
 public:
@@ -1025,7 +1025,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
         return r;
     }
 
-#ifdef ABSIM_LLVM
+#ifdef ARDENS_LLVM
     if(ends_with(fname, ".elf"))
     {
         reset();
@@ -1034,7 +1034,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     }
 #endif
 
-#ifndef ABSIM_NO_ARDUBOY_FILE
+#ifndef ARDENS_NO_ARDUBOY_FILE
     if(ends_with(fname, ".arduboy"))
     {
         reset();
@@ -1043,7 +1043,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     }
 #endif
 
-#ifndef ABSIM_NO_SNAPSHOTS
+#ifndef ARDENS_NO_SNAPSHOTS
     if(ends_with(fname, ".snapshot"))
     {
         r = load_snapshot(f);
