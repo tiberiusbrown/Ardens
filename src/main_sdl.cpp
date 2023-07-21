@@ -291,7 +291,7 @@ int main(int argc, char** argv)
         SDL_WINDOW_ALLOW_HIGHDPI |
 #endif
         0);
-    window = SDL_CreateWindow("arduboy_sim", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    window = SDL_CreateWindow("Ardens", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
     if (renderer == NULL)

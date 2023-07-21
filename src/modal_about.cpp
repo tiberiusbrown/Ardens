@@ -5,10 +5,10 @@
 #include <imgui.h>
 #include "imgui_markdown/imgui_markdown.h"
 
-static char const MARKDOWN[] = R"(*arduboy_sim*
+static char const MARKDOWN[] = R"(*Ardens*
 ***
 
-[Arduboy](https://www.arduboy.com/) simulator for profiling and debugging ([source Code](https://github.com/tiberiusbrown/arduboy_sim)).
+[Arduboy](https://www.arduboy.com/) simulator for profiling and debugging ([source Code](https://github.com/tiberiusbrown/Ardens)).
 
 Drap and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (hex/elf/arduboy) and any FX data (bin) onto this window.
 

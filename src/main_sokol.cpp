@@ -278,11 +278,11 @@ sapp_desc sokol_main(int argc, char** argv)
 #ifdef ARDENS_PLAYER
     desc.width = 512;
     desc.height = 256;
-    desc.window_title = "arduboy_sim (player)";
+    desc.window_title = "Ardens Player";
 #else
     desc.width = 1280;
     desc.height = 720;
-    desc.window_title = "arduboy_sim";
+    desc.window_title = "Ardens";
 #endif
     desc.enable_dragndrop = true;
     desc.max_dropped_files = 2;
