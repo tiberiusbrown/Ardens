@@ -9,7 +9,7 @@
   variables:
     GIT_SUBMODULE_STRATEGY: recursive
     CORENAME: ardens
-    CORE_ARGS: -DCMAKE_BUILD_TYPE=Release -DARDENS_PROJ=ardens -DABSIM_LLVM=0
+    CORE_ARGS: -DCMAKE_BUILD_TYPE=Release -DARDENS_PROJ=ardens -DARDENS_LLVM=0
     CMAKE_SOURCE_ROOT: .
 
 .core-defs-linux:
