@@ -159,7 +159,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_win32.zip"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_linux.zip"
 
   build_windows_x86:
   
