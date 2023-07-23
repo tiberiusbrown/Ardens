@@ -149,7 +149,7 @@ jobs:
         cp src/ArdensPlayer.desktop AppDirPlayer
         cp img/ardens.png AppDir
         cp img/ardens.png AppDirPlayer
-        #ln -s Ardens AppDir/AppRun
+        ln -s Ardens AppDir/AppRun
         ln -s ArdensPlayer AppDirPlayer/AppRun
         ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
         ./linuxdeploy-x86_64.AppImage --appdir AppDirPlayer --output appimage
