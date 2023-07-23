@@ -209,6 +209,11 @@ if(EMSCRIPTEN)
     set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
 endif()
 
+set(SYSTEM_LIBS)
+if(LINUX)
+	set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m)
+endif()
+
 add_executable(${ARDENS_PROJ} ${EXEFLAG}
     .editorconfig
 
@@ -270,6 +275,7 @@ target_link_libraries(${ARDENS_PROJ} PRIVATE
     miniz
     fmt
     bitsery
+	${SYSTEM_LIBS}
     )
 if(ARDENS_LLVM)
     target_link_libraries(${ARDENS_PROJ} PRIVATE
@@ -337,6 +343,7 @@ target_link_libraries(${ARDENS_PROJ}Player PRIVATE
     miniz
     fmt
     bitsery
+	${SYSTEM_LIBS}
     )
 
 set(ARDENS_LIBRETRO_TYPE SHARED)
