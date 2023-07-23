@@ -213,7 +213,7 @@ if(EMSCRIPTEN)
 endif()
 
 set(SYSTEM_LIBS)
-if(UNIX)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m)
 endif()
 
