@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Name=ArdensPlayer
+GenericName=ArdensPlayer
+Type=Application
+Comment=Emulator for the Arduboy FX
+Icon=ardens
+Exec=ArdensPlayer
+Terminal=false
+StartupNotify=false
+StartupWMClass=ardens
+Keywords=emulator;arduboy;
+Categories=Game;Emulator;
+

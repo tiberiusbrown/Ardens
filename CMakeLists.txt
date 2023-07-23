@@ -61,6 +61,9 @@ add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
+set_target_properties(fmt PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(miniz PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 if(ARDENS_LLVM)
 	
 	# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
@@ -210,8 +213,8 @@ if(EMSCRIPTEN)
 endif()
 
 set(SYSTEM_LIBS)
-if(LINUX)
-	set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m)
+if(UNIX)
+    set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m)
 endif()
 
 add_executable(${ARDENS_PROJ} ${EXEFLAG}
@@ -348,14 +351,14 @@ target_link_libraries(${ARDENS_PROJ}Player PRIVATE
 
 set(ARDENS_LIBRETRO_TYPE SHARED)
 if(LIBRETRO_STATIC)
-	set(ARDENS_LIBRETRO_TYPE STATIC)
+    set(ARDENS_LIBRETRO_TYPE STATIC)
 endif()
 add_library(${ARDENS_PROJ}_libretro ${ARDENS_LIBRETRO_TYPE}
-	.editorconfig
-	${ARDENS_SOURCES}
-	src/libretro_core/libretro.h
-	src/libretro_core/libretro_impl.cpp
-	)
+    .editorconfig
+    ${ARDENS_SOURCES}
+    src/libretro_core/libretro.h
+    src/libretro_core/libretro_impl.cpp
+    )
 target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_PLAYER)
 target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_DEBUGGER)
 target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_GUI)
@@ -364,8 +367,8 @@ target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_SCALING)
 target_link_libraries(${ARDENS_PROJ}_libretro PRIVATE
     miniz
     fmt
-	bitsery
-	)
+    bitsery
+    )
 target_include_directories(${ARDENS_PROJ}_libretro PUBLIC src)
 target_include_directories(${ARDENS_PROJ}_libretro PRIVATE src/rapidjson/include)
 # WHY IS THIS NECESSARY???
@@ -379,6 +382,7 @@ elseif(EMSCRIPTEN)
 elseif(LIBRETRO_STATIC)
     set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
 endif()
+set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 set_source_files_properties(
     src/absim_snapshot.cpp

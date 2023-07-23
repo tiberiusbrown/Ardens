@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Name=Ardens
+GenericName=Ardens
+Type=Application
+Comment=Profiler and Debugger for Arduboy FX Games
+Icon=ardens
+Exec=Ardens
+Terminal=false
+StartupNotify=false
+StartupWMClass=ardens
+Keywords=emulator;debugger;profiler;arduboy;
+Categories=Game;Emulator;
+

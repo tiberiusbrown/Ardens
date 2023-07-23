@@ -24,7 +24,7 @@
 #define ARDENS_FORCEINLINE __forceinline
 //#define ARDENS_FORCEINLINE
 #elif defined(__GNUC__) || defined(__clang__) 
-#define ARDENS_FORCEINLINE __attribute__((always_inline))
+#define ARDENS_FORCEINLINE
 #else
 #define ARDENS_FORCEINLINE
 #endif
