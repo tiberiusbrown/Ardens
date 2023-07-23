@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+#include <cmath>
+
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 {
     {

@@ -102,10 +102,10 @@ void platform_open_url(char const *url)
     ShellExecuteA(0, NULL, url, NULL, NULL, SW_SHOWNORMAL);
 #endif
 #if defined(__APPLE__) || defined(__MACH__)
-    system(fmt::format("open {}", url).c_str());
+    (void)system(fmt::format("open {}", url).c_str());
 #endif
 #if defined(__linux__) || defined(__FreeBSD__)
-    system(fmt::format("xdg-open {}", url).c_str());
+    (void)system(fmt::format("xdg-open {}", url).c_str());
 #endif
 }
 #endif
