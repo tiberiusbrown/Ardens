@@ -128,24 +128,24 @@ jobs:
     - name: Install prerequisites
       run: |
         sudo apt-get update
-        sudo apt-get install -y libpulse-dev libgl1-mesa-dev libegl1-mesa-dev mesa-common-dev xorg-dev libasound-dev libxi-dev libx11-dev
+        sudo apt-get install -y libpulse-dev libgl1-mesa-dev libegl1-mesa-dev mesa-common-dev xorg-dev libasound-dev libxi-dev libx11-dev libfuse2
   
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0
   
     - name: Build
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        #cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         
     - name: Build AppImages
       run: |
         wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
         chmod +x linuxdeploy-x86_64.AppImage
         mkdir AppDir AppDirPlayer
-        cp ${{github.workspace}}/build/Ardens AppDir
+        #cp ${{github.workspace}}/build/Ardens AppDir
         cp ${{github.workspace}}/build/ArdensPlayer AppDirPlayer
-        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+        #./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
         ./linuxdeploy-x86_64.AppImage --appdir AppDirPlayer --output appimage
         mv *.AppImage Ardens_linux
         zip *.AppImage Ardens_linux.zip
