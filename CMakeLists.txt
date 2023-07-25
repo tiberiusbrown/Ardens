@@ -6,9 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(ARDENS_PROJ "Ardens" CACHE STRING "Basename of build targets")
-
-project(${ARDENS_PROJ})
+project(Ardens)
 
 include(FetchContent)
 
@@ -60,9 +58,6 @@ endif()
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
-
-set_target_properties(fmt PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set_target_properties(miniz PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 if(ARDENS_LLVM)
 	
@@ -217,11 +212,17 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m)
 endif()
 
-add_executable(${ARDENS_PROJ} ${EXEFLAG}
+set(RC_FILE)
+if(WIN32)
+    set(RC_FILE "img/Ardens.rc")
+endif()
+
+add_executable(Ardens ${EXEFLAG}
     .editorconfig
 
     src/main_sdl.cpp
     src/main_sokol.cpp
+	${RC_FILE}
 
     src/font.cpp
     src/settings.hpp
@@ -274,26 +275,26 @@ add_executable(${ARDENS_PROJ} ${EXEFLAG}
     src/ImGuiColorTextEdit/TextEditor.h
     src/ImGuiColorTextEdit/TextEditor.cpp
     )
-target_link_libraries(${ARDENS_PROJ} PRIVATE
+target_link_libraries(Ardens PRIVATE
     miniz
     fmt
     bitsery
 	${SYSTEM_LIBS}
     )
 if(ARDENS_LLVM)
-    target_link_libraries(${ARDENS_PROJ} PRIVATE
+    target_link_libraries(Ardens PRIVATE
         LLVMDebugInfoDWARF
         LLVMDemangle
         )
-    target_include_directories(${ARDENS_PROJ} PRIVATE
+    target_include_directories(Ardens PRIVATE
         "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
         "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
         )
-    target_compile_definitions(${ARDENS_PROJ} PRIVATE -DARDENS_LLVM)
+    target_compile_definitions(Ardens PRIVATE -DARDENS_LLVM)
 endif()
-target_compile_definitions(${ARDENS_PROJ} PRIVATE -DARDENS_PLATFORM_SOKOL)
-target_include_directories(${ARDENS_PROJ} PRIVATE
+target_compile_definitions(Ardens PRIVATE -DARDENS_PLATFORM_SOKOL)
+target_include_directories(Ardens PRIVATE
     src/imgui
     src/implot
     src/gifenc
@@ -302,11 +303,12 @@ target_include_directories(${ARDENS_PROJ} PRIVATE
     src/rapidjson/include
     )
 
-add_executable(${ARDENS_PROJ}Player ${EXEFLAG}
+add_executable(ArdensPlayer ${EXEFLAG}
     .editorconfig
 
     src/main_sdl.cpp
     src/main_sokol.cpp
+	${RC_FILE}
 
     src/settings.hpp
     src/settings.cpp
@@ -328,21 +330,21 @@ add_executable(${ARDENS_PROJ}Player ${EXEFLAG}
     ${EM_FILE_BROWSER_SOURCES}
     ${SOKOL_SOURCES}
     )
-target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_PLAYER)
-target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_SNAPSHOTS)
-target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_DEBUGGER)
-target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_GUI)
-target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_SCALING)
-#target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_NO_ARDUBOY_FILE)
-target_compile_definitions(${ARDENS_PROJ}Player PRIVATE -DARDENS_PLATFORM_SOKOL)
-target_include_directories(${ARDENS_PROJ}Player PRIVATE
+target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLAYER)
+target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SNAPSHOTS)
+target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_DEBUGGER)
+target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_GUI)
+target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SCALING)
+#target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_ARDUBOY_FILE)
+target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLATFORM_SOKOL)
+target_include_directories(ArdensPlayer PRIVATE
 	src
     src/imgui
     src/gifenc
     src/rapidjson/include
     )
-target_link_libraries(${ARDENS_PROJ}Player PRIVATE
+target_link_libraries(ArdensPlayer PRIVATE
     miniz
     fmt
     bitsery
@@ -353,36 +355,37 @@ set(ARDENS_LIBRETRO_TYPE SHARED)
 if(LIBRETRO_STATIC)
     set(ARDENS_LIBRETRO_TYPE STATIC)
 endif()
-add_library(${ARDENS_PROJ}_libretro ${ARDENS_LIBRETRO_TYPE}
+add_library(ardens_libretro ${ARDENS_LIBRETRO_TYPE}
     .editorconfig
     ${ARDENS_SOURCES}
     src/libretro_core/libretro.h
     src/libretro_core/libretro_impl.cpp
     )
-target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_PLAYER)
-target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_DEBUGGER)
-target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_GUI)
-target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(${ARDENS_PROJ}_libretro PRIVATE -DARDENS_NO_SCALING)
-target_link_libraries(${ARDENS_PROJ}_libretro PRIVATE
+target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
+target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
+target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_GUI)
+target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SCALING)
+target_link_libraries(ardens_libretro PRIVATE
     miniz
     fmt
     bitsery
     )
-target_include_directories(${ARDENS_PROJ}_libretro PUBLIC src)
-target_include_directories(${ARDENS_PROJ}_libretro PRIVATE src/rapidjson/include)
+target_include_directories(ardens_libretro PUBLIC src)
+target_include_directories(ardens_libretro PRIVATE src/rapidjson/include)
 # WHY IS THIS NECESSARY???
 if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
-    target_compile_options(${ARDENS_PROJ}_libretro PRIVATE "/Zc:__cplusplus")
+    target_compile_options(ardens_libretro PRIVATE "/Zc:__cplusplus")
 endif()
 if(ANDROID)
-    set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES SUFFIX "_android.so")
+    set_target_properties(ardens_libretro PROPERTIES SUFFIX "_android.so")
 elseif(EMSCRIPTEN)
-    set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.bc")
+    set_target_properties(ardens_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.bc")
 elseif(LIBRETRO_STATIC)
-    set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
+    set_target_properties(ardens_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
 endif()
-set_target_properties(${ARDENS_PROJ}_libretro PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(ardens_libretro PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(ardens_libretro PROPERTIES PREFIX "")
 
 set_source_files_properties(
     src/absim_snapshot.cpp
@@ -394,11 +397,11 @@ set_source_files_properties(
     )
 
 if(MSVC)
-    target_compile_options(${ARDENS_PROJ} PRIVATE /Zc:__cplusplus)
-    target_compile_options(${ARDENS_PROJ}Player PRIVATE /Zc:__cplusplus)
+    target_compile_options(Ardens PRIVATE /Zc:__cplusplus)
+    target_compile_options(ArdensPlayer PRIVATE /Zc:__cplusplus)
 endif()
 
 if(EMSCRIPTEN)
-    target_link_options(${ARDENS_PROJ} PRIVATE "-lidbfs.js")
-    target_link_options(${ARDENS_PROJ}Player PRIVATE "-lidbfs.js")
+    target_link_options(Ardens PRIVATE "-lidbfs.js")
+    target_link_options(ArdensPlayer PRIVATE "-lidbfs.js")
 endif()
