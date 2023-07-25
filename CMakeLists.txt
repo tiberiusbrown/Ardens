@@ -31,7 +31,10 @@ if(MSVC)
     )
 endif()
 
-option(ARDENS_LLVM "Build and link LLVM (enables loading ELF and debug info)" ON)
+option(ARDENS_LLVM     "Build and link LLVM (enables loading ELF and debug info)" ON)
+option(ARDENS_DEBUGGER "Build debugger target" ON)
+option(ARDENS_PLAYER   "Build player target" ON)
+option(ARDENS_LIBRETRO "Build libretro core target" OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(GetGitRevisionDescription)
@@ -217,175 +220,187 @@ if(WIN32)
     set(RC_FILE "img/Ardens.rc")
 endif()
 
-add_executable(Ardens ${EXEFLAG}
-    .editorconfig
+if(ARDENS_DEBUGGER)
 
-    src/main_sdl.cpp
-    src/main_sokol.cpp
-	${RC_FILE}
+    add_executable(Ardens ${EXEFLAG}
+        .editorconfig
 
-    src/font.cpp
-    src/settings.hpp
-    src/settings.cpp
-    src/settings_modal.cpp
-    src/modal_about.cpp
-    src/common.hpp
-    src/common.cpp
-    src/view_debugger.cpp
-    src/view_player.cpp
-    src/record_gif.cpp
-    src/record_wav.cpp
-    src/scalenx.cpp
-    src/saveload.cpp
-    src/dwarf.hpp
-    src/dwarf.cpp
-    src/dwarf_expr.cpp
+        src/main_sdl.cpp
+        src/main_sokol.cpp
+        ${RC_FILE}
 
-    src/window_disassembly.cpp
-    src/window_profiler.cpp
-    src/window_display.cpp
-    src/window_display_buffer.cpp
-    src/window_display_internals.cpp
-    src/window_data_space.cpp
-    src/window_progmem.cpp
-    src/window_simulation.cpp
-    src/window_call_stack.cpp
-    src/window_symbols.cpp
-    src/window_globals.cpp
-    src/window_fx_data.cpp
-    src/window_fx_internals.cpp
-    src/window_eeprom.cpp
-    src/window_cpu_usage.cpp
-    src/window_led.cpp
-    src/window_serial.cpp
-    src/window_sound.cpp
-    src/window_source.cpp
+        src/font.cpp
+        src/settings.hpp
+        src/settings.cpp
+        src/settings_modal.cpp
+        src/modal_about.cpp
+        src/common.hpp
+        src/common.cpp
+        src/view_debugger.cpp
+        src/view_player.cpp
+        src/record_gif.cpp
+        src/record_wav.cpp
+        src/scalenx.cpp
+        src/saveload.cpp
+        src/dwarf.hpp
+        src/dwarf.cpp
+        src/dwarf_expr.cpp
 
-    ${ARDENS_SOURCES}
+        src/window_disassembly.cpp
+        src/window_profiler.cpp
+        src/window_display.cpp
+        src/window_display_buffer.cpp
+        src/window_display_internals.cpp
+        src/window_data_space.cpp
+        src/window_progmem.cpp
+        src/window_simulation.cpp
+        src/window_call_stack.cpp
+        src/window_symbols.cpp
+        src/window_globals.cpp
+        src/window_fx_data.cpp
+        src/window_fx_internals.cpp
+        src/window_eeprom.cpp
+        src/window_cpu_usage.cpp
+        src/window_led.cpp
+        src/window_serial.cpp
+        src/window_sound.cpp
+        src/window_source.cpp
 
-    src/stb_image_write.h
-    ${IMGUI_SOURCES}
-    ${IMPLOT_SOURCES}
-    ${GIFENC_SOURCES}
-    ${EM_FILE_BROWSER_SOURCES}
-    ${SIMPLE_FFT_SOURCES}
-    ${HQX_SOURCES}
-    ${SOKOL_SOURCES}
+        ${ARDENS_SOURCES}
 
-    src/ImGuiColorTextEdit/TextEditor.h
-    src/ImGuiColorTextEdit/TextEditor.cpp
-    )
-target_link_libraries(Ardens PRIVATE
-    miniz
-    fmt
-    bitsery
-	${SYSTEM_LIBS}
-    )
-if(ARDENS_LLVM)
+        src/stb_image_write.h
+        ${IMGUI_SOURCES}
+        ${IMPLOT_SOURCES}
+        ${GIFENC_SOURCES}
+        ${EM_FILE_BROWSER_SOURCES}
+        ${SIMPLE_FFT_SOURCES}
+        ${HQX_SOURCES}
+        ${SOKOL_SOURCES}
+
+        src/ImGuiColorTextEdit/TextEditor.h
+        src/ImGuiColorTextEdit/TextEditor.cpp
+        )
     target_link_libraries(Ardens PRIVATE
-        LLVMDebugInfoDWARF
-        LLVMDemangle
+        miniz
+        fmt
+        bitsery
+        ${SYSTEM_LIBS}
         )
+    if(ARDENS_LLVM)
+        target_link_libraries(Ardens PRIVATE
+            LLVMDebugInfoDWARF
+            LLVMDemangle
+            )
+        target_include_directories(Ardens PRIVATE
+            "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
+            "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
+            "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
+            )
+        target_compile_definitions(Ardens PRIVATE -DARDENS_LLVM)
+    endif()
+    target_compile_definitions(Ardens PRIVATE -DARDENS_PLATFORM_SOKOL)
     target_include_directories(Ardens PRIVATE
-        "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
-        "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
-        "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
+        src/imgui
+        src/implot
+        src/gifenc
+        src/Simple-FFT/include
+        src/hqx/include
+        src/rapidjson/include
         )
-    target_compile_definitions(Ardens PRIVATE -DARDENS_LLVM)
+        
 endif()
-target_compile_definitions(Ardens PRIVATE -DARDENS_PLATFORM_SOKOL)
-target_include_directories(Ardens PRIVATE
-    src/imgui
-    src/implot
-    src/gifenc
-    src/Simple-FFT/include
-    src/hqx/include
-    src/rapidjson/include
-    )
 
-add_executable(ArdensPlayer ${EXEFLAG}
-    .editorconfig
+if(ARDENS_PLAYER)
 
-    src/main_sdl.cpp
-    src/main_sokol.cpp
-	${RC_FILE}
+    add_executable(ArdensPlayer ${EXEFLAG}
+        .editorconfig
 
-    src/settings.hpp
-    src/settings.cpp
-    src/common.hpp
-    src/common.cpp
-    src/view_player.cpp
-    src/record_gif.cpp
-    src/record_wav.cpp
-    src/scalenx.cpp
-    src/saveload.cpp
-    src/dwarf.hpp
-    src/dwarf.cpp
+        src/main_sdl.cpp
+        src/main_sokol.cpp
+        ${RC_FILE}
 
-    ${ARDENS_SOURCES}
+        src/settings.hpp
+        src/settings.cpp
+        src/common.hpp
+        src/common.cpp
+        src/view_player.cpp
+        src/record_gif.cpp
+        src/record_wav.cpp
+        src/scalenx.cpp
+        src/saveload.cpp
+        src/dwarf.hpp
+        src/dwarf.cpp
 
-    src/stb_image_write.h
-    ${IMGUI_SOURCES}
-    ${GIFENC_SOURCES}
-    ${EM_FILE_BROWSER_SOURCES}
-    ${SOKOL_SOURCES}
-    )
-target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLAYER)
-target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SNAPSHOTS)
-target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_DEBUGGER)
-target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_GUI)
-target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SCALING)
-#target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_ARDUBOY_FILE)
-target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLATFORM_SOKOL)
-target_include_directories(ArdensPlayer PRIVATE
-	src
-    src/imgui
-    src/gifenc
-    src/rapidjson/include
-    )
-target_link_libraries(ArdensPlayer PRIVATE
-    miniz
-    fmt
-    bitsery
-	${SYSTEM_LIBS}
-    )
+        ${ARDENS_SOURCES}
 
-set(ARDENS_LIBRETRO_TYPE SHARED)
-if(LIBRETRO_STATIC)
-    set(ARDENS_LIBRETRO_TYPE STATIC)
+        src/stb_image_write.h
+        ${IMGUI_SOURCES}
+        ${GIFENC_SOURCES}
+        ${EM_FILE_BROWSER_SOURCES}
+        ${SOKOL_SOURCES}
+        )
+    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLAYER)
+    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SNAPSHOTS)
+    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_DEBUGGER)
+    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_GUI)
+    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SCALING)
+    #target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_ARDUBOY_FILE)
+    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLATFORM_SOKOL)
+    target_include_directories(ArdensPlayer PRIVATE
+        src
+        src/imgui
+        src/gifenc
+        src/rapidjson/include
+        )
+    target_link_libraries(ArdensPlayer PRIVATE
+        miniz
+        fmt
+        bitsery
+        ${SYSTEM_LIBS}
+        )
+
 endif()
-add_library(ardens_libretro ${ARDENS_LIBRETRO_TYPE}
-    .editorconfig
-    ${ARDENS_SOURCES}
-    src/libretro_core/libretro.h
-    src/libretro_core/libretro_impl.cpp
-    )
-target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
-target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
-target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_GUI)
-target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SCALING)
-target_link_libraries(ardens_libretro PRIVATE
-    miniz
-    fmt
-    bitsery
-    )
-target_include_directories(ardens_libretro PUBLIC src)
-target_include_directories(ardens_libretro PRIVATE src/rapidjson/include)
-# WHY IS THIS NECESSARY???
-if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
-    target_compile_options(ardens_libretro PRIVATE "/Zc:__cplusplus")
+
+if(ARDENS_LIBRETRO)
+
+    set(ARDENS_LIBRETRO_TYPE SHARED)
+    if(LIBRETRO_STATIC)
+        set(ARDENS_LIBRETRO_TYPE STATIC)
+    endif()
+    add_library(ardens_libretro ${ARDENS_LIBRETRO_TYPE}
+        .editorconfig
+        ${ARDENS_SOURCES}
+        src/libretro_core/libretro.h
+        src/libretro_core/libretro_impl.cpp
+        )
+    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
+    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
+    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_GUI)
+    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SCALING)
+    target_link_libraries(ardens_libretro PRIVATE
+        miniz
+        fmt
+        bitsery
+        )
+    target_include_directories(ardens_libretro PUBLIC src)
+    target_include_directories(ardens_libretro PRIVATE src/rapidjson/include)
+    # WHY IS THIS NECESSARY???
+    if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
+        target_compile_options(ardens_libretro PRIVATE "/Zc:__cplusplus")
+    endif()
+    if(ANDROID)
+        set_target_properties(ardens_libretro PROPERTIES SUFFIX "_android.so")
+    elseif(EMSCRIPTEN)
+        set_target_properties(ardens_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.bc")
+    elseif(LIBRETRO_STATIC)
+        set_target_properties(ardens_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
+    endif()
+    set_target_properties(ardens_libretro PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    set_target_properties(ardens_libretro PROPERTIES PREFIX "")
+
 endif()
-if(ANDROID)
-    set_target_properties(ardens_libretro PROPERTIES SUFFIX "_android.so")
-elseif(EMSCRIPTEN)
-    set_target_properties(ardens_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.bc")
-elseif(LIBRETRO_STATIC)
-    set_target_properties(ardens_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
-endif()
-set_target_properties(ardens_libretro PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set_target_properties(ardens_libretro PROPERTIES PREFIX "")
 
 set_source_files_properties(
     src/absim_snapshot.cpp
@@ -397,11 +412,22 @@ set_source_files_properties(
     )
 
 if(MSVC)
-    target_compile_options(Ardens PRIVATE /Zc:__cplusplus)
-    target_compile_options(ArdensPlayer PRIVATE /Zc:__cplusplus)
+    if(ARDENS_DEBUGGER)
+        target_compile_options(Ardens PRIVATE /Zc:__cplusplus)
+    endif()
+    if(ARDENS_PLAYER)
+        target_compile_options(ArdensPlayer PRIVATE /Zc:__cplusplus)
+    endif()
+    if(ARDENS_LIBRETRO)
+        target_compile_options(ardens_libretro PRIVATE /Zc:__cplusplus)
+    endif()
 endif()
 
 if(EMSCRIPTEN)
-    target_link_options(Ardens PRIVATE "-lidbfs.js")
-    target_link_options(ArdensPlayer PRIVATE "-lidbfs.js")
+    if(ARDENS_DEBUGGER)
+        target_link_options(Ardens PRIVATE "-lidbfs.js")
+    endif()
+    if(ARDENS_PLAYER)
+        target_link_options(ArdensPlayer PRIVATE "-lidbfs.js")
+    endif()
 endif()
