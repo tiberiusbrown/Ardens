@@ -69,7 +69,7 @@ void retro_init()
 
 void retro_deinit()
 {
-    arduboy->reset();
+    arduboy.reset();
 }
 
 unsigned retro_api_version()
