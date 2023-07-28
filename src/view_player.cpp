@@ -5,6 +5,77 @@
 
 #include <cmath>
 
+// as a factor of width
+constexpr float ARROW_SIZE = 3.f / 32;
+constexpr float AB_SIZE = 4.f / 32;
+
+static ImVec2 rect_viewsize()
+{
+    auto size = ImGui::GetMainViewport()->Size;
+    float w = std::min(size.x, size.y * 2.f);
+    float h = w * 0.5f;
+    return { w, h };
+}
+
+static ImVec2 rect_offset()
+{
+    auto size = ImGui::GetMainViewport()->Size;
+    auto rsize = rect_viewsize();
+    float x = (size.x - rsize.x) * 0.5f;
+    float y = (size.y - rsize.y) * 0.75f;
+    return { x, y };
+}
+
+touch_rect_t touch_rect(int btn)
+{
+    if((unsigned)btn >= 6) return {};
+    constexpr float OX[6] = { 4, 4, 1, 7, 22, 27 };
+    constexpr float OY[6] = { 6, 12, 9, 9, 10, 7 };
+    constexpr float SZ[6] = { 3, 3, 3, 3, 4, 4 };
+    touch_rect_t r;
+    auto off = rect_offset();
+    auto rsize = rect_viewsize();
+    float size = rect_viewsize().x * SZ[btn] / 32.f;
+    r.x0 = off.x + rsize.x * (OX[btn] / 32.f);
+    r.y0 = off.y + rsize.y * (OY[btn] / 16.f);
+    r.x1 = r.x0 + size;
+    r.y1 = r.y0 + size;
+    return r;
+}
+
+static void draw_button(ImDrawList* d, int btn, touched_buttons_t const& pressed)
+{
+    constexpr ImU32 pcol = IM_COL32(200, 0, 0, 100);
+    constexpr ImU32 col = IM_COL32(150, 0, 150, 100);
+    auto r = touch_rect(btn);
+    float s = 0.1f * (r.x1 - r.x0);
+    r.x0 += s;
+    r.y0 += s;
+    r.x1 -= s;
+    r.y1 -= s;
+    d->AddRectFilled(
+        { r.x0, r.y0 }, { r.x1, r.y1 },
+        pressed.btns[btn] ? pcol : col,
+        pixel_ratio * 15.f, 0);
+}
+
+touched_buttons_t touched_buttons()
+{
+    touched_buttons_t t{};
+    for(int i = 0; i < 6; ++i)
+    {
+        auto r = touch_rect(i);
+        float s = 0.3f * (r.x1 - r.x0);
+        for(auto const& [k, v] : touch_points)
+        {
+            if(!(v.x >= r.x0 - s && v.x < r.x1 + s)) continue;
+            if(!(v.y >= r.y0 - s && v.y < r.y1 + s)) continue;
+            t.btns[i] = true;
+        }
+    }
+    return t;
+}
+
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 {
     {
@@ -98,10 +169,22 @@ void view_player()
 
     ImVec2 dstart = {
         std::round((size.x - dsize.x) * 0.5f),
-        std::round((size.y - dsize.y) * 0.5f)
+        std::round((size.y - dsize.y) * 0.25f)
     };
     display_with_scanlines(d, dstart,
         { dstart.x + dsize.x, dstart.y + dsize.y });
+
+    // draw touch icons
+    if(ms_since_touch < MS_SHOW_TOUCH_CONTROLS)
+    {
+        auto pressed = touched_buttons();
+        draw_button(d, TOUCH_U, pressed);
+        draw_button(d, TOUCH_D, pressed);
+        draw_button(d, TOUCH_L, pressed);
+        draw_button(d, TOUCH_R, pressed);
+        draw_button(d, TOUCH_A, pressed);
+        draw_button(d, TOUCH_B, pressed);
+    }
 
     if(gif_recording)
     {

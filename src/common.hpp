@@ -2,6 +2,7 @@
 
 #include <string>
 #include <stdint.h>
+#include <unordered_map>
 
 #include "absim.hpp"
 #include "settings.hpp"
@@ -17,6 +18,16 @@ extern texture_t display_buffer_texture;
 extern std::string dropfile_err;
 extern bool loading_indicator;
 extern uint64_t ms_since_start;
+
+constexpr uint64_t MS_SHOW_TOUCH_CONTROLS = 30000;
+extern uint64_t ms_since_touch;
+struct touch_point_t { float x, y; };
+extern std::unordered_map<uintptr_t, touch_point_t> touch_points;
+enum { TOUCH_U, TOUCH_D, TOUCH_L, TOUCH_R, TOUCH_A, TOUCH_B };
+struct touched_buttons_t { bool btns[6]; };
+struct touch_rect_t { float x0, y0, x1, y1; };
+touched_buttons_t touched_buttons(); // defined in view_player
+touch_rect_t touch_rect(int btn);
 
 // platform-agnostic functionality (common.cpp)
 extern "C" int setparam(char const* name, char const* value);

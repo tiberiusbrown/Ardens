@@ -102,6 +102,32 @@ static void app_event(sapp_event const* e)
 {
     simgui_handle_event(e);
 
+#if 0
+    if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
+        touch_points[0] = { e->mouse_x, e->mouse_y };
+    if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !touch_points.empty())
+        touch_points[0] = { e->mouse_x, e->mouse_y };
+    if(e->type == SAPP_EVENTTYPE_MOUSE_UP)
+        touch_points.clear();
+#else
+    if( e->type == SAPP_EVENTTYPE_TOUCHES_BEGAN ||
+        e->type == SAPP_EVENTTYPE_TOUCHES_MOVED)
+    {
+        for(int i = 0; i < e->num_touches; ++i)
+        {
+            auto& tp = touch_points[e->touches[i].identifier];
+            tp = { e->touches[i].pos_x, e->touches[i].pos_y };
+        }
+    }
+    if(e->type == SAPP_EVENTTYPE_TOUCHES_ENDED)
+    {
+        for(int i = 0; i < e->num_touches; ++i)
+            touch_points.erase(e->touches[i].identifier);
+    }
+    if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
+        touch_points.clear();
+#endif
+
 #ifndef __EMSCRIPTEN__
     if(e->type == SAPP_EVENTTYPE_FILES_DROPPED)
     {

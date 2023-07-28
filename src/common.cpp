@@ -62,6 +62,9 @@ std::string dropfile_err;
 bool loading_indicator = false;
 uint64_t ms_since_start;
 
+uint64_t ms_since_touch;
+std::unordered_map<uintptr_t, touch_point_t> touch_points;
+
 bool done = false;
 bool layout_done = false;
 bool settings_loaded = false;
@@ -278,7 +281,7 @@ void shutdown()
 
 void init()
 {
-    printf("absim " ARDENS_VERSION " by Peter Brown\n");
+    printf("Ardens " ARDENS_VERSION " by Peter Brown\n");
 
 #ifdef __EMSCRIPTEN__
     EM_ASM(
@@ -325,6 +328,7 @@ void init()
     arduboy->fx.max_page = 0xffff;
 
     ms_since_start = 0;
+    ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
 }
 
 void save_screenshot()
@@ -371,15 +375,15 @@ void take_snapshot()
     time(&rawtime);
     ti = localtime(&rawtime);
     (void)snprintf(fname, sizeof(fname),
-        "absim_%04d%02d%02d%02d%02d%02d.snapshot",
+        "ardens_%04d%02d%02d%02d%02d%02d.snapshot",
         ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
         ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
 #ifdef __EMSCRIPTEN__
-    std::ofstream f("absim.snapshot", std::ios::binary);
+    std::ofstream f("ardens.snapshot", std::ios::binary);
     if(arduboy->save_snapshot(f))
     {
         f.close();
-        file_download("absim.snapshot", fname, "application/octet-stream");
+        file_download("ardens.snapshot", fname, "application/octet-stream");
     }
 #else
     std::ofstream f(fname, std::ios::binary);
@@ -392,6 +396,9 @@ void frame_logic()
 {
     ImGuiIO& io = ImGui::GetIO();
 
+    if(!touch_points.empty())
+        ms_since_touch = 0;
+
 #ifdef __EMSCRIPTEN__
     if(done) emscripten_cancel_main_loop();
 #endif
@@ -399,6 +406,7 @@ void frame_logic()
     // advance simulation
     uint64_t dt = platform_get_ms_dt();
     ms_since_start += dt;
+    ms_since_touch += dt;
     if(dt > 30) dt = 30;
     if(!arduboy->paused)
     {
@@ -418,16 +426,22 @@ void frame_logic()
                 ImGuiKey_DownArrow,
                 ImGuiKey_LeftArrow,
             };
+            std::array<int, 4> tkeys =
+            {
+                TOUCH_U, TOUCH_R, TOUCH_D, TOUCH_L,
+            };
+            auto touch = touched_buttons();
 
             std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
+            std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
 
-            if(ImGui::IsKeyDown(keys[0])) pinf &= ~0x80;
-            if(ImGui::IsKeyDown(keys[1])) pinf &= ~0x40;
-            if(ImGui::IsKeyDown(keys[2])) pinf &= ~0x10;
-            if(ImGui::IsKeyDown(keys[3])) pinf &= ~0x20;
+            if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~0x80;
+            if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~0x40;
+            if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~0x10;
+            if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~0x20;
 
-            if(ImGui::IsKeyDown(ImGuiKey_A)) pine &= ~0x40;
-            if(ImGui::IsKeyDown(ImGuiKey_B) || ImGui::IsKeyDown(ImGuiKey_S)) pinb &= ~0x10;
+            if(ImGui::IsKeyDown(ImGuiKey_A) || touch.btns[TOUCH_A]) pine &= ~0x40;
+            if(ImGui::IsKeyDown(ImGuiKey_B) || ImGui::IsKeyDown(ImGuiKey_S) || touch.btns[TOUCH_B]) pinb &= ~0x10;
 
             arduboy->cpu.data[0x23] = pinb;
             arduboy->cpu.data[0x2c] = pine;
