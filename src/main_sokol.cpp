@@ -119,6 +119,8 @@ static void app_event(sapp_event const* e)
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
         touch_points.clear();
+
+#if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
     {
         touch_points.clear();
@@ -128,6 +130,7 @@ static void app_event(sapp_event const* e)
         touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
     if(e->type == SAPP_EVENTTYPE_MOUSE_UP)
         touch_points.clear();
+#endif
 
 #ifndef __EMSCRIPTEN__
     if(e->type == SAPP_EVENTTYPE_FILES_DROPPED)
