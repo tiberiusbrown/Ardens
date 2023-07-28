@@ -102,11 +102,12 @@ static void app_event(sapp_event const* e)
 {
     simgui_handle_event(e);
 
+    float ipr = 1.f / pixel_ratio;
 #if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
-        touch_points[0] = { e->mouse_x, e->mouse_y };
+        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
     if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !touch_points.empty())
-        touch_points[0] = { e->mouse_x, e->mouse_y };
+        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
     if(e->type == SAPP_EVENTTYPE_MOUSE_UP)
         touch_points.clear();
 #else
@@ -116,7 +117,7 @@ static void app_event(sapp_event const* e)
         for(int i = 0; i < e->num_touches; ++i)
         {
             auto& tp = touch_points[e->touches[i].identifier];
-            tp = { e->touches[i].pos_x, e->touches[i].pos_y };
+            tp = { e->touches[i].pos_x * ipr, e->touches[i].pos_y * ipr };
         }
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_ENDED)
