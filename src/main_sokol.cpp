@@ -103,14 +103,6 @@ static void app_event(sapp_event const* e)
     simgui_handle_event(e);
 
     float ipr = 1.f / pixel_ratio;
-#if 0
-    if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
-        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
-    if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !touch_points.empty())
-        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
-    if(e->type == SAPP_EVENTTYPE_MOUSE_UP)
-        touch_points.clear();
-#else
     if( e->type == SAPP_EVENTTYPE_TOUCHES_BEGAN ||
         e->type == SAPP_EVENTTYPE_TOUCHES_MOVED)
     {
@@ -127,7 +119,15 @@ static void app_event(sapp_event const* e)
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
         touch_points.clear();
-#endif
+    if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
+    {
+        touch_points.clear();
+        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
+    }
+    if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !touch_points.empty())
+        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
+    if(e->type == SAPP_EVENTTYPE_MOUSE_UP)
+        touch_points.clear();
 
 #ifndef __EMSCRIPTEN__
     if(e->type == SAPP_EVENTTYPE_FILES_DROPPED)

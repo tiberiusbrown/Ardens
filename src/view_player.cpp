@@ -190,7 +190,7 @@ void view_player()
         { dstart.x + dsize.x, dstart.y + dsize.y });
 
     // draw touch icons
-    if(ms_since_touch < MS_SHOW_TOUCH_CONTROLS)
+    if(ms_since_touch < MS_SHOW_TOUCH_CONTROLS || rect_offset().y >= dstart.y + dsize.y)
     {
         auto pressed = touched_buttons();
         draw_button(d, TOUCH_U, pressed);
