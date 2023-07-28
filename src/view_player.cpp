@@ -22,41 +22,55 @@ static ImVec2 rect_offset()
     auto size = ImGui::GetMainViewport()->Size;
     auto rsize = rect_viewsize();
     float x = (size.x - rsize.x) * 0.5f;
-    float y = (size.y - rsize.y) * 0.75f;
+    float y = (size.y - rsize.y) * 0.5f;
+    y = std::clamp(y + rsize.y * 0.5f, y, size.y - rsize.y);
     return { x, y };
 }
 
 touch_rect_t touch_rect(int btn)
 {
     if((unsigned)btn >= 6) return {};
-    constexpr float OX[6] = { 4, 4, 1, 7, 22, 27 };
-    constexpr float OY[6] = { 6, 12, 9, 9, 10, 7 };
-    constexpr float SZ[6] = { 3, 3, 3, 3, 4, 4 };
-    touch_rect_t r;
+    constexpr float OX[6] = { 6, 6, 2, 10, 18, 25 };
+    constexpr float OY[6] = { 2, 10, 6, 6, 7, 4 };
+    constexpr float SZ[6] = { 4, 4, 4, 4, 5, 5 };
+    touch_rect_t r{};
     auto off = rect_offset();
     auto rsize = rect_viewsize();
-    float size = rect_viewsize().x * SZ[btn] / 32.f;
-    r.x0 = off.x + rsize.x * (OX[btn] / 32.f);
-    r.y0 = off.y + rsize.y * (OY[btn] / 16.f);
-    r.x1 = r.x0 + size;
-    r.y1 = r.y0 + size;
+    float size = rsize.x * SZ[btn] / 32.f;
+    
+    //float btnsize = rsize.x * pixel_ratio * (3.f / 32.f);
+    //float scale = std::clamp(50.f / btnsize, 1.f, 1.4f);
+    constexpr float scale = 1.f;
+
+    r.x0 = off.x + rsize.x * scale * (OX[btn] / 32.f);
+    r.y0 = off.y + rsize.y * scale * (OY[btn] / 16.f);
+    //if(btn == TOUCH_A || btn == TOUCH_B)
+    //    r.x0 = rsize.x - r.x0 - size * scale;
+    r.x1 = r.x0 + size * scale;
+    r.y1 = r.y0 + size * scale;
     return r;
 }
 
 static void draw_button(ImDrawList* d, int btn, touched_buttons_t const& pressed)
 {
-    constexpr ImU32 pcol = IM_COL32(200, 0, 0, 100);
-    constexpr ImU32 col = IM_COL32(150, 0, 150, 100);
+    constexpr ImU32 pcol = IM_COL32(150, 150, 150, 150);
+    constexpr ImU32 col = IM_COL32(100, 100, 100, 70);
+    constexpr ImU32 outline_col = IM_COL32(50, 50, 50, 150);
     auto r = touch_rect(btn);
     float s = 0.1f * (r.x1 - r.x0);
     r.x0 += s;
     r.y0 += s;
     r.x1 -= s;
     r.y1 -= s;
+    float rounding = pixel_ratio * s;
     d->AddRectFilled(
         { r.x0, r.y0 }, { r.x1, r.y1 },
         pressed.btns[btn] ? pcol : col,
-        pixel_ratio * 15.f, 0);
+        rounding, 0);
+    d->AddRect(
+        { r.x0, r.y0 }, { r.x1, r.y1 },
+        outline_col,
+        rounding, 0, 5.f * pixel_ratio);
 }
 
 touched_buttons_t touched_buttons()
@@ -169,8 +183,9 @@ void view_player()
 
     ImVec2 dstart = {
         std::round((size.x - dsize.x) * 0.5f),
-        std::round((size.y - dsize.y) * 0.25f)
+        std::round((size.y - dsize.y) * 0.5f)
     };
+    dstart.y = std::max(0.f, dstart.y - dsize.y * 0.5f);
     display_with_scanlines(d, dstart,
         { dstart.x + dsize.x, dstart.y + dsize.y });
 
