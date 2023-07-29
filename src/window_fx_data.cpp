@@ -46,7 +46,7 @@ void window_fx_data(bool& open)
 	using namespace ImGui;
     if(!open) return;
 
-    SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("FX Data", &open))
     {
         if(autopage || !*minpagebuf)

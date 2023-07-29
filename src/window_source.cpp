@@ -89,7 +89,7 @@ void window_source(bool& open)
 
     static uint16_t prev_pc = -1;
 
-    SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Source##SourceWindow", &open)
         && arduboy->cpu.decoded && arduboy->elf && arduboy->paused)
     {

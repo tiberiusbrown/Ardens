@@ -144,7 +144,7 @@ void window_call_stack(bool& open)
 	using namespace ImGui;
 	if(!open) return;
 
-	SetNextWindowSize({ 200, 100 }, ImGuiCond_FirstUseEver);
+	SetNextWindowSize({ 200 * pixel_ratio, 100 * pixel_ratio }, ImGuiCond_FirstUseEver);
 	if(Begin("Call Stack", &open) && arduboy->cpu.decoded && arduboy->paused)
 	{
 		window_call_stack_contents();

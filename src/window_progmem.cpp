@@ -52,7 +52,7 @@ void window_progmem(bool& open)
 
     if(open)
     {
-        SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
+        SetNextWindowSize({ 200 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
         if(Begin("PROGMEM Space", &open) && arduboy->cpu.decoded)
         {
             memed.DrawContents(

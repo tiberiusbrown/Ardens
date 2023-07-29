@@ -11,7 +11,7 @@ void window_symbols(bool& open)
 {
     using namespace ImGui;
     if(!open) return;
-    SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Symbols", &open) && arduboy->cpu.decoded && arduboy->elf)
     {
         AlignTextToFramePadding();

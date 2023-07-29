@@ -351,7 +351,7 @@ void window_disassembly(bool& open)
 {
     using namespace ImGui;
     if(!open) return;
-    SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 200 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     int do_scroll = disassembly_scroll_addr;
     disassembly_scroll_addr = -1;
     if(scroll_highlight_time > 0)

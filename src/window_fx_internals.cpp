@@ -7,7 +7,7 @@ void window_fx_internals(bool& open)
 	using namespace ImGui;
     if(!open) return;
 
-    SetNextWindowSize({ 300, 100 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 300 * pixel_ratio, 100 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("FX Internals", &open) && arduboy->cpu.decoded)
     {
         if(!arduboy->fx.command.empty())

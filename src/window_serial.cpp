@@ -15,7 +15,7 @@ void window_serial(bool& open)
 
     if(!open) return;
 
-    SetNextWindowSize({ 400, 200 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * pixel_ratio, 200 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Serial Monitor", &open) && arduboy->cpu.decoded)
     {
         auto& buf = arduboy->cpu.serial_bytes;

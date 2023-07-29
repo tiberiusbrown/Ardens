@@ -627,7 +627,7 @@ void imgui_content()
     if(!dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
         ImGui::OpenPopup("File Load Error");
 
-    ImGui::SetNextWindowSize({ 500, 0 });
+    ImGui::SetNextWindowSize({ 500 * pixel_ratio, 0 });
     if(ImGui::BeginPopupModal("File Load Error", NULL,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
@@ -663,7 +663,7 @@ void imgui_content()
         "FX Busy: attempted to execute FX command while flash chip was busy."
     };
 
-    ImGui::SetNextWindowSize({ 300, 0 });
+    ImGui::SetNextWindowSize({ 300 * pixel_ratio, 0 });
     if(ImGui::BeginPopupModal("Auto-Break", NULL,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))

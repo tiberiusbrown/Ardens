@@ -119,7 +119,7 @@ void window_cpu_usage(bool& open)
 {
     if(!open) return;
 
-    ImGui::SetNextWindowSize({ 400, 200 }, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({ 400 * pixel_ratio, 200 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(ImGui::Begin("CPU Usage", &open) && arduboy->cpu.decoded)
     {
         window_contents();

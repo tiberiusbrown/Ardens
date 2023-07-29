@@ -30,7 +30,7 @@ void window_display_internals(bool& open)
 	using namespace ImGui;
     if(!open) return;
 
-    SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 200 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Display Internals", &open) && arduboy->cpu.decoded)
     {
         auto const& d = arduboy->display;

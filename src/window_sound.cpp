@@ -78,7 +78,7 @@ void window_sound(bool& open)
         ImPlotAxisFlags_NoHighlight |
         0;
 
-    SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Sound", &open) && arduboy->cpu.decoded)
     {
         float plot_height = (GetContentRegionAvail().y - ImGui::GetStyle().ItemSpacing.y) * 0.5f;

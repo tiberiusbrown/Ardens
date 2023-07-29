@@ -277,7 +277,7 @@ void window_data_space(bool& open)
 
     if(open)
     {
-        SetNextWindowSize({ 200, 400 }, ImGuiCond_FirstUseEver);
+        SetNextWindowSize({ 200 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
         if(Begin("CPU Data Space", &open) && arduboy->cpu.decoded)
         {
             if(arduboy->cpu.stack_check > 0x100)

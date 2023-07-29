@@ -50,7 +50,7 @@ void window_display_buffer(bool& open)
     using namespace ImGui;
     if(!open) return;
 
-    SetNextWindowSize({ 400, 400 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Display Buffer (RAM)", &open) && arduboy->cpu.decoded)
     {
         AlignTextToFramePadding();

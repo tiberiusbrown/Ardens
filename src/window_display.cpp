@@ -9,7 +9,7 @@ void window_display(bool& open)
 
     if(open)
     {
-        SetNextWindowSize({ 400, 200 }, ImGuiCond_FirstUseEver);
+        SetNextWindowSize({ 400 * pixel_ratio, 200 * pixel_ratio }, ImGuiCond_FirstUseEver);
         if(Begin("Display", &open,
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse))

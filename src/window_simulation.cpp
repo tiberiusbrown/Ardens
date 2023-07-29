@@ -17,7 +17,7 @@ void window_simulation(bool& open)
 	using namespace ImGui;
     if(!open) return;
     
-    SetNextWindowSize({ 200, 100 }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 200 * pixel_ratio, 100 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Simulation", &open) && arduboy->cpu.decoded)
     {
         SliderInt("Speed:", &slider_val, 0, sizeof(SLIDERS) / sizeof(int) - 1, "");
