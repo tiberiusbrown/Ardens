@@ -63,6 +63,7 @@ bool loading_indicator = false;
 uint64_t ms_since_start;
 
 uint64_t ms_since_touch;
+bool first_touch = false;
 std::unordered_map<uintptr_t, touch_point_t> touch_points;
 
 bool done = false;

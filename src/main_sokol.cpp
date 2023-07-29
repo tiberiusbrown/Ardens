@@ -106,6 +106,7 @@ static void app_event(sapp_event const* e)
     if( e->type == SAPP_EVENTTYPE_TOUCHES_BEGAN ||
         e->type == SAPP_EVENTTYPE_TOUCHES_MOVED)
     {
+        first_touch = true;
         for(int i = 0; i < e->num_touches; ++i)
         {
             auto& tp = touch_points[e->touches[i].identifier];

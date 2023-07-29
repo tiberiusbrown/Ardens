@@ -185,12 +185,14 @@ void view_player()
         std::round((size.x - dsize.x) * 0.5f),
         std::round((size.y - dsize.y) * 0.5f)
     };
-    dstart.y = std::max(0.f, dstart.y - dsize.y * 0.5f);
+    if(first_touch)
+        dstart.y = std::max(0.f, dstart.y - dsize.y * 0.5f);
     display_with_scanlines(d, dstart,
         { dstart.x + dsize.x, dstart.y + dsize.y });
 
     // draw touch icons
-    if(ms_since_touch < MS_SHOW_TOUCH_CONTROLS || rect_offset().y >= dstart.y + dsize.y)
+    if(first_touch && (
+        ms_since_touch < MS_SHOW_TOUCH_CONTROLS || rect_offset().y >= dstart.y + dsize.y))
     {
         auto pressed = touched_buttons();
         draw_button(d, TOUCH_U, pressed);

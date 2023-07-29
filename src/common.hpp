@@ -20,6 +20,7 @@ extern bool loading_indicator;
 extern uint64_t ms_since_start;
 
 constexpr uint64_t MS_SHOW_TOUCH_CONTROLS = 10000;
+extern bool first_touch;
 extern uint64_t ms_since_touch;
 struct touch_point_t { float x, y; };
 extern std::unordered_map<uintptr_t, touch_point_t> touch_points;
