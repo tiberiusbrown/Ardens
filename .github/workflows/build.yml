@@ -219,24 +219,24 @@ jobs:
         GH_REPO: ${{ github.repository }}
       run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_win64.zip"
   
-  #build_macos:
-  #
-  #  runs-on: macos-latest
-  #
-  #  steps:
-  #  - name: Checkout
-  #    uses: actions/checkout@v3
-  #    with:
-  #      submodules: 'recursive'
-  #
-  #  - name: Configure
-  #    run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-  #
-  #  - name: Build
-  #    run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-  #
-  #  - name: Upload Build Artifact
-  #    uses: actions/upload-artifact@v3.1.2
-  #    with:
-  #      name: Release_MacOS
-  #      path: ${{github.workspace}}/build/Ardens
+  build_macos:
+  
+    runs-on: macos-latest
+  
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+  
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0
+  
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+  
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: Release_MacOS
+        path: ${{github.workspace}}/build/Ardens

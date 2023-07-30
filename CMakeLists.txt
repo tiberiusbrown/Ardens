@@ -36,6 +36,10 @@ option(ARDENS_DEBUGGER "Build debugger target" ON)
 option(ARDENS_PLAYER   "Build player target" ON)
 option(ARDENS_LIBRETRO "Build libretro core target" OFF)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOS TRUE)
+endif()
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(GetGitRevisionDescription)
 git_describe(ARDENS_VERSION)
@@ -215,6 +219,22 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m)
 endif()
 
+macro(configure_app_target target)
+    if(MACOS)
+        set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${target}")
+        set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER "${target}")
+        set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_PRODUCT_NAME "${target}")
+        set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_BUNDLE_NAME "${target}")
+        target_compile_options(${target} PRIVATE -x objective-c++)
+    endif()
+endmacro()
+
+if(MACOS)
+    set(SYSTEM_LIBS ${SYSTEM_LIBS} "-framework QuartzCore" "-framework Cocoa" "-framework AudioToolbox")
+    set(SYSTEM_LIBS ${SYSTEM_LIBS} "-framework MetalKit" "-framework Metal")
+    set(EXEFLAG MACOSX_BUNDLE)
+endif()
+
 set(RC_FILE)
 if(WIN32)
     set(RC_FILE "img/Ardens.rc")
@@ -307,6 +327,7 @@ if(ARDENS_DEBUGGER)
         src/hqx/include
         src/rapidjson/include
         )
+    configure_app_target(Ardens)
         
 endif()
 
@@ -359,6 +380,7 @@ if(ARDENS_PLAYER)
         bitsery
         ${SYSTEM_LIBS}
         )
+    configure_app_target(ArdensPlayer)
 
 endif()
 
