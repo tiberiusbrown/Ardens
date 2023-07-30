@@ -232,14 +232,18 @@ macro(configure_app_target target)
         set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_GUI_IDENTIFIER "net.odgen.${target}")
         set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_LONG_VERSION_STRING "${ARDENS_VERSION}")
         set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING "${ARDENS_VERSION_SHORT}")
+        set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_ICON_FILE  "ardens.icns")
         target_compile_options(${target} PRIVATE -x objective-c++)
     endif()
 endmacro()
 
+set(MACOS_ICON)
 if(MACOS)
     set(SYSTEM_LIBS ${SYSTEM_LIBS} "-framework QuartzCore" "-framework Cocoa" "-framework AudioToolbox")
     set(SYSTEM_LIBS ${SYSTEM_LIBS} "-framework MetalKit" "-framework Metal")
     set(EXEFLAG MACOSX_BUNDLE)
+    set(MACOS_ICON ${CMAKE_CURRENT_SOURCE_DIR}/img/ardens.icns)
+    set_source_files_properties(${MACOS_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 
 set(RC_FILE)
@@ -255,6 +259,7 @@ if(ARDENS_DEBUGGER)
         src/main_sdl.cpp
         src/main_sokol.cpp
         ${RC_FILE}
+        ${MACOS_ICON}
 
         src/font.cpp
         src/settings.hpp
@@ -346,6 +351,7 @@ if(ARDENS_PLAYER)
         src/main_sdl.cpp
         src/main_sokol.cpp
         ${RC_FILE}
+        ${MACOS_ICON}
 
         src/settings.hpp
         src/settings.cpp
