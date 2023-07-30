@@ -159,7 +159,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_linux.zip"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_linux_x64.zip"
 
   build_windows_x86:
   
@@ -188,7 +188,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_win32.zip"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_windows_x86.zip"
   
   build_windows_x64:
   
@@ -217,7 +217,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_win64.zip"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_windows_x64.zip"
   
   build_macos:
   
@@ -232,7 +232,7 @@ jobs:
         submodules: 'recursive'
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Build
       run: |
