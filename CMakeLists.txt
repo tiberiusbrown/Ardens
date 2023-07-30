@@ -129,7 +129,7 @@ set(IMGUI_SOURCES
     src/imgui/imgui_internal.h
     src/imgui/imgui.h
     src/imgui/imgui.cpp
-    src/imgui/imgui_demo.cpp
+    #src/imgui/imgui_demo.cpp
     src/imgui/imgui_draw.cpp
     src/imgui/imgui_tables.cpp
     src/imgui/imgui_widgets.cpp
