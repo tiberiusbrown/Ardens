@@ -221,6 +221,8 @@ jobs:
   
   build_macos:
   
+    name: Build (MacOS x64)
+    needs: [release]
     runs-on: macos-latest
   
     steps:
