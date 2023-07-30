@@ -46,7 +46,7 @@ typedef struct Node Node;
 static Node *
 new_node(uint16_t key, int degree)
 {
-    Node *node = calloc(1, sizeof(*node) + degree * sizeof(Node *));
+    Node *node = (Node*)calloc(1, sizeof(*node) + degree * sizeof(Node *));
     if(node)
         node->key = key;
     return node;
@@ -93,7 +93,7 @@ ge_new_gif(
     int i, r, g, b, v;
     int store_gct, custom_gct;
     int nbuffers = bgindex < 0 ? 2 : 1;
-    ge_GIF *gif = calloc(1, sizeof(*gif) + nbuffers*width*height);
+    ge_GIF *gif = (ge_GIF*)calloc(1, sizeof(*gif) + nbuffers*width*height);
     if(!gif)
         goto no_gif;
     gif->w = width; gif->h = height;
