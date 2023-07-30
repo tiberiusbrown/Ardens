@@ -237,6 +237,7 @@ jobs:
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        find ${{github.workspace}}/build -name '*.app'
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.app" "ArdensPlayer.app"
         cmake -E tar "cfv" "Ardens_macos_x64.zip" --format=zip "ArdensPlayer.app"
   
