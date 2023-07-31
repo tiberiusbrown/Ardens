@@ -79,7 +79,7 @@ if(ARDENS_LLVM)
 	message(STATUS "Fetching llvm-project")
 	FetchContent_Declare(
 		llvm-project
-		URL https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-project-15.0.7.src.tar.xz
+		URL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
 		)
 
     if(MSVC)
@@ -106,8 +106,6 @@ if(ARDENS_LLVM)
     set(LLVM_ENABLE_TIMESTAMPS             OFF CACHE BOOL   "" FORCE)
     set(LLVM_ENABLE_TERMINFO               OFF CACHE BOOL   "" FORCE)
     set(LLVM_ENABLE_ZLIB                   OFF CACHE BOOL   "" FORCE)
-    set(LLVM_ENABLE_ZSTD                   ON  CACHE BOOL   "" FORCE)
-    set(LLVM_USE_STATIC_ZSTD               ON  CACHE BOOL   "" FORCE)
     set(LLVM_ENABLE_LIBXML2                OFF CACHE BOOL   "" FORCE)
     set(_ENABLE_LLVM_NATIVE_BUILD          OFF CACHE BOOL   "" FORCE)
     set(LLVM_TARGETS_TO_BUILD              ";" CACHE STRING "" FORCE)
