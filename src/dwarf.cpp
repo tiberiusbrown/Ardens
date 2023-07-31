@@ -60,15 +60,15 @@ bool dwarf_member_addr(
 {
     if(auto a = die.find(llvm::dwarf::DW_AT_bit_size))
         if(auto v = a->getAsUnsignedConstant())
-            bit_size = (uint32_t)v.getValue();
+            bit_size = (uint32_t)v.value();
     if(bit_size != 0)
     {
         if(auto t = die.find(llvm::dwarf::DW_AT_bit_offset))
             if(auto v = t->getAsUnsignedConstant())
-                bit_offset = dwarf_size(die) * 8 - bit_size - (uint32_t)v.getValue();
+                bit_offset = dwarf_size(die) * 8 - bit_size - (uint32_t)v.value();
         if(auto t = die.find(llvm::dwarf::DW_AT_data_bit_offset))
             if(auto v = t->getAsUnsignedConstant())
-                bit_offset = (uint32_t)v.getValue();
+                bit_offset = (uint32_t)v.value();
     }
     if(auto tloc = die.find(llvm::dwarf::DW_AT_data_member_location))
     {
@@ -168,7 +168,7 @@ uint32_t dwarf_size(llvm::DWARFDie die)
 
     if(auto SizeAttr = die.find(DW_AT_byte_size))
         if(auto Size = SizeAttr->getAsUnsignedConstant())
-            return (uint32_t)Size.getValue();
+            return (uint32_t)Size.value();
 
     constexpr uint32_t PointerSize = 2;
 
@@ -188,7 +188,7 @@ uint32_t dwarf_size(llvm::DWARFDie die)
         DWARFDie BaseType = die.getAttributeValueAsReferencedDie(DW_AT_type);
         if(!BaseType)
             return 0;
-        Optional<uint64_t> BaseSize = BaseType.getTypeSize(PointerSize);
+        auto BaseSize = BaseType.getTypeSize(PointerSize);
         if(!BaseSize)
             return 0;
         uint64_t Size = *BaseSize;
@@ -197,7 +197,7 @@ uint32_t dwarf_size(llvm::DWARFDie die)
                 continue;
 
             if(auto ElemCountAttr = Child.find(DW_AT_count))
-                if(Optional<uint64_t> ElemCount = ElemCountAttr->getAsUnsignedConstant())
+                if(auto ElemCount = ElemCountAttr->getAsUnsignedConstant())
                     Size *= *ElemCount;
             if(auto UpperBoundAttr = Child.find(DW_AT_upper_bound))
             {
@@ -297,8 +297,8 @@ static std::string recurse_varname(llvm::DWARFDie die)
             if(child.getTag() == llvm::dwarf::DW_TAG_subrange_type)
             {
                 if(auto tf = child.find(llvm::dwarf::DW_AT_upper_bound))
-                    if(auto tn = tf.getValue().getAsUnsignedConstant())
-                        n = tn.getValue();
+                    if(auto tn = tf.value().getAsUnsignedConstant())
+                        n = tn.value();
             }
             if(n < 0)
                 brackets += "[]";
@@ -366,7 +366,7 @@ static std::string recurse_value(
             {
                 if(auto tb = child.find(llvm::dwarf::DW_AT_upper_bound))
                     if(auto b = tb->getAsUnsignedConstant())
-                        n *= ((int)b.getValue() + 1), more = false;
+                        n *= ((int)b.value() + 1), more = false;
             }
         }
         auto type = dwarf_type(die);
@@ -404,10 +404,10 @@ static std::string recurse_value(
         if(bits == 0)
             if(auto a = die.find(llvm::dwarf::DW_AT_byte_size))
                 if(auto v = a->getAsUnsignedConstant())
-                    bits = (int)v.getValue() * 8;
+                    bits = (int)v.value() * 8;
         if(auto a = die.find(llvm::dwarf::DW_AT_encoding))
             if(auto v = a->getAsUnsignedConstant())
-                enc = (int)v.getValue();
+                enc = (int)v.value();
         if(bits == 0 || bits > 64)
             break;
         mem = mem.offset(bit_offset / 8);
@@ -440,7 +440,7 @@ static std::string recurse_value(
                 if(child.getTag() != llvm::dwarf::DW_TAG_enumerator)
                     continue;
                 if(auto t = child.find(llvm::dwarf::DW_AT_const_value))
-                    if(auto v = t.getValue().getAsUnsignedConstant())
+                    if(auto v = t.value().getAsUnsignedConstant())
                         if(v == x) return fmt::format("{} ({})", dwarf_name(child), x);
             }
             return fmt::format("<invalid> ({})", x);

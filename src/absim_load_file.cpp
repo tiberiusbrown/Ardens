@@ -365,7 +365,7 @@ static void load_elf_debug_recurse_globals(
         if(a.Attr == llvm::dwarf::DW_AT_location)
         {
             auto opt = a.Value.getAsBlock();
-            if(!opt.hasValue())
+            if(!opt.has_value())
                 continue;
             auto expr = *opt;
             llvm::DataExtractor data(llvm::StringRef(
