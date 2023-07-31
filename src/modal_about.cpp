@@ -99,7 +99,7 @@ void modal_about()
 
     SetCursorPosY(GetCursorPosY() + GetFrameHeight());
 
-    if(Button("OK", ImVec2(120, 0)))
+    if(Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         CloseCurrentPopup();
 
     EndPopup();

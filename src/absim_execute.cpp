@@ -76,6 +76,7 @@ instr_func_t const INSTR_MAP[] =
     instr_jmp,
     instr_ijmp,
     instr_wdr,
+    instr_break,
 
     // merged instrs
     instr_merged_push_n,
@@ -130,6 +131,13 @@ uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
+uint32_t instr_break(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    (void)i;
+    cpu.pc += 1;
+    cpu.autobreak(AB_BREAK);
+    return 1;
+}
 static ARDENS_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
     if(x) cpu.sreg() |= mask;

@@ -456,11 +456,12 @@ void frame_logic()
         bool prev_paused = arduboy->paused;
         arduboy->frame_bytes_total = 1024;
 
-        arduboy->cpu.enabled_autobreaks = 0;
+        arduboy->cpu.enabled_autobreaks.reset();
 #ifndef ARDENS_NO_GUI
+        arduboy->cpu.enabled_autobreaks.set(absim::AB_BREAK);
         for(int i = 1; i < absim::AB_NUM; ++i)
             if(settings.ab.index(i))
-                arduboy->cpu.enabled_autobreaks |= (1 << i);
+                arduboy->cpu.enabled_autobreaks.set(i);
 #endif
 
         arduboy->allow_nonstep_breakpoints =
@@ -532,6 +533,11 @@ void frame_logic()
         settings.fullzoom = !settings.fullzoom;
         update_settings();
     }
+
+#ifndef ARDENS_NO_DEBUGGER
+    if(ImGui::IsKeyPressed(ImGuiKey_F5, false))
+        arduboy->paused = !arduboy->paused;
+#endif
 
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))
         platform_toggle_fullscreen();
@@ -635,7 +641,7 @@ void imgui_content()
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted(dropfile_err.c_str());
         ImGui::PopTextWrapPos();
-        if(ImGui::Button("OK", ImVec2(120, 0)))
+        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         {
             dropfile_err.clear();
             ImGui::CloseCurrentPopup();
@@ -645,12 +651,12 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-    if(arduboy->cpu.should_autobreak())
+    if(arduboy->cpu.should_autobreak_gui())
         ImGui::OpenPopup("Auto-Break");
 
     static std::array<char const*, absim::AB_NUM> const AB_REASONS =
     {
-        "None",
+        "BREAK Instruction",
         "Stack Overflow",
         "Null Dereference: a load/store was executed at address 0x0000.",
         "Null-Relative Dereference: a load/store with displacement (ldd/std) was executed with a null base pointer.",
@@ -684,7 +690,7 @@ void imgui_content()
         ImGui::Separator();
         ImGui::TextUnformatted(AB_REASONS[ab]);
         ImGui::PopTextWrapPos();
-        if(ImGui::Button("OK", ImVec2(120, 0)))
+        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         {
             arduboy->cpu.autobreaks = 0;
             ImGui::CloseCurrentPopup();

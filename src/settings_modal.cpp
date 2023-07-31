@@ -263,6 +263,8 @@ void modal_settings()
                     "FX Busy",
                 };
 
+                static_assert(sizeof(settings_t::ab) == absim::AB_NUM - 1);
+
                 for(int i = 1; i < absim::AB_NUM; ++i)
                 {
                     TableNextRow();
@@ -285,7 +287,7 @@ void modal_settings()
         EndTabBar();
     }
 
-    if(Button("OK", ImVec2(120, 0)))
+    if(Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         CloseCurrentPopup();
 
     EndPopup();

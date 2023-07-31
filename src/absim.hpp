@@ -42,7 +42,8 @@ namespace absim
 
 enum autobreak_t
 {
-    AB_NONE,
+    // special autobreak for the "break" instruction
+    AB_BREAK,
 
     AB_STACK_OVERFLOW,
     AB_NULL_DEREF,
@@ -196,6 +197,12 @@ struct atmega32u4_t
     ARDENS_FORCEINLINE bool should_autobreak() const
     {
         return (autobreaks & enabled_autobreaks).any();
+    }
+    ARDENS_FORCEINLINE bool should_autobreak_gui() const
+    {
+        auto ab = autobreaks;
+        ab.reset(AB_BREAK);
+        return (ab & enabled_autobreaks).any();
     }
 
     ARDENS_FORCEINLINE void check_deref(uint16_t addr)

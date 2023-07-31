@@ -100,6 +100,8 @@ static char const* get_instr_name(avr_instr_t const& i)
             return "pop";
         case INSTR_WDR:
             return "wdr";
+        case INSTR_BREAK:
+            return "break";
         default: return nullptr;
     }
 }
