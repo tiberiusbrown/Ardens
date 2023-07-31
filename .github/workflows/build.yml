@@ -67,7 +67,7 @@ jobs:
     - name: Build LLVM host
       if: steps.cache-llvm-host.outputs.cache-hit != 'true'
       run: |
-        wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-15.0.7/llvm-project-15.0.7.src.tar.xz
+        wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
         tar -xf llvm-project-15.0.7.src.tar.xz
         cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TARGETS_TO_BUILD=WebAssembly -DLLVM_ENABLE_PROJECTS="clang" -S llvm-project-15.0.7.src/llvm
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
