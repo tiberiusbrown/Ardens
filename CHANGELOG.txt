@@ -1,3 +1,7 @@
+v0.20.0
+* BREAK instruction
+* F5 to pause/continue simulation
+
 v0.19.0
 * High Contrast palette
 * Display/Recording Orientation setting
