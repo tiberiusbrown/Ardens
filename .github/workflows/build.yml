@@ -70,8 +70,8 @@ jobs:
         wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
         tar -xf llvm-project-16.0.0.src.tar.xz
         cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TARGETS_TO_BUILD=WebAssembly -DLLVM_ENABLE_PROJECTS="clang" -S llvm-project-16.0.0.src/llvm
-        cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
-        cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- clang-tblgen
+        cmake --build ${{github.workspace}}/build_llvm -j --config ${{env.BUILD_TYPE}} -- llvm-tblgen
+        cmake --build ${{github.workspace}}/build_llvm -j --config ${{env.BUILD_TYPE}} -- clang-tblgen
       
     - name: Set up emsdk
       run: |
@@ -86,8 +86,8 @@ jobs:
     
     - name: Build
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         mkdir ${{github.workspace}}/Ardens_web
         
     - name: Create zip file
@@ -125,41 +125,43 @@ jobs:
       with:
         submodules: 'recursive'
         
-    - name: Install prerequisites
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libpulse-dev libgl1-mesa-dev libegl1-mesa-dev mesa-common-dev xorg-dev libasound-dev libxi-dev libx11-dev libfuse2 libzstd-dev
-  
-    - name: Configure
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-  
-    - name: Build
-      run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-        
-    - name: Build AppImages
-      run: |
-        wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        chmod +x linuxdeploy-x86_64.AppImage
-        mkdir AppDir AppDirPlayer
-        cp ${{github.workspace}}/build/Ardens AppDir
-        cp ${{github.workspace}}/build/ArdensPlayer AppDirPlayer
-        cp src/Ardens.desktop AppDir
-        cp src/ArdensPlayer.desktop AppDirPlayer
-        cp img/ardens.png AppDir
-        cp img/ardens.png AppDirPlayer
-        ln -s Ardens AppDir/AppRun
-        ln -s ArdensPlayer AppDirPlayer/AppRun
-        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
-        ./linuxdeploy-x86_64.AppImage --appdir AppDirPlayer --output appimage
-        zip Ardens_linux_x64.zip Ardens*.AppImage
+    #- name: Install prerequisites
+    #  run: |
+    #    sudo apt-get update
+    #    sudo apt-get install -y libpulse-dev libgl1-mesa-dev libegl1-mesa-dev mesa-common-dev xorg-dev libasound-dev libxi-dev libx11-dev libfuse2 libzstd-dev
+    #
+    #- name: Configure
+    #  run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+    #
+    #- name: Build
+    #  run: |
+    #    cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+    #    cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
+    #    
+    #- name: Build AppImages
+    #  run: |
+    #    wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+    #    chmod +x linuxdeploy-x86_64.AppImage
+    #    mkdir AppDir AppDirPlayer
+    #    cp ${{github.workspace}}/build/Ardens AppDir
+    #    cp ${{github.workspace}}/build/ArdensPlayer AppDirPlayer
+    #    cp src/Ardens.desktop AppDir
+    #    cp src/ArdensPlayer.desktop AppDirPlayer
+    #    cp img/ardens.png AppDir
+    #    cp img/ardens.png AppDirPlayer
+    #    ln -s Ardens AppDir/AppRun
+    #    ln -s ArdensPlayer AppDirPlayer/AppRun
+    #    ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+    #    ./linuxdeploy-x86_64.AppImage --appdir AppDirPlayer --output appimage
+    #    zip Ardens_linux_x64.zip Ardens*.AppImage
+    - name: HBB Build
+      run: bash cmake/build_hbb.sh
   
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_linux_x64.zip"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "build/Ardens_linux_x64.zip"
 
   build_windows_x86:
   
@@ -178,8 +180,8 @@ jobs:
   
     - name: Build
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
         cmake -E tar "cfv" "Ardens_windows_x86.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe"
@@ -207,8 +209,8 @@ jobs:
   
     - name: Build
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
         cmake -E tar "cfv" "Ardens_windows_x64.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe"
@@ -240,8 +242,8 @@ jobs:
   
     - name: Build
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         find ${{github.workspace}}/build -name '*.app'
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
