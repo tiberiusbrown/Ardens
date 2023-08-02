@@ -1,9 +1,11 @@
 #!/bin/bash
 
+set -x
+
 rm -rf build/
 mkdir build
 
-docker run -t -i --rm -v `pwd`:/io ghcr.io/phusion/holy-build-box/hbb-64 bash /io/cmake/hbb.sh
+docker run --rm -v `pwd`:/io ghcr.io/phusion/holy-build-box/hbb-64 bash /io/cmake/hbb.sh
 
 cd build
 wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage

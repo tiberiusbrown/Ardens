@@ -13,7 +13,7 @@ yum -y install python3 libX11-devel libXi-devel libXcursor-devel pulseaudio-libs
 
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=0 /io
+cmake -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=1 -DARDENS_DEBUGGER=1 -DARDENS_PLAYER=1 -DARDENS_LIBRETRO=0 /io
 
 nj=$(nproc)
 if [[ $nj > 4 ]]; then
