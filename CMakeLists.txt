@@ -220,7 +220,7 @@ endif()
 
 set(SYSTEM_LIBS)
 if(CMAKE_SYSTEM_NAME MATCHES "Linux")
-    set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m)
+    set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m pthread)
 endif()
 
 macro(configure_app_target target)
