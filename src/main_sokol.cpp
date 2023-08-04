@@ -295,6 +295,36 @@ void platform_toggle_fullscreen()
 #endif
 }
 
+extern "C" const struct {
+    unsigned int 	 width;
+    unsigned int 	 height;
+    unsigned int 	 bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
+    unsigned char	 pixel_data[16 * 16 * 4 + 1];
+} ardens_icon;
+
+static std::array<std::vector<uint32_t>, 6> icon_imgs;
+
+static void scale_icon(
+    std::vector<uint32_t>& dst,
+    std::vector<uint32_t> const& src,
+    int w)
+{
+    dst.resize(src.size() * 4);
+    for(int i = 0; i < w; ++i)
+    {
+        for(int j = 0; j < w; ++j)
+        {
+            int t = i * w * 4 + j * 2;
+            uint32_t x = src[i * w + j];
+            dst[t + 0] = x;
+            dst[t + 1] = x;
+            t += w * 2;
+            dst[t + 0] = x;
+            dst[t + 1] = x;
+        }
+    }
+}
+
 sapp_desc sokol_main(int argc, char** argv)
 {
     sapp_desc desc{};
@@ -318,6 +348,30 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.enable_dragndrop = true;
     desc.max_dropped_files = 2;
 #endif
+#ifdef _WIN32
+    desc.win32_console_attach = true;
+#endif
+
+    // icon
+    if(ardens_icon.bytes_per_pixel == 4 && ardens_icon.width == ardens_icon.height)
+    {
+        auto& base = icon_imgs[0];
+        int w = ardens_icon.width;
+        base.resize(w * w);
+        memcpy(base.data(), ardens_icon.pixel_data, base.size() * 4);
+        for(size_t i = 1; i < icon_imgs.size(); ++i)
+            scale_icon(icon_imgs[i], icon_imgs[i - 1], w);
+        for(size_t i = 0; i < icon_imgs.size(); ++i)
+        {
+            auto& image = desc.icon.images[i];
+            auto const& icon = icon_imgs[i];
+            image.width = w;
+            image.height = w;
+            image.pixels = { icon.data(), icon.size() * 4 };
+            w *= 2;
+        }
+    }
+
     return desc;
 }
 

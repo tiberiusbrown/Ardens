@@ -282,7 +282,12 @@ void shutdown()
 
 void init()
 {
-    printf("Ardens " ARDENS_VERSION " by Peter Brown\n");
+    printf(
+        "Ardens "
+#ifdef ARDENS_PLAYER
+        "Player "
+#endif
+        ARDENS_VERSION " by Peter Brown\n");
 
 #ifdef __EMSCRIPTEN__
     EM_ASM(

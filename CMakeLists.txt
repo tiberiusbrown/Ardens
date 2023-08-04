@@ -261,6 +261,7 @@ if(ARDENS_DEBUGGER)
         src/main_sokol.cpp
         ${RC_FILE}
         ${MACOS_ICON}
+        img/ardens_icon.c
 
         src/font.cpp
         src/settings.hpp
@@ -353,6 +354,7 @@ if(ARDENS_PLAYER)
         src/main_sokol.cpp
         ${RC_FILE}
         ${MACOS_ICON}
+        img/ardens_icon.c
 
         src/settings.hpp
         src/settings.cpp
