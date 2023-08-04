@@ -29,9 +29,14 @@ Try the minimal player with one of the game URLs below:
 |    P   | (Debugger only) Toggle player mode |
 |    R   | Rotate display                     |
 
-## URL Parameters
+## Creating a link to a playable Arduboy game
 
-The web builds of the debugger and player accept the following URL parameters (e.g., add `?param1=value1&param2=value2` to the URL):
+There is a web build hosted on GitHub pages: to create a link to a playable Arduboy game using Ardens Player, you can follow these patterns:
+
+`https://tiberiusbrown.github.io/Ardens/player.html?file=https://example.com/game.arduboy`
+`https://tiberiusbrown.github.io/Ardens/player.html?file=https://example.com/game.hex&file=https://example.com/game.bin`
+
+The web builds of the debugger and player accept the following additional URL parameters (e.g., add `&param1=value1&param2=value2` to the URL).
 
 #### `g` or `grid`
 Overlays the display with a grid to allow easier disambiguation of adjacent pixels.
