@@ -33,8 +33,13 @@ endif()
 
 option(ARDENS_LLVM     "Build and link LLVM (enables loading ELF and debug info)" ON)
 option(ARDENS_DEBUGGER "Build debugger target" ON)
+option(ARDENS_LIB      "Build static library for emulator core" OFF)
 option(ARDENS_PLAYER   "Build player target" ON)
 option(ARDENS_LIBRETRO "Build libretro core target" OFF)
+
+if(ARDENS_LIBRETRO)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(MACOS TRUE)
@@ -345,6 +350,27 @@ if(ARDENS_DEBUGGER)
         
 endif()
 
+if(ARDENS_LIB OR ARDENS_PLAYER)
+
+    add_library(ardenslib STATIC
+        .editorconfig
+        ${ARDENS_SOURCES}    
+        )
+
+    target_include_directories(ardenslib PUBLIC src src/rapidjson/include)
+
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
+    #target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_ARDUBOY_FILE)
+    
+    target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
+
+endif()
+
 if(ARDENS_PLAYER)
 
     add_executable(ArdensPlayer ${EXEFLAG}
@@ -368,32 +394,19 @@ if(ARDENS_PLAYER)
         src/dwarf.hpp
         src/dwarf.cpp
 
-        ${ARDENS_SOURCES}
-
         src/stb_image_write.h
         ${IMGUI_SOURCES}
         ${GIFENC_SOURCES}
         ${EM_FILE_BROWSER_SOURCES}
         ${SOKOL_SOURCES}
         )
-    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLAYER)
-    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SNAPSHOTS)
-    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_DEBUGGER)
-    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_GUI)
-    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_SCALING)
-    #target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_NO_ARDUBOY_FILE)
     target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLATFORM_SOKOL)
     target_include_directories(ArdensPlayer PRIVATE
-        src
         src/imgui
         src/gifenc
-        src/rapidjson/include
         )
     target_link_libraries(ArdensPlayer PRIVATE
-        miniz
-        fmt
-        bitsery
+        ardenslib
         ${SYSTEM_LIBS}
         )
     configure_app_target(ArdensPlayer)
@@ -453,11 +466,14 @@ if(MSVC)
     if(ARDENS_DEBUGGER)
         target_compile_options(Ardens PRIVATE /Zc:__cplusplus)
     endif()
+    if(ARDENS_PLAYER OR ARDENS_LIB)
+        target_compile_options(ardenslib PUBLIC /Zc:__cplusplus)
+    endif()
     if(ARDENS_PLAYER)
         target_compile_options(ArdensPlayer PRIVATE /Zc:__cplusplus)
     endif()
     if(ARDENS_LIBRETRO)
-        target_compile_options(ardens_libretro PRIVATE /Zc:__cplusplus)
+        target_compile_options(ardens_libretro PUBLIC /Zc:__cplusplus)
     endif()
 endif()
 
