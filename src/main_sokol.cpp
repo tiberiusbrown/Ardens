@@ -328,6 +328,7 @@ static void scale_icon(
 sapp_desc sokol_main(int argc, char** argv)
 {
     sapp_desc desc{};
+    desc.enable_clipboard = true;
     desc.high_dpi = true;
     desc.init_cb = app_init;
     desc.event_cb = app_event;

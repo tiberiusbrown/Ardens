@@ -18,6 +18,7 @@
 #ifdef ARDENS_LLVM
 #ifdef _MSC_VER
 #pragma warning(push, 1)
+#pragma warning(disable: 4244)
 #pragma warning(disable: 4624)
 #endif
 #include <llvm/DebugInfo/DWARF/DWARFContext.h>

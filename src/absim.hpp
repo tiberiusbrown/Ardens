@@ -729,25 +729,6 @@ struct elf_data_t
     std::vector<disassembled_instr_t> asm_with_source;
     size_t addr_to_disassembled_index(uint16_t addr);
 
-#if 0
-    // frame info
-    struct frame_info_t
-    {
-        uint16_t addr_lo;
-        uint16_t addr_hi;
-        struct unwind_t
-        {
-            uint16_t addr;
-            uint8_t cfa_reg; // usually 32 (SP) or 28 (Y)
-            int16_t cfa_offset;
-            std::array<int16_t, 32> reg_offsets;
-            int16_t ra_offset; // return address
-        };
-        std::vector<unwind_t> unwinds;
-    };
-    std::vector<frame_info_t> frames;
-#endif
-
     std::vector<char> fdata;
 #ifdef ARDENS_LLVM
     std::unique_ptr<llvm::object::ObjectFile> obj;
