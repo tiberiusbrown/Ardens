@@ -24,6 +24,8 @@
 #include "sokol/sokol_time.h"
 #include "sokol/sokol_imgui.h"
 
+#include "ardens_icon.hpp"
+
 static void app_frame()
 {
     frame_logic();
@@ -294,13 +296,6 @@ void platform_toggle_fullscreen()
     sapp_toggle_fullscreen();
 #endif
 }
-
-extern "C" const struct {
-    unsigned int 	 width;
-    unsigned int 	 height;
-    unsigned int 	 bytes_per_pixel; /* 2:RGB16, 3:RGB, 4:RGBA */
-    unsigned char	 pixel_data[16 * 16 * 4 + 1];
-} ardens_icon;
 
 static std::array<std::vector<uint32_t>, 6> icon_imgs;
 
