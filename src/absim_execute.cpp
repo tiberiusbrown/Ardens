@@ -192,9 +192,16 @@ uint32_t instr_ijmp(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     (void)i;
     uint16_t z = cpu.z_word();
-    cpu.pc = z;
     if(z >= cpu.last_addr / 2)
+    {
         cpu.autobreak(AB_OOB_IJMP);
+        if(cpu.enabled_autobreaks.test(AB_OOB_IJMP))
+        {
+            // cancel instruction so user has a chance for introspection
+            return 2;
+        }
+    }
+    cpu.pc = z;
     return 2;
 }
 
@@ -743,14 +750,14 @@ uint32_t instr_sbi(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     cpu.st_ior(i.dst, cpu.ld_ior(i.dst) | i.src);
     cpu.pc += 1;
-    return 1;
+    return 2;
 }
 
 uint32_t instr_cbi(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     cpu.st_ior(i.dst, cpu.ld_ior(i.dst) & ~i.src);
     cpu.pc += 1;
-    return 1;
+    return 2;
 }
 
 uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t const& i)
