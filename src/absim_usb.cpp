@@ -36,7 +36,7 @@ static void usb_set_next_update_cycle(atmega32u4_t& cpu)
 
 void atmega32u4_t::reset_usb()
 {
-    memset(&usb_ep, 0, sizeof(usb_ep));
+    usb_ep = {};
     data[0xe0] = 0x1; // UDCON
     usb_attached = false;
     usb_next_update_cycle = UINT64_MAX;

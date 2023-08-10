@@ -99,7 +99,8 @@ static ARDENS_FORCEINLINE void update_timer8_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt -= t;
-            if(tcnt == 0) tifr |= 0x1, count_down = false;
+            if(tcnt == 0)
+                tifr |= 0x1, count_down = false;
         }
         else if(tcnt > top)
         {
@@ -108,7 +109,8 @@ static ARDENS_FORCEINLINE void update_timer8_state(
             timer_cycles -= t;
             tcnt += t;
             tcnt &= 0xff;
-            if(tcnt < 0x100) tifr |= 0x1;
+            if(tcnt < 0x100)
+                tifr |= 0x1;
         }
         else
         {

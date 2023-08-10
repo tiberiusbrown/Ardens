@@ -12,7 +12,7 @@ void atmega32u4_t::reset()
     uint8_t pine = data[0x2c];
     uint8_t pinf = data[0x2f];
 
-    memset(&data[0], 0, 32 + 64 + 160 + 2560);
+    data = {};
 
     data[0x23] = pinb;
     data[0x2c] = pine;
@@ -29,10 +29,13 @@ void atmega32u4_t::reset()
 
     active = true;
     wakeup_cycles = false;
+    just_interrupted = false;
 
     num_stack_frames = 0;
+    pushed_at_least_once = false;
+    autobreaks.reset();
 
-    memset(&eeprom, 0xff, sizeof(eeprom));
+    for(auto& byte : eeprom) byte = 0xff;
 
     prev_sreg = 0;
 
@@ -101,10 +104,10 @@ void atmega32u4_t::reset()
 
     ld_handlers[0xf1] = usb_ld_handler_uedatx;
 
-    memset(&timer0, 0, sizeof(timer0));
-    memset(&timer1, 0, sizeof(timer1));
-    memset(&timer3, 0, sizeof(timer3));
-    memset(&timer4, 0, sizeof(timer4));
+    timer0 = {};
+    timer1 = {};
+    timer3 = {};
+    timer4 = {};
 
     data[0xd1] = timer4.ocrNc = timer4.ocrNc_next = timer4.top = 0xff;
 
@@ -130,9 +133,11 @@ void atmega32u4_t::reset()
 
     spsr_read_after_transmit = false;
     spi_busy = false;
+    spi_busy_clear = false;
     spi_done = false;
     spi_done_shifting = false;
     spi_data_byte = 0;
+    spi_datain_byte = 0;
     spi_clock_cycles = 4;
     spi_clock_cycle = 0;
     spi_bit_progress = 0;
@@ -141,11 +146,19 @@ void atmega32u4_t::reset()
     eeprom_write_addr = 0;
     eeprom_write_data = 0;
     eeprom_program_cycles = 0;
+    eeprom_busy = false;
 
     adc_prescaler_cycle = 0;
     adc_cycle = 0;
     adc_ref = 0;
     adc_result = 0;
+    adc_busy = false;
+
+    sound_cycle = 0;
+    sound_enabled = 0;
+    sound_pwm = false;
+    sound_pwm_val = 0;
+    sound_buffer.clear();
 
     cycle_count = 0;
 
@@ -154,7 +167,7 @@ void atmega32u4_t::reset()
 
     serial_bytes.clear();
     reset_usb();
-    memset(&usb_dpram, 0, sizeof(usb_dpram));
+    usb_dpram = {};
 
     eeprom_dirty = false;
 }
