@@ -256,6 +256,12 @@ jobs:
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
         cmake -E tar "cfv" "Ardens_macos_x64.zip" --format=zip "Ardens.app" "ArdensPlayer.app"
+
+    - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_x64.zip"
   
   build_macos_arm64:
   
@@ -283,10 +289,10 @@ jobs:
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
-        cmake -E tar "cfv" "Ardens_macos_x64.zip" --format=zip "Ardens.app" "ArdensPlayer.app"
+        cmake -E tar "cfv" "Ardens_macos_arm64.zip" --format=zip "Ardens.app" "ArdensPlayer.app"
 
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_x64.zip"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_arm64.zip"
