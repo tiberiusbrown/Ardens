@@ -74,6 +74,8 @@ add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
+add_subdirectory(src/abc)
+
 if(ARDENS_LLVM)
 	
 	# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
