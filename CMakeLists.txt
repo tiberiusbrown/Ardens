@@ -134,61 +134,61 @@ if(MSVC)
     set(EXEFLAG WIN32)
 endif()
 set(IMGUI_SOURCES
-    src/imgui/imconfig.h
-    src/imgui/imgui_internal.h
-    src/imgui/imgui.h
-    src/imgui/imgui.cpp
-    #src/imgui/imgui_demo.cpp
-    src/imgui/imgui_draw.cpp
-    src/imgui/imgui_tables.cpp
-    src/imgui/imgui_widgets.cpp
-    src/imgui/imstb_rectpack.h
-    src/imgui/imstb_textedit.h
-    src/imgui/imstb_truetype.h
-    src/imgui/imgui_memory_editor.h
+    deps/imgui/imconfig.h
+    deps/imgui/imgui_internal.h
+    deps/imgui/imgui.h
+    deps/imgui/imgui.cpp
+    #deps/imgui/imgui_demo.cpp
+    deps/imgui/imgui_draw.cpp
+    deps/imgui/imgui_tables.cpp
+    deps/imgui/imgui_widgets.cpp
+    deps/imgui/imstb_rectpack.h
+    deps/imgui/imstb_textedit.h
+    deps/imgui/imstb_truetype.h
+    deps/imgui/imgui_memory_editor.h
     )
 set(IMGUI_SDL_SOURCES
-    src/imgui/imgui_impl_sdl.h
-    src/imgui/imgui_impl_sdl.cpp
-    src/imgui/imgui_impl_sdlrenderer.h
-    src/imgui/imgui_impl_sdlrenderer.cpp
+    deps/imgui/imgui_impl_sdl.h
+    deps/imgui/imgui_impl_sdl.cpp
+    deps/imgui/imgui_impl_sdlrenderer.h
+    deps/imgui/imgui_impl_sdlrenderer.cpp
     )
 set(IMPLOT_SOURCES
-    src/implot/implot.h
-    src/implot/implot.cpp
-    src/implot/implot_internal.h
-    #src/implot/implot_demo.cpp
-    src/implot/implot_items.cpp
+    deps/implot/implot.h
+    deps/implot/implot.cpp
+    deps/implot/implot_internal.h
+    #deps/implot/implot_demo.cpp
+    deps/implot/implot_items.cpp
     )
 set(GIFENC_SOURCES
-    src/gifenc/gifenc.h
-    src/gifenc/gifenc.c
+    deps/gifenc/gifenc.h
+    deps/gifenc/gifenc.c
     )
 set(SOKOL_SOURCES
-    src/sokol/sokol_app.h
-    src/sokol/sokol_audio.h
-    src/sokol/sokol_fetch.h
-    src/sokol/sokol_gfx.h
-    src/sokol/sokol_glue.h
-    src/sokol/sokol_imgui.h
-    src/sokol/sokol_time.h
+    deps/sokol/sokol_app.h
+    deps/sokol/sokol_audio.h
+    deps/sokol/sokol_fetch.h
+    deps/sokol/sokol_gfx.h
+    deps/sokol/sokol_glue.h
+    deps/sokol/sokol_imgui.h
+    deps/sokol/sokol_time.h
     )
 set(SIMPLE_FFT_SOURCES
-    src/Simple-FFT/include/simple_fft/check_fft.hpp
-    src/Simple-FFT/include/simple_fft/copy_array.hpp
-    src/Simple-FFT/include/simple_fft/error_handling.hpp
-    src/Simple-FFT/include/simple_fft/fft.h
-    src/Simple-FFT/include/simple_fft/fft.hpp
-    src/Simple-FFT/include/simple_fft/fft_impl.hpp
-    src/Simple-FFT/include/simple_fft/fft_settings.h
+    deps/Simple-FFT/include/simple_fft/check_fft.hpp
+    deps/Simple-FFT/include/simple_fft/copy_array.hpp
+    deps/Simple-FFT/include/simple_fft/error_handling.hpp
+    deps/Simple-FFT/include/simple_fft/fft.h
+    deps/Simple-FFT/include/simple_fft/fft.hpp
+    deps/Simple-FFT/include/simple_fft/fft_impl.hpp
+    deps/Simple-FFT/include/simple_fft/fft_settings.h
     )
 set(HQX_SOURCES
-    src/hqx/include/hqx/HQx.hh
-    src/hqx/include/hqx/HQ2x.hh
-    src/hqx/include/hqx/HQ3x.hh
-    src/hqx/source/HQx.cc
-    src/hqx/source/HQ2x.cc
-    src/hqx/source/HQ3x.cc
+    deps/hqx/include/hqx/HQx.hh
+    deps/hqx/include/hqx/HQ2x.hh
+    deps/hqx/include/hqx/HQ3x.hh
+    deps/hqx/source/HQx.cc
+    deps/hqx/source/HQ2x.cc
+    deps/hqx/source/HQ3x.cc
     )
 set(ARDENS_SOURCES
     src/absim.hpp
@@ -220,7 +220,7 @@ set(ARDENS_SOURCES
     )
 set(EM_FILE_BROWSER_SOURCES)
 if(EMSCRIPTEN)
-    set(EM_FILE_BROWSER_SOURCES src/emscripten-browser-file/emscripten_browser_file.h)
+    set(EM_FILE_BROWSER_SOURCES deps/emscripten-browser-file/emscripten_browser_file.h)
 endif()
 
 set(SYSTEM_LIBS)
@@ -307,7 +307,7 @@ if(ARDENS_DEBUGGER)
 
         ${ARDENS_SOURCES}
 
-        src/stb_image_write.h
+        deps/stb_image_write.h
         ${IMGUI_SOURCES}
         ${IMPLOT_SOURCES}
         ${GIFENC_SOURCES}
@@ -316,8 +316,8 @@ if(ARDENS_DEBUGGER)
         ${HQX_SOURCES}
         ${SOKOL_SOURCES}
 
-        src/ImGuiColorTextEdit/TextEditor.h
-        src/ImGuiColorTextEdit/TextEditor.cpp
+        deps/ImGuiColorTextEdit/TextEditor.h
+        deps/ImGuiColorTextEdit/TextEditor.cpp
         )
     target_link_libraries(Ardens PRIVATE
         miniz
@@ -339,12 +339,13 @@ if(ARDENS_DEBUGGER)
     endif()
     target_compile_definitions(Ardens PRIVATE -DARDENS_PLATFORM_SOKOL)
     target_include_directories(Ardens PRIVATE
-        src/imgui
-        src/implot
-        src/gifenc
-        src/Simple-FFT/include
-        src/hqx/include
-        src/rapidjson/include
+        deps
+        deps/imgui
+        deps/implot
+        deps/gifenc
+        deps/Simple-FFT/include
+        deps/hqx/include
+        deps/rapidjson/include
         )
     configure_app_target(Ardens)
         
@@ -357,7 +358,7 @@ if(ARDENS_LIB OR ARDENS_PLAYER)
         ${ARDENS_SOURCES}    
         )
 
-    target_include_directories(ardenslib PUBLIC src src/rapidjson/include)
+    target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
 
     target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
     target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
@@ -394,7 +395,7 @@ if(ARDENS_PLAYER)
         src/dwarf.hpp
         src/dwarf.cpp
 
-        src/stb_image_write.h
+        deps/stb_image_write.h
         ${IMGUI_SOURCES}
         ${GIFENC_SOURCES}
         ${EM_FILE_BROWSER_SOURCES}
@@ -402,8 +403,9 @@ if(ARDENS_PLAYER)
         )
     target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLATFORM_SOKOL)
     target_include_directories(ArdensPlayer PRIVATE
-        src/imgui
-        src/gifenc
+        deps
+        deps/imgui
+        deps/gifenc
         )
     target_link_libraries(ArdensPlayer PRIVATE
         ardenslib
@@ -436,7 +438,7 @@ if(ARDENS_LIBRETRO)
         bitsery
         )
     target_include_directories(ardens_libretro PUBLIC src)
-    target_include_directories(ardens_libretro PRIVATE src/rapidjson/include)
+    target_include_directories(ardens_libretro PRIVATE deps/rapidjson/include)
     # WHY IS THIS NECESSARY???
     if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
         target_compile_options(ardens_libretro PRIVATE "/Zc:__cplusplus")
