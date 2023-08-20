@@ -467,7 +467,6 @@ void compiler_t::codegen_expr(compiler_func_t& f, compiler_frame_t& frame, ast_n
     }
     case AST::OP_MULTIPLICATIVE:
     {
-        assert(a.data == "*");
         assert(a.children.size() == 2);
         size_t i0 = 0, i1 = 1;
         if(!a.children[0].comp_type.prim_signed && a.children[1].comp_type.prim_signed)
@@ -482,16 +481,9 @@ void compiler_t::codegen_expr(compiler_func_t& f, compiler_frame_t& frame, ast_n
         assert(a.comp_type.prim_size >= 1 && a.comp_type.prim_size <= 4);
         frame.size -= a.comp_type.prim_size;
         if(a.data == "*")
-        {
-            if(a.children[i0].comp_type.prim_signed)
-            {
-                assert(false);
-            }
-            else
-            {
-                f.instrs.push_back({ instr_t(I_MUL + a.comp_type.prim_size - 1) });
-            }
-        }
+            f.instrs.push_back({ instr_t(I_MUL + a.comp_type.prim_size - 1) });
+        else
+            assert(false);
         return;
     }
     default:
