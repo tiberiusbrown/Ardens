@@ -14,14 +14,16 @@ void compiler_t::type_annotate(ast_node_t& a, compiler_frame_t const& frame)
     case AST::OP_UNARY:
     {
         assert(a.children.size() == 2);
+        type_annotate(a.children[1], frame);
         auto op = a.children[0].data;
         if(op == "!")
             a.comp_type = TYPE_BOOL;
+        else if(op == "-")
+            a.comp_type = a.children[1].comp_type;
         else
         {
             assert(false);
         }
-        type_annotate(a.children[1], frame);
         break;
     }
     case AST::OP_ASSIGN:
@@ -42,6 +44,7 @@ void compiler_t::type_annotate(ast_node_t& a, compiler_frame_t const& frame)
         break;
     }
     case AST::OP_ADDITIVE:
+    case AST::OP_MULTIPLICATIVE:
     {
         assert(a.children.size() == 2);
         for(auto& child : a.children)
@@ -58,18 +61,18 @@ void compiler_t::type_annotate(ast_node_t& a, compiler_frame_t const& frame)
     {
         int64_t v = a.value;
         size_t prim_size = 1;
-        a.comp_type.prim_signed = (v < 0);
-        if(v < 0)
+        a.comp_type.prim_signed = (a.data.back() != 'u');
+        if(a.comp_type.prim_signed)
         {
-            if(v < -(1 << 23)) prim_size = 4;
-            if(v < -(1 << 15)) prim_size = 3;
-            if(v < -(1 << 7)) prim_size = 2;
+            if(v >= (1 <<  7)) prim_size = 2;
+            if(v >= (1 << 15)) prim_size = 3;
+            if(v >= (1 << 23)) prim_size = 4;
         }
         else
         {
-            if(v >= (1 << 24)) prim_size = 4;
+            if(v >= (1 <<  8)) prim_size = 2;
             if(v >= (1 << 16)) prim_size = 3;
-            if(v >= (1 << 8)) prim_size = 2;
+            if(v >= (1 << 24)) prim_size = 4;
         }
         a.comp_type.prim_size = prim_size;
         break;

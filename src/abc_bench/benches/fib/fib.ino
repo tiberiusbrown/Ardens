@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-uint16_t fib(uint16_t x)
+uint16_t fib(uint8_t x)
 {
     if(x <= 1) return x;
     return fib(x - 1) + fib(x - 2);

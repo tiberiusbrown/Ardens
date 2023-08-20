@@ -156,7 +156,6 @@ vm_execute:
 ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; helper macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -221,6 +220,46 @@ I_PUSH:
     read_byte
     st   Y+, r0
     call delay_11
+    dispatch
+
+I_P0:
+    st   Y+, r2
+    lpm
+    rjmp .+0
+    dispatch
+
+I_P1:
+    ldi  r16, 1
+    st   Y+, r16
+    rjmp .+0
+    rjmp .+0
+    dispatch
+
+I_P2:
+    ldi  r16, 2
+    st   Y+, r16
+    rjmp .+0
+    rjmp .+0
+    dispatch
+
+I_P3:
+    ldi  r16, 3
+    st   Y+, r16
+    rjmp .+0
+    rjmp .+0
+    dispatch
+
+I_P4:
+    ldi  r16, 4
+    st   Y+, r16
+    rjmp .+0
+    rjmp .+0
+    dispatch
+
+I_P00:
+    st   Y+, r2
+    st   Y+, r2
+    lpm
     dispatch
 
 I_SEXT:
@@ -435,6 +474,81 @@ I_SUB4:
     st   Y+, r16
     st   Y+, r17
     dispatch
+
+I_MUL:
+    ld   r10, -Y
+    ld   r14, -Y
+    mul  r14, r10
+    st   Y+, r0
+    dispatch
+
+I_MUL2:
+    ;
+    ;    A1 A0
+    ;    B1 B0
+    ;    =====
+    ;    A0*B0
+    ; A1*B0
+    ; A0*B1
+    ; ========
+    ;    C1 C0
+    ;
+    ld   r11, -Y
+    ld   r10, -Y
+    ld   r15, -Y
+    ld   r14, -Y
+    mul  r14, r10 ; A0*B0
+    movw r18, r0
+    mul  r14, r11 ; A0*B1
+    add  r19, r0
+    mul  r15, r10 ; A1*B0
+    add  r19, r0
+    st   Y+, r18
+    st   Y+, r19
+    dispatch
+
+I_MUL3:
+    ;   
+    ;    A2 A1 A0
+    ;    B2 B1 B0
+    ;    ========
+    ;       A0*B0
+    ;    A1*B0
+    ;    A0*B1
+    ; A2*B0
+    ; A1*B1
+    ; A0*B2
+    ; ===========
+    ;    C2 C1 C0
+    ;   
+    ld   r12, -Y
+    ld   r11, -Y
+    ld   r10, -Y
+    ld   r16, -Y
+    ld   r15, -Y
+    ld   r14, -Y
+    mul  r14, r10 ; A0*B0
+    movw r18, r0
+    mul  r16, r10 ; A2*B0
+    mov  r20, r0
+    mul  r15, r10 ; A1*B0
+    add  r19, r0
+    adc  r20, r1
+    mul  r14, r11 ; A0*B1
+    add  r19, r0
+    adc  r20, r1
+    mul  r15, r11 ; A1*B1
+    add  r20, r0
+    mul  r14, r12 ; A0*B2
+    add  r20, r0
+    st   Y+, r18
+    st   Y+, r19
+    st   Y+, r20
+    dispatch
+
+I_MUL4:
+    jmp  instr_mul4
+    .align 6
 
 I_BOOL:
     ld   r0, -Y
@@ -798,6 +912,64 @@ I_SYS:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; helper methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+instr_mul4:
+    ;   
+    ;    A3 A2 A1 A0
+    ;    B3 B2 B1 B0
+    ;    ===========
+    ;          A0*B0
+    ;       A1*B0
+    ;       A0*B1
+    ;    A2*B0
+    ;    A1*B1
+    ;    A0*B2
+    ; A3*B0
+    ; A2*B1
+    ; A1*B2
+    ; A0*B3
+    ;    ===========
+    ;    C3 C2 C1 C0
+    ;   
+    ld   r13, -Y
+    ld   r12, -Y
+    ld   r11, -Y
+    ld   r10, -Y
+    ld   r17, -Y
+    ld   r16, -Y
+    ld   r15, -Y
+    ld   r14, -Y
+    mul  r14, r10 ; A0*B0
+    movw r18, r0
+    mul  r16, r10 ; A2*B0
+    movw r20, r0
+    mul  r15, r10 ; A1*B0
+    add  r19, r0
+    adc  r20, r1
+    adc  r21, r2
+    mul  r14, r11 ; A0*B1
+    add  r19, r0
+    adc  r20, r1
+    adc  r21, r2
+    mul  r15, r11 ; A1*B1
+    add  r20, r0
+    adc  r21, r1
+    mul  r14, r12 ; A0*B2
+    add  r20, r0
+    adc  r21, r1
+    mul  r17, r10 ; A3*B0
+    add  r21, r0
+    mul  r16, r11 ; A2*B1
+    add  r21, r0
+    mul  r15, r12 ; A1*B2
+    add  r21, r0
+    mul  r14, r13 ; A0*B3
+    add  r21, r0
+    st   Y+, r18
+    st   Y+, r19
+    st   Y+, r20
+    st   Y+, r21
+    dispatch_noalign
 
 read_3_bytes:
     lpm

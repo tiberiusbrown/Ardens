@@ -11,7 +11,7 @@ int main(int argc, char** argv)
     ards::assembler_t a;
 
     std::string si = R"(
-u16 fib(u16 x)
+u16 fib(u8 x)
 {
     if(x <= 1) return x;
     return fib(x - 1) + fib(x - 2);
@@ -21,6 +21,7 @@ u16 x;
 
 void main()
 {
+    x = -2;
     debug_break();
     x = fib(20);
     debug_break();

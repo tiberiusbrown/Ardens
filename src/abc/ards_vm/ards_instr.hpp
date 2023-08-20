@@ -21,6 +21,12 @@ enum instr_t : uint8_t
     I_NOP,
 
     I_PUSH,  // push imm
+    I_P0,    // push 0
+    I_P1,    // push 1
+    I_P2,    // push 2
+    I_P3,    // push 3
+    I_P4,    // push 4
+    I_P00,   // push 0; push 0
 
     I_SEXT,  // push 0x00 or 0xff to sign extend TOS
 
@@ -33,6 +39,7 @@ enum instr_t : uint8_t
     I_SETG,  // pop, then store to globals[imm]
     I_SETGN, // pop N then same as SETG but pop/store N bytes
     I_POP,   // a |
+    
     I_ADD,   // a b | a+b
     I_ADD2,  // a0 a1 b0 b1 | (a+b)0 (a+b)1
     I_ADD3,  //
@@ -41,6 +48,12 @@ enum instr_t : uint8_t
     I_SUB2,  // a0 a1 b0 b1 | (a-b)0 (a-b)1
     I_SUB3,  //
     I_SUB4,  //
+
+    I_MUL,
+    I_MUL2,
+    I_MUL3,
+    I_MUL4,
+
     I_BOOL,  // a | (a!=0)
     I_BOOL2, // a b | (a!=0 && b!=0)
     I_BOOL3, // a b c | (a!=0 && b!=0 && c!=0)

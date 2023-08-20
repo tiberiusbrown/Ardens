@@ -125,6 +125,52 @@ void assembler_t::push_global(std::istream& f)
     byte_count += 2;
 }
 
+static std::unordered_map<std::string, instr_t> const SINGLE_INSTR_NAMES =
+{
+    { "p0", I_P0 },
+    { "p1", I_P1 },
+    { "p2", I_P2 },
+    { "p3", I_P3 },
+    { "p4", I_P4 },
+    { "p00", I_P00 },
+    { "sext", I_SEXT },
+    { "pop", I_POP },
+    { "add", I_ADD },
+    { "add2", I_ADD2 },
+    { "add3", I_ADD3 },
+    { "add4", I_ADD4 },
+    { "sub", I_SUB },
+    { "sub2", I_SUB2 },
+    { "sub3", I_SUB3 },
+    { "sub4", I_SUB4 },
+    { "mul", I_MUL },
+    { "mul2", I_MUL2 },
+    { "mul3", I_MUL3 },
+    { "mul4", I_MUL4 },
+    { "bool", I_BOOL },
+    { "bool2", I_BOOL2 },
+    { "bool3", I_BOOL3 },
+    { "bool4", I_BOOL4 },
+    { "cult", I_CULT },
+    { "cult2", I_CULT2 },
+    { "cult3", I_CULT3 },
+    { "cult4", I_CULT4 },
+    { "cule", I_CULE },
+    { "cule2", I_CULE2 },
+    { "cule3", I_CULE3 },
+    { "cule4", I_CULE4 },
+    { "cslt", I_CSLT },
+    { "cslt2", I_CSLT2 },
+    { "cslt3", I_CSLT3 },
+    { "cslt4", I_CSLT4 },
+    { "csle", I_CSLE },
+    { "csle2", I_CSLE2 },
+    { "csle3", I_CSLE3 },
+    { "csle4", I_CSLE4 },
+    { "not", I_NOT },
+    { "ret", I_RET },
+};
+
 error_t assembler_t::assemble(std::istream& f)
 {
 	std::string t;
@@ -147,13 +193,15 @@ error_t assembler_t::assemble(std::istream& f)
             else if(check_label(t, error))
                 labels[t] = nodes.size();
         }
+        else if(auto it = SINGLE_INSTR_NAMES.find(t); it != SINGLE_INSTR_NAMES.end())
+        {
+            push_instr(it->second);
+        }
         else if(t == "push")
         {
             push_instr(I_PUSH);
             push_imm(read_imm(f, error), 1);
         }
-        else if(t == "sext")
-            push_instr(I_SEXT);
         else if(t == "getl")
         {
             push_instr(I_GETL);
@@ -194,36 +242,6 @@ error_t assembler_t::assemble(std::istream& f)
             push_instr(I_SETGN);
             push_global(f);
         }
-        else if(t == "pop"  ) push_instr(I_POP);
-        else if(t == "add"  ) push_instr(I_ADD);
-        else if(t == "add2" ) push_instr(I_ADD2);
-        else if(t == "add3" ) push_instr(I_ADD3);
-        else if(t == "add4" ) push_instr(I_ADD4);
-        else if(t == "sub"  ) push_instr(I_SUB);
-        else if(t == "sub2" ) push_instr(I_SUB2);
-        else if(t == "sub3" ) push_instr(I_SUB3);
-        else if(t == "sub4" ) push_instr(I_SUB4);
-        else if(t == "bool" ) push_instr(I_BOOL);
-        else if(t == "bool2") push_instr(I_BOOL2);
-        else if(t == "bool3") push_instr(I_BOOL3);
-        else if(t == "bool4") push_instr(I_BOOL4);
-        else if(t == "cult" ) push_instr(I_CULT);
-        else if(t == "cult2") push_instr(I_CULT2);
-        else if(t == "cult3") push_instr(I_CULT3);
-        else if(t == "cult4") push_instr(I_CULT4);
-        else if(t == "cule" ) push_instr(I_CULE);
-        else if(t == "cule2") push_instr(I_CULE2);
-        else if(t == "cule3") push_instr(I_CULE3);
-        else if(t == "cule4") push_instr(I_CULE4);
-        else if(t == "cslt" ) push_instr(I_CSLT);
-        else if(t == "cslt2") push_instr(I_CSLT2);
-        else if(t == "cslt3") push_instr(I_CSLT3);
-        else if(t == "cslt4") push_instr(I_CSLT4);
-        else if(t == "csle" ) push_instr(I_CSLE);
-        else if(t == "csle2") push_instr(I_CSLE2);
-        else if(t == "csle3") push_instr(I_CSLE3);
-        else if(t == "csle4") push_instr(I_CSLE4);
-        else if(t == "not"  ) push_instr(I_NOT);
         else if(t == "bz")
         {
             push_instr(I_BZ);
@@ -244,8 +262,6 @@ error_t assembler_t::assemble(std::istream& f)
             push_instr(I_CALL);
             push_label(read_label(f, error));
         }
-        else if(t == "ret")
-            push_instr(I_RET);
         else if(t == "sys")
         {
             push_instr(I_SYS);

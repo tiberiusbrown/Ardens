@@ -275,11 +275,21 @@ void compiler_t::codegen_expr(compiler_func_t& f, compiler_frame_t& frame, ast_n
     {
         assert(a.children.size() == 2);
         auto op = a.children[0].data;
-        codegen_expr(f, frame, a.children[1]);
         if(op == "!")
         {
+            codegen_expr(f, frame, a.children[1]);
             codegen_convert(f, frame, TYPE_BOOL, a.children[1].comp_type);
             f.instrs.push_back({ I_NOT });
+        }
+        else if(op == "-")
+        {
+            auto size = a.children[1].comp_type.prim_size;
+            for(size_t i = 0; i < size; ++i)
+                f.instrs.push_back({ I_PUSH, 0 });
+            frame.size += size;
+            codegen_expr(f, frame, a.children[1]);
+            frame.size -= size;
+            f.instrs.push_back({ instr_t(I_SUB + size - 1) });
         }
         else
         {
@@ -453,6 +463,35 @@ void compiler_t::codegen_expr(compiler_func_t& f, compiler_frame_t& frame, ast_n
         assert(a.comp_type.prim_size >= 1 && a.comp_type.prim_size <= 4);
         frame.size -= a.comp_type.prim_size;
         f.instrs.push_back({ instr_t((a.data == "+" ? I_ADD : I_SUB) + a.comp_type.prim_size - 1) });
+        return;
+    }
+    case AST::OP_MULTIPLICATIVE:
+    {
+        assert(a.data == "*");
+        assert(a.children.size() == 2);
+        size_t i0 = 0, i1 = 1;
+        if(!a.children[0].comp_type.prim_signed && a.children[1].comp_type.prim_signed)
+            std::swap(i0, i1);
+        codegen_expr(f, frame, a.children[i0]);
+        codegen_convert(f, frame, a.comp_type, a.children[i0].comp_type);
+        codegen_expr(f, frame, a.children[i1]);
+        codegen_convert(f, frame, a.comp_type, a.children[i1].comp_type);
+        static_assert(I_MUL2 == I_MUL + 1);
+        static_assert(I_MUL3 == I_MUL + 2);
+        static_assert(I_MUL4 == I_MUL + 3);
+        assert(a.comp_type.prim_size >= 1 && a.comp_type.prim_size <= 4);
+        frame.size -= a.comp_type.prim_size;
+        if(a.data == "*")
+        {
+            if(a.children[i0].comp_type.prim_signed)
+            {
+                assert(false);
+            }
+            else
+            {
+                f.instrs.push_back({ instr_t(I_MUL + a.comp_type.prim_size - 1) });
+            }
+        }
         return;
     }
     default:

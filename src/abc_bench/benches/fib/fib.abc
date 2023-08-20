@@ -1,0 +1,14 @@
+u16 fib(u8 n)
+{
+    if(n <= 1) return n;
+    return fib(n - 1) + fib(n - 2);
+}
+
+u16 x;
+
+void main()
+{
+    debug_break();
+    x = fib(20);
+    debug_break();
+}

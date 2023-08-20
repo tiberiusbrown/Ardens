@@ -19,6 +19,12 @@ static void write_instr(std::ostream& f, compiler_instr_t const& instr)
     {
     case I_NOP:   f << "nop"; break;
     case I_PUSH:  f << "push  " << instr.imm; break;
+    case I_P0:    f << "p0"; break;
+    case I_P1:    f << "p1"; break;
+    case I_P2:    f << "p2"; break;
+    case I_P3:    f << "p3"; break;
+    case I_P4:    f << "p4"; break;
+    case I_P00:   f << "p00"; break;
     case I_SEXT:  f << "sext"; break;
     case I_GETL:  f << "getl  " << instr.imm; break;
     case I_GETLN: f << "getln " << instr.imm; break;
@@ -29,6 +35,7 @@ static void write_instr(std::ostream& f, compiler_instr_t const& instr)
     case I_SETG:  f << "setg  " << instr.label; break;
     case I_SETGN: f << "setgn " << instr.label; break;
     case I_POP:   f << "pop"; break;
+
     case I_ADD:   f << "add"; break;
     case I_ADD2:  f << "add2"; break;
     case I_ADD3:  f << "add3"; break;
@@ -37,6 +44,12 @@ static void write_instr(std::ostream& f, compiler_instr_t const& instr)
     case I_SUB2:  f << "sub2"; break;
     case I_SUB3:  f << "sub3"; break;
     case I_SUB4:  f << "sub4"; break;
+
+    case I_MUL:   f << "mul"; break;
+    case I_MUL2:  f << "mul2"; break;
+    case I_MUL3:  f << "mul3"; break;
+    case I_MUL4:  f << "mul4"; break;
+
     case I_BOOL:  f << "bool"; break;
     case I_BOOL2: f << "bool2"; break;
     case I_BOOL3: f << "bool3"; break;
