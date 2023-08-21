@@ -154,7 +154,10 @@ decimal_literal     <- < [0-9]+'u'? >
 hex_literal         <- < '0x'[0-9a-fA-F]+'u'? >
 ident               <- < [a-zA-Z_][a-zA-Z_0-9]* >
 
-%whitespace         <- [ \t\r\n]*
+%whitespace         <- ([ \t\r\n] / comment / multiline_comment)*
+comment             <- '//' (! linebreak .)*
+multiline_comment   <- '/*' (! '*/' .)* '*/'
+linebreak           <- [\n\r]
 
 )"
 #endif
