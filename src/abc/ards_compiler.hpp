@@ -50,7 +50,9 @@ enum class AST
     // right-associative assignment operators
     OP_ASSIGN,
 
-    OP_UNARY, // children are op and expr,
+    OP_UNARY, // children are op and expr
+
+    OP_CAST, // children are type and expr
 
     FUNC_CALL, // children are func-expr and FUNC_ARGS
 
@@ -68,6 +70,9 @@ struct compiler_type_t
     size_t prim_size; // 0 means void
     bool prim_signed;
     bool is_bool;
+    auto tie() const { return std::tie(prim_size, prim_signed, is_bool); }
+    bool operator==(compiler_type_t const& t) const { return tie() == t.tie(); }
+    bool operator!=(compiler_type_t const& t) const { return tie() != t.tie(); }
 };
 
 constexpr compiler_type_t TYPE_NONE = { 0, true };

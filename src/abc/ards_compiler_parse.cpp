@@ -201,7 +201,24 @@ ident               <- < [a-zA-Z_][a-zA-Z_0-9]* >
     };
 
     p["decimal_literal"] = [](peg::SemanticValues const& v) {
-        return ast_node_t{ v.line_info(), AST::INT_CONST, v.token(), {}, v.token_to_number<int64_t>() };
+        int64_t x = v.token_to_number<int64_t>();
+        ast_node_t a{ v.line_info(), AST::INT_CONST, v.token(), {}, x };
+        size_t prim_size = 1;
+        a.comp_type.prim_signed = (a.data.back() != 'u');
+        if(a.comp_type.prim_signed)
+        {
+            if(x >= (1 << 7)) prim_size = 2;
+            if(x >= (1 << 15)) prim_size = 3;
+            if(x >= (1 << 23)) prim_size = 4;
+        }
+        else
+        {
+            if(x >= (1 << 8)) prim_size = 2;
+            if(x >= (1 << 16)) prim_size = 3;
+            if(x >= (1 << 24)) prim_size = 4;
+        }
+        a.comp_type.prim_size = prim_size;
+        return a;
     };
     p["ident"] = [](peg::SemanticValues const& v) {
         return ast_node_t{ v.line_info(), AST::IDENT, v.token() };
