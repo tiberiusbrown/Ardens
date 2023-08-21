@@ -136,7 +136,7 @@ multiplicative_expr <- unary_expr          (multiplicative_op unary_expr        
 
 unary_expr          <- unary_op unary_expr / postfix_expr
 postfix_expr        <- primary_expr postfix*
-primary_expr        <- ident / decimal_literal / '(' expr ')'
+primary_expr        <- ident / hex_literal / decimal_literal / '(' expr ')'
 
 postfix             <- '(' arg_expr_list? ')'
 
@@ -151,6 +151,7 @@ relational_op       <- < '<=' / '>=' / '<' / '>' >
 assignment_op       <- < '=' >
 unary_op            <- < [!-] >
 decimal_literal     <- < [0-9]+'u'? >
+hex_literal         <- < '0x'[0-9a-fA-F]+'u'? >
 ident               <- < [a-zA-Z_][a-zA-Z_0-9]* >
 
 %whitespace         <- [ \t\r\n]*
@@ -201,23 +202,46 @@ ident               <- < [a-zA-Z_][a-zA-Z_0-9]* >
     };
 
     p["decimal_literal"] = [](peg::SemanticValues const& v) {
-        int64_t x = v.token_to_number<int64_t>();
+        int64_t x = 0;
+        std::from_chars(v.token().data(), v.token().data() + v.token().size(), x, 10);
         ast_node_t a{ v.line_info(), AST::INT_CONST, v.token(), {}, x };
         size_t prim_size = 1;
-        a.comp_type.prim_signed = (a.data.back() != 'u');
-        if(a.comp_type.prim_signed)
+        bool prim_signed = (a.data.back() != 'u');
+        if(prim_signed)
         {
-            if(x >= (1 << 7)) prim_size = 2;
-            if(x >= (1 << 15)) prim_size = 3;
-            if(x >= (1 << 23)) prim_size = 4;
+            if(x < (1 << 7)) prim_size = 1;
+            else if(x < (1 << 15)) prim_size = 2;
+            else if(x < (1 << 23)) prim_size = 3;
+            else prim_size = 4;
         }
         else
         {
-            if(x >= (1 << 8)) prim_size = 2;
-            if(x >= (1 << 16)) prim_size = 3;
-            if(x >= (1 << 24)) prim_size = 4;
+            if(x < (1 << 8)) prim_size = 1;
+            else if(x < (1 << 16)) prim_size = 2;
+            else if(x < (1 << 24)) prim_size = 3;
+            else prim_size = 4;
         }
         a.comp_type.prim_size = prim_size;
+        a.comp_type.prim_signed = prim_signed;
+        return a;
+    };
+    p["hex_literal"] = [](peg::SemanticValues const& v) {
+        int64_t x = 0;
+        auto t = v.token().substr(2);
+        std::from_chars(t.data(), t.data() + t.size(), x, 16);
+        ast_node_t a{ v.line_info(), AST::INT_CONST, v.token(), {}, x };
+        size_t prim_size = 1;
+        bool prim_signed = (a.data.back() != 'u');
+        if(x < (1 << 7)) prim_size = 1;
+        else if(x < (1 << 8)) prim_size = 1, prim_signed = false;
+        else if(x < (1 << 15)) prim_size = 2;
+        else if(x < (1 << 16)) prim_size = 2, prim_signed = false;
+        else if(x < (1 << 23)) prim_size = 3;
+        else if(x < (1 << 24)) prim_size = 3, prim_signed = false;
+        else if(x < (1ll << 31)) prim_size = 4;
+        else prim_size = 4, prim_signed = false;
+        a.comp_type.prim_size = prim_size;
+        a.comp_type.prim_signed = prim_signed;
         return a;
     };
     p["ident"] = [](peg::SemanticValues const& v) {

@@ -21,7 +21,7 @@ u16 x;
 
 void main()
 {
-    x = -2 * 3;
+    x = -2 * 0xf;
     debug_break();
     x = fib(20);
     debug_break();
