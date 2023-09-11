@@ -446,8 +446,15 @@ void frame_logic()
             if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~0x10;
             if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~0x20;
 
-            if(ImGui::IsKeyDown(ImGuiKey_A) || touch.btns[TOUCH_A]) pine &= ~0x40;
-            if(ImGui::IsKeyDown(ImGuiKey_B) || ImGui::IsKeyDown(ImGuiKey_S) || touch.btns[TOUCH_B]) pinb &= ~0x10;
+            if( ImGui::IsKeyDown(ImGuiKey_A) ||
+                ImGui::IsKeyDown(ImGuiKey_Z) ||
+                touch.btns[TOUCH_A])
+                pine &= ~0x40;
+            if( ImGui::IsKeyDown(ImGuiKey_B) ||
+                ImGui::IsKeyDown(ImGuiKey_S) ||
+                ImGui::IsKeyDown(ImGuiKey_X) ||
+                touch.btns[TOUCH_B])
+                pinb &= ~0x10;
 
             arduboy->cpu.data[0x23] = pinb;
             arduboy->cpu.data[0x2c] = pine;
