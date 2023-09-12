@@ -223,7 +223,7 @@ jobs:
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
-        cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dylib" "ardens_libretro.dylib"
+        cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "ardens_libretro.dylib"
         cmake -E tar "cfv" "Ardens_macos_x64.zip" --format=zip "Ardens.app" "ArdensPlayer.app" "ardens_libretro.dylib"
 
     - name: Release
@@ -273,7 +273,7 @@ jobs:
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
-        cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dylib" "ardens_libretro.dylib"
+        cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "ardens_libretro.dylib"
         cmake -E tar "cfv" "Ardens_macos_arm64.zip" --format=zip "Ardens.app" "ArdensPlayer.app" "ardens_libretro.dylib"
 
     - name: Release
