@@ -18,8 +18,8 @@ Try the minimal player with one of the game URLs below:
 |   Key  | Purpose                            |
 |:------:|------------------------------------|
 | Arrows | Arduboy: directional buttons       |
-|    A   | Arduboy: A button                  |
-|   S/B  | Arduboy: B button                  |
+|   A/Z  | Arduboy: A button                  |
+|  S/X/B | Arduboy: B button                  |
 |   F2   | Save screenshot                    |
 |   F3   | Toggle GIF recording               |
 |   F4   | (Debugger only) Save snapshot      |
