@@ -21,5 +21,5 @@ ln -s Ardens AppDir/AppRun
 ln -s ArdensPlayer AppDirPlayer/AppRun
 ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
 ./linuxdeploy-x86_64.AppImage --appdir AppDirPlayer --output appimage
-zip Ardens_linux_x64.zip Ardens*.AppImage
+zip Ardens_linux_x64.zip Ardens*.AppImage ardens_libretro.so
 

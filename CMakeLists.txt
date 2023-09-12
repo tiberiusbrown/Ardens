@@ -38,6 +38,7 @@ option(ARDENS_PLAYER   "Build player target" ON)
 option(ARDENS_LIBRETRO "Build libretro core target" OFF)
 
 if(ARDENS_LIBRETRO)
+    message(STATUS "compiling libretro!")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
