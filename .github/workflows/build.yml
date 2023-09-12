@@ -102,12 +102,6 @@ jobs:
         cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
         cd ${{github.workspace}}/Ardens_web
         zip -r ${{github.workspace}}/Ardens_web.zip *
-        
-    - name: Deploy to GitHub Pages
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        folder: ${{github.workspace}}/Ardens_web
   
     - name: Release
       env:
@@ -131,36 +125,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libfuse2
-    
-    #- name: Install prerequisites
-    #  run: |
-    #    sudo apt-get update
-    #    sudo apt-get install -y libpulse-dev libgl1-mesa-dev libegl1-mesa-dev mesa-common-dev xorg-dev libasound-dev libxi-dev libx11-dev libfuse2 libzstd-dev
-    #
-    #- name: Configure
-    #  run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-    #
-    #- name: Build
-    #  run: |
-    #    cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-    #    cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
-    #    
-    #- name: Build AppImages
-    #  run: |
-    #    wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-    #    chmod +x linuxdeploy-x86_64.AppImage
-    #    mkdir AppDir AppDirPlayer
-    #    cp ${{github.workspace}}/build/Ardens AppDir
-    #    cp ${{github.workspace}}/build/ArdensPlayer AppDirPlayer
-    #    cp src/Ardens.desktop AppDir
-    #    cp src/ArdensPlayer.desktop AppDirPlayer
-    #    cp img/ardens.png AppDir
-    #    cp img/ardens.png AppDirPlayer
-    #    ln -s Ardens AppDir/AppRun
-    #    ln -s ArdensPlayer AppDirPlayer/AppRun
-    #    ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
-    #    ./linuxdeploy-x86_64.AppImage --appdir AppDirPlayer --output appimage
-    #    zip Ardens_linux_x64.zip Ardens*.AppImage
     
     - name: HBB Build
       run: bash cmake/build_hbb.sh
@@ -190,9 +154,12 @@ jobs:
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
-        cmake -E tar "cfv" "Ardens_windows_x86.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe"
+        cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dll" "ardens_libretro.dll"
+        cmake -E tar "cfv" "Ardens_windows_x86.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
   
     - name: Release
       env:
@@ -219,9 +186,12 @@ jobs:
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
-        cmake -E tar "cfv" "Ardens_windows_x64.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe"
+        cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dll" "ardens_libretro.dll"
+        cmake -E tar "cfv" "Ardens_windows_x64.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
   
     - name: Release
       env:
@@ -249,9 +219,12 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
-        cmake -E tar "cfv" "Ardens_macos_x64.zip" --format=zip "Ardens.app" "ArdensPlayer.app"
+        cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dylib" "ardens_libretro.dylib"
+        cmake -E tar "cfv" "Ardens_macos_x64.zip" --format=zip "Ardens.app" "ArdensPlayer.app" "ardens_libretro.dylib"
 
     - name: Release
       env:
@@ -296,9 +269,12 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
-        cmake -E tar "cfv" "Ardens_macos_arm64.zip" --format=zip "Ardens.app" "ArdensPlayer.app"
+        cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dylib" "ardens_libretro.dylib"
+        cmake -E tar "cfv" "Ardens_macos_arm64.zip" --format=zip "Ardens.app" "ArdensPlayer.app" "ardens_libretro.dylib"
 
     - name: Release
       env:

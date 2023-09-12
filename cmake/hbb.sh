@@ -11,18 +11,21 @@ set -x
 
 yum -y install python3 libX11-devel libXi-devel libXcursor-devel pulseaudio-libs-devel alsa-lib-devel mesa-libGL-devel
 
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=1 -DARDENS_DEBUGGER=1 -DARDENS_PLAYER=1 -DARDENS_LIBRETRO=0 /io
-
 nj=$(nproc)
 if [[ $nj > 4 ]]; then
 	nj=4
 fi
 
+mkdir build
+cd build
+
+cmake -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=1 -DARDENS_DEBUGGER=1 -DARDENS_PLAYER=1 -DARDENS_LIBRETRO=0 /io
 make -j$nj
 
-strip -x Ardens ArdensPlayer
+cmake -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1 /io
+make -j$nj
 
-cp Ardens ArdensPlayer /io/build
+strip -x Ardens ArdensPlayer ardens_libretro.so
+
+cp Ardens ArdensPlayer ardens_libretro.so /io/build
 
