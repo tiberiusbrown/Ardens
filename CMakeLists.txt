@@ -167,6 +167,7 @@ set(GIFENC_SOURCES
     )
 set(SOKOL_SOURCES
     deps/sokol/sokol_app.h
+    deps/sokol/sokol_args.h
     deps/sokol/sokol_audio.h
     deps/sokol/sokol_fetch.h
     deps/sokol/sokol_gfx.h

@@ -122,6 +122,12 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
     return 0;
 }
 
+static bool ends_with(std::string const& str, std::string const& end)
+{
+    if(str.size() < end.size()) return false;
+    return str.substr(str.size() - end.size()) == end;
+}
+
 extern "C" int setparam(char const* name, char const* value)
 {
     if(!name || !value) return 0;
@@ -227,6 +233,20 @@ extern "C" int setparam(char const* name, char const* value)
         loading_indicator = bvalue;
         r = 1;
     }
+#ifndef __EMSCRIPTEN__
+    // TODO: fetch here from code instead of from shell
+    else if(ends_with(value, ".hex") || ends_with(value, ".bin") || ends_with(value, ".arduboy"))
+    {
+        std::ifstream f(value, std::ios::in | std::ios::binary);
+        if(f)
+        {
+            dropfile_err = arduboy->load_file(value, f);
+            if(dropfile_err.empty()) load_savedata();
+        }
+        else
+            dropfile_err = fmt::format("Could not open file: \"{}\"", value);
+    }
+#endif
     return r;
 }
 

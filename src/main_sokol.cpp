@@ -18,6 +18,9 @@
 
 #define SOKOL_IMPL
 #include "sokol/sokol_app.h"
+#ifndef __EMSCRIPTEN__
+#include "sokol/sokol_args.h"
+#endif
 #include "sokol/sokol_audio.h"
 #include "sokol/sokol_gfx.h"
 #include "sokol/sokol_glue.h"
@@ -98,6 +101,13 @@ static void app_init()
         img = sg_make_image(&desc);
         display_buffer_texture = (texture_t)(uintptr_t)img.id;
     }
+
+#ifndef __EMSCRIPTEN__
+    for(int i = 0; i < sargs_num_args(); ++i)
+    {
+        setparam(sargs_key_at(i), sargs_value_at(i));
+    }
+#endif
 }
 
 static void app_event(sapp_event const* e)
@@ -155,6 +165,9 @@ static void app_event(sapp_event const* e)
 static void app_cleanup()
 {
     shutdown();
+#ifndef __EMSCRIPTEN__
+    sargs_shutdown();
+#endif
     saudio_shutdown();
     simgui_shutdown();
     platform_destroy_texture(display_texture);
@@ -322,6 +335,15 @@ static void scale_icon(
 
 sapp_desc sokol_main(int argc, char** argv)
 {
+#ifndef __EMSCRIPTEN__
+    {
+        sargs_desc d{};
+        d.argc = argc;
+        d.argv = argv;
+        sargs_setup(&d);
+    }
+#endif
+
     sapp_desc desc{};
     desc.enable_clipboard = true;
     desc.high_dpi = true;
