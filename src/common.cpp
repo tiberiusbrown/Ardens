@@ -126,6 +126,15 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
     return 0;
 }
 
+float volume_gain()
+{
+    float gain = 1.f / 32768;
+    float f = float(settings.volume) * 1.f / 200;
+    f = powf(f, 1.5f) * 5.f;
+    gain *= f;
+    return gain;
+}
+
 bool ends_with(std::string const& str, std::string const& end)
 {
     if(str.size() < end.size()) return false;

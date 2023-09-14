@@ -45,6 +45,7 @@ void save_screenshot();
 void toggle_recording();
 void take_snapshot();
 
+float volume_gain();
 bool ends_with(std::string const& str, std::string const& end);
 
 // platform-specific functionality

@@ -241,12 +241,13 @@ void platform_send_sound()
     if(sbuf.size() > saudio_expect())
         sbuf.resize(saudio_expect());
 
-    constexpr float SOUND_GAIN = 1.f / 32768;
+    float gain = volume_gain();
+
     for(size_t i = 0; i < sbuf.size(); ++i)
     {
         size_t j = size_t(i * f);
         if(j >= buf.size()) j = buf.size() - 1;
-        sbuf[i] = float(buf[j]) * SOUND_GAIN;
+        sbuf[i] = float(buf[j]) * gain;
     }
 
     if(!sbuf.empty())

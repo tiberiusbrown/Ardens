@@ -74,6 +74,7 @@ static void settings_read_line(
     ARDENS_INT_SETTING(recording_downsample, 1, 4);
     ARDENS_INT_SETTING(recording_zoom, 1, 4);
     ARDENS_INT_SETTING(recording_orientation, 0, 3);
+    ARDENS_INT_SETTING(volume, 0, 200);
 
 #undef ARDENS_BOOL_SETTING
 #undef ARDENS_INT_SETTING
@@ -139,6 +140,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_INT_SETTING(recording_downsample, 1, 4);
     ARDENS_INT_SETTING(recording_zoom, 1, 4);
     ARDENS_INT_SETTING(recording_orientation, 0, 3);
+    ARDENS_INT_SETTING(volume, 0, 200);
 
 #undef ARDENS_BOOL_SETTING
 #undef ARDENS_INT_SETTING

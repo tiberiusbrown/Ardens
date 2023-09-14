@@ -81,6 +81,8 @@ struct settings_t
     int recording_zoom = 1;
     int recording_orientation = 0;
 
+    int volume = 100;
+
     bool recording_sameasdisplay = true;
 };
 

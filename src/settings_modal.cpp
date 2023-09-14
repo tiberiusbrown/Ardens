@@ -7,7 +7,7 @@ static_assert(sizeof(settings_t::ab) + 1 == absim::AB_NUM, "update settings_t::a
 static bool settings_begin_table()
 {
     float const A = 300.f * pixel_ratio;
-    float const B = 120.f * pixel_ratio;
+    float const B = 150.f * pixel_ratio;
     float const Y = 260.f * pixel_ratio;
 
     bool r = ImGui::BeginTable(
@@ -64,6 +64,23 @@ void modal_settings()
 
     if(BeginTabBar("##tabs"))
     {
+        if(BeginTabItem("Interface"))
+        {
+            if(settings_begin_table())
+            {
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Volume");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(SliderInt("##volume", &settings.volume, 0, 200, "%d%%"))
+                    update_settings();
+
+                EndTable();
+            }
+            EndTabItem();
+        }
         if(BeginTabItem("Display"))
         {
             if(settings_begin_table())
@@ -236,7 +253,7 @@ void modal_settings()
             EndTabItem();
         }
 
-        if(BeginTabItem("Simulation"))
+        if(BeginTabItem("Breakpoints"))
         {
             if(settings_begin_table())
             {
