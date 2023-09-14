@@ -372,6 +372,7 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.win32_console_attach = true;
 #endif
 
+#ifndef __EMSCRIPTEN__
     for(int i = 0; i < sargs_num_args(); ++i)
     {
         char const* k = sargs_key_at(i);
@@ -386,6 +387,7 @@ sapp_desc sokol_main(int argc, char** argv)
         }
         break;
     }
+#endif
 
     // icon
     if(ardens_icon.bytes_per_pixel == 4 && ardens_icon.width == ardens_icon.height)
