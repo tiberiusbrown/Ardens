@@ -2,7 +2,10 @@
 
 #include "common.hpp"
 
+#include <sstream>
 #include <inttypes.h>
+
+#include <fmt/format.h>
 
 static int scroll_highlight_addr = -1;
 static float scroll_highlight_time;
@@ -16,6 +19,118 @@ static absim::disassembled_instr_t const& dis_instr(int row)
     return arduboy->elf ?
         arduboy->elf->asm_with_source[row] :
         arduboy->cpu.disassembled_prog[row];
+}
+
+static char const* get_prog_addr_source_line(uint16_t addr)
+{
+    if(!arduboy->elf)
+        return nullptr;
+    auto const& elf = *arduboy->elf;
+    auto it = elf.source_lines.find(addr);
+    if(it == elf.source_lines.end())
+        return nullptr;
+    int file = it->second.first;
+    int line = it->second.second;
+    if(file >= elf.source_files.size())
+        return nullptr;
+    auto const& sf = elf.source_files[file];
+    if(line >= sf.lines.size())
+        return nullptr;
+    return sf.lines[line].c_str();
+}
+
+static std::string disassembly_arg_str(absim::disassembled_instr_arg_t const& a)
+{
+    switch(a.type)
+    {
+    case absim::disassembled_instr_arg_t::type::REG:
+        return fmt::format("r{}", a.val);
+    case absim::disassembled_instr_arg_t::type::IMM:
+        return fmt::format("{:#04x}", a.val);
+    case absim::disassembled_instr_arg_t::type::BIT:
+        return fmt::format("{}", a.val);
+    case absim::disassembled_instr_arg_t::type::DS_ADDR:
+        return fmt::format("{:#06x}", a.val);
+    case absim::disassembled_instr_arg_t::type::PROG_ADDR:
+        return fmt::format("{:#06x}", a.val * 2);
+    case absim::disassembled_instr_arg_t::type::OFFSET:
+        return fmt::format(".{:+d}", (int16_t)a.val * 2);
+    case absim::disassembled_instr_arg_t::type::PTR_REG:
+        return fmt::format("{}", char('X' + (a.val - 26) / 2));
+    case absim::disassembled_instr_arg_t::type::PTR_REG_OFFSET:
+        return fmt::format("{}+{}", char('X' + ((a.val & 0xff) - 26) / 2), (a.val >> 8) & 0xff);
+    case absim::disassembled_instr_arg_t::type::PTR_REG_PRE_DEC:
+        return fmt::format("-{}", char('X' + (a.val - 26) / 2));
+    case absim::disassembled_instr_arg_t::type::PTR_REG_POST_INC:
+        return fmt::format("{}+", char('X' + (a.val - 26) / 2));
+    case absim::disassembled_instr_arg_t::type::IO_REG:
+        return fmt::format("{:#04x}", a.val);
+    default:
+        return "";
+    }
+}
+
+static void copy_disassembly_to_clipboard()
+{
+    int num = arduboy->elf ?
+        (int)arduboy->elf->asm_with_source.size() :
+        (int)arduboy->cpu.num_instrs;
+    std::ostringstream ss;
+    for(int i = 0; i < num; ++i)
+    {
+        auto const& d = dis_instr(i);
+        switch(d.type)
+        {
+        case absim::disassembled_instr_t::SOURCE:
+            ss << fmt::format("        ; {}\n", get_prog_addr_source_line(d.addr));
+            break;
+        case absim::disassembled_instr_t::SYMBOL:
+        {
+            if(!arduboy->elf)
+                break;
+            auto const& elf = *arduboy->elf;
+            auto it = elf.text_symbols.find(d.addr);
+            if(it == elf.text_symbols.end())
+                break;
+            ss << fmt::format("        {}:\n", it->second.name);
+            break;
+        }
+        case absim::disassembled_instr_t::OBJECT:
+        {
+            std::array<char, 3 * 8> buf;
+            std::array<char, 9> charbuf;
+            int i;
+            for(i = 0; i < d.obj_bytes && i < 8; ++i)
+            {
+                uint8_t byte = arduboy->cpu.prog[d.addr + i];
+                if(i > 0) buf[i * 3 - 1] = ' ';
+                buf[i * 3 + 0] = "0123456789abcdef"[byte >> 4];
+                buf[i * 3 + 1] = "0123456789abcdef"[byte & 15];
+                buf[i * 3 + 2] = '\0';
+                char c = '.';
+                if(byte >= 32 && byte < 127)
+                    c = (char)byte;
+                charbuf[i] = c;
+                charbuf[i + 1] = '\0';
+            }
+            ss << fmt::format("{:#06x}:   {}   {}\n", d.addr, buf.data(), charbuf.data());
+            break;
+        }
+        case absim::disassembled_instr_t::INSTR:
+        {
+            ss << fmt::format("{:#06x}:   {}", d.addr, d.name ? d.name : "???");
+            if(d.arg0.type != absim::disassembled_instr_arg_t::type::NONE)
+                ss << " " << disassembly_arg_str(d.arg0);
+            if(d.arg1.type != absim::disassembled_instr_arg_t::type::NONE)
+                ss << ", " << disassembly_arg_str(d.arg1);
+            ss << "\n";
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    platform_set_clipboard_text(ss.str().c_str());
 }
 
 static void register_tooltip(int reg, bool pointer = false)
@@ -381,6 +496,11 @@ void window_disassembly(bool& open)
         {
             do_scroll = arduboy->cpu.pc * 2;
         }
+        SameLine();
+        if(Button("Copy"))
+        {
+            copy_disassembly_to_clipboard();
+        }
 
         if(arduboy->elf)
         {
@@ -500,7 +620,10 @@ void window_disassembly(bool& open)
                     }
                     else
                     {
-                        TextUnformatted(d.name);
+                        if(d.name)
+                            TextUnformatted(d.name);
+                        else
+                            TextDisabled("???");
                         if(d.arg0.type != absim::disassembled_instr_arg_t::type::NONE)
                         {
                             SameLine();
