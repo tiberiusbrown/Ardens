@@ -448,6 +448,8 @@ void frame_logic()
     if(!touch_points.empty())
         ms_since_touch = 0;
 
+    file_watch_check();
+
 #ifdef __EMSCRIPTEN__
     if(done) emscripten_cancel_main_loop();
 #endif

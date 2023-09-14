@@ -82,6 +82,7 @@ void wav_recording_toggle();
 // file watching
 void file_watch(std::string const& filename);
 void file_watch_clear();
+void file_watch_check();
 
 extern float pixel_ratio;
 extern bool done;
