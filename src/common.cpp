@@ -118,11 +118,15 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
     dropfile_err = arduboy->load_file(filename, f);
-    if(dropfile_err.empty()) load_savedata();
+    if(dropfile_err.empty())
+    {
+        load_savedata();
+        file_watch(filename);
+    }
     return 0;
 }
 
-static bool ends_with(std::string const& str, std::string const& end)
+bool ends_with(std::string const& str, std::string const& end)
 {
     if(str.size() < end.size()) return false;
     return str.substr(str.size() - end.size()) == end;
@@ -241,7 +245,11 @@ extern "C" int setparam(char const* name, char const* value)
         if(f)
         {
             dropfile_err = arduboy->load_file(value, f);
-            if(dropfile_err.empty()) load_savedata();
+            if(dropfile_err.empty())
+            {
+                load_savedata();
+                file_watch(value);
+            }
         }
         else
             dropfile_err = fmt::format("Could not open file: \"{}\"", value);

@@ -85,3 +85,4 @@ Values:
 - [GIF encoder](https://github.com/lecram/gifenc) (Public Domain)
 - [AudioFile](https://github.com/adamstark/AudioFile) (MIT)
 - [Emscripten Browser File Library](https://github.com/Armchair-Software/emscripten-browser-file) (MIT)
+- [Filewatch](https://github.com/ThomasMonkman/filewatch) (MIT)

@@ -286,6 +286,7 @@ if(ARDENS_DEBUGGER)
         src/dwarf.hpp
         src/dwarf.cpp
         src/dwarf_expr.cpp
+        src/file_watch.cpp
 
         src/window_disassembly.cpp
         src/window_profiler.cpp
@@ -396,6 +397,7 @@ if(ARDENS_PLAYER)
         src/saveload.cpp
         src/dwarf.hpp
         src/dwarf.cpp
+        src/file_watch.cpp
 
         deps/stb_image_write.h
         ${IMGUI_SOURCES}

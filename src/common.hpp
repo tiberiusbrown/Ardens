@@ -45,6 +45,8 @@ void save_screenshot();
 void toggle_recording();
 void take_snapshot();
 
+bool ends_with(std::string const& str, std::string const& end);
+
 // platform-specific functionality
 void platform_destroy_texture(texture_t t);
 texture_t platform_create_texture(int w, int h);
@@ -75,6 +77,10 @@ void screen_recording_toggle(uint8_t const* pixels);
 extern bool wav_recording;
 void send_wav_audio();
 void wav_recording_toggle();
+
+// file watching
+void file_watch(std::string const& filename);
+void file_watch_clear();
 
 extern float pixel_ratio;
 extern bool done;
