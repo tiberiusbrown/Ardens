@@ -4,6 +4,7 @@
 
 void file_watch(std::string const& filename) { (void)filename; }
 void file_watch_clear() {}
+void file_watch_check() {}
 
 #else
 
