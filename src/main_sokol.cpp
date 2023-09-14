@@ -3,6 +3,7 @@
 #include "common.hpp"
 
 #include <fstream>
+#include <cstdio>
 
 #include <imgui.h>
 
@@ -370,6 +371,21 @@ sapp_desc sokol_main(int argc, char** argv)
 #ifdef _WIN32
     desc.win32_console_attach = true;
 #endif
+
+    for(int i = 0; i < sargs_num_args(); ++i)
+    {
+        char const* k = sargs_key_at(i);
+        char const* v = sargs_value_at(i);
+        if(0 != strcmp(k, "size")) continue;
+        int width = desc.width;
+        int height = desc.height;
+        if(2 == sscanf(v, "%dx%d", &width, &height))
+        {
+            desc.width = width;
+            desc.height = height;
+        }
+        break;
+    }
 
     // icon
     if(ardens_icon.bytes_per_pixel == 4 && ardens_icon.width == ardens_icon.height)

@@ -66,6 +66,9 @@ Values:
 - `180` or `flip`
 - `270` or `ccw` or `ccw90`
 
+#### `size` (Desktop only)
+Sets the initial size of the application window. Value should be in the format `<width>x<height>` (for example, `size=800x400`).
+
 ## Libraries Used
 
 - [SDL](https://github.com/libsdl-org/SDL) (zlib)
