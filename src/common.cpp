@@ -613,7 +613,7 @@ void imgui_content()
         float cy = size.y * 0.5f;
         constexpr uint8_t shade = 200;
         auto color = IM_COL32(shade, shade, shade, 255);
-        float thickness = 4.f * pixel_ratio;
+        float thickness = w * 0.04f;
         if(loading_indicator)
         {
             for(int i = 0; i < 12; ++i)
