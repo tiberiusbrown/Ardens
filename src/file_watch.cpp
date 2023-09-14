@@ -27,7 +27,8 @@ std::atomic<bool> load_bin;
 template<bool hex>
 static void watch_action(std::string const& path, filewatch::Event const e)
 {
-    if(e != filewatch::Event::modified) return;
+    if( e != filewatch::Event::modified &&
+        e != filewatch::Event::added) return;
     if(hex)
         load_hex.exchange(true);
     else
