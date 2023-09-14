@@ -66,6 +66,9 @@ Values:
 - `180` or `flip`
 - `270` or `ccw` or `ccw90`
 
+#### `v` or `volume`
+Sets the emulated audio gain. Value may be in the range 0 to 200, with 100 being the default.
+
 #### `size` (Desktop only)
 Sets the initial size of the application window. Value should be in the format `<width>x<height>` (for example, `size=800x400`).
 

@@ -241,6 +241,12 @@ extern "C" int setparam(char const* name, char const* value)
         update_settings();
         r = 1;
     }
+    else if(!strcmp(name, "v") || !strcmp(name, "volume"))
+    {
+        settings.volume = std::clamp<int>(nvalue, 0, 200);
+        update_settings();
+        r = 1;
+    }
     else if(!strcmp(name, "loading"))
     {
         loading_indicator = bvalue;
