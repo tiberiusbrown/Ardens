@@ -680,7 +680,9 @@ void imgui_content()
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted(dropfile_err.c_str());
         ImGui::PopTextWrapPos();
-        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
+        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) ||
+            ImGui::IsKeyPressed(ImGuiKey_Enter) ||
+            dropfile_err.empty())
         {
             dropfile_err.clear();
             ImGui::CloseCurrentPopup();

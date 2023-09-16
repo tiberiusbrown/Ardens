@@ -15,6 +15,8 @@ void file_watch_check() {}
 
 using Watch = filewatch::FileWatch<std::string>;
 
+static uint64_t ms_reload = 0;
+
 static std::unique_ptr<Watch> watch_hex;
 static std::unique_ptr<Watch> watch_bin;
 
@@ -33,6 +35,7 @@ static void watch_action(std::string const& path, filewatch::Event const e)
         load_hex.exchange(true);
     else
         load_bin.exchange(true);
+    ms_reload = ms_since_start + 500;
 }
 
 void file_watch(std::string const& filename)
@@ -71,6 +74,8 @@ void file_watch_clear()
 
 void file_watch_check()
 {
+    if(ms_since_start < ms_reload)
+        return;
     if(load_hex.exchange(false) && arduboy)
     {
         std::ifstream f(fname_hex.c_str(), std::ios::in | std::ios::binary);
