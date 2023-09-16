@@ -252,24 +252,6 @@ extern "C" int setparam(char const* name, char const* value)
         loading_indicator = bvalue;
         r = 1;
     }
-#ifndef __EMSCRIPTEN__
-    // TODO: fetch here from code instead of from shell
-    else if(ends_with(value, ".hex") || ends_with(value, ".bin") || ends_with(value, ".arduboy"))
-    {
-        std::ifstream f(value, std::ios::in | std::ios::binary);
-        if(f)
-        {
-            dropfile_err = arduboy->load_file(value, f);
-            if(dropfile_err.empty())
-            {
-                load_savedata();
-                file_watch(value);
-            }
-        }
-        else
-            dropfile_err = fmt::format("Could not open file: \"{}\"", value);
-    }
-#endif
     return r;
 }
 

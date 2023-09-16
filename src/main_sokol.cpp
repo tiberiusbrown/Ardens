@@ -6,6 +6,7 @@
 #include <cstdio>
 
 #include <imgui.h>
+#include <fmt/format.h>
 
 #if defined(__EMSCRIPTEN__)
 #define SOKOL_GLES2
@@ -106,7 +107,22 @@ static void app_init()
 #ifndef __EMSCRIPTEN__
     for(int i = 0; i < sargs_num_args(); ++i)
     {
-        setparam(sargs_key_at(i), sargs_value_at(i));
+        char const* value = sargs_value_at(i);
+        if(!setparam(sargs_key_at(i), value))
+        {
+            std::ifstream f(value, std::ios::in | std::ios::binary);
+            if(f)
+            {
+                dropfile_err = arduboy->load_file(value, f);
+                if(dropfile_err.empty())
+                {
+                    load_savedata();
+                    file_watch(value);
+                }
+            }
+            else
+                dropfile_err = fmt::format("Could not open file: \"{}\"", value);
+        }
     }
 #endif
 }
