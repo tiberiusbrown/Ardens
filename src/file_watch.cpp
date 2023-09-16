@@ -55,7 +55,7 @@ void file_watch(std::string const& filename)
         watch_bin = std::make_unique<Watch>(filename, watch_action<false>);
     }
 #ifndef ARDENS_NO_ARDUBOY_FILE
-    if(ends_with(filename, ".arduboy") || ends_with(filename, ".zip"))
+    if(ends_with(filename, ".arduboy"))
     {
         fname_hex = filename;
         watch_hex = std::make_unique<Watch>(filename, watch_action<true>);

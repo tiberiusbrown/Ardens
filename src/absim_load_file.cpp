@@ -1021,7 +1021,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
 #endif
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
-    if(ends_with(fname, ".arduboy") || ends_with(fname, ".zip"))
+    if(ends_with(fname, ".arduboy"))
     {
         reset();
         elf.reset();
