@@ -567,8 +567,10 @@ void frame_logic()
 #endif
     }
 
+#if ARDENS_PLAYER
     if(ImGui::IsKeyPressed(ImGuiKey_Escape, false))
         platform_quit();
+#endif
 
     if(!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(ImGuiKey_P, false))
     {
