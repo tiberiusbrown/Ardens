@@ -62,6 +62,7 @@ void platform_destroy_fonts_texture();
 void platform_create_fonts_texture();
 void platform_open_url(char const* url);
 void platform_toggle_fullscreen();
+void platform_quit();
 
 #ifdef __EMSCRIPTEN__
 void file_download(

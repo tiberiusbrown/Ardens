@@ -328,6 +328,11 @@ void platform_toggle_fullscreen()
 #endif
 }
 
+void platform_quit()
+{
+    sapp_request_quit();
+}
+
 static std::array<std::vector<uint32_t>, 6> icon_imgs;
 
 static void scale_icon(

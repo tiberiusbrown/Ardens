@@ -567,6 +567,9 @@ void frame_logic()
 #endif
     }
 
+    if(ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+        platform_quit();
+
     if(!ImGui::GetIO().WantCaptureKeyboard && ImGui::IsKeyPressed(ImGuiKey_P, false))
     {
         settings.fullzoom = !settings.fullzoom;
