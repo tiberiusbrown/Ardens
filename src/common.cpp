@@ -567,7 +567,7 @@ void frame_logic()
 #endif
     }
 
-#if ARDENS_PLAYER
+#if ARDENS_PLAYER && !defined(__EMSCRIPTEN__)
     if(ImGui::IsKeyPressed(ImGuiKey_Escape, false))
         platform_quit();
 #endif
