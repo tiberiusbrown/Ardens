@@ -73,6 +73,9 @@ Sets the emulated audio gain. Value may be in the range 0 to 200, with 100 being
 #### `size` (Desktop only)
 Sets the initial size of the application window. Value should be in the format `<width>x<height>` (for example, `size=800x400`).
 
+#### `i` or `intscale`
+Restricts the display scaling to an integral scaling factor. Defaults to false for the web player, and true for all other platforms.
+
 ## Libraries Used
 
 - [SDL](https://github.com/libsdl-org/SDL) (zlib)
