@@ -46,6 +46,11 @@ struct settings_t
 
     bool fullzoom = false;
     bool record_wav = false;
+#if defined(ARDENS_PLAYER) && defined(__EMSCRIPTEN__)
+    bool display_integer_scale = false;
+#else
+    bool display_integer_scale = true;
+#endif
     bool display_auto_filter = true;
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;

@@ -102,6 +102,14 @@ void modal_settings()
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
+                TextUnformatted("Integer Scaling");
+                TableSetColumnIndex(1);
+                if(Checkbox("##displayintegerscale", &settings.display_integer_scale))
+                    update_settings();
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
                 TextUnformatted("Palette");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);

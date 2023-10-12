@@ -174,11 +174,23 @@ void view_player()
     float w = tw, h = th;
     bool smaller = false;
 
-    while(w > size.x || h > size.y)
-        w *= 0.5f, h *= 0.5f, smaller = true;
-
-    while(w + tw <= size.x && h + th <= size.y)
-        w += tw, h += th;
+    if(settings.display_integer_scale)
+    {
+        while(w > size.x || h > size.y)
+            w *= 0.5f, h *= 0.5f, smaller = true;
+        while(w + tw <= size.x && h + th <= size.y)
+            w += tw, h += th;
+    }
+    else
+    {
+        w = size.x;
+        h = w * 0.5f;
+        if(h > size.y)
+        {
+            h = size.y;
+            w = h * 2.f;
+        }
+    }
     ImVec2 dsize = { w, h };
 
     ImVec2 dstart = {

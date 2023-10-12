@@ -247,6 +247,12 @@ extern "C" int setparam(char const* name, char const* value)
         update_settings();
         r = 1;
     }
+    else if(!strcmp(name, "i") || !strcmp(name, "intscale"))
+    {
+        settings.display_integer_scale = bvalue;
+        update_settings();
+        r = 1;
+    }
     else if(!strcmp(name, "loading"))
     {
         loading_indicator = bvalue;
