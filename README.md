@@ -24,6 +24,7 @@ Try the minimal player with one of the game URLs below:
 |   F3   | Toggle GIF recording               |
 |   F4   | (Debugger only) Save snapshot      |
 |   F5   | (Debugger only) Pause/Continue     |
+|   F8   | Reset                              |
 |   F11  | Toggle fullscreen                  |
 |    O   | (Debugger only) Settings window    |
 |    P   | (Debugger only) Toggle player mode |
