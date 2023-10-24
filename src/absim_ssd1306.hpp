@@ -320,6 +320,38 @@ void ARDENS_FORCEINLINE ssd1306_t::update_pixels_row()
 
     uint8_t p0 = 0;
     uint8_t p1 = enable_charge_pump ? contrast : contrast >> 4;
+
+    // current limiting
+    if(enable_current_limiting)
+    {
+        // count number of pixels on in the current row
+        int num_pixels_on = 0;
+        if(!inverse_display)
+        {
+            for(int i = 0; i < 128; ++i)
+                if(ram[rindex + i] & mask)
+                    ++num_pixels_on;
+        }
+        else
+        {
+            for(int i = 0; i < 128; ++i)
+                if(!(ram[rindex + i] & mask))
+                    ++num_pixels_on;
+        }
+        float driver_current =
+            ref_segment_current * (1.f / 255) * num_pixels_on * contrast;
+        if(driver_current > MAX_DRIVER_CURRENT)
+        {
+            float t = MAX_DRIVER_CURRENT / driver_current;
+            t += 0.75f * (1.f - t);
+            p1 = uint8_t(t * p1);
+        }
+
+        constexpr int F = 128;
+        p1 = ((F * prev_row_drive) + ((256 - F) * p1)) / 256;
+        prev_row_drive = p1;
+    }
+
     if(inverse_display) std::swap(p0, p1);
 
     for(int i = 0; i < 128; ++i)
@@ -391,6 +423,10 @@ void ssd1306_t::reset()
     memset(&ram, 0, sizeof(ram));
     memset(&pixels, 0, sizeof(pixels));
     memset(&filtered_pixels, 0, sizeof(filtered_pixels));
+
+    ref_segment_current = 0.195;
+    enable_current_limiting = true;
+    prev_row_drive = 0;
 
     contrast = 0x7f;
     entire_display_on = false;

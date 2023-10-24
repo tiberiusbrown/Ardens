@@ -64,17 +64,25 @@ void modal_settings()
 
     if(BeginTabBar("##tabs"))
     {
-        if(BeginTabItem("Interface"))
+        if(BeginTabItem("Device"))
         {
             if(settings_begin_table())
             {
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
-                TextUnformatted("Volume");
+                TextUnformatted("Audio Volume");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
                 if(SliderInt("##volume", &settings.volume, 0, 200, "%d%%"))
+                    update_settings();
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Model Display Driver Current");
+                TableSetColumnIndex(1);
+                if(Checkbox("##drivercurrent", &settings.display_current_modeling))
                     update_settings();
 
                 EndTable();

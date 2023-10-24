@@ -551,6 +551,13 @@ struct ssd1306_t
     // physical display RAM
     std::array<uint8_t, 1024> ram;
 
+    // segment driver current at 0xff contrast in mA
+    // Arduboy: 195uA (0.195)
+    float ref_segment_current;
+    static constexpr float MAX_DRIVER_CURRENT = 15.f;
+    bool enable_current_limiting;
+    uint8_t prev_row_drive;
+
     uint8_t contrast;
     bool entire_display_on;
     bool inverse_display;

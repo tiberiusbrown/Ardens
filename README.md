@@ -76,6 +76,9 @@ Sets the initial size of the application window. Value should be in the format `
 #### `i` or `intscale`
 Restricts the display scaling to an integral scaling factor. Defaults to false for the web player, and true for all other platforms.
 
+#### `c` or `current`
+Enables modeling the display row driver current limit. This effectively darkens rows that have many lit pixels. Defaults to false.
+
 ## Libraries Used
 
 - [SDL](https://github.com/libsdl-org/SDL) (zlib)

@@ -253,6 +253,12 @@ extern "C" int setparam(char const* name, char const* value)
         update_settings();
         r = 1;
     }
+    else if(!strcmp(name, "c") || !strcmp(name, "current"))
+    {
+        settings.display_current_modeling = bvalue;
+        update_settings();
+        r = 1;
+    }
     else if(!strcmp(name, "loading"))
     {
         loading_indicator = bvalue;
@@ -512,6 +518,7 @@ void frame_logic()
         arduboy->allow_nonstep_breakpoints =
             arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
         arduboy->display.enable_filter = settings.display_auto_filter;
+        arduboy->display.enable_current_limiting = settings.display_current_modeling;
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;
         uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;

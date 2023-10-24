@@ -52,6 +52,7 @@ static void settings_read_line(
     ARDENS_BOOL_SETTING(fullzoom);
     ARDENS_BOOL_SETTING(display_integer_scale);
     ARDENS_BOOL_SETTING(display_auto_filter);
+    ARDENS_BOOL_SETTING(display_current_modeling);
     ARDENS_BOOL_SETTING(record_wav);
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
 
@@ -119,6 +120,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_BOOL_SETTING(fullzoom);
     ARDENS_BOOL_SETTING(display_integer_scale);
     ARDENS_BOOL_SETTING(display_auto_filter);
+    ARDENS_BOOL_SETTING(display_current_modeling);
     ARDENS_BOOL_SETTING(record_wav);
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
 
