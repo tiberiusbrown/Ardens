@@ -255,7 +255,7 @@ extern "C" int setparam(char const* name, char const* value)
     }
     else if(!strcmp(name, "c") || !strcmp(name, "current"))
     {
-        settings.display_current_modeling = bvalue;
+        settings.display_current_modeling = std::clamp<int>(nvalue, 0, 3);;
         update_settings();
         r = 1;
     }
@@ -518,7 +518,17 @@ void frame_logic()
         arduboy->allow_nonstep_breakpoints =
             arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
         arduboy->display.enable_filter = settings.display_auto_filter;
-        arduboy->display.enable_current_limiting = settings.display_current_modeling;
+
+        arduboy->display.enable_current_limiting = (settings.display_current_modeling != 0);
+        arduboy->display.ref_segment_current = 0.195;
+        switch(settings.display_current_modeling)
+        {
+        case 0:  arduboy->display.current_limit_slope = 0.f;   break;
+        case 1:  arduboy->display.current_limit_slope = 0.75f; break;
+        case 2:  arduboy->display.current_limit_slope = 0.45f; break;
+        case 3:  arduboy->display.current_limit_slope = 0.f;   break;
+        default: arduboy->display.current_limit_slope = 0.f;   break;
+        }
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;
         uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;

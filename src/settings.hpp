@@ -52,7 +52,6 @@ struct settings_t
     bool display_integer_scale = true;
 #endif
     bool display_auto_filter = true;
-    bool display_current_modeling = false;
     bool profiler_cycle_counts = false;
     bool profiler_group_symbols = false;
     bool enable_step_breaks = true;
@@ -76,6 +75,7 @@ struct settings_t
         }
     } ab;
 
+    int display_current_modeling = 0;
     int display_palette = 0;
     int display_filtering = FILTER_NONE;
     int display_downsample = 1;

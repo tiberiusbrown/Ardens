@@ -554,6 +554,7 @@ struct ssd1306_t
     // segment driver current at 0xff contrast in mA
     // Arduboy: 195uA (0.195)
     float ref_segment_current;
+    float current_limit_slope;
     static constexpr float MAX_DRIVER_CURRENT = 15.f;
     bool enable_current_limiting;
     uint8_t prev_row_drive;

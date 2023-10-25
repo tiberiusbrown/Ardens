@@ -208,6 +208,9 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     // v0.16.8
     ar(a.cpu.pushed_at_least_once);
 
+    // v0.20.32
+    ar(a.display.prev_row_drive);
+
     return "";
 }
 

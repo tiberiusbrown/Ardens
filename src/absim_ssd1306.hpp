@@ -343,7 +343,7 @@ void ARDENS_FORCEINLINE ssd1306_t::update_pixels_row()
         if(driver_current > MAX_DRIVER_CURRENT)
         {
             float t = MAX_DRIVER_CURRENT / driver_current;
-            t += 0.75f * (1.f - t);
+            t += current_limit_slope * (1.f - t);
             p1 = uint8_t(t * p1);
         }
 
@@ -425,6 +425,7 @@ void ssd1306_t::reset()
     memset(&filtered_pixels, 0, sizeof(filtered_pixels));
 
     ref_segment_current = 0.195;
+    current_limit_slope = 0.75f;
     enable_current_limiting = true;
     prev_row_drive = 0;
 

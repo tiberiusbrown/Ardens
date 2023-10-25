@@ -77,12 +77,19 @@ void modal_settings()
                 if(SliderInt("##volume", &settings.volume, 0, 200, "%d%%"))
                     update_settings();
 
+                static char const* const CURRENT_ITEMS[] =
+                {
+                        "Off", "Subtle", "Normal", "Exaggerated",
+                };
+                constexpr int NUM_CURRENT_ITEMS = sizeof(CURRENT_ITEMS) / sizeof(CURRENT_ITEMS[0]);
                 TableNextRow();
                 TableSetColumnIndex(0);
                 AlignTextToFramePadding();
                 TextUnformatted("Model Display Driver Current");
                 TableSetColumnIndex(1);
-                if(Checkbox("##drivercurrent", &settings.display_current_modeling))
+                SetNextItemWidth(-1.f);
+                if(Combo("##currentmodel", &settings.display_current_modeling,
+                    CURRENT_ITEMS, NUM_CURRENT_ITEMS, NUM_CURRENT_ITEMS))
                     update_settings();
 
                 EndTable();
