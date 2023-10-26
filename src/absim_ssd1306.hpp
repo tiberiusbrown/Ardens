@@ -344,7 +344,7 @@ void ARDENS_FORCEINLINE ssd1306_t::update_pixels_row()
         constexpr float DIFF = MAX_DRIVER_CURRENT * 0.5f;
         if(row != 0 && std::abs(row_drive - prev_row_drive) > DIFF)
         {
-            constexpr float F = 0.5f;
+            constexpr float F = 0.35f;
             if(row_drive > prev_row_drive)
                 row_drive = F * (prev_row_drive + DIFF) + (1.f - F) * row_drive;
             else
