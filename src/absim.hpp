@@ -557,7 +557,7 @@ struct ssd1306_t
     float current_limit_slope;
     static constexpr float MAX_DRIVER_CURRENT = 15.f;
     bool enable_current_limiting;
-    uint8_t prev_row_drive;
+    float prev_row_drive;
 
     uint8_t contrast;
     bool entire_display_on;

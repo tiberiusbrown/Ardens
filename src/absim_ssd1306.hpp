@@ -338,18 +338,36 @@ void ARDENS_FORCEINLINE ssd1306_t::update_pixels_row()
                 if(!(ram[rindex + i] & mask))
                     ++num_pixels_on;
         }
-        float driver_current =
+        float row_drive =
             ref_segment_current * (1.f / 255) * num_pixels_on * contrast;
-        if(driver_current > MAX_DRIVER_CURRENT)
+
+        constexpr float DIFF = MAX_DRIVER_CURRENT * 0.5f;
+        if(row != 0 && std::abs(row_drive - prev_row_drive) > DIFF)
         {
-            float t = MAX_DRIVER_CURRENT / driver_current;
-            t += current_limit_slope * (1.f - t);
-            p1 = uint8_t(t * p1);
+            constexpr float F = 0.5f;
+            if(row_drive > prev_row_drive)
+                row_drive = F * (prev_row_drive + DIFF) + (1.f - F) * row_drive;
+            else
+                row_drive = F * (prev_row_drive - DIFF) + (1.f - F) * row_drive;
         }
 
-        constexpr int F = 128;
-        p1 = ((F * prev_row_drive) + ((256 - F) * p1)) / 256;
-        prev_row_drive = p1;
+        if(row_drive > MAX_DRIVER_CURRENT)
+        {
+            float t = MAX_DRIVER_CURRENT / row_drive;
+            t += current_limit_slope * (1.f - t);
+            row_drive *= t;
+        }
+
+        if(num_pixels_on > 0)
+        {
+            float segment_drive = row_drive / num_pixels_on;
+            float t = segment_drive / ref_segment_current * 255;
+            if(t > contrast)
+                t = float(contrast);
+            p1 = uint8_t(t);
+        }
+
+        prev_row_drive = row_drive;
     }
 
     if(inverse_display) std::swap(p0, p1);
