@@ -219,14 +219,14 @@ jobs:
         submodules: 'recursive'
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.6
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
   
     - name: Build
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.6
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
@@ -269,14 +269,14 @@ jobs:
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- clang-tblgen
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.6
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
   
     - name: Build
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.6
+        cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1 -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
