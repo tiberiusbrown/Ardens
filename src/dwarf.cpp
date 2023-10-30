@@ -60,15 +60,15 @@ bool dwarf_member_addr(
 {
     if(auto a = die.find(llvm::dwarf::DW_AT_bit_size))
         if(auto v = a->getAsUnsignedConstant())
-            bit_size = (uint32_t)v.value();
+            bit_size = (uint32_t)(*v);
     if(bit_size != 0)
     {
         if(auto t = die.find(llvm::dwarf::DW_AT_bit_offset))
             if(auto v = t->getAsUnsignedConstant())
-                bit_offset = dwarf_size(die) * 8 - bit_size - (uint32_t)v.value();
+                bit_offset = dwarf_size(die) * 8 - bit_size - (uint32_t)(*v);
         if(auto t = die.find(llvm::dwarf::DW_AT_data_bit_offset))
             if(auto v = t->getAsUnsignedConstant())
-                bit_offset = (uint32_t)v.value();
+                bit_offset = (uint32_t)(*v);
     }
     if(auto tloc = die.find(llvm::dwarf::DW_AT_data_member_location))
     {
@@ -115,7 +115,10 @@ std::vector<uint32_t> dwarf_array_bounds(llvm::DWARFDie die)
             {
                 int64_t lower_bound = 0;
                 if(auto lower_bound_attr = child.find(DW_AT_lower_bound))
-                    lower_bound = lower_bound_attr->getAsUnsignedConstant().value_or(0);
+                {
+                    auto t = lower_bound_attr->getAsUnsignedConstant();
+                    lower_bound = t ? *t : 0;
+                }
                 n = *upper_bound - lower_bound + 1;
             }
         }
@@ -168,7 +171,7 @@ uint32_t dwarf_size(llvm::DWARFDie die)
 
     if(auto SizeAttr = die.find(DW_AT_byte_size))
         if(auto Size = SizeAttr->getAsUnsignedConstant())
-            return (uint32_t)Size.value();
+            return (uint32_t)(*Size);
 
     constexpr uint32_t PointerSize = 2;
 
@@ -205,7 +208,10 @@ uint32_t dwarf_size(llvm::DWARFDie die)
                 {
                     int64_t LowerBound = 0;
                     if(auto LowerBoundAttr = Child.find(DW_AT_lower_bound))
-                        LowerBound = LowerBoundAttr->getAsUnsignedConstant().value_or(0);
+                    {
+                        auto t = LowerBoundAttr->getAsUnsignedConstant();
+                        LowerBound = t ? *t : 0;
+                    }
                     Size *= *UpperBound - LowerBound + 1;
                 }
             }
@@ -297,8 +303,8 @@ static std::string recurse_varname(llvm::DWARFDie die)
             if(child.getTag() == llvm::dwarf::DW_TAG_subrange_type)
             {
                 if(auto tf = child.find(llvm::dwarf::DW_AT_upper_bound))
-                    if(auto tn = tf.value().getAsUnsignedConstant())
-                        n = tn.value();
+                    if(auto tn = tf->getAsUnsignedConstant())
+                        n = *tn;
             }
             if(n < 0)
                 brackets += "[]";
@@ -366,7 +372,7 @@ static std::string recurse_value(
             {
                 if(auto tb = child.find(llvm::dwarf::DW_AT_upper_bound))
                     if(auto b = tb->getAsUnsignedConstant())
-                        n *= ((int)b.value() + 1), more = false;
+                        n *= ((int)(*b) + 1), more = false;
             }
         }
         auto type = dwarf_type(die);
@@ -404,10 +410,10 @@ static std::string recurse_value(
         if(bits == 0)
             if(auto a = die.find(llvm::dwarf::DW_AT_byte_size))
                 if(auto v = a->getAsUnsignedConstant())
-                    bits = (int)v.value() * 8;
+                    bits = (int)(*v) * 8;
         if(auto a = die.find(llvm::dwarf::DW_AT_encoding))
             if(auto v = a->getAsUnsignedConstant())
-                enc = (int)v.value();
+                enc = (int)(*v);
         if(bits == 0 || bits > 64)
             break;
         mem = mem.offset(bit_offset / 8);
@@ -440,7 +446,7 @@ static std::string recurse_value(
                 if(child.getTag() != llvm::dwarf::DW_TAG_enumerator)
                     continue;
                 if(auto t = child.find(llvm::dwarf::DW_AT_const_value))
-                    if(auto v = t.value().getAsUnsignedConstant())
+                    if(auto v = t->getAsUnsignedConstant())
                         if(v == x) return fmt::format("{} ({})", dwarf_name(child), x);
             }
             return fmt::format("<invalid> ({})", x);

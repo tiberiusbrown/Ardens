@@ -269,7 +269,7 @@ jobs:
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- clang-tblgen
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9
   
     - name: Build
       run: |
