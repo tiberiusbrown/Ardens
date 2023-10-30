@@ -226,19 +226,18 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1 -CMAKE_OSX_DEPLOYMENT_TARGET=10.6
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
-        mkdir Ardens_macos
-        cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens_macos/Ardens.app"
-        cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "Ardens_macos/ArdensPlayer.app"
-        cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "Ardens_macos/ardens_libretro.dylib"
-        hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_x64.dmg" -srcfolder Ardens_macos
+        cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
+        cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
+        cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "ardens_libretro.dylib"
+        cmake -E tar "cfv" "Ardens_macos_x64.zip" --format=zip "Ardens.app" "ArdensPlayer.app" "ardens_libretro.dylib"
 
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_x64.dmg"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_x64.zip"
   
   build_macos_arm64:
   
@@ -277,16 +276,15 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1 -CMAKE_OSX_DEPLOYMENT_TARGET=10.6
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
-        mkdir Ardens_macos
-        cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens_macos/Ardens.app"
-        cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "Ardens_macos/ArdensPlayer.app"
-        cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "Ardens_macos/ardens_libretro.dylib"
-        hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_arm64.dmg" -srcfolder Ardens_macos
-        
+        cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens.app"
+        cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "ArdensPlayer.app"
+        cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "ardens_libretro.dylib"
+        cmake -E tar "cfv" "Ardens_macos_arm64.zip" --format=zip "Ardens.app" "ArdensPlayer.app" "ardens_libretro.dylib"
+
     - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_arm64.dmg"
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_arm64.zip"
