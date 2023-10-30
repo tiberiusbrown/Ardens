@@ -25,7 +25,7 @@ static uint32_t array_size(llvm::DWARFDie& die)
             return 0;
         if(auto tu = child.find(llvm::dwarf::DW_AT_upper_bound))
             if(auto u = tu->getAsUnsignedConstant())
-                n *= ((uint32_t)u.value() + 1);
+                n *= ((uint32_t)(*u) + 1);
     }
     return n;
 }
