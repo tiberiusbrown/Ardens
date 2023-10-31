@@ -152,20 +152,6 @@ void platform_open_url(char const* url)
     SDL_OpenURL(url);
 }
 
-#ifdef __EMSCRIPTEN__
-void file_download(
-    char const* fname,
-    char const* download_fname,
-    char const* mime_type)
-{
-    std::ifstream f(fname, std::ios::binary);
-    std::vector<char> data(
-        (std::istreambuf_iterator<char>(f)),
-        std::istreambuf_iterator<char>());
-    emscripten_browser_file::download(download_fname, mime_type, data.data(), data.size());
-}
-#endif
-
 void platform_toggle_fullscreen()
 {
     static bool fs = false;
