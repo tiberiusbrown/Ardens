@@ -37,6 +37,12 @@ option(ARDENS_LIB      "Build static library for emulator core" OFF)
 option(ARDENS_PLAYER   "Build player target" ON)
 option(ARDENS_LIBRETRO "Build libretro core target" OFF)
 
+set(SDL_DEFAULT OFF)
+if(NOT EMSCRIPTEN)
+    set(ARDENS_SDL_DEFAULT ON)
+endif()
+option(ARDENS_SDL      "Build Ardens with SDL backend" ${ARDENS_SDL_DEFAULT})
+
 if(ARDENS_LIBRETRO)
     message(STATUS "compiling libretro!")
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -74,6 +80,10 @@ endif()
 add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
+
+if(ARDENS_SDL)
+    add_subdirectory(deps/SDL)
+endif()
 
 if(ARDENS_LLVM)
 	
@@ -148,12 +158,14 @@ set(IMGUI_SOURCES
     deps/imgui/imstb_truetype.h
     deps/imgui/imgui_memory_editor.h
     )
-set(IMGUI_SDL_SOURCES
-    deps/imgui/imgui_impl_sdl.h
-    deps/imgui/imgui_impl_sdl.cpp
-    deps/imgui/imgui_impl_sdlrenderer.h
-    deps/imgui/imgui_impl_sdlrenderer.cpp
-    )
+if(ARDENS_SDL)
+    list(APPEND IMGUI_SOURCES
+        deps/imgui/imgui_impl_sdl3.h
+        deps/imgui/imgui_impl_sdl3.cpp
+        deps/imgui/imgui_impl_sdlrenderer3.h
+        deps/imgui/imgui_impl_sdlrenderer3.cpp
+        )
+endif()
 set(IMPLOT_SOURCES
     deps/implot/implot.h
     deps/implot/implot.cpp
@@ -242,6 +254,12 @@ macro(configure_app_target target)
         set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_SHORT_VERSION_STRING "${ARDENS_VERSION_SHORT}")
         set_target_properties(${target} PROPERTIES MACOSX_BUNDLE_ICON_FILE  "ardens.icns")
         target_compile_options(${target} PRIVATE -x objective-c++)
+    endif()
+    if(ARDENS_SDL)
+        target_compile_definitions(${target} PUBLIC -DARDENS_PLATFORM_SDL)
+        target_link_libraries(${target} PRIVATE SDL3-static)
+    else()
+        target_compile_definitions(Ardens PRIVATE -DARDENS_PLATFORM_SOKOL)
     endif()
 endmacro()
 
@@ -340,7 +358,6 @@ if(ARDENS_DEBUGGER)
             )
         target_compile_definitions(Ardens PRIVATE -DARDENS_LLVM)
     endif()
-    target_compile_definitions(Ardens PRIVATE -DARDENS_PLATFORM_SOKOL)
     target_include_directories(Ardens PRIVATE
         deps
         deps/imgui
@@ -405,7 +422,6 @@ if(ARDENS_PLAYER)
         ${EM_FILE_BROWSER_SOURCES}
         ${SOKOL_SOURCES}
         )
-    target_compile_definitions(ArdensPlayer PRIVATE -DARDENS_PLATFORM_SOKOL)
     target_include_directories(ArdensPlayer PRIVATE
         deps
         deps/imgui

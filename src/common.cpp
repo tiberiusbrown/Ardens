@@ -630,7 +630,7 @@ void imgui_content()
 
     if(!arduboy->cpu.decoded)
     {
-        auto* d = ImGui::GetBackgroundDrawList(ImGui::GetMainViewport());
+        auto* d = ImGui::GetBackgroundDrawList();
         auto size = ImGui::GetMainViewport()->Size;
         float w = 100.f * pixel_ratio;
         float pad = 25.f * pixel_ratio;

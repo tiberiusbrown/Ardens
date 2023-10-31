@@ -20,6 +20,7 @@ Try the minimal player with one of the game URLs below:
 | Arrows | Arduboy: directional buttons       |
 |   A/Z  | Arduboy: A button                  |
 |  S/X/B | Arduboy: B button                  |
+|   F1   | (Desktop Debugger Only) Save screenshot of entire window |
 |   F2   | Save screenshot                    |
 |   F3   | Toggle GIF recording               |
 |   F4   | (Debugger only) Save snapshot      |
