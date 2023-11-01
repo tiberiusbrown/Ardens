@@ -2,12 +2,13 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_impl_sdlrenderer.h"
-#include "implot.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_sdlrenderer3.h"
+#include <implot/implot.h>
 #include <stdio.h>
 #include <time.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 #ifdef _WIN32
 #include <ShellScalingApi.h>
@@ -36,6 +37,11 @@
 #include <algorithm>
 #include <fstream>
 
+#define SOKOL_IMPL
+#ifndef __EMSCRIPTEN__
+#include "sokol/sokol_args.h"
+#endif
+
 #include "common.hpp"
 
 #ifdef __EMSCRIPTEN__
@@ -50,8 +56,7 @@ constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = 2048;
 
 constexpr ImVec4 clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-static SDL_AudioDeviceID audio_device;
-static SDL_AudioSpec audio_spec;
+static SDL_AudioStream* audio_stream;
 
 static SDL_Window* window;
 static SDL_Renderer* renderer;
@@ -83,12 +88,12 @@ void platform_update_texture(texture_t t, void const* data, size_t n)
 
 void platform_texture_scale_linear(texture_t t)
 {
-    SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_ScaleModeLinear);
+    SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_SCALEMODE_LINEAR);
 }
 
 void platform_texture_scale_nearest(texture_t t)
 {
-    SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_ScaleModeNearest);
+    SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_SCALEMODE_NEAREST);
 }
 
 void platform_set_clipboard_text(char const* str)
@@ -99,7 +104,7 @@ void platform_set_clipboard_text(char const* str)
 uint64_t platform_get_ms_dt()
 {
     static uint64_t pt = 0;
-    uint64_t t = SDL_GetTicks64();
+    uint64_t t = SDL_GetTicks();
     if(t <= pt) return 0;
     uint64_t dt = t - pt;
     pt = t;
@@ -112,7 +117,7 @@ void platform_send_sound()
     buf.swap(arduboy->cpu.sound_buffer);
     constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
     size_t num_bytes = buf.size() * SAMPLE_SIZE;
-    uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
+    uint32_t queued_bytes = SDL_GetAudioStreamQueued(audio_stream);
     constexpr uint32_t BUFFER_BYTES = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE * 2;
     if(queued_bytes > BUFFER_BYTES)
     {
@@ -125,8 +130,8 @@ void platform_send_sound()
     }
     if(!buf.empty())
     {
-        SDL_QueueAudio(
-            audio_device,
+        SDL_PutAudioStreamData(
+            audio_stream,
             buf.data(),
             buf.size() * sizeof(buf[0]));
     }
@@ -134,25 +139,17 @@ void platform_send_sound()
 
 float platform_pixel_ratio()
 {
-    float ratio = 1.f;
-#ifdef _WIN32
-    SDL_GetDisplayDPI(0, nullptr, &ratio, nullptr);
-    ratio *= 1.f / 96;
-#endif
-#ifdef __EMSCRIPTEN__
-    ratio = (float)emscripten_get_device_pixel_ratio();
-#endif
-    return ratio;
+    return SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
 }
 
 void platform_destroy_fonts_texture()
 {
-    ImGui_ImplSDLRenderer_DestroyFontsTexture();
+    ImGui_ImplSDLRenderer3_DestroyFontsTexture();
 }
 
 void platform_create_fonts_texture()
 {
-    ImGui_ImplSDLRenderer_CreateFontsTexture();
+    ImGui_ImplSDLRenderer3_CreateFontsTexture();
 }
 
 void platform_open_url(char const* url)
@@ -160,25 +157,11 @@ void platform_open_url(char const* url)
     SDL_OpenURL(url);
 }
 
-#ifdef __EMSCRIPTEN__
-void file_download(
-    char const* fname,
-    char const* download_fname,
-    char const* mime_type)
-{
-    std::ifstream f(fname, std::ios::binary);
-    std::vector<char> data(
-        (std::istreambuf_iterator<char>(f)),
-        std::istreambuf_iterator<char>());
-    emscripten_browser_file::download(download_fname, mime_type, data.data(), data.size());
-}
-#endif
-
 void platform_toggle_fullscreen()
 {
     static bool fs = false;
-    SDL_SetWindowFullscreen(window, fs ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
     fs = !fs;
+    SDL_SetWindowFullscreen(window, (SDL_bool)fs);
 }
 
 static void main_loop()
@@ -186,15 +169,12 @@ static void main_loop()
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
-        ImGui_ImplSDL2_ProcessEvent(&event);
-        if(event.type == SDL_QUIT)
+        ImGui_ImplSDL3_ProcessEvent(&event);
+        if(event.type == SDL_EVENT_QUIT)
             done = true;
-        if(event.type == SDL_WINDOWEVENT && event.window.windowID == SDL_GetWindowID(window))
-        {
-            if(event.window.event == SDL_WINDOWEVENT_CLOSE)
-                done = true;
-        }
-        if(event.type == SDL_DROPFILE)
+        if(event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
+            done = true;
+        if(event.type == SDL_EVENT_DROP_FILE)
         {
             std::ifstream f(event.drop.file, std::ios::binary);
             dropfile_err = arduboy->load_file(event.drop.file, f);
@@ -205,8 +185,35 @@ static void main_loop()
 
     frame_logic();
 
-    ImGui_ImplSDLRenderer_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
+    {
+        int count = 0;
+        auto* j = SDL_GetGamepads(&count);
+        assert(count != 0);
+    }
+
+    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+
+    do
+    {
+        int count = 0;
+        auto* j = SDL_GetGamepads(&count);
+        if(!j) break;
+        auto& io = ImGui::GetIO();
+        for(int i = 0; i < count; ++i)
+        {
+            if(!SDL_IsGamepad(j[i])) continue;
+            auto* g = SDL_OpenGamepad(j[i]);
+            if(!g) continue;
+            io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_A         ) != 0);
+            io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_B         ) != 0);
+            io.AddKeyEvent(ImGuiKey_UpArrow   , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_UP   ) != 0);
+            io.AddKeyEvent(ImGuiKey_DownArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_DOWN ) != 0);
+            io.AddKeyEvent(ImGuiKey_LeftArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_LEFT ) != 0);
+            io.AddKeyEvent(ImGuiKey_RightArrow, SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) != 0);
+            break;
+        }
+    } while(0);
 
     ImGui::NewFrame();
 
@@ -216,15 +223,15 @@ static void main_loop()
 
     SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
     SDL_RenderClear(renderer);
-    ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData());
 
-#if ALLOW_SCREENSHOTS
+#if ALLOW_SCREENSHOTS && !defined(ARDENS_PLAYER)
     if(ImGui::IsKeyPressed(ImGuiKey_F1, false))
     {
         int w = 0, h = 0;
         Uint32 format = SDL_PIXELFORMAT_RGB24;
         SDL_GetWindowSizeInPixels(window, &w, &h);
-        SDL_Surface* ss = SDL_CreateRGBSurfaceWithFormat(0, w, h, 24, format);
+        SDL_Surface* ss = SDL_CreateSurface(w, h, format);
         SDL_RenderReadPixels(renderer, NULL, format, ss->pixels, ss->pitch);
         char fname[256];
         time_t rawtime;
@@ -232,7 +239,7 @@ static void main_loop()
         time(&rawtime);
         ti = localtime(&rawtime);
         (void)snprintf(fname, sizeof(fname),
-            "screenshot_%04d%02d%02d%02d%02d%02d.png",
+            "window_%04d%02d%02d%02d%02d%02d.png",
             ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
             ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
 #ifdef __EMSCRIPTEN__
@@ -241,15 +248,47 @@ static void main_loop()
 #else
         stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
 #endif
-        SDL_FreeSurface(ss);
+        SDL_DestroySurface(ss);
     }
 #endif
 
     SDL_RenderPresent(renderer);
 }
 
+void platform_quit()
+{
+    SDL_Event e;
+    e.type = SDL_EVENT_QUIT;
+    SDL_PushEvent(&e);
+}
+
 int main(int argc, char** argv)
 {
+#ifdef ARDENS_PLAYER
+    int width = 512, height = 256;
+#else
+    int width = 1280, height = 720;
+#endif
+#ifndef __EMSCRIPTEN__
+    {
+        sargs_desc d{};
+        d.argc = argc;
+        d.argv = argv;
+        sargs_setup(&d);
+
+        for(int i = 0; i < sargs_num_args(); ++i)
+        {
+            char const* k = sargs_key_at(i);
+            char const* v = sargs_value_at(i);
+            if(0 != strcmp(k, "size")) continue;
+            int w = width, h = height;
+            if(2 == sscanf(v, "%dx%d", &w, &h))
+                width = w, height = h;
+            break;
+        }
+    }
+#endif
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -259,25 +298,19 @@ int main(int argc, char** argv)
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
 
     {
-        SDL_AudioSpec desired;
-        memset(&desired, 0, sizeof(desired));
-        desired.freq = AUDIO_FREQ;
-        desired.format = AUDIO_S16SYS;
-        desired.channels = 1;
-        desired.samples = MAX_AUDIO_LATENCY_SAMPLES;
-        audio_device = SDL_OpenAudioDevice(
-            nullptr, 0,
-            &desired,
-            &audio_spec,
-            0);
-        SDL_PauseAudioDevice(audio_device, 0);
+        static SDL_AudioSpec const spec = {
+            SDL_AUDIO_S16, 1, AUDIO_FREQ
+        };
+        audio_stream = SDL_OpenAudioDeviceStream(
+            SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec, nullptr, nullptr);
+        SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
     }
 
 #if PROFILING
@@ -287,13 +320,16 @@ int main(int argc, char** argv)
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
-#if defined(_WIN32) || defined(__EMSCRIPTEN__)
-        SDL_WINDOW_ALLOW_HIGHDPI |
-#endif
         0);
-    window = SDL_CreateWindow("Ardens", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    window = SDL_CreateWindow(
+#ifdef ARDENS_PLAYER
+        "Ardens Player", width, height,
+#else
+        "Ardens", width, height,
+#endif
+        window_flags);
 
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+    renderer = SDL_CreateRenderer(window, nullptr, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
     if (renderer == NULL)
     {
         SDL_Log("Error creating SDL_Renderer!");
@@ -303,8 +339,8 @@ int main(int argc, char** argv)
     update_pixel_ratio();
     rescale_style();
 
-    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer_Init(renderer);
+    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+    ImGui_ImplSDLRenderer3_Init(renderer);
 
     define_font();
 
@@ -317,19 +353,32 @@ int main(int argc, char** argv)
         64);
 
     done = false;
+
+#ifndef __EMSCRIPTEN__
+    for(int i = 0; i < sargs_num_args(); ++i)
+    {
+        char const* value = sargs_value_at(i);
+        if(!setparam(sargs_key_at(i), value))
+        {
+            std::ifstream f(value, std::ios::in | std::ios::binary);
+            if(f)
+            {
+                dropfile_err = arduboy->load_file(value, f);
+                if(dropfile_err.empty())
+                {
+                    load_savedata();
+                    file_watch(value);
+                }
+            }
+            else
+                dropfile_err = std::string("Could not open file: \"") + value + "\"";
+    }
+}
+#endif
     
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(main_loop, -1, 1);
 #else
-    for(int arg = 1; arg < argc; ++arg)
-    {
-        SDL_Event file_drop_event;
-        file_drop_event.type = SDL_DROPFILE;
-        file_drop_event.drop.timestamp = SDL_GetTicks();
-        file_drop_event.drop.file = SDL_strdup(argv[arg]);
-        file_drop_event.drop.windowID = SDL_GetWindowID(window);
-        SDL_PushEvent(&file_drop_event);
-    }
     while(!done)
         main_loop();
 #endif
@@ -347,11 +396,11 @@ int main(int argc, char** argv)
         display_buffer_texture = nullptr;
     }
 
-    ImGui_ImplSDLRenderer_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
+    ImGui_ImplSDLRenderer3_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_CloseAudioDevice(audio_device);
+    SDL_DestroyAudioStream(audio_stream);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
