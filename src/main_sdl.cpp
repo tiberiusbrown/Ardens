@@ -185,8 +185,35 @@ static void main_loop()
 
     frame_logic();
 
+    {
+        int count = 0;
+        auto* j = SDL_GetGamepads(&count);
+        assert(count != 0);
+    }
+
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
+
+    do
+    {
+        int count = 0;
+        auto* j = SDL_GetGamepads(&count);
+        if(!j) break;
+        auto& io = ImGui::GetIO();
+        for(int i = 0; i < count; ++i)
+        {
+            if(!SDL_IsGamepad(j[i])) continue;
+            auto* g = SDL_OpenGamepad(j[i]);
+            if(!g) continue;
+            io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_A         ) != 0);
+            io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_B         ) != 0);
+            io.AddKeyEvent(ImGuiKey_UpArrow   , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_UP   ) != 0);
+            io.AddKeyEvent(ImGuiKey_DownArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_DOWN ) != 0);
+            io.AddKeyEvent(ImGuiKey_LeftArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_LEFT ) != 0);
+            io.AddKeyEvent(ImGuiKey_RightArrow, SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) != 0);
+            break;
+        }
+    } while(0);
 
     ImGui::NewFrame();
 
@@ -271,7 +298,7 @@ int main(int argc, char** argv)
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;
