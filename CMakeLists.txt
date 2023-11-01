@@ -38,7 +38,7 @@ option(ARDENS_PLAYER   "Build player target" ON)
 option(ARDENS_LIBRETRO "Build libretro core target" OFF)
 
 set(SDL_DEFAULT OFF)
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT APPLE)
     set(ARDENS_SDL_DEFAULT ON)
 endif()
 option(ARDENS_SDL      "Build Ardens with SDL backend" ${ARDENS_SDL_DEFAULT})
