@@ -185,12 +185,6 @@ static void main_loop()
 
     frame_logic();
 
-    {
-        int count = 0;
-        auto* j = SDL_GetGamepads(&count);
-        assert(count != 0);
-    }
-
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
 
