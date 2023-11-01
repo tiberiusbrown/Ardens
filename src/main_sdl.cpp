@@ -37,6 +37,11 @@
 #include <algorithm>
 #include <fstream>
 
+#define SOKOL_IMPL
+#ifndef __EMSCRIPTEN__
+#include "sokol/sokol_args.h"
+#endif
+
 #include "common.hpp"
 
 #ifdef __EMSCRIPTEN__
@@ -232,6 +237,31 @@ void platform_quit()
 
 int main(int argc, char** argv)
 {
+#ifdef ARDENS_PLAYER
+    int width = 512, height = 256;
+#else
+    int width = 1280, height = 720;
+#endif
+#ifndef __EMSCRIPTEN__
+    {
+        sargs_desc d{};
+        d.argc = argc;
+        d.argv = argv;
+        sargs_setup(&d);
+
+        for(int i = 0; i < sargs_num_args(); ++i)
+        {
+            char const* k = sargs_key_at(i);
+            char const* v = sargs_value_at(i);
+            if(0 != strcmp(k, "size")) continue;
+            int w = width, h = height;
+            if(2 == sscanf(v, "%dx%d", &w, &h))
+                width = w, height = h;
+            break;
+        }
+    }
+#endif
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -256,21 +286,6 @@ int main(int argc, char** argv)
         SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
     }
 
-    //{
-    //    SDL_AudioSpec desired;
-    //    memset(&desired, 0, sizeof(desired));
-    //    desired.freq = AUDIO_FREQ;
-    //    desired.format = AUDIO_S16SYS;
-    //    desired.channels = 1;
-    //    desired.samples = MAX_AUDIO_LATENCY_SAMPLES;
-    //    audio_device = SDL_OpenAudioDevice(
-    //        nullptr, 0,
-    //        &desired,
-    //        &audio_spec,
-    //        0);
-    //    SDL_PauseAudioDevice(audio_device, 0);
-    //}
-
 #if PROFILING
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
 #endif
@@ -281,9 +296,9 @@ int main(int argc, char** argv)
         0);
     window = SDL_CreateWindow(
 #ifdef ARDENS_PLAYER
-        "Ardens Player", 512, 256,
+        "Ardens Player", width, height,
 #else
-        "Ardens", 1280, 720,
+        "Ardens", width, height,
 #endif
         window_flags);
 
@@ -311,19 +326,32 @@ int main(int argc, char** argv)
         64);
 
     done = false;
+
+#ifndef __EMSCRIPTEN__
+    for(int i = 0; i < sargs_num_args(); ++i)
+    {
+        char const* value = sargs_value_at(i);
+        if(!setparam(sargs_key_at(i), value))
+        {
+            std::ifstream f(value, std::ios::in | std::ios::binary);
+            if(f)
+            {
+                dropfile_err = arduboy->load_file(value, f);
+                if(dropfile_err.empty())
+                {
+                    load_savedata();
+                    file_watch(value);
+                }
+            }
+            else
+                dropfile_err = std::string("Could not open file: \"") + value + "\"";
+    }
+}
+#endif
     
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(main_loop, -1, 1);
 #else
-    //for(int arg = 1; arg < argc; ++arg)
-    //{
-    //    SDL_Event file_drop_event;
-    //    file_drop_event.type = SDL_DROPFILE;
-    //    file_drop_event.drop.timestamp = SDL_GetTicks();
-    //    file_drop_event.drop.file = SDL_strdup(argv[arg]);
-    //    file_drop_event.drop.windowID = SDL_GetWindowID(window);
-    //    SDL_PushEvent(&file_drop_event);
-    //}
     while(!done)
         main_loop();
 #endif
