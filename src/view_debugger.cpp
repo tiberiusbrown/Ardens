@@ -9,6 +9,32 @@
 #include <emscripten.h>
 #endif
 
+#if defined(__x86_64__) || defined(_M_X64)
+#define ARDENS_ARCH "x64"
+#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
+#define ARDENS_ARCH "x86"
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define ARDENS_ARCH "arm64"
+#elif defined(__arm__) || defined(_M_ARM)
+#define ARDENS_ARCH "arm"
+#elif defined(__EMSCRIPTEN__) && (defined(__wasm) || defined(__wasm32) || defined(__wasm32__) || defined(__wasm__)
+#define ARDENS_ARCH "wasm"
+#elif defined(__EMSCRIPTEN__)
+#define ARDENS_ARCH "js"
+#else
+#define ARDENS_ARCH "unknown"
+#endif
+
+#if defined(_WIN32)
+#define ARDENS_OS "windows"
+#elif defined(__linux__)
+#define ARDENS_OS "linux"
+#elif defined(__APPLE__) && defined(__MACH__)
+#define ARDENS_OS "macos"
+#else
+#define ARDENS_OS "unknown"
+#endif
+
 void view_debugger()
 {
     const bool enableDocking = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable;
@@ -152,13 +178,24 @@ void view_debugger()
             }
 
             {
-                std::string v = fmt::format("{}    FPS: {}",
-                    ARDENS_VERSION,
+                std::string info = ARDENS_OS " " ARDENS_ARCH " " ARDENS_VERSION;
+                std::string v = fmt::format("FPS: {}",
                     int(std::round(ImGui::GetIO().Framerate)));
                 float w = ImGui::CalcTextSize(v.c_str(), v.data() + v.size(), true).x;
                 w += ImGui::GetStyle().ItemSpacing.x;
-                ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - w);
-                ImGui::MenuItem((v + "##version").c_str(), nullptr, nullptr, false);
+                float x = ImGui::GetContentRegionMax().x - w;
+                ImGui::SetCursorPosX(x);
+                ImGui::MenuItem((v + "##fps").c_str(), nullptr, nullptr, false);
+                w = ImGui::CalcTextSize(info.c_str(), info.data() + info.size(), true).x;
+                w += ImGui::GetStyle().ItemSpacing.x * 2;
+                x -= w;
+                ImGui::SetCursorPosX(x);
+                float a = ImGui::GetStyle().Alpha;
+                ImGui::GetStyle().Alpha = ImGui::GetStyle().DisabledAlpha;
+                if(ImGui::MenuItem((info + "##version").c_str()))
+                    platform_set_clipboard_text(info.c_str());
+                ImGui::GetStyle().Alpha = a;
+                ImGui::SetItemTooltip("%s", "Click to copy to clipboard");
             }
 
             ImGui::EndMainMenuBar();
