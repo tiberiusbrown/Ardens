@@ -59,7 +59,7 @@ jobs:
         emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
   
     - name: Cache FetchContent
-      id: cache-llvm-host
+      id: cache-fetchcontent
       uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/build/_deps
@@ -124,7 +124,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Cache FetchContent
-      id: cache-llvm-host
+      id: cache-fetchcontent
       uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/build/_deps
@@ -156,7 +156,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Cache FetchContent
-      id: cache-llvm-host
+      id: cache-fetchcontent
       uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/build/_deps
@@ -188,7 +188,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Cache FetchContent
-      id: cache-llvm-host
+      id: cache-fetchcontent
       uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/build/_deps
@@ -239,7 +239,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
   
     - name: Cache FetchContent
-      id: cache-llvm-host
+      id: cache-fetchcontent
       uses: actions/cache@v3
       with:
         path: ${{github.workspace}}/build/_deps
