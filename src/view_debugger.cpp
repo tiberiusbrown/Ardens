@@ -3,6 +3,8 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+#include <fmt/format.h>
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -150,10 +152,13 @@ void view_debugger()
             }
 
             {
-                float w = ImGui::CalcTextSize(ARDENS_VERSION, NULL, true).x;
+                std::string v = fmt::format("{}    FPS: {}",
+                    ARDENS_VERSION,
+                    int(std::round(ImGui::GetIO().Framerate)));
+                float w = ImGui::CalcTextSize(v.c_str(), v.data() + v.size(), true).x;
                 w += ImGui::GetStyle().ItemSpacing.x;
                 ImGui::SetCursorPosX(ImGui::GetContentRegionMax().x - w);
-                ImGui::MenuItem(ARDENS_VERSION "##version", nullptr, nullptr, false);
+                ImGui::MenuItem((v + "##version").c_str(), nullptr, nullptr, false);
             }
 
             ImGui::EndMainMenuBar();
