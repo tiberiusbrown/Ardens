@@ -17,7 +17,7 @@
 #define ARDENS_ARCH "arm64"
 #elif defined(__arm__) || defined(_M_ARM)
 #define ARDENS_ARCH "arm"
-#elif defined(__EMSCRIPTEN__) && (defined(__wasm) || defined(__wasm32) || defined(__wasm32__) || defined(__wasm__)
+#elif defined(__EMSCRIPTEN__) && (defined(__wasm) || defined(__wasm32) || defined(__wasm32__) || defined(__wasm__))
 #define ARDENS_ARCH "wasm"
 #elif defined(__EMSCRIPTEN__)
 #define ARDENS_ARCH "js"
