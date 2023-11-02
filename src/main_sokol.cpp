@@ -333,7 +333,7 @@ void platform_quit()
     sapp_request_quit();
 }
 
-static std::array<std::vector<uint32_t>, 6> icon_imgs;
+static std::array<std::vector<uint32_t>, SAPP_MAX_ICONIMAGES> icon_imgs;
 
 static void scale_icon(
     std::vector<uint32_t>& dst,
