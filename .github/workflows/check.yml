@@ -63,7 +63,7 @@ jobs:
     - name: Configure
       run: |
         source ${{github.workspace}}/emsdk/emsdk_env.sh
-        emcmake cmake -G ninja -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
+        emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
     
     - name: Build
       run: |
@@ -128,13 +128,13 @@ jobs:
         key: windows_x86-cache-fetchcontent
   
     - name: Configure
-      run: cmake -G ninja -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
         
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -G ninja -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
@@ -160,13 +160,13 @@ jobs:
         key: windows_x64-cache-fetchcontent
   
     - name: Configure
-      run: cmake -G ninja -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -G ninja -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
