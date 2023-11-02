@@ -57,6 +57,13 @@ jobs:
       run: |
         source ${{github.workspace}}/emsdk/emsdk_env.sh
         emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
+  
+    - name: Cache FetchContent
+      id: cache-llvm-host
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/build/_deps
+        key: web-cache-fetchcontent
     
     - name: Build
       run: |
@@ -116,6 +123,13 @@ jobs:
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
+    - name: Cache FetchContent
+      id: cache-llvm-host
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/build/_deps
+        key: windows_x86-cache-fetchcontent
+        
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
@@ -141,6 +155,13 @@ jobs:
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
+    - name: Cache FetchContent
+      id: cache-llvm-host
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/build/_deps
+        key: windows_x64-cache-fetchcontent
+  
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
@@ -165,6 +186,13 @@ jobs:
   
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+  
+    - name: Cache FetchContent
+      id: cache-llvm-host
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/build/_deps
+        key: macos_x64-cache-fetchcontent
   
     - name: Build
       run: |
@@ -209,6 +237,13 @@ jobs:
   
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
+  
+    - name: Cache FetchContent
+      id: cache-llvm-host
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/build/_deps
+        key: macos_arm64-cache-fetchcontent
   
     - name: Build
       run: |
