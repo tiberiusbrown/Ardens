@@ -1,21 +1,48 @@
-name: 'PR Checks'
+name: Build
 
 on:
   push:
+    tags:
+    - 'v*'
   workflow_dispatch:
-  
-concurrency: 
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
     
 env:
   BUILD_TYPE: Release
 
 jobs:
 
-  build_web:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+      if: github.event_name != 'push'
+    - name: Set tag name
+      id: tag
+      run: |
+        if [[ "${{ github.event_name }}" != "push" ]]; then
+          tag=v$(date +%Y%m%d.%H%M%S)
+        else
+          tag=$(basename "${{ github.ref }}")
+        fi
+        echo "tag=$tag" >> $GITHUB_OUTPUT
+    - name: Create Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        tag="${{ steps.tag.outputs.tag }}"
+        body=""
+        gh release create --draft "$tag" --title "$tag" --notes "$body"
+
+  release_web:
   
-    name: Build (Web)
+    name: Release (Web)
+    needs: [release]
     runs-on: ubuntu-latest
   
     steps:
@@ -82,10 +109,17 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         folder: ${{github.workspace}}/Ardens_web
         target-folder: staging
-
-  build_linux:
   
-    name: Build (Linux)
+    - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "${{github.workspace}}/Ardens_web.zip"
+
+  release_linux:
+  
+    name: Release (Linux)
+    needs: [release]
     runs-on: ubuntu-latest
   
     steps:
@@ -101,10 +135,17 @@ jobs:
     
     - name: HBB Build
       run: bash cmake/build_hbb.sh
-
-  build_windows_x86:
   
-    name: Build (Windows x86)
+    - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "build/Ardens_linux_x64.zip"
+
+  release_windows_x86:
+  
+    name: Release (Windows x86)
+    needs: [release]
     runs-on: windows-latest
   
     steps:
@@ -127,9 +168,16 @@ jobs:
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dll" "ardens_libretro.dll"
         cmake -E tar "cfv" "Ardens_windows_x86.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
   
-  build_windows_x64:
+    - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_windows_x86.zip"
   
-    name: Build (Windows x64)
+  release_windows_x64:
+  
+    name: Release (Windows x64)
+    needs: [release]
     runs-on: windows-latest
   
     steps:
@@ -152,9 +200,16 @@ jobs:
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dll" "ardens_libretro.dll"
         cmake -E tar "cfv" "Ardens_windows_x64.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
   
-  build_macos_x64:
+    - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_windows_x64.zip"
   
-    name: Build (MacOS x64)
+  release_macos_x64:
+  
+    name: Release (MacOS x64)
+    needs: [release]
     runs-on: macos-latest
   
     steps:
@@ -178,10 +233,17 @@ jobs:
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "Ardens_macos/ArdensPlayer.app"
         cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "Ardens_macos/ardens_libretro.dylib"
         hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_x64.dmg" -srcfolder Ardens_macos
+
+    - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_x64.dmg"
   
-  build_macos_arm64:
+  release_macos_arm64:
   
-    name: Build (MacOS arm64)
+    name: Release (MacOS arm64)
+    needs: [release]
     runs-on: macos-latest
   
     steps:
@@ -222,3 +284,9 @@ jobs:
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "Ardens_macos/ArdensPlayer.app"
         cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "Ardens_macos/ardens_libretro.dylib"
         hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_arm64.dmg" -srcfolder Ardens_macos
+        
+    - name: Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: gh release upload "${{ needs.release.outputs.tag }}" "Ardens_macos_arm64.dmg"
