@@ -31,6 +31,8 @@
 #define ARDENS_OS "linux"
 #elif defined(__APPLE__) && defined(__MACH__)
 #define ARDENS_OS "macos"
+#elif defined(__EMSCRIPTEN__)
+#define ARDENS_OS "web"
 #else
 #define ARDENS_OS "unknown"
 #endif

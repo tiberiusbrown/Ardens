@@ -103,7 +103,6 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         folder: ${{github.workspace}}/Ardens_web
-        target-folder: staging
   
     - name: Release
       env:
