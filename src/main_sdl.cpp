@@ -130,6 +130,9 @@ void platform_send_sound()
     }
     if(!buf.empty())
     {
+        float gain = volume_gain() * 32768;
+        for(auto& b : buf)
+            b = int16_t(std::clamp<float>(gain * b, INT16_MIN, INT16_MAX));
         SDL_PutAudioStreamData(
             audio_stream,
             buf.data(),
@@ -177,9 +180,11 @@ static void main_loop()
         if(event.type == SDL_EVENT_DROP_FILE)
         {
             std::ifstream f(event.drop.file, std::ios::binary);
-            dropfile_err = arduboy->load_file(event.drop.file, f);
+            std::vector<uint8_t> fdata(
+                (std::istreambuf_iterator<char>(f)),
+                std::istreambuf_iterator<char>());
+            load_file(event.drop.file, fdata.data(), fdata.size());
             SDL_free(event.drop.file);
-            if(dropfile_err.empty()) load_savedata();
         }
     }
 
