@@ -18,6 +18,7 @@ fi
 
 mkdir build
 cd build
+[ -d "/io/_deps" ] && cp -a /io/_deps .
 cmake -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=1 -DARDENS_DEBUGGER=1 -DARDENS_PLAYER=1 -DARDENS_LIBRETRO=0 /io
 make -j$nj
 strip -x Ardens ArdensPlayer

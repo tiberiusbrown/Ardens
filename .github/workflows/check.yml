@@ -105,6 +105,13 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libfuse2
+  
+    - name: Cache FetchContent
+      id: cache-fetchcontent
+      uses: actions/cache@v3
+      with:
+        path: _deps
+        key: windows_x86-cache-fetchcontent
     
     - name: HBB Build
       run: bash cmake/build_hbb.sh
