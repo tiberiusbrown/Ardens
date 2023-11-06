@@ -9,34 +9,6 @@
 #include <emscripten.h>
 #endif
 
-#if defined(__x86_64__) || defined(_M_X64)
-#define ARDENS_ARCH "x64"
-#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
-#define ARDENS_ARCH "x86"
-#elif defined(__aarch64__) || defined(_M_ARM64)
-#define ARDENS_ARCH "arm64"
-#elif defined(__arm__) || defined(_M_ARM)
-#define ARDENS_ARCH "arm"
-#elif defined(__EMSCRIPTEN__) && (defined(__wasm) || defined(__wasm32) || defined(__wasm32__) || defined(__wasm__))
-#define ARDENS_ARCH "wasm"
-#elif defined(__EMSCRIPTEN__)
-#define ARDENS_ARCH "js"
-#else
-#define ARDENS_ARCH "unknown"
-#endif
-
-#if defined(_WIN32)
-#define ARDENS_OS "windows"
-#elif defined(__linux__)
-#define ARDENS_OS "linux"
-#elif defined(__APPLE__) && defined(__MACH__)
-#define ARDENS_OS "macos"
-#elif defined(__EMSCRIPTEN__)
-#define ARDENS_OS "web"
-#else
-#define ARDENS_OS "unknown"
-#endif
-
 void view_debugger()
 {
     const bool enableDocking = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable;
