@@ -236,13 +236,6 @@ jobs:
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
-    - name: Cache FetchContent
-      id: cache-fetchcontent
-      uses: actions/cache@v3
-      with:
-        path: ${{github.workspace}}/build/_deps
-        key: macos_x64-cache-fetchcontent
-  
     - name: Build
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
@@ -290,13 +283,6 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- clang-tblgen
-  
-    - name: Cache FetchContent
-      id: cache-fetchcontent
-      uses: actions/cache@v3
-      with:
-        path: ${{github.workspace}}/build/_deps
-        key: macos_arm64-cache-fetchcontent
   
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
