@@ -82,6 +82,12 @@ jobs:
         cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
         cd ${{github.workspace}}/Ardens_web
         zip -r ${{github.workspace}}/Ardens_web.zip *
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: ${{github.workspace}}/Ardens_web.zip
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
@@ -116,6 +122,12 @@ jobs:
     - name: HBB Build
       run: bash cmake/build_hbb.sh
 
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: "build/Ardens_linux_x64.zip"
+
   check_windows_x86:
   
     name: Build (Windows x86)
@@ -147,6 +159,12 @@ jobs:
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dll" "ardens_libretro.dll"
         cmake -E tar "cfv" "Ardens_windows_x86.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: "Ardens_windows_x86.zip"
   
   check_windows_x64:
   
@@ -179,6 +197,12 @@ jobs:
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ardens_libretro.dll" "ardens_libretro.dll"
         cmake -E tar "cfv" "Ardens_windows_x64.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: "Ardens_windows_x64.zip"
   
   check_macos_x64:
   
@@ -213,6 +237,12 @@ jobs:
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "Ardens_macos/ArdensPlayer.app"
         cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "Ardens_macos/ardens_libretro.dylib"
         hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_x64.dmg" -srcfolder Ardens_macos
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: "Ardens_macos_x64.dmg"
   
   check_macos_arm64:
   
@@ -264,3 +294,9 @@ jobs:
         cmake -E copy_directory "${{github.workspace}}/build/ArdensPlayer.app" "Ardens_macos/ArdensPlayer.app"
         cmake -E copy "${{github.workspace}}/build/ardens_libretro.dylib" "Ardens_macos/ardens_libretro.dylib"
         hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_arm64.dmg" -srcfolder Ardens_macos
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: "Ardens_macos_arm64.dmg"
