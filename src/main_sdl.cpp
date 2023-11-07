@@ -179,11 +179,13 @@ static void main_loop()
             done = true;
         if(event.type == SDL_EVENT_DROP_FILE)
         {
+#ifndef ARDENS_DIST
             std::ifstream f(event.drop.file, std::ios::binary);
             std::vector<uint8_t> fdata(
                 (std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());
             load_file(event.drop.file, fdata.data(), fdata.size());
+#endif
             SDL_free(event.drop.file);
         }
     }
@@ -261,6 +263,11 @@ void platform_quit()
     SDL_PushEvent(&e);
 }
 
+void platform_set_title(char const* title)
+{
+    SDL_SetWindowTitle(window, title);
+}
+
 int main(int argc, char** argv)
 {
 #ifdef ARDENS_PLAYER
@@ -320,13 +327,7 @@ int main(int argc, char** argv)
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
         0);
-    window = SDL_CreateWindow(
-#ifdef ARDENS_PLAYER
-        "Ardens Player", width, height,
-#else
-        "Ardens", width, height,
-#endif
-        window_flags);
+    window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
 
     renderer = SDL_CreateRenderer(window, nullptr, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
     if (renderer == NULL)
@@ -353,12 +354,13 @@ int main(int argc, char** argv)
 
     done = false;
 
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__)
     for(int i = 0; i < sargs_num_args(); ++i)
     {
         char const* value = sargs_value_at(i);
         if(!setparam(sargs_key_at(i), value))
         {
+#if !defined(ARDENS_DIST)
             std::ifstream f(value, std::ios::in | std::ios::binary);
             if(f)
             {
@@ -371,6 +373,7 @@ int main(int argc, char** argv)
             }
             else
                 dropfile_err = std::string("Could not open file: \"") + value + "\"";
+#endif
     }
 }
 #endif

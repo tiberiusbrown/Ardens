@@ -36,6 +36,7 @@ option(ARDENS_DEBUGGER "Build debugger target" ON)
 option(ARDENS_LIB      "Build static library for emulator core" OFF)
 option(ARDENS_PLAYER   "Build player target" ON)
 option(ARDENS_LIBRETRO "Build libretro core target" OFF)
+option(ARDENS_DIST     "Build distributable game from dist/game.arduboy" OFF)
 
 set(SDL_DEFAULT OFF)
 if(NOT EMSCRIPTEN AND NOT APPLE)
@@ -373,7 +374,7 @@ if(ARDENS_DEBUGGER)
         
 endif()
 
-if(ARDENS_LIB OR ARDENS_PLAYER)
+if(ARDENS_LIB OR ARDENS_PLAYER OR ARDENS_DIST)
 
     add_library(ardenslib STATIC
         .editorconfig
@@ -437,6 +438,73 @@ if(ARDENS_PLAYER)
 
 endif()
 
+if(ARDENS_DIST)
+
+    include(cmake/bin2c.cmake)
+
+    file(GLOB ARDUBOY_FILES "dist/*.arduboy")
+    message(STATUS "ARDUBOY_FILES=${ARDUBOY_FILES}")
+    if(NOT ARDUBOY_FILES)
+        message(FATAL_ERROR "Missing .arduboy file in the dist/ directory.")
+    endif()
+    list(GET ARDUBOY_FILES 0 ARDUBOY_FILE)
+    message(STATUS "ARDUBOY_FILE=${ARDUBOY_FILE}")
+    get_filename_component(ARDENS_DIST_TARGET "${ARDUBOY_FILE}" NAME_WLE)
+
+    bin2c(
+        "${CMAKE_CURRENT_BINARY_DIR}/distgame.c"
+        "${CMAKE_CURRENT_BINARY_DIR}/distgame.h"
+        "${ARDUBOY_FILE}"
+        "game_arduboy"
+        )
+
+    add_executable("${ARDENS_DIST_TARGET}" ${EXEFLAG}
+        .editorconfig
+
+        src/main_sdl.cpp
+        src/main_sokol.cpp
+        ${RC_FILE}
+        ${MACOS_ICON}
+        src/ardens_icon.hpp
+
+        src/settings.hpp
+        src/settings.cpp
+        src/common.hpp
+        src/common.cpp
+        src/view_player.cpp
+        src/record_gif.cpp
+        src/record_wav.cpp
+        src/scalenx.cpp
+        src/saveload.cpp
+        src/dwarf.hpp
+        src/dwarf.cpp
+        src/file_watch.cpp
+
+        deps/stb_image_write.h
+        ${IMGUI_SOURCES}
+        ${GIFENC_SOURCES}
+        ${EM_FILE_BROWSER_SOURCES}
+        ${SOKOL_SOURCES}
+
+        "${CMAKE_CURRENT_BINARY_DIR}/distgame.c"
+        "${CMAKE_CURRENT_BINARY_DIR}/distgame.h"
+        )
+    target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE
+        deps
+        deps/imgui
+        deps/gifenc
+        )
+    target_link_libraries("${ARDENS_DIST_TARGET}" PRIVATE
+        ardenslib
+        ${SYSTEM_LIBS}
+        )
+    configure_app_target("${ARDENS_DIST_TARGET}")
+    target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DIST)
+    target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DISTNAME="${ARDENS_DIST_TARGET}")
+    target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
+endif()
+
 if(ARDENS_LIBRETRO)
 
     set(ARDENS_LIBRETRO_TYPE SHARED)
@@ -490,11 +558,14 @@ if(MSVC)
     if(ARDENS_DEBUGGER)
         target_compile_options(Ardens PRIVATE /Zc:__cplusplus)
     endif()
-    if(ARDENS_PLAYER OR ARDENS_LIB)
+    if(ARDENS_PLAYER OR ARDENS_DIST OR ARDENS_LIB)
         target_compile_options(ardenslib PUBLIC /Zc:__cplusplus)
     endif()
     if(ARDENS_PLAYER)
         target_compile_options(ArdensPlayer PRIVATE /Zc:__cplusplus)
+    endif()
+    if(ARDENS_DIST)
+        target_compile_options("${ARDENS_DIST_TARGET}" PRIVATE /Zc:__cplusplus)
     endif()
     if(ARDENS_LIBRETRO)
         target_compile_options(ardens_libretro PUBLIC /Zc:__cplusplus)

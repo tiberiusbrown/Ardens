@@ -1,0 +1,4 @@
+build/*
+*.arduboy
+*.exe
+*.app

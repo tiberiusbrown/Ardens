@@ -110,6 +110,7 @@ static void app_init()
         char const* value = sargs_value_at(i);
         if(!setparam(sargs_key_at(i), value))
         {
+#if !defined(ARDENS_DIST)
             std::ifstream f(value, std::ios::in | std::ios::binary);
             if(f)
             {
@@ -122,6 +123,7 @@ static void app_init()
             }
             else
                 dropfile_err = fmt::format("Could not open file: \"{}\"", value);
+#endif
         }
     }
 #endif
@@ -162,7 +164,7 @@ static void app_event(sapp_event const* e)
         touch_points.clear();
 #endif
 
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST)
     if(e->type == SAPP_EVENTTYPE_FILES_DROPPED)
     {
         int n = sapp_get_num_dropped_files();
@@ -333,6 +335,11 @@ void platform_quit()
     sapp_request_quit();
 }
 
+void platform_set_title(char const* title)
+{
+    sapp_set_window_title(title);
+}
+
 static std::array<std::vector<uint32_t>, SAPP_MAX_ICONIMAGES> icon_imgs;
 
 static void scale_icon(
@@ -381,14 +388,15 @@ sapp_desc sokol_main(int argc, char** argv)
 #ifdef ARDENS_PLAYER
     desc.width = 512;
     desc.height = 256;
-    desc.window_title = "Ardens Player";
 #else
     desc.width = 1280;
     desc.height = 720;
-    desc.window_title = "Ardens";
 #endif
+    desc.window_title = preferred_title().c_str();
+#ifndef ARDENS_DIST
     desc.enable_dragndrop = true;
     desc.max_dropped_files = 2;
+#endif
 #endif
 #ifdef _WIN32
     desc.win32_console_attach = true;
