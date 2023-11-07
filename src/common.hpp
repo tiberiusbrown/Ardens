@@ -38,6 +38,14 @@
 #define ARDENS_OS "unknown"
 #endif
 
+#ifdef ARDENS_DISTNAME
+#define ARDENS_TITLE ARDENS_DISTNAME
+#elif defined(ARDENS_PLAYER)
+#define ARDENS_TITLE "Ardens Player"
+#else
+#define ARDENS_TITLE "Ardens"
+#endif
+
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 
 using texture_t = void*;
@@ -75,6 +83,7 @@ void rescale_style();
 void save_screenshot();
 void toggle_recording();
 void take_snapshot();
+std::string preferred_title();
 
 float volume_gain();
 bool ends_with(std::string const& str, std::string const& end);
@@ -94,6 +103,7 @@ void platform_create_fonts_texture();
 void platform_open_url(char const* url);
 void platform_toggle_fullscreen();
 void platform_quit();
+void platform_set_title(char const* title);
 
 #ifdef __EMSCRIPTEN__
 void file_download(

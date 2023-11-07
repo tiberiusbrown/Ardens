@@ -12,6 +12,12 @@
 
 #include <imgui.h>
 
+#ifdef ARDENS_DIST
+extern "C" {
+#include <distgame.h>
+}
+#endif
+
 #ifndef ARDENS_NO_DEBUGGER
 #include <implot.h>
 #endif
@@ -121,7 +127,9 @@ extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
     if(dropfile_err.empty())
     {
         load_savedata();
+#ifndef ARDENS_DIST
         file_watch(filename);
+#endif
     }
     return 0;
 }
@@ -372,6 +380,10 @@ void init()
 
     ms_since_start = 0;
     ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
+
+#ifdef ARDENS_DIST
+    load_file("game.arduboy", game_arduboy, game_arduboy_size);
+#endif
 }
 
 void save_screenshot()
@@ -435,6 +447,15 @@ void take_snapshot()
 #endif
 }
 
+std::string preferred_title()
+{
+#ifdef ARDENS_DIST
+    if(arduboy && !arduboy->title.empty())
+        return arduboy->title;
+#endif
+    return ARDENS_TITLE;
+}
+
 void frame_logic()
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -442,7 +463,9 @@ void frame_logic()
     if(!touch_points.empty())
         ms_since_touch = 0;
 
+#ifndef ARDENS_DIST
     file_watch_check();
+#endif
 
 #ifdef __EMSCRIPTEN__
     if(done) emscripten_cancel_main_loop();

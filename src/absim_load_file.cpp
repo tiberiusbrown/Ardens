@@ -875,6 +875,10 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
     if(!hexfile.IsString())
         return "ARDUBOY: primary binary filename not string type";
 
+    a.title.clear();
+    if(doc.HasMember("title") && doc["title"].IsString())
+        a.title = doc["title"].GetString();
+
     std::vector<char> data;
     {
         std::string hexfilename(hexfile.GetString(), hexfile.GetStringLength());
