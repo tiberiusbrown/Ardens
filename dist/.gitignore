@@ -1,4 +1,4 @@
-build/*
-*.arduboy
-*.exe
-*.app
+*
+!build_windows.bat
+!build_linux.sh
+
