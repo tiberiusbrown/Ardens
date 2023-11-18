@@ -347,6 +347,7 @@ struct atmega32u4_t
         uint32_t prr_mask;
         uint32_t base_addr;
         uint32_t com3a;
+        uint8_t temp; // reg for 16-bit access
         bool phase_correct;
         bool count_down;
         bool update_ocrN_at_top;
@@ -357,6 +358,7 @@ struct atmega32u4_t
             a(divider_cycle, divider);
             a(top, tov, tcnt, ocrNa, ocrNb, ocrNc);
             a(tifrN_addr, timskN_addr, prr_addr, prr_mask, base_addr);
+            a(temp);
             a(phase_correct, count_down);
             a(update_ocrN_at_top, update_ocrN_at_bottom);
         }
