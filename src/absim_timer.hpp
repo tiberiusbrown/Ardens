@@ -55,7 +55,8 @@ static ARDENS_FORCEINLINE void process_wgm8(
         break;
     }
 
-    top = std::max<uint32_t>(3, top);
+    if((wgm & 1) == 1)
+        top = std::max<uint32_t>(3, top);
 }
 
 static ARDENS_FORCEINLINE void timer8_update_ocrN(
@@ -274,7 +275,9 @@ static ARDENS_FORCEINLINE void process_wgm16(
         break;
     }
 
-    top = std::max<uint32_t>(3, ttop);
+    top = ttop;
+    if(wgm == 0xf)
+        top = std::max<uint32_t>(3, top);
     tov = ttov;
 }
 
@@ -491,7 +494,7 @@ static void update_timer16(
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNa - timer.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNb - timer.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNc - timer.tcnt);
-        if(timer.tcnt == timer.top)
+        if(timer.tcnt == timer.top && timer.top != 0)
             update_tcycles = 1;
     }
     if(update_tcycles == UINT32_MAX)
@@ -727,7 +730,9 @@ void atmega32u4_t::update_timer4()
     if(timer4.update_ocrN_at_bottom && timer4.tcnt == 0)
         timer10_update_ocrN(*this, timer4);
 
-    timer4.top = std::max<uint32_t>(3, timer4.ocrNc);
+    timer4.top = timer4.ocrNc;
+    if(pwm4x)
+        timer4.top = std::max<uint32_t>(3, timer4.top);
     timer4.tov = timer4.top;
     if(pwm4x && (wgm & 0x1))
         timer4.tov = 0;
@@ -793,7 +798,7 @@ void atmega32u4_t::update_timer4()
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNa - timer4.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNb - timer4.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNd - timer4.tcnt);
-        if(timer4.tcnt == timer4.top)
+        if(timer4.tcnt == timer4.top && timer4.top != 0)
             update_tcycles = 1;
     }
     if(update_tcycles == UINT32_MAX)
