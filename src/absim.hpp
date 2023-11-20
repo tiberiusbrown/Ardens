@@ -367,8 +367,8 @@ struct atmega32u4_t
     static void timer3_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer1_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer3_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
-    static uint8_t timer1_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
-    static uint8_t timer3_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
+    static uint8_t timer1_handle_ld_regs(atmega32u4_t& cpu, uint16_t ptr);
+    static uint8_t timer3_handle_ld_regs(atmega32u4_t& cpu, uint16_t ptr);
     void update_timer1();
     void update_timer3();
 
