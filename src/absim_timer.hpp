@@ -438,7 +438,8 @@ static void update_timer16(
     {
         // timer clock is running and timer is not powered down...
         uint64_t cycles = cpu.cycle_count - timer.prev_update_cycle;
-        update_timer16_state(cpu, timer, cycles);
+        if(cycles > 0)
+            update_timer16_state(cpu, timer, cycles);
     }
     timer.prev_update_cycle = cpu.cycle_count;
 
@@ -855,6 +856,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_timer3()
 static void timer16_handle_st_regs(
     atmega32u4_t& cpu, atmega32u4_t::timer16_t& timer, uint16_t ptr, uint8_t x)
 {
+    update_timer16(cpu, timer);
     if( ptr >= timer.base_addr + 0x4 &&
         ptr <= timer.base_addr + 0xd &&
         (ptr & 1) == 0)
@@ -862,7 +864,6 @@ static void timer16_handle_st_regs(
         // write to 16-bit reg low byte
         cpu.data[ptr] = x;
         cpu.data[ptr + 1] = timer.temp;
-        update_timer16(cpu, timer);
         uint16_t val = ((uint16_t)timer.temp << 8) + x;
         if(ptr == timer.base_addr + 0x4)
             timer.tcnt = val;
@@ -872,6 +873,7 @@ static void timer16_handle_st_regs(
             timer.ocrNb = val;
         if(ptr == timer.base_addr + 0xc)
             timer.ocrNc = val;
+        update_timer16(cpu, timer);
         return;
     }
     if( ptr >= timer.base_addr + 0x4 &&
@@ -883,7 +885,6 @@ static void timer16_handle_st_regs(
         return;
     }
     cpu.data[ptr] = x;
-    update_timer16(cpu, timer);
 }
 
 void atmega32u4_t::timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
@@ -910,20 +911,36 @@ void atmega32u4_t::timer3_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_
     cpu.data[0x38] = x;
 }
 
-uint8_t atmega32u4_t::timer1_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
+static uint8_t timer16_handle_ld_reg16(
+    atmega32u4_t& cpu, atmega32u4_t::timer16_t& timer, uint16_t ptr)
 {
-    update_timer16(cpu, cpu.timer1);
-    if(ptr == 0x94)
+    update_timer16(cpu, timer);
+    if(ptr >= timer.base_addr + 0x4 &&
+        ptr <= timer.base_addr + 0xd &&
+        (ptr & 1) == 0)
     {
-
+        // read from 16-bit reg low byte
+        timer.temp = cpu.data[ptr + 1];
+        return cpu.data[ptr];
+    }
+    if(ptr >= timer.base_addr + 0x4 &&
+        ptr <= timer.base_addr + 0xd &&
+        (ptr & 1) == 1)
+    {
+        // read from 16-bit reg high byte
+        return timer.temp;
     }
     return cpu.data[ptr];
 }
 
-uint8_t atmega32u4_t::timer3_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
+uint8_t atmega32u4_t::timer1_handle_ld_regs(atmega32u4_t& cpu, uint16_t ptr)
 {
-    update_timer16(cpu, cpu.timer3);
-    return cpu.data[ptr];
+    return timer16_handle_ld_reg16(cpu, cpu.timer1, ptr);
+}
+
+uint8_t atmega32u4_t::timer3_handle_ld_regs(atmega32u4_t& cpu, uint16_t ptr)
+{
+    return timer16_handle_ld_reg16(cpu, cpu.timer3, ptr);
 }
 
 void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)

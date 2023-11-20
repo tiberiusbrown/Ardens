@@ -86,10 +86,10 @@ void atmega32u4_t::reset()
     ld_handlers[0x4d] = spi_handle_ld_spsr;
     ld_handlers[0x4e] = spi_handle_ld_spdr;
     ld_handlers[0x46] = timer0_handle_ld_tcnt;
-    ld_handlers[0x84] = timer1_handle_ld_tcnt;
-    ld_handlers[0x85] = timer1_handle_ld_tcnt;
-    ld_handlers[0x94] = timer3_handle_ld_tcnt;
-    ld_handlers[0x95] = timer3_handle_ld_tcnt;
+    for(int i = 0x84; i <= 0x8d; ++i)
+        ld_handlers[i] = timer1_handle_ld_regs;
+    for(int i = 0x94; i <= 0x9d; ++i)
+        ld_handlers[i] = timer3_handle_ld_regs;
     ld_handlers[0xbe] = timer4_handle_ld_tcnt;
     ld_handlers[0xbf] = timer4_handle_ld_tcnt;
 
