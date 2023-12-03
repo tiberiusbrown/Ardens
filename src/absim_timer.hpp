@@ -867,12 +867,15 @@ static void timer16_handle_st_regs(
         uint16_t val = ((uint16_t)timer.temp << 8) + x;
         if(ptr == timer.base_addr + 0x4)
             timer.tcnt = val;
+        // OCR regs might be double-buffered
+#if 0
         if(ptr == timer.base_addr + 0x8)
             timer.ocrNa = val;
         if(ptr == timer.base_addr + 0xa)
             timer.ocrNb = val;
         if(ptr == timer.base_addr + 0xc)
             timer.ocrNc = val;
+#endif
         update_timer16(cpu, timer);
         return;
     }
