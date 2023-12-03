@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 
 rm -rf build
-mkdir build
+mkdir -p build/dist
 
 docker run --rm -v `pwd`/..:/io ghcr.io/phusion/holy-build-box/hbb-64 bash /io/cmake/hbb_dist.sh
 
@@ -15,9 +15,6 @@ chmod +x linuxdeploy-x86_64.AppImage
 cd dist
 
 for f in $(ls *); do
-	if ![[ -x "$f" ]]; then
-        continue
-    fi
     
     rm -rf AppDir
     mkdir AppDir
@@ -29,7 +26,7 @@ for f in $(ls *); do
     ln -s "${f}" AppDir/AppRun
 
     cd ../../
-    ./build/linuxdeploy-x86_64.AppImage --appdir build/AppDir --output appimage
+    ./build/linuxdeploy-x86_64.AppImage --appdir build/dist/AppDir --output appimage
     cd build/dist
 
 done

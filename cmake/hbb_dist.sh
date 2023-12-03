@@ -20,7 +20,7 @@ mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=0 -DARDENS_DIST=1 /io
 make -j$nj
-for f in $(ls *); do
-	[[ -x "$f" ]] && strip -x "$f" && cp "$f" /io/dist/build/
+for f in $(ls dist/*/*); do
+	[[ -x "$f" ]] && strip -x "$f" && cp "$f" /io/dist/build/dist/
 done
 
