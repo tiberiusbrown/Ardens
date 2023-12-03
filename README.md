@@ -15,21 +15,21 @@ Try the minimal player with one of the game URLs below:
 
 ## Keyboard Bindings
 
-|   Key  | Purpose                            |
-|:------:|------------------------------------|
-| Arrows | Arduboy: directional buttons       |
-|   A/Z  | Arduboy: A button                  |
-|  S/X/B | Arduboy: B button                  |
-|   F1   | (Desktop Debugger Only) Save screenshot of entire window |
-|   F2   | Save screenshot                    |
-|   F3   | Toggle GIF recording               |
-|   F4   | (Debugger only) Save snapshot      |
-|   F5   | (Debugger only) Pause/Continue     |
-|   F8   | Reset                              |
-|   F11  | Toggle fullscreen                  |
-|    O   | (Debugger only) Settings window    |
-|    P   | (Debugger only) Toggle player mode |
-|    R   | Rotate display                     |
+|   Key   | Purpose                            |
+|:-------:|------------------------------------|
+| Arrows  | Arduboy: directional buttons       |
+|A/Z/Ctrl | Arduboy: A button                  |
+|S/X/B/Alt| Arduboy: B button                  |
+|   F1    | (Desktop Debugger Only) Save screenshot of entire window |
+|   F2    | Save screenshot                    |
+|   F3    | Toggle GIF recording               |
+|   F4    | (Debugger only) Save snapshot      |
+|   F5    | (Debugger only) Pause/Continue     |
+|   F8    | Reset                              |
+|   F11   | Toggle fullscreen                  |
+|    O    | (Debugger only) Settings window    |
+|    P    | (Debugger only) Toggle player mode |
+|    R    | Rotate display                     |
 
 ## Creating a link to a playable Arduboy game
 

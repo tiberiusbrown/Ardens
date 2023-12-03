@@ -510,11 +510,15 @@ void frame_logic()
 
             if( ImGui::IsKeyDown(ImGuiKey_A) ||
                 ImGui::IsKeyDown(ImGuiKey_Z) ||
+                ImGui::IsKeyDown(ImGuiKey_LeftCtrl) ||
+                ImGui::IsKeyDown(ImGuiKey_RightCtrl) ||
                 touch.btns[TOUCH_A])
                 pine &= ~0x40;
             if( ImGui::IsKeyDown(ImGuiKey_B) ||
                 ImGui::IsKeyDown(ImGuiKey_S) ||
                 ImGui::IsKeyDown(ImGuiKey_X) ||
+                ImGui::IsKeyDown(ImGuiKey_LeftAlt) ||
+                ImGui::IsKeyDown(ImGuiKey_RightAlt) ||
                 touch.btns[TOUCH_B])
                 pinb &= ~0x10;
 
