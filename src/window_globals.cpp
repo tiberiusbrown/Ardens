@@ -120,7 +120,17 @@ static bool do_var_row(
         if(t.empty())
             TextDisabled("???");
         else
+        {
             TextUnformatted(t.c_str());
+            if(IsItemHovered() && BeginTooltip())
+            {
+                t = dwarf_value_string(die, mem, bit_offset, bit_size, dwarf_value_base::hex);
+                Text("Hex: %s", t.c_str());
+                t = dwarf_value_string(die, mem, bit_offset, bit_size, dwarf_value_base::bin);
+                Text("Bin: %s", t.c_str());
+                EndTooltip();
+            }
+        }
     }
 
     if(TableSetColumnIndex(2))

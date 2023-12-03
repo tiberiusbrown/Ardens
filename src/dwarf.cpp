@@ -325,8 +325,8 @@ static std::string recurse_value(
 {
     std::string const FMT =
         base == dwarf_value_base::dec ? "{:d}" :
-        base == dwarf_value_base::dec ? "{:d}" :
-        base == dwarf_value_base::dec ? "{:d}" :
+        base == dwarf_value_base::hex ? "{:#x}" :
+        base == dwarf_value_base::bin ? "{:#b}" :
         "";
     if(!die.isValid())
         return "";
