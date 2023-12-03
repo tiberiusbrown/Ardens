@@ -73,13 +73,17 @@ std::vector<uint32_t> dwarf_array_index(llvm::DWARFDie die, uint32_t index);
 
 std::string dwarf_type_string(llvm::DWARFDie die);
 
+enum class dwarf_value_base { dec, bin, hex };
+
 std::string dwarf_value_string(
     llvm::DWARFDie die, uint32_t addr, bool prog,
-    uint32_t bit_offset = 0, uint32_t bit_size = 0);
+    uint32_t bit_offset = 0, uint32_t bit_size = 0,
+    dwarf_value_base base = dwarf_value_base::dec);
 
 std::string dwarf_value_string(
     llvm::DWARFDie die, dwarf_span mem,
-    uint32_t bit_offset = 0, uint32_t bit_size = 0);
+    uint32_t bit_offset = 0, uint32_t bit_size = 0,
+    dwarf_value_base base = dwarf_value_base::dec);
 
 struct dwarf_var_data
 {
