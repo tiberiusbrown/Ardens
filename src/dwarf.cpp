@@ -325,8 +325,8 @@ static std::string recurse_value(
 {
     std::string const FMT =
         base == dwarf_value_base::dec ? "{:d}" :
-        base == dwarf_value_base::dec ? "{:d}" :
-        base == dwarf_value_base::dec ? "{:d}" :
+        base == dwarf_value_base::hex ? "{:#x}" :
+        base == dwarf_value_base::bin ? "{:#b}" :
         "";
     if(!die.isValid())
         return "";
@@ -483,7 +483,9 @@ static std::string recurse_value(
             //if(x >= 32 && x < 127)
             //    return fmt::format("'{}'", (char)x);
             //return fmt::format("(char){}", (int)x);
-            return fmt::format(FMT, (int8_t)x);
+            return base == dwarf_value_base::dec ?
+                fmt::format(FMT, (int8_t)x) :
+                fmt::format(FMT, (uint8_t)x);
         case llvm::dwarf::DW_ATE_signed:
             if(bits < 64)
             {
@@ -491,7 +493,11 @@ static std::string recurse_value(
                 if(x & mask)
                     x |= ~(mask - 1);
             }
-            return fmt::format(FMT, (int64_t)x);
+            if(base == dwarf_value_base::dec)
+                return fmt::format(FMT, (int64_t)x);
+            if(bits < 64)
+                x &= ((1ull << bits) - 1);
+            return fmt::format(FMT, x);
         case llvm::dwarf::DW_ATE_unsigned:
         case llvm::dwarf::DW_ATE_unsigned_char:
             return fmt::format(FMT, x);
