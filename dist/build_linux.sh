@@ -9,20 +9,27 @@ docker run --rm -v `pwd`/..:/io ghcr.io/phusion/holy-build-box/hbb-64 bash /io/c
 
 cd build
 
-for f in $(ls *); do
-	[[ -x "$f" ]] && file="$f"
-done
-
 wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
 chmod +x linuxdeploy-x86_64.AppImage
 
-mkdir AppDir
-mv -f "$file" AppDir
-cp ../../src/ArdensPlayer.desktop AppDir/${file}.desktop
-sed -i "s/ArdensPlayer/${file}/" AppDir/${file}.desktop
-cp ../../img/ardens.png AppDir
-ln -s "${file}" AppDir/AppRun
+cd dist
 
-cd ..
-./build/linuxdeploy-x86_64.AppImage --appdir build/AppDir --output appimage
+for f in $(ls *); do
+	if ![[ -x "$f" ]]; then
+        continue
+    fi
+    
+    rm -rf AppDir
+    mkdir AppDir
+    
+    mv -f "$f" AppDir
+    cp ../../../src/ArdensPlayer.desktop AppDir/${f}.desktop
+    sed -i "s/ArdensPlayer/${f}/" AppDir/${f}.desktop
+    cp ../../../img/ardens.png AppDir
+    ln -s "${f}" AppDir/AppRun
 
+    cd ../../
+    ./build/linuxdeploy-x86_64.AppImage --appdir build/AppDir --output appimage
+    cd build/dist
+
+done

@@ -443,65 +443,73 @@ if(ARDENS_DIST)
     include(cmake/bin2c.cmake)
 
     file(GLOB ARDUBOY_FILES "dist/*.arduboy")
-    message(STATUS "ARDUBOY_FILES=${ARDUBOY_FILES}")
-    if(NOT ARDUBOY_FILES)
-        message(FATAL_ERROR "Missing .arduboy file in the dist/ directory.")
-    endif()
-    list(GET ARDUBOY_FILES 0 ARDUBOY_FILE)
-    message(STATUS "ARDUBOY_FILE=${ARDUBOY_FILE}")
-    get_filename_component(ARDENS_DIST_TARGET "${ARDUBOY_FILE}" NAME_WLE)
+    foreach(ARDUBOY_FILE ${ARDUBOY_FILES})
+        message(STATUS "ARDUBOY_FILE=${ARDUBOY_FILE}")
+        get_filename_component(ARDENS_DIST_TARGET "${ARDUBOY_FILE}" NAME_WLE)
 
-    bin2c(
-        "${CMAKE_CURRENT_BINARY_DIR}/distgame.c"
-        "${CMAKE_CURRENT_BINARY_DIR}/distgame.h"
-        "${ARDUBOY_FILE}"
-        "game_arduboy"
-        )
+        set(DISTGAME_OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/dist/${ARDENS_DIST_TARGET}")
+        file(MAKE_DIRECTORY "${DISTGAME_OUTDIR}")
 
-    add_executable("${ARDENS_DIST_TARGET}" ${EXEFLAG}
-        .editorconfig
+        set(DISTGAME_DIR "${CMAKE_CURRENT_BINARY_DIR}/${ARDENS_DIST_TARGET}")
+        file(MAKE_DIRECTORY "${DISTGAME_DIR}")
 
-        src/main_sdl.cpp
-        src/main_sokol.cpp
-        ${RC_FILE}
-        ${MACOS_ICON}
-        src/ardens_icon.hpp
+        bin2c(
+            "${DISTGAME_DIR}/distgame.c"
+            "${DISTGAME_DIR}/distgame.h"
+            "${ARDUBOY_FILE}"
+            "game_arduboy"
+            )
 
-        src/settings.hpp
-        src/settings.cpp
-        src/common.hpp
-        src/common.cpp
-        src/view_player.cpp
-        src/record_gif.cpp
-        src/record_wav.cpp
-        src/scalenx.cpp
-        src/saveload.cpp
-        src/dwarf.hpp
-        src/dwarf.cpp
-        src/file_watch.cpp
+        add_executable("${ARDENS_DIST_TARGET}" ${EXEFLAG}
+            .editorconfig
 
-        deps/stb_image_write.h
-        ${IMGUI_SOURCES}
-        ${GIFENC_SOURCES}
-        ${EM_FILE_BROWSER_SOURCES}
-        ${SOKOL_SOURCES}
+            src/main_sdl.cpp
+            src/main_sokol.cpp
+            ${RC_FILE}
+            ${MACOS_ICON}
+            src/ardens_icon.hpp
 
-        "${CMAKE_CURRENT_BINARY_DIR}/distgame.c"
-        "${CMAKE_CURRENT_BINARY_DIR}/distgame.h"
-        )
-    target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE
-        deps
-        deps/imgui
-        deps/gifenc
-        )
-    target_link_libraries("${ARDENS_DIST_TARGET}" PRIVATE
-        ardenslib
-        ${SYSTEM_LIBS}
-        )
-    configure_app_target("${ARDENS_DIST_TARGET}")
-    target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DIST)
-    target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DISTNAME="${ARDENS_DIST_TARGET}")
-    target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+            src/settings.hpp
+            src/settings.cpp
+            src/common.hpp
+            src/common.cpp
+            src/view_player.cpp
+            src/record_gif.cpp
+            src/record_wav.cpp
+            src/scalenx.cpp
+            src/saveload.cpp
+            src/dwarf.hpp
+            src/dwarf.cpp
+            src/file_watch.cpp
+
+            deps/stb_image_write.h
+            ${IMGUI_SOURCES}
+            ${GIFENC_SOURCES}
+            ${EM_FILE_BROWSER_SOURCES}
+            ${SOKOL_SOURCES}
+
+            "${DISTGAME_DIR}/distgame.c"
+            "${DISTGAME_DIR}/distgame.h"
+            )
+        target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE
+            deps
+            deps/imgui
+            deps/gifenc
+            )
+        target_link_libraries("${ARDENS_DIST_TARGET}" PRIVATE
+            ardenslib
+            ${SYSTEM_LIBS}
+            )
+        configure_app_target("${ARDENS_DIST_TARGET}")
+        target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DIST)
+        target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DISTNAME="${ARDENS_DIST_TARGET}")
+        target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE "${DISTGAME_DIR}")
+        if(MSVC)
+            target_compile_options("${ARDENS_DIST_TARGET}" PRIVATE /Zc:__cplusplus)
+        else()
+            set_target_properties("${ARDENS_DIST_TARGET}" PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${DISTGAME_OUTDIR}")
+        endif()
+    endforeach()
 
 endif()
 
@@ -563,9 +571,6 @@ if(MSVC)
     endif()
     if(ARDENS_PLAYER)
         target_compile_options(ArdensPlayer PRIVATE /Zc:__cplusplus)
-    endif()
-    if(ARDENS_DIST)
-        target_compile_options("${ARDENS_DIST_TARGET}" PRIVATE /Zc:__cplusplus)
     endif()
     if(ARDENS_LIBRETRO)
         target_compile_options(ardens_libretro PUBLIC /Zc:__cplusplus)

@@ -320,8 +320,14 @@ std::string dwarf_type_string(llvm::DWARFDie die)
 
 static std::string recurse_value(
     llvm::DWARFDie die, dwarf_span mem,
+    dwarf_value_base base = dwarf_value_base::dec,
     uint32_t bit_offset = 0, uint32_t bit_size = 0)
 {
+    std::string const FMT =
+        base == dwarf_value_base::dec ? "{:d}" :
+        base == dwarf_value_base::dec ? "{:d}" :
+        base == dwarf_value_base::dec ? "{:d}" :
+        "";
     if(!die.isValid())
         return "";
     switch(die.getTag())
@@ -329,7 +335,7 @@ static std::string recurse_value(
     case llvm::dwarf::DW_TAG_const_type:
     case llvm::dwarf::DW_TAG_volatile_type:
     case llvm::dwarf::DW_TAG_typedef:
-        return recurse_value(dwarf_type(die), mem, bit_offset, bit_size);
+        return recurse_value(dwarf_type(die), mem, base, bit_offset, bit_size);
     case llvm::dwarf::DW_TAG_structure_type:
     case llvm::dwarf::DW_TAG_union_type:
     {
@@ -346,7 +352,7 @@ static std::string recurse_value(
             }
             if(!first) r += ", ";
             r += recurse_value(
-                dwarf_type(child.die), mem.offset(child.offset),
+                dwarf_type(child.die), mem.offset(child.offset), base,
                 child.bit_offset, child.bit_size);
             first = false;
             size += dwarf_size(child.die);
@@ -382,7 +388,7 @@ static std::string recurse_value(
             for(int i = 0; i < n; ++i)
             {
                 if(!first) r += ", ";
-                r += recurse_value(type, mem.offset(size * i));
+                r += recurse_value(type, mem.offset(size * i), base);
                 first = false;
             }
         }
@@ -441,9 +447,9 @@ static std::string recurse_value(
                     continue;
                 if(auto t = child.find(llvm::dwarf::DW_AT_const_value))
                     if(auto v = t.value().getAsUnsignedConstant())
-                        if(v == x) return fmt::format("{} ({})", dwarf_name(child), x);
+                        if(v == x) return fmt::format("{} (" + FMT + ")", dwarf_name(child), x);
             }
-            return fmt::format("<invalid> ({})", x);
+            return fmt::format("<invalid> (" + FMT + ")", x);
         }
         switch(enc)
         {
@@ -454,22 +460,30 @@ static std::string recurse_value(
         case llvm::dwarf::DW_ATE_float:
             if(bytes == 4)
             {
-                union { uint64_t x; float f; } u;
-                u.x = x;
-                return fmt::format("{}", u.f);
+                union { uint32_t x; float f; } u;
+                u.x = (uint32_t)x;
+                return
+                    base == dwarf_value_base::dec ? fmt::format(FMT, u.f) :
+                    base == dwarf_value_base::hex ? fmt::format(FMT, u.x) :
+                    base == dwarf_value_base::bin ? fmt::format(FMT, u.x) :
+                    "";
             }
             if(bytes == 8)
             {
                 union { uint64_t x; double f; } u;
                 u.x = x;
-                return fmt::format("{}", u.f);
+                return
+                    base == dwarf_value_base::dec ? fmt::format("{}", u.f) :
+                    base == dwarf_value_base::hex ? fmt::format("{:#x}", u.x) :
+                    base == dwarf_value_base::bin ? fmt::format("{:#b}", u.x) :
+                    "";
             }
             break;
         case llvm::dwarf::DW_ATE_signed_char:
             //if(x >= 32 && x < 127)
             //    return fmt::format("'{}'", (char)x);
             //return fmt::format("(char){}", (int)x);
-            return fmt::format("{}", (int8_t)x);
+            return fmt::format(FMT, (int8_t)x);
         case llvm::dwarf::DW_ATE_signed:
             if(bits < 64)
             {
@@ -477,13 +491,13 @@ static std::string recurse_value(
                 if(x & mask)
                     x |= ~(mask - 1);
             }
-            return fmt::format("{}", (int64_t)x);
+            return fmt::format(FMT, (int64_t)x);
         case llvm::dwarf::DW_ATE_unsigned:
         case llvm::dwarf::DW_ATE_unsigned_char:
-            return fmt::format("{}", x);
+            return fmt::format(FMT, x);
         default: break;
         }
-        return fmt::format("{:#x}", x);
+        return fmt::format(FMT, x);
         break;
     }
     default:
@@ -494,19 +508,21 @@ static std::string recurse_value(
 
 std::string dwarf_value_string(
     llvm::DWARFDie die, uint32_t addr, bool prog,
-    uint32_t bit_offset, uint32_t bit_size)
+    uint32_t bit_offset, uint32_t bit_size,
+	dwarf_value_base base)
 {
     dwarf_span mem;
     if(prog) mem = to_dwarf_span(arduboy->cpu.prog);
     else     mem = to_dwarf_span(arduboy->cpu.data);
-    return recurse_value(die, mem.offset(addr), bit_offset, bit_size);
+    return recurse_value(die, mem.offset(addr), base, bit_offset, bit_size);
 }
 
 std::string dwarf_value_string(
     llvm::DWARFDie die, dwarf_span mem,
-    uint32_t bit_offset, uint32_t bit_size)
+    uint32_t bit_offset, uint32_t bit_size,
+    dwarf_value_base base)
 {
-    return recurse_value(die, mem, bit_offset, bit_size);
+    return recurse_value(die, mem, base, bit_offset, bit_size);
 }
 
 bool dwarf_find_primitive(llvm::DWARFDie die, uint32_t offset, dwarf_primitive_t& prim)
