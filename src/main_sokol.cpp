@@ -175,7 +175,7 @@ static void app_event(sapp_event const* e)
             std::vector<uint8_t> fdata(
                 (std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());
-            load_file(fname, fdata.data(), fdata.size());
+            load_file("", fname, fdata.data(), fdata.size());
         }
     }
 #endif
