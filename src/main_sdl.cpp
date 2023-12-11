@@ -364,7 +364,8 @@ int main(int argc, char** argv)
             std::ifstream f(value, std::ios::in | std::ios::binary);
             if(f)
             {
-                dropfile_err = arduboy->load_file(value, f);
+                bool save = !strcmp(sargs_key_at(i), "save");
+                dropfile_err = arduboy->load_file(value, f, save);
                 if(dropfile_err.empty())
                 {
                     load_savedata();
