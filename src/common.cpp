@@ -120,10 +120,12 @@ void platform_open_url(char const *url)
 }
 #endif
 
-extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
+extern "C" int load_file(
+    char const* param, char const* filename, uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, size);
-    dropfile_err = arduboy->load_file(filename, f);
+    bool save = !strcmp(param, "save");
+    dropfile_err = arduboy->load_file(filename, f, save);
     if(dropfile_err.empty())
     {
         load_savedata();
@@ -382,7 +384,7 @@ void init()
     ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
 
 #ifdef ARDENS_DIST
-    load_file("game.arduboy", game_arduboy, game_arduboy_size);
+    load_file("", "game.arduboy", game_arduboy, game_arduboy_size);
 #endif
 }
 

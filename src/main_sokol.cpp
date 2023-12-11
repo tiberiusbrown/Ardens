@@ -114,7 +114,8 @@ static void app_init()
             std::ifstream f(value, std::ios::in | std::ios::binary);
             if(f)
             {
-                dropfile_err = arduboy->load_file(value, f);
+                bool save = !strcmp(sargs_key_at(i), "save");
+                dropfile_err = arduboy->load_file(value, f, save);
                 if(dropfile_err.empty())
                 {
                     load_savedata();
@@ -175,7 +176,7 @@ static void app_event(sapp_event const* e)
             std::vector<uint8_t> fdata(
                 (std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());
-            load_file(fname, fdata.data(), fdata.size());
+            load_file("", fname, fdata.data(), fdata.size());
         }
     }
 #endif

@@ -781,6 +781,10 @@ struct arduboy_t
     std::string title;
     std::string prog_filename;
     std::vector<uint8_t> prog_filedata;
+    
+    std::vector<uint8_t> fxdata;
+    std::vector<uint8_t> fxsave;
+    void reload_fx();
 
     std::unique_ptr<elf_data_t> elf;
     elf_data_symbol_t const* symbol_for_prog_addr(uint16_t addr);
@@ -851,7 +855,7 @@ struct arduboy_t
     void advance(uint64_t ps);
 
     // returns an error string on error or empty string on success
-    std::string load_file(char const* filename, std::istream& f);
+    std::string load_file(char const* filename, std::istream& f, bool save = false);
 
     // snapshots contain full debugger and device state and are compressed
     bool save_snapshot(std::ostream& f);
