@@ -326,12 +326,15 @@ void window_data_space(bool& open)
                 Text("Globals:     %d bytes (%d%%)",
                     (int)(arduboy->cpu.stack_check - 0x100),
                     (int)std::round(df * 100));
-                SameLine();
-                PushStyleColor(ImGuiCol_Text, IM_COL32(150, 250, 150, 255));
-                TextUnformatted("[hover for space usage]");
-                PopStyleColor();
-                if(IsItemHovered())
-                    globals_usage();
+                if(arduboy && !arduboy->elf && !arduboy->elf->data_symbols_sorted_size.empty())
+                {
+                    SameLine();
+                    PushStyleColor(ImGuiCol_Text, IM_COL32(150, 250, 150, 255));
+                    TextUnformatted("[hover for space usage]");
+                    PopStyleColor();
+                    if(IsItemHovered())
+                        globals_usage();
+                }
                 Text("Stack:       %d/%d bytes used (%d free)",
                     (int)(2560 + 256 - arduboy->cpu.sp()),
                     (int)(2560 + 256 - arduboy->cpu.stack_check),
