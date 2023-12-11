@@ -326,7 +326,7 @@ void window_data_space(bool& open)
                 Text("Globals:     %d bytes (%d%%)",
                     (int)(arduboy->cpu.stack_check - 0x100),
                     (int)std::round(df * 100));
-                if(arduboy && !arduboy->elf && !arduboy->elf->data_symbols_sorted_size.empty())
+                if(arduboy && arduboy->elf && !arduboy->elf->data_symbols_sorted_size.empty())
                 {
                     SameLine();
                     PushStyleColor(ImGuiCol_Text, IM_COL32(150, 250, 150, 255));
