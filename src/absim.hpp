@@ -724,6 +724,7 @@ struct elf_data_t
     map_type data_symbols;
     std::vector<uint16_t> text_symbols_sorted;
     std::vector<uint16_t> data_symbols_sorted;
+    std::vector<uint16_t> data_symbols_sorted_size;
 
     struct source_file_t
     {
