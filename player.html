@@ -39,10 +39,10 @@
         
         Module.canvas.addEventListener("click", (e) => { Module.canvas.focus(); });
         
-        function loadFile(fname, fdata) {
+        function loadFile(param, fname, fdata) {
             var ptr = Module._malloc(fdata.length);
             Module.HEAPU8.set(fdata, ptr)
-            Module.ccall('load_file', 'number', ['string', 'number', 'number'], [fname, ptr, fdata.length]);
+            Module.ccall('load_file', 'number', ['string', 'string', 'number', 'number'], [param, fname, ptr, fdata.length]);
             Module._free(ptr)
         }
         
@@ -69,11 +69,12 @@
                 if(Module.ccall('setparam', null, ['string', 'string'], [p[0], p[1]]))
                     continue;
                 Module.ccall('setparam', null, ['string', 'string'], ['loading', '1'])
+                const param = p[0];
                 const fname = p[1];
                 const fetchURL = 'https://api.combee.net/arduboyGet?url=' + fname;
                 fetch(fetchURL)
                     .then(rsp => rsp.arrayBuffer())
-                    .then(buf => loadFile(fname, new Uint8Array(buf)));
+                    .then(buf => loadFile(param, fname, new Uint8Array(buf)));
             }
         };
     </script>
