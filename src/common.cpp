@@ -384,7 +384,7 @@ void init()
     ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
 
 #ifdef ARDENS_DIST
-    load_file("game.arduboy", game_arduboy, game_arduboy_size);
+    load_file("", "game.arduboy", game_arduboy, game_arduboy_size);
 #endif
 }
 

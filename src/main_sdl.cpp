@@ -184,7 +184,7 @@ static void main_loop()
             std::vector<uint8_t> fdata(
                 (std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());
-            load_file(event.drop.file, fdata.data(), fdata.size());
+            load_file("", event.drop.file, fdata.data(), fdata.size());
 #endif
             SDL_free(event.drop.file);
         }
