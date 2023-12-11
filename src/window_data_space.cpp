@@ -8,6 +8,46 @@
 
 static MemoryEditor memed_data_space;
 
+static void globals_usage()
+{
+    using namespace ImGui;
+
+    if(!arduboy || !arduboy->elf || arduboy->elf->data_symbols_sorted_size.empty())
+        return;
+    if(!BeginTooltip())
+        return;
+
+    constexpr ImGuiTableFlags tf =
+        ImGuiTableFlags_NoSavedSettings |
+        ImGuiTableFlags_RowBg |
+        ImGuiTableFlags_Borders |
+        0;
+    if(BeginTable("##globals_usage", 3, tf, { -1, -1 }))
+    {
+        constexpr ImGuiTableColumnFlags cf =
+            ImGuiTableColumnFlags_WidthFixed |
+            0;
+        TableSetupColumn("Address", cf);
+        TableSetupColumn("Bytes", cf);
+        TableSetupColumn("Name", cf);
+        TableHeadersRow();
+        for(auto i : arduboy->elf->data_symbols_sorted_size)
+        {
+            auto const& sym = arduboy->elf->data_symbols[i];
+            TableNextRow();
+            TableSetColumnIndex(0);
+            Text("0x%04x", sym.addr);
+            TableSetColumnIndex(1);
+            Text("%4d", sym.size);
+            TableSetColumnIndex(2);
+            TextUnformatted(sym.name.c_str());
+        }
+        EndTable();
+    }
+
+    EndTooltip();
+}
+
 static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog)
 {
 #ifdef ARDENS_LLVM
@@ -286,6 +326,12 @@ void window_data_space(bool& open)
                 Text("Globals:     %d bytes (%d%%)",
                     (int)(arduboy->cpu.stack_check - 0x100),
                     (int)std::round(df * 100));
+                SameLine();
+                PushStyleColor(ImGuiCol_Text, IM_COL32(150, 250, 150, 255));
+                TextUnformatted("[hover for space usage]");
+                PopStyleColor();
+                if(IsItemHovered())
+                    globals_usage();
                 Text("Stack:       %d/%d bytes used (%d free)",
                     (int)(2560 + 256 - arduboy->cpu.sp()),
                     (int)(2560 + 256 - arduboy->cpu.stack_check),

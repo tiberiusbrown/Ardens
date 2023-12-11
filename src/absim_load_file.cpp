@@ -757,10 +757,14 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
         elf.text_symbols_sorted.push_back(kv.first);
     for(auto const& kv : elf.data_symbols)
         elf.data_symbols_sorted.push_back(kv.first);
+    for(auto const& kv : elf.data_symbols)
+        elf.data_symbols_sorted_size.push_back(kv.first);
     std::sort(elf.text_symbols_sorted.begin(), elf.text_symbols_sorted.end(),
         [&](uint16_t a, uint16_t b) { return icompare(elf.text_symbols[a].name, elf.text_symbols[b].name); });
     std::sort(elf.data_symbols_sorted.begin(), elf.data_symbols_sorted.end(),
         [&](uint16_t a, uint16_t b) { return icompare(elf.data_symbols[a].name, elf.data_symbols[b].name); });
+    std::sort(elf.data_symbols_sorted_size.begin(), elf.data_symbols_sorted_size.end(),
+        [&](uint16_t a, uint16_t b) { return elf.data_symbols[a].size > elf.data_symbols[b].size; });
 
     // note object text symbols in disassembly
     for(auto const& kv : elf.text_symbols)
