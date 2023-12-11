@@ -803,33 +803,24 @@ static std::string load_elf(arduboy_t& a, std::string const& fname)
 }
 #endif
 
-static std::string load_bin(arduboy_t& a, std::istream& f)
+static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
 {
-    std::vector<uint8_t> data(
+    auto& d = save ? a.fxsave : a.fxdata;
+    d = std::vector<uint8_t>(
         (std::istreambuf_iterator<char>(f)),
         std::istreambuf_iterator<char>());
-    size_t n = data.size();
-    n = (n + 255) & 0x1ffff00;
-    data.resize(n);
-    if(n > a.fx.data.size())
+    if(a.fxdata.size() + a.fxsave.size() >= a.fx.data.size())
         return "BIN: FX data too large";
-
-    a.fx.erase_all_data();
-    if(n != 0)
-        memcpy(&a.fx.data[a.fx.data.size() - n], &data[0], n);
-
-    a.fx.min_page = (a.fx.data.size() - n) / 256;
-    a.fx.max_page = 0xffff;
 
     return "";
 }
 
-static std::string load_bin(arduboy_t& a, std::string const& fname)
+static std::string load_bin(arduboy_t& a, std::string const& fname, bool save)
 {
     std::ifstream f(fname, std::ios::binary);
     if(f.fail())
         return "BIN: Unable to open file";
-    return load_bin(a, f);
+    return load_bin(a, f, save);
 }
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
@@ -901,6 +892,8 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         if(!err.empty()) return err;
     }
 
+    a.fxdata.clear();
+    a.fxsave.clear();
     if(bin.HasMember("flashdata"))
     {
         auto const& binfile = bin["flashdata"];
@@ -914,13 +907,31 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                 return "ARDUBOY: missing FX data file indicated in info.json";
             mz_zip_archive_file_stat stat{};
             mz_zip_reader_file_stat(z, i, &stat);
-            data.resize(stat.m_uncomp_size);
-            mz_zip_reader_extract_to_mem(z, i, data.data(), data.size(), 0);
+            a.fxdata.resize(stat.m_uncomp_size);
+            mz_zip_reader_extract_to_mem(z, i, a.fxdata.data(), a.fxdata.size(), 0);
         }
 
-        std::stringstream ss(std::string(data.begin(), data.end()));
-        std::string err = load_bin(a, ss);
-        if(!err.empty()) return err;
+        // check for save bin
+        if(bin.HasMember("flashsave"))
+        {
+            auto const& savefile = bin["flashsave"];
+            if(!savefile.IsString())
+                return "ARDUBOY: FX save filename not string type";
+
+            {
+                std::string savefilename(savefile.GetString(), savefile.GetStringLength());
+                int i = mz_zip_reader_locate_file(z, savefilename.c_str(), nullptr, 0);
+                if(i == -1)
+                    return "ARDUBOY: missing FX save file indicated in info.json";
+                mz_zip_archive_file_stat stat{};
+                mz_zip_reader_file_stat(z, i, &stat);
+                a.fxsave.resize(stat.m_uncomp_size);
+                mz_zip_reader_extract_to_mem(z, i, a.fxsave.data(), a.fxsave.size(), 0);
+            }
+        }
+
+        if(a.fxdata.size() + a.fxsave.size() >= a.fx.data.size())
+            return "BIN: FX data too large";
     }
     else
     {
@@ -995,7 +1006,7 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
     a.fx.erase_all_data();
 }
 
-std::string arduboy_t::load_file(char const* filename, std::istream& f)
+std::string arduboy_t::load_file(char const* filename, std::istream& f, bool save)
 {
     if(f.fail())
         return "Failed to open file";
@@ -1015,8 +1026,8 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
     if(ends_with(fname, ".bin"))
     {
         reset();
-        r = load_bin(*this, f);
-        update_game_hash();
+        r = load_bin(*this, f, save);
+        reload_fx();
         return r;
     }
 
@@ -1036,6 +1047,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
         reset();
         elf.reset();
         r = load_arduboy(*this, f);
+        reload_fx();
     }
 #endif
 
@@ -1054,7 +1066,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f)
         prog_filedata = std::vector<uint8_t>(
             (std::istreambuf_iterator<char>(f)),
             std::istreambuf_iterator<char>());
-        update_game_hash();
+        reload_fx();
     }
 
     return r;

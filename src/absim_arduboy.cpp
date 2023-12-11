@@ -30,6 +30,28 @@
 namespace absim
 {
 
+void arduboy_t::reload_fx()
+{
+    size_t fxsave_bytes = (fxsave.size() + 4095) & ~4095;
+    size_t fxdata_bytes = (fxdata.size() + 255) & ~255;
+    size_t fxsave_offset = w25q128_t::DATA_BYTES - fxsave_bytes;
+    size_t fxdata_offset = fxsave_offset - fxdata_bytes;
+
+    fx.min_page = fxdata_offset / 256;
+    fx.max_page = 0xffff;
+
+    fx.erase_all_data();
+    std::copy(
+        fxdata.begin(),
+        fxdata.end(),
+        fx.data.begin() + fxdata_offset);
+    update_game_hash();
+    std::copy(
+        fxsave.begin(),
+        fxsave.end(),
+        fx.data.begin() + fxsave_offset);
+}
+
 void arduboy_t::update_game_hash()
 {
     // FNV-1a 64-bit
