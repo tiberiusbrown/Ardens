@@ -53,7 +53,7 @@
                 var fr = new FileReader();
                 fr.onloadend = evt => {
                     const fdata = new Uint8Array(evt.target.result);
-                    loadFile(f.name, fdata)
+                    loadFile("file", f.name, fdata)
                 };
                 fr.readAsArrayBuffer(f);
                 
