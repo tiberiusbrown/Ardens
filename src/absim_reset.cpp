@@ -1,5 +1,7 @@
 #include "absim.hpp"
 
+#include <random>
+
 namespace absim
 {
 
@@ -153,6 +155,9 @@ void atmega32u4_t::reset()
     adc_ref = 0;
     adc_result = 0;
     adc_busy = false;
+    adc_seed = 0xcafebabe;
+    if(adc_nondeterminism)
+        adc_seed = (uint32_t)std::random_device{}();
 
     sound_cycle = 0;
     sound_enabled = 0;

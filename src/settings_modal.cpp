@@ -92,6 +92,13 @@ void modal_settings()
                     CURRENT_ITEMS, NUM_CURRENT_ITEMS, NUM_CURRENT_ITEMS))
                     update_settings();
 
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Nondeterministic ADC Readings");
+                TableSetColumnIndex(1);
+                if(Checkbox("##nondeterminism", &settings.nondeterminism))
+                    update_settings();
                 EndTable();
             }
             EndTabItem();

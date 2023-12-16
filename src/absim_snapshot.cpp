@@ -214,6 +214,10 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     // v0.21.8
     ar(a.title);
 
+    // v0.21.15
+    ar(a.cpu.adc_seed);
+    ar(a.cpu.adc_nondeterminism);
+
     return "";
 }
 

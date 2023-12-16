@@ -376,6 +376,7 @@ void init()
     default_style = style;
 
     arduboy->fx.erase_all_data();
+    arduboy->cpu.adc_nondeterminism = settings.nondeterminism;
     arduboy->reset();
     arduboy->fx.min_page = 0xffff;
     arduboy->fx.max_page = 0xffff;
@@ -462,6 +463,7 @@ void frame_logic()
 {
     ImGuiIO& io = ImGui::GetIO();
 
+    arduboy->cpu.adc_nondeterminism = settings.nondeterminism;
     if(!touch_points.empty())
         ms_since_touch = 0;
 
