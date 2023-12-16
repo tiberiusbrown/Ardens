@@ -63,15 +63,25 @@ ARDENS_FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
         if(mux == 0x27)
         {
             // temperature sensor
-            adc_result = 302 + ((uint32_t)cycle_count & 1) + ((uint32_t)sound_buffer.size() & 1);
+            adc_result = 302;
         }
         else if(mux == 0x1e)
         {
             // voltage with bandgap ref
-            adc_result = 265 + ((uint32_t)cycle_count & 3) + ((uint32_t)sound_buffer.size() & 3);
+            adc_result = 265;
         }
         else
             adc_result = 100;
+
+        {
+            uint32_t x = adc_seed;
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            adc_seed = x;
+            adc_result += (int(adc_seed & 15) - 8);
+        }
+
         adc_busy = false;
         break;
 	}

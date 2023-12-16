@@ -465,7 +465,9 @@ struct atmega32u4_t
     uint32_t adc_cycle;
     uint32_t adc_ref;
     uint32_t adc_result;
+    uint32_t adc_seed;
     bool adc_busy;
+    bool adc_nondeterminism;
     void cycle_adc(uint32_t cycles);
     void adc_handle_prr0(uint8_t x);
     static void adc_st_handle_adcsra(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);

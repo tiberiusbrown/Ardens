@@ -54,6 +54,7 @@ static void settings_read_line(
     ARDENS_BOOL_SETTING(display_auto_filter);
     ARDENS_BOOL_SETTING(record_wav);
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
+    ARDENS_BOOL_SETTING(nondeterminism);
 
     ARDENS_BOOL_SETTING(ab.stack_overflow);
     ARDENS_BOOL_SETTING(ab.null_deref);
@@ -123,6 +124,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_BOOL_SETTING(display_current_modeling);
     ARDENS_BOOL_SETTING(record_wav);
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
+    ARDENS_BOOL_SETTING(nondeterminism);
 
     ARDENS_BOOL_SETTING(ab.stack_overflow);
     ARDENS_BOOL_SETTING(ab.null_deref);
