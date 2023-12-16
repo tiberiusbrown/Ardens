@@ -60,10 +60,12 @@ ARDENS_FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
 		constexpr uint8_t ADSC = 1 << 6;
 		adcsra &= ~ADSC;
         
+        int n = 41;
         if(mux == 0x27)
         {
             // temperature sensor
             adc_result = 302;
+            n = 5;
         }
         else if(mux == 0x1e)
         {
@@ -73,14 +75,21 @@ ARDENS_FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
         else
             adc_result = 100;
 
+        uint32_t x = adc_seed;
+        for(int i = 0; i < n; ++i)
         {
-            uint32_t x = adc_seed;
             x ^= x << 13;
             x ^= x >> 7;
             x ^= x << 17;
-            adc_seed = x;
-            adc_result += (int(adc_seed & 15) - 8);
+            if(x & 2)
+            {
+                if(x & 1)
+                    ++adc_result;
+                else
+                    --adc_result;
+            }
         }
+        adc_seed = x;
 
         adc_busy = false;
         break;
