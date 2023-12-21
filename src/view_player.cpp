@@ -181,6 +181,16 @@ void view_player()
         while(w + tw <= size.x && h + th <= size.y)
             w += tw, h += th;
     }
+    else if(settings.display_orientation & 1)
+    {
+        w = size.x;
+        h = w * 2.f;
+        if(h > size.y)
+        {
+            h = size.y;
+            w = h * 0.5f;
+        }
+    }
     else
     {
         w = size.x;
