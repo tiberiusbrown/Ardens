@@ -256,9 +256,9 @@ void platform_send_sound()
     std::vector<float> sbuf;
 
     double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
-    sbuf.resize(size_t(buf.size() * f + 0.5));
-    if(sbuf.size() > saudio_expect())
-        sbuf.resize(saudio_expect());
+    size_t ns = size_t(buf.size() * f + 0.5);
+    ns = std::min<size_t>(ns, (size_t)saudio_expect());
+    sbuf.resize(ns);
 
     float gain = volume_gain();
 
