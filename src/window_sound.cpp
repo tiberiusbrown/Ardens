@@ -89,7 +89,7 @@ void window_sound(bool& open)
             SetupAxis(ImAxis_Y1, nullptr, axis_flags |
                 ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_NoTickLabels);
             SetupAxisLimits(ImAxis_X1, 0.0, SAMPLE_HISTORY_NUM);
-            constexpr double L = double(absim::atmega32u4_t::SOUND_GAIN) / 32768;
+            constexpr double L = double(absim::atmega32u4_t::SOUND_GAIN) * 1.1 / 32768;
             SetupAxisLimits(ImAxis_Y1, -L, L, ImPlotCond_Always);
             SetupAxisLimitsConstraints(ImAxis_X1, 0.0, SAMPLE_HISTORY_NUM);
             SetupAxisFormat(ImAxis_X1, waveform_xaxis_formatter);
