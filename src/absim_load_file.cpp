@@ -194,6 +194,8 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     a.breakpoints_rd.reset();
     a.breakpoints_wr.reset();
 
+    uint32_t addr_upper = 0;
+
     while(!f.eof())
     {
         while(f.get() != ':')
@@ -204,25 +206,18 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
         if(count < 0)
             return "HEX bad byte count";
         checksum += (uint8_t)count;
-        int addr_hi = get_hex_byte(f);
-        int addr_lo = get_hex_byte(f);
+        uint32_t addr_hi = (uint32_t)get_hex_byte(f);
+        uint32_t addr_lo = (uint32_t)get_hex_byte(f);
         if(addr_lo < 0 || addr_hi < 0)
             return "HEX: bad address";
         checksum += (uint8_t)addr_lo;
         checksum += (uint8_t)addr_hi;
-        int addr = addr_lo + addr_hi * 256;
+        uint32_t addr = addr_lo + addr_hi * 256;
+        addr += (addr_upper << 16);
         int type = get_hex_byte(f);
         checksum += (uint8_t)type;
-        if(type < 0)
+        if(type < 0 || type > 5)
             return "HEX: bad type";
-        if(type > 1)
-            return "HEX: unsupported type";
-        if(type == 1)
-        {
-            if(count != 0)
-                return "HEX: non-zero byte count at end-of-file record";
-            break;
-        }
         if(type == 0)
         {
             for(int i = 0; i < count; ++i)
@@ -231,12 +226,37 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
                 if(data < 0)
                     return "HEX: bad data";
                 checksum += (uint8_t)data;
+                if(addr >= 0x800000)
+                    continue;
                 if(addr + i >= cpu.prog.size())
                     return "Too many instructions!";
                 if(addr + i > cpu.last_addr)
                     cpu.last_addr = addr + i;
                 cpu.prog[addr + i] = (uint8_t)data;
             }
+        }
+        else if(type == 1)
+        {
+            if(count != 0)
+                return "HEX: non-zero byte count at end-of-file record";
+            break;
+        }
+        else if(type == 4)
+        {
+            addr_upper = 0;
+            for(int i = 0; i < count; ++i)
+            {
+                int data = get_hex_byte(f);
+                if(data < 0)
+                    return "HEX: bad data";
+                checksum += (uint8_t)data;
+                addr_upper <<= 8;
+                addr_upper |= (uint32_t)data;
+            }
+        }
+        else
+        {
+            return "HEX: unsupported type";
         }
         checksum = uint8_t(-checksum);
         int check = get_hex_byte(f);
