@@ -44,6 +44,8 @@ void window_display(bool& open)
                 ImVec2 a = GetCursorScreenPos();
                 a.x += (avail.x - w) * 0.5f;
                 a.y += (avail.y - h) * 0.5f;
+                a.x = roundf(a.x);
+                a.y = roundf(a.y);
                 ImVec2 b = { a.x + w, a.y + h };
                 display_with_scanlines(d, a, b);
             }
