@@ -209,8 +209,8 @@ void view_player()
     };
     if(first_touch)
         dstart.y = std::max(0.f, dstart.y - dsize.y * 0.5f);
-    dstart.x = roundf(dstart.x);
-    dstart.y = roundf(dstart.y);
+    dstart.x = std::round(dstart.x);
+    dstart.y = std::round(dstart.y);
     display_with_scanlines(d, dstart,
         { dstart.x + dsize.x, dstart.y + dsize.y });
 
