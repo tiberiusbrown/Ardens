@@ -31,6 +31,16 @@ Try the minimal player with one of the game URLs below:
 |    P   | (Debugger only) Toggle player mode |
 |    R   | Rotate display                     |
 
+## Command Line Usage
+
+To invoke from the command line with specific options and game file(s), use the syntax `/path/to/Ardens param=value file=game.hex`, where the parameters are the same as in the URL parameters below.
+
+For example:
+
+```raw
+Ardens palette=highcontrast grid=normal current=true file=game.hex file=fxdata.bin
+```
+
 ## Creating a link to a playable Arduboy game
 
 There is a web build hosted on GitHub pages: to create a link to a playable Arduboy game using Ardens Player, you can follow these patterns:
