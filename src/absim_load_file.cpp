@@ -195,14 +195,17 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     a.breakpoints_wr.reset();
 
     uint32_t addr_upper = 0;
+    uint32_t num_records = 0;
 
     while(!f.eof())
     {
-        while(f.get() != ':')
-            if(f.eof())
-                return "HEX: unexpected EOF";
+        while(!f.eof() && f.get() != ':')
+            ;
+        if(f.eof())
+            break;
         uint8_t checksum = 0;
         int count = get_hex_byte(f);
+        ++num_records;
         if(count < 0)
             return "HEX bad byte count";
         checksum += (uint8_t)count;
@@ -263,6 +266,9 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
         if(checksum != check)
             return "HEX: bad checksum";
     }
+
+    if(num_records == 0)
+        return "HEX: no records found";
 
     cpu.decode();
 
