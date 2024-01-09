@@ -663,6 +663,8 @@ struct w25q128_t
     uint32_t min_page;
     uint32_t max_page;
 
+    bool busy_error;
+
     void reset();
     void erase_all_data();
 
