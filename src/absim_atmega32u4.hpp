@@ -269,6 +269,8 @@ void atmega32u4_t::update_all()
     update_timer0();
     update_timer1();
     update_timer3();
+    update_timer4();
+    update_usb();
 }
 
 }
