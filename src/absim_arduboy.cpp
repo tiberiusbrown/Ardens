@@ -421,8 +421,9 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
                 display.send_command(byte);
         }
 
+        bool was_erasing = (fx.erasing_sector != 0);
         cpu.spi_datain_byte = fx.spi_transceive(byte);
-        if(fx.busy_ps_rem != 0 && !fx.reading_status && !fx.programming && !fx.erasing_sector)
+        if(fx.busy_error)
             cpu.autobreak(AB_FX_BUSY);
         cpu.spi_done_shifting = false;
     }
