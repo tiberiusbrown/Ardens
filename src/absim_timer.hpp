@@ -193,7 +193,7 @@ void atmega32u4_t::update_timer0()
         if(timer0.phase_correct)
             update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.top - timer0.tcnt);
         else
-            update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tov - timer0.tcnt);
+            update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tov - timer0.tcnt + 1);
         update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNa - timer0.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNb - timer0.tcnt);
     }
@@ -491,7 +491,7 @@ static void update_timer16(
         if(timer.phase_correct)
             update_tcycles = min_nonzero(update_tcycles, timer.top, timer.top - timer.tcnt);
         else
-            update_tcycles = min_nonzero(update_tcycles, timer.top, timer.tov - timer.tcnt);
+            update_tcycles = min_nonzero(update_tcycles, timer.top, timer.tov - timer.tcnt + 1);
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNa - timer.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNb - timer.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNc - timer.tcnt);
@@ -795,7 +795,7 @@ void atmega32u4_t::update_timer4()
         if(timer4.phase_correct)
             update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.top - timer4.tcnt);
         else
-            update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.tov - timer4.tcnt);
+            update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.tov - timer4.tcnt + 1);
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNa - timer4.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNb - timer4.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer4.top, timer4.ocrNd - timer4.tcnt);
