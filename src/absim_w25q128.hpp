@@ -28,6 +28,8 @@ void w25q128_t::reset()
     current_addr = 0;
 
     sectors_dirty = false;
+
+    busy_error = false;
 }
 
 ARDENS_FORCEINLINE void w25q128_t::set_enabled(bool e)
@@ -38,8 +40,9 @@ ARDENS_FORCEINLINE void w25q128_t::set_enabled(bool e)
         if(!e)
         {
             reading_status = false;
-            reading = false;
-            programming = false;
+            reading = 0;
+            programming = 0;
+            erasing_sector = 0;
             processing_command = false;
             releasing = 0;
             if(busy_ps_rem == 0)
@@ -73,6 +76,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
     if(!enabled) return 0;
 
     uint8_t data_to_send = 0;
+    busy_error = false;
 
     if(reading)
     {
@@ -152,6 +156,8 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
     else if(!processing_command)
     {
         processing_command = true;
+        if(busy_ps_rem != 0 && byte != 0x05 && byte != 0x06)
+            busy_error = true;
         switch(byte)
         {
         case 0x02: // program page
