@@ -9,7 +9,7 @@
 #include <fmt/format.h>
 
 #if defined(__EMSCRIPTEN__)
-#define SOKOL_GLES2
+#define SOKOL_GLES3
 #elif defined(__APPLE__)
 #define SOKOL_METAL
 #elif defined(_WIN32)
