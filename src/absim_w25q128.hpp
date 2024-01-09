@@ -38,8 +38,9 @@ ARDENS_FORCEINLINE void w25q128_t::set_enabled(bool e)
         if(!e)
         {
             reading_status = false;
-            reading = false;
-            programming = false;
+            reading = 0;
+            programming = 0;
+            erasing_sector = 0;
             processing_command = false;
             releasing = 0;
             if(busy_ps_rem == 0)
@@ -129,7 +130,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
             sectors_modified.set(current_addr >> 12);
             sectors_dirty = true;
             busy_ps_rem = 100ull * 1000 * 1000 * 1000; // 100 ms
-            erasing_sector = 0;
+            erasing_sector = 5;
         }
     }
     else if(releasing)
