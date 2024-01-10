@@ -209,7 +209,7 @@ void modal_settings()
                 TextUnformatted("Sync With Display Settings");
                 TableSetColumnIndex(1);
                 SetNextItemWidth(-1.f);
-                if(Checkbox("##recordingpalettecombo", &settings.recording_sameasdisplay))
+                if(Checkbox("##recordingsync", &settings.recording_sameasdisplay))
                     update_settings();
 
                 if(settings.recording_sameasdisplay) BeginDisabled();
