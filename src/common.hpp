@@ -58,6 +58,10 @@ extern std::string dropfile_err;
 extern bool loading_indicator;
 extern uint64_t ms_since_start;
 
+constexpr float CLEAR_R = 0.10f;
+constexpr float CLEAR_G = 0.10f;
+constexpr float CLEAR_B = 0.10f;
+
 constexpr uint64_t MS_SHOW_TOUCH_CONTROLS = 10000;
 extern bool first_touch;
 extern uint64_t ms_since_touch;

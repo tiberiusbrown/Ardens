@@ -54,7 +54,7 @@ constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = 2048;
 #error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
 #endif
 
-constexpr ImVec4 clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+constexpr ImVec4 clear_color = { CLEAR_R, CLEAR_G, CLEAR_B, 1.0f };
 
 static SDL_AudioStream* audio_stream;
 

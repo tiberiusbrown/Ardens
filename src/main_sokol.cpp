@@ -49,7 +49,7 @@ static void app_frame()
 
     sg_pass_action action{};
     action.colors[0].action = SG_ACTION_CLEAR;
-    action.colors[0].value = { 0.05f, 0.05f, 0.05f, 1.f };
+    action.colors[0].value = { CLEAR_R, CLEAR_G, CLEAR_B, 1.f };
     sg_begin_default_pass(&action, sapp_width(), sapp_height());
 
     simgui_render();
