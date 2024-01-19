@@ -263,6 +263,7 @@ static void prog_addr_tooltip(uint16_t addr)
             Separator();
             TextUnformatted(info.desc);
             EndTooltip();
+            return;
         }
     }
     auto name = prog_addr_name(addr);
