@@ -221,10 +221,38 @@ static void prog_addr_source_line(uint16_t addr)
     }
 }
 
+static std::string prog_addr_name(uint16_t addr)
+{
+    if(addr / 4 < absim::INT_VECTOR_INFO.size())
+    {
+        auto const& info = absim::INT_VECTOR_INFO[addr / 4];
+        if(info.name)
+            return info.name;
+    }
+    auto const* sym = arduboy->symbol_for_prog_addr(addr);
+    if(sym)
+    {
+        if(addr == sym->addr)
+            return sym->name.c_str();
+        if(arduboy->elf)
+        {
+            auto index = arduboy->elf->addr_to_disassembled_index(addr);
+            auto const& a = arduboy->elf->asm_with_source[index];
+            if(a.type == a.SYMBOL)
+            {
+                auto it = arduboy->elf->text_symbols.find(a.addr);
+                if(it != arduboy->elf->text_symbols.end())
+                    return it->second.name;
+            }
+        }
+        return fmt::format("{} + {}", sym->name, addr - sym->addr);
+    }
+    return "";
+}
+
 static void prog_addr_tooltip(uint16_t addr)
 {
     using namespace ImGui;
-    auto const* sym = arduboy->symbol_for_prog_addr(addr);
     if(addr / 4 < absim::INT_VECTOR_INFO.size())
     {
         auto const& info = absim::INT_VECTOR_INFO[addr / 4];
@@ -238,13 +266,11 @@ static void prog_addr_tooltip(uint16_t addr)
             return;
         }
     }
-    if(sym)
+    auto name = prog_addr_name(addr);
+    if(!name.empty())
     {
         BeginTooltip();
-        if(addr == sym->addr)
-            TextUnformatted(sym->name.c_str());
-        else
-            Text("%s [%+d]", sym->name.c_str(), addr - sym->addr);
+        TextUnformatted(name.c_str());
         EndTooltip();
     }
     //BeginTooltip();
@@ -255,7 +281,8 @@ static void prog_addr_tooltip(uint16_t addr)
 static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
 {
     using namespace ImGui;
-    auto addr_size = CalcTextSize("0x0000");
+    auto name = prog_addr_name(addr);
+    auto addr_size = CalcTextSize(name.empty() ? "0x0000" : name.c_str());
     auto saved = GetCursorPos();
     Dummy(addr_size);
     ImU32 color = IM_COL32(30, 200, 100, 255);
@@ -267,7 +294,10 @@ static void disassembly_prog_addr(uint16_t addr, int& do_scroll)
     }
     SetCursorPos(saved);
     PushStyleColor(ImGuiCol_Text, color);
-    Text("0x%04x", addr);
+    if(!name.empty())
+        TextUnformatted(name.c_str());
+    else
+        Text("0x%04x", addr);
     PopStyleColor();
     if(IsItemClicked())
     {
