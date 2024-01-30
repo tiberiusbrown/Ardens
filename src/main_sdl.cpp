@@ -136,7 +136,7 @@ void platform_send_sound()
         SDL_PutAudioStreamData(
             audio_stream,
             buf.data(),
-            buf.size() * sizeof(buf[0]));
+            int(buf.size() * sizeof(buf[0])));
     }
 }
 
@@ -180,13 +180,12 @@ static void main_loop()
         if(event.type == SDL_EVENT_DROP_FILE)
         {
 #ifndef ARDENS_DIST
-            std::ifstream f(event.drop.file, std::ios::binary);
+            std::ifstream f(event.drop.data, std::ios::binary);
             std::vector<uint8_t> fdata(
                 (std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());
-            load_file("", event.drop.file, fdata.data(), fdata.size());
+            load_file("", event.drop.data, fdata.data(), fdata.size());
 #endif
-            SDL_free(event.drop.file);
         }
     }
 
@@ -206,8 +205,8 @@ static void main_loop()
             if(!SDL_IsGamepad(j[i])) continue;
             auto* g = SDL_OpenGamepad(j[i]);
             if(!g) continue;
-            io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_A         ) != 0);
-            io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_B         ) != 0);
+            io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_SOUTH     ) != 0);
+            io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_EAST      ) != 0);
             io.AddKeyEvent(ImGuiKey_UpArrow   , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_UP   ) != 0);
             io.AddKeyEvent(ImGuiKey_DownArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_DOWN ) != 0);
             io.AddKeyEvent(ImGuiKey_LeftArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_LEFT ) != 0);
@@ -300,7 +299,7 @@ int main(int argc, char** argv)
 
     init();
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(ARDENS_UWP)
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
 
@@ -324,8 +323,12 @@ int main(int argc, char** argv)
 #endif
 
     // Setup window
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(
+    uint32_t window_flags = (
+#if defined(ARDENS_UWP)
+        SDL_WINDOW_FULLSCREEN |
+#else
         SDL_WINDOW_RESIZABLE |
+#endif
         0);
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
 

@@ -5,12 +5,12 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   IgnorableNamespaces="uap mp">
 
-  <Identity Name="@PACKAGE_GUID@" Publisher="" Version="1.0.0.0" />
-  <mp:PhoneIdentity PhoneProductId="@PACKAGE_GUID@" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <Identity Name="@PACKAGE_ID@" Publisher="@PUBLISHER@" Version="@APP_VERSION@" />
+  <mp:PhoneIdentity PhoneProductId="@PHONE_GUID@" PhonePublisherId="@PHONE_PUBLISHER@"/>
 
   <Properties>
     <DisplayName>@SHORT_NAME@</DisplayName>
-    <PublisherDisplayName>mgong</PublisherDisplayName>
+    <PublisherDisplayName>@PUBLISHER_NAME@</PublisherDisplayName>
     <Logo>Assets/StoreLogo.png</Logo>
   </Properties>
 
@@ -22,14 +22,14 @@
     <Resource Language="x-generate" />
   </Resources>
   <Applications>
-    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="@SHORT_NAME@.App">
+    <Application Id="App" Executable="@SHORT_NAME@.exe" EntryPoint="@SHORT_NAME@.App">
       <uap:VisualElements
         DisplayName="@SHORT_NAME@"
         Description="@SHORT_NAME@"
-        BackgroundColor="#336699"
-        Square150x150Logo="Assets/Logo.png"
-        Square44x44Logo="Assets/SmallLogo44x44.png">
-        <uap:SplashScreen Image="Assets/SplashScreen.png" />
+        BackgroundColor="#191919"
+        Square150x150Logo="logo150.png"
+        Square44x44Logo="logo44.png">
+        <uap:SplashScreen Image="logo620x300.png" />
       </uap:VisualElements>
     </Application>
   </Applications>

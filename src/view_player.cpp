@@ -167,8 +167,8 @@ void view_player()
     auto size = ImGui::GetMainViewport()->Size;
 
     int z = display_filter_zoom();
-    float tw = 128 * z;
-    float th = 64 * z;
+    float tw = 128.f * z;
+    float th = 64.f * z;
     if(settings.display_orientation & 1)
         std::swap(tw, th);
     float w = tw, h = th;
@@ -227,6 +227,7 @@ void view_player()
         draw_button(d, TOUCH_B, pressed);
     }
 
+#if ALLOW_SCREENSHOTS
     if(gif_recording)
     {
         float const F1 = 10.f * pixel_ratio;
@@ -235,4 +236,5 @@ void view_player()
             { F1, F1 }, { F2, F2 },
             IM_COL32(255, 0, 0, 128));
     }
+#endif
 }

@@ -10,7 +10,16 @@
 
 #include <SDL3/SDL.h>
 
-int main(int argc, char** argv)
+#include <absim.hpp>
+
+#include <strstream>
+
+extern "C" uint8_t game_arduboy[];
+extern "C" uint32_t game_arduboy_size;
+
+static std::unique_ptr<absim::arduboy_t> arduboy;
+
+int main(int argc, char* argv[])
 {
     SDL_DisplayMode const* mode = nullptr;
     SDL_DisplayID* displays = nullptr;
@@ -19,6 +28,16 @@ int main(int argc, char** argv)
     SDL_Renderer* renderer = nullptr;
     SDL_Event evt;
     SDL_bool keep_going = SDL_TRUE;
+
+    arduboy = std::make_unique<absim::arduboy_t>();
+    if(!arduboy)
+        return 1;
+    {
+        std::istrstream ss((char const*)game_arduboy, (int)game_arduboy_size);
+        auto error = arduboy->load_file("game.arduboy", ss);
+        if(!error.empty())
+            return 1;
+    }
 
     if(SDL_Init(SDL_INIT_VIDEO) != 0) {
         return 1;
@@ -37,6 +56,8 @@ int main(int argc, char** argv)
     SDL_free(displays);
     displays = nullptr;
 
+    uint64_t pt = SDL_GetTicks();
+
     while(keep_going) {
         while(SDL_PollEvent(&evt)) {
             if((evt.type == SDL_EVENT_KEY_DOWN) && (evt.key.keysym.sym == SDLK_ESCAPE)) {
@@ -44,11 +65,18 @@ int main(int argc, char** argv)
             }
         }
 
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        uint64_t t = SDL_GetTicks();
+        uint64_t dt = t - pt;
+        pt = t;
+
+        SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
         SDL_RenderClear(renderer);
+
+
+
         SDL_RenderPresent(renderer);
     }
 
-    SDL_Quit();
+    SDL_Quit(); 
     return 0;
 }

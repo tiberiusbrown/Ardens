@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.15)
+message(STATUS "HELLO ${WINDOWS_STORE}")
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(WINDOWS_STORE OFF)
+if("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
+    set(WINDOWS_STORE ON)
+else()
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,7 +16,7 @@ project(Ardens)
 
 include(FetchContent)
 
-if(MSVC)
+if(MSVC AND NOT WINDOWS_STORE)
     add_link_options(
         /DEBUG
         /INCREMENTAL:NO                     # Disable incremental linking.
@@ -83,6 +89,10 @@ add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
 if(ARDENS_SDL)
+    if(WINDOWS_STORE)
+        set(SDL_STATIC OFF)
+        set(SDL_SHARED ON)
+    endif()
     add_subdirectory(deps/SDL)
 endif()
 
@@ -260,7 +270,11 @@ macro(configure_app_target target)
     endif()
     if(ARDENS_SDL)
         target_compile_definitions(${target} PUBLIC -DARDENS_PLATFORM_SDL)
-        target_link_libraries(${target} PRIVATE SDL3-static)
+        if(WINDOWS_STORE)
+            target_link_libraries(${target} PRIVATE SDL3-shared)
+        else()
+            target_link_libraries(${target} PRIVATE SDL3-static)
+        endif()
     else()
         target_compile_definitions(${target} PRIVATE -DARDENS_PLATFORM_SOKOL)
     endif()
@@ -586,9 +600,14 @@ if(EMSCRIPTEN)
     endif()
 endif()
 
+message(STATUS "HELLO ${CMAKE_SYSTEM_NAME}")
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
     set(APPXMANIFEST_FILE "${CMAKE_CURRENT_BINARY_DIR}/Package.appxmanifest")
-    configure_file(cmake/Package.appxmanifest.in "${APPXMANIFEST_FILE}" @ONLY)
-    set(CONTENT_FILES "${APPXMANIFEST_FILE}")
-    set(RESOURCE_FILES ${CONTENT_FILES})
+    configure_file(uwp/Package.appxmanifest.in "${APPXMANIFEST_FILE}" @ONLY)
+    target_sources(Ardens PRIVATE
+        "${APPXMANIFEST_FILE}"
+        uwp/Assets/Square44x44Logo.scale-200.png
+        uwp/Assets/Square150x150Logo.scale-200.png
+        uwp/Assets/Wide310x150Logo.scale-200.png
+        )
 endif()

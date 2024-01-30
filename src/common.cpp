@@ -14,7 +14,8 @@
 
 #ifdef ARDENS_DIST
 extern "C" {
-#include <distgame.h>
+extern uint8_t game_arduboy[];
+extern uint32_t game_arduboy_size;
 }
 #endif
 
@@ -28,7 +29,9 @@ extern "C" {
 #include "emscripten-browser-file/emscripten_browser_file.h"
 #endif
 
-#if !defined(__EMSCRIPTEN__)
+#if defined(ARDENS_UWP)
+#define ALLOW_SCREENSHOTS 0
+#elif !defined(__EMSCRIPTEN__)
 #define ALLOW_SCREENSHOTS 1
 #else
 #define ALLOW_SCREENSHOTS 1
@@ -391,6 +394,7 @@ void init()
 
 void save_screenshot()
 {
+#if ALLOW_SCREENSHOTS
     char fname[256];
     time_t rawtime;
     struct tm* ti;
@@ -415,13 +419,16 @@ void save_screenshot()
 #else
     stbi_write_png(fname, w, h, 4, recording_pixels(true), stride);
 #endif
+#endif
 }
 
 void toggle_recording()
 {
+#if ALLOW_SCREENSHOTS
     screen_recording_toggle(recording_pixels(false));
     if(wav_recording || settings.record_wav)
         wav_recording_toggle();
+#endif
 }
 
 void take_snapshot()
@@ -547,7 +554,7 @@ void frame_logic()
         arduboy->display.enable_filter = settings.display_auto_filter;
 
         arduboy->display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy->display.ref_segment_current = 0.195;
+        arduboy->display.ref_segment_current = 0.195f;
         switch(settings.display_current_modeling)
         {
         case 0:  arduboy->display.current_limit_slope = 0.f;   break;
@@ -559,6 +566,7 @@ void frame_logic()
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;
         uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;
+#if ALLOW_SCREENSHOTS
         if(gif_recording)
         {
             constexpr uint64_t DT_20_MS = 20 * MS_TO_PS;
@@ -573,6 +581,7 @@ void frame_logic()
             }
             gif_ps_rem += dtps;
         }
+#endif
         if(dtps > 0)
             arduboy->advance(dtps);
 
@@ -584,7 +593,9 @@ void frame_logic()
         //    arduboy->cpu.stack_overflow = false;
 
         // consume sound buffer
+#if ALLOW_SCREENSHOTS
         send_wav_audio();
+#endif
         process_sound_samples();
 #if !PROFILING
         if(!arduboy->cpu.sound_buffer.empty() && simulation_slowdown == 1000)
@@ -643,11 +654,13 @@ void frame_logic()
         platform_quit();
 #endif
 
+#if ALLOW_SCREENSHOTS
     if(!gif_recording && ImGui::IsKeyPressed(ImGuiKey_R, false))
     {
         settings.display_orientation = (settings.display_orientation + 1) % 4;
         update_settings();
     }
+#endif
 
     if(update_pixel_ratio())
     {
