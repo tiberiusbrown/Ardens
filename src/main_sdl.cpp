@@ -10,7 +10,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(ARDENS_UWP)
 #include <ShellScalingApi.h>
 #pragma comment(lib, "shcore.lib")
 #endif

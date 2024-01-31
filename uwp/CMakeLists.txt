@@ -68,40 +68,19 @@ set(ARDENS_SOURCES
     ${DEPDIR}/imgui/imstb_textedit.h
     ${DEPDIR}/imgui/imstb_truetype.h
     ${DEPDIR}/imgui/imgui_memory_editor.h
+    
+    #${SRCDIR}/settings.hpp
+    #${SRCDIR}/settings.cpp
+    #${SRCDIR}/common.hpp
+    #${SRCDIR}/common.cpp
+    #${SRCDIR}/view_player.cpp
+    #${SRCDIR}/scalenx.cpp
+    #${SRCDIR}/saveload.cpp
+    
+    #${SRCDIR}/main_sdl.cpp
 
-    ${SRCDIR}/settings.hpp
-    ${SRCDIR}/settings.cpp
-    ${SRCDIR}/common.hpp
-    ${SRCDIR}/common.cpp
-    ${SRCDIR}/view_player.cpp
-    ${SRCDIR}/scalenx.cpp
-    ${SRCDIR}/saveload.cpp
+    main.cpp
 )
-
-add_library(ardensuwplib ${ARDENS_SOURCES})
-
-target_include_directories(ardensuwplib PUBLIC
-    ../src
-    ../deps
-    ../deps/imgui
-    ../deps/rapidjson/include
-)
-
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_PLAYER)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_NO_SNAPSHOTS)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_NO_DEBUGGER)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_NO_GUI)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_NO_SCALING)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_PLATFORM_SDL)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_DIST)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_UWP)
-
-target_link_libraries(ardensuwplib PUBLIC bitsery miniz fmt SDL3::SDL3)
-target_compile_options(ardensuwplib PUBLIC "/ZW" "/EHsc" "/Zc:__cplusplus")
-target_compile_definitions(ardensuwplib PUBLIC -D_CRT_SECURE_NO_WARNINGS)
-target_compile_definitions(ardensuwplib PUBLIC -D_SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING)
-target_compile_definitions(ardensuwplib PUBLIC -DARDENS_VERSION="${ARDENS_VERSION}")
 
 macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_ID ARG_APP_VERSION)
 
@@ -133,15 +112,37 @@ macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_I
     )
     
     add_executable(${ARG_TARGET_NAME} WIN32
-        ${SRCDIR}/main_sdl.cpp
+        ${ARDENS_SOURCES}
         "${APPXMANIFEST}"
         "${ARDUBOY_C}"
         "${ARDUBOY_H}"
         ${DATA_FILES}
     )
 
-    target_include_directories(${ARG_TARGET_NAME} PRIVATE "${TARGET_BINARY_DIR}")
-    target_link_libraries(${ARG_TARGET_NAME} PRIVATE ardensuwplib)
+    target_include_directories(${ARG_TARGET_NAME} PRIVATE
+        ../src
+        ../deps
+        ../deps/imgui
+        ../deps/rapidjson/include
+        "${TARGET_BINARY_DIR}"
+    )
+
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_VERSION="${ARDENS_VERSION}")
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_PLAYER)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_SNAPSHOTS)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_DEBUGGER)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_GUI)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_SAVED_SETTINGS)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_SCALING)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_PLATFORM_SDL)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_DIST)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_UWP)
+
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -D_CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -D_SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING)
+
+    target_compile_options(${ARG_TARGET_NAME} PRIVATE "/ZW" "/EHsc" "/Zc:__cplusplus")
+    target_link_libraries(${ARG_TARGET_NAME} PRIVATE bitsery miniz fmt SDL3::SDL3)
 
 endmacro()
 
