@@ -1,12 +1,12 @@
-#include <SDL3/SDL_main.h>
-#include <SDL3/SDL.h>
+#include <SDL2/SDL_main.h>
+#include <SDL2/SDL.h>
 
 #include <absim.hpp>
 
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <imgui_impl_sdl3.h>
-#include <imgui_impl_sdlrenderer3.h>
+#include <imgui_impl_sdl2.h>
+#include <imgui_impl_sdlrenderer2.h>
 
 #include <array>
 #include <strstream>
@@ -16,7 +16,8 @@ extern "C" uint32_t game_arduboy_size;
 
 static std::unique_ptr<absim::arduboy_t> arduboy;
 
-static SDL_AudioStream* audio_stream;
+static SDL_AudioDeviceID audio_device;
+static SDL_AudioSpec audio_spec;
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = 2048;
 
@@ -28,7 +29,7 @@ static void send_sound()
     buf.swap(arduboy->cpu.sound_buffer);
     constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
     size_t num_bytes = buf.size() * SAMPLE_SIZE;
-    uint32_t queued_bytes = SDL_GetAudioStreamQueued(audio_stream);
+    uint32_t queued_bytes = SDL_GetQueuedAudioSize(audio_device);
     constexpr uint32_t BUFFER_BYTES = MAX_AUDIO_LATENCY_SAMPLES * SAMPLE_SIZE * 2;
     if(queued_bytes > BUFFER_BYTES)
     {
@@ -44,8 +45,8 @@ static void send_sound()
         float gain = 1.75f;
         for(auto& b : buf)
             b = int16_t(std::clamp<float>(gain * b, INT16_MIN, INT16_MAX));
-        SDL_PutAudioStreamData(
-            audio_stream,
+        SDL_QueueAudio(
+            audio_device,
             buf.data(),
             int(buf.size() * sizeof(buf[0])));
     }
@@ -59,7 +60,6 @@ static void check_save_savedata()
 int main(int argc, char* argv[])
 {
     SDL_DisplayMode const* mode = nullptr;
-    SDL_DisplayID* displays = nullptr;
     int display_count = 0;
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
@@ -76,82 +76,64 @@ int main(int argc, char* argv[])
             return 1;
     }
 
-    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) != 0) {
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0)
         return 1;
-    }
 
     {
-        static SDL_AudioSpec const spec = {
-            SDL_AUDIO_S16, 1, AUDIO_FREQ
-        };
-        audio_stream = SDL_OpenAudioDeviceStream(
-            SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec, nullptr, nullptr);
-        SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
+        SDL_AudioSpec desired;
+        memset(&desired, 0, sizeof(desired));
+        desired.freq = AUDIO_FREQ;
+        desired.format = AUDIO_S16SYS;
+        desired.channels = 1;
+        desired.samples = MAX_AUDIO_LATENCY_SAMPLES;
+        audio_device = SDL_OpenAudioDevice(
+            nullptr, 0,
+            &desired,
+            &audio_spec,
+            0);
+        SDL_PauseAudioDevice(audio_device, 0);
     }
 
-    if(nullptr == (displays = SDL_GetDisplays(&display_count)) || display_count < 1)
-        return 1;
-    if(nullptr == (mode = SDL_GetCurrentDisplayMode(displays[0])))
-        return 1;
     //if(SDL_CreateWindowAndRenderer(mode->w, mode->h, SDL_WINDOW_FULLSCREEN, &window, &renderer) != 0)
     if(SDL_CreateWindowAndRenderer(512, 256, SDL_WINDOW_RESIZABLE, &window, &renderer) != 0)
         return 1;
 
-    SDL_free(displays);
-    displays = nullptr;
-
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
-    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer3_Init(renderer);
+    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+    ImGui_ImplSDLRenderer2_Init(renderer);
+
     display_texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_ABGR8888,
         SDL_TEXTUREACCESS_STREAMING,
         128,
         64);
+    SDL_SetTextureScaleMode(display_texture, SDL_ScaleModeNearest);
 
-    uint64_t pt = SDL_GetTicks();
+    uint64_t pt = SDL_GetTicks64();
 
     while(!done)
     {
-        uint64_t t = SDL_GetTicks();
+        uint64_t t = SDL_GetTicks64();
         uint64_t dt = t - pt;
         pt = t;
 
         while(SDL_PollEvent(&e))
         {
-            ImGui_ImplSDL3_ProcessEvent(&e);
-            if((e.type == SDL_EVENT_KEY_DOWN) && (e.key.keysym.sym == SDLK_ESCAPE))
+            ImGui_ImplSDL2_ProcessEvent(&e);
+            if(e.type == SDL_QUIT)
                 done = true;
-            if(e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && e.window.windowID == SDL_GetWindowID(window))
+            if((e.type == SDL_KEYDOWN) && (e.key.keysym.sym == SDLK_ESCAPE))
+                done = true;
+            if(e.type == SDL_WINDOWEVENT && e.window.windowID == SDL_GetWindowID(window) && e.window.event == SDL_WINDOWEVENT_CLOSE)
                 done = true;
         }
 
-        ImGui_ImplSDLRenderer3_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-
-        do
-        {
-            int count = 0;
-            auto* j = SDL_GetGamepads(&count);
-            if(!j) break;
-            auto& io = ImGui::GetIO();
-            for(int i = 0; i < count; ++i)
-            {
-                if(!SDL_IsGamepad(j[i])) continue;
-                auto* g = SDL_OpenGamepad(j[i]);
-                if(!g) continue;
-                io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_SOUTH     ) != 0);
-                io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_EAST      ) != 0);
-                io.AddKeyEvent(ImGuiKey_UpArrow   , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_UP   ) != 0);
-                io.AddKeyEvent(ImGuiKey_DownArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_DOWN ) != 0);
-                io.AddKeyEvent(ImGuiKey_LeftArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_LEFT ) != 0);
-                io.AddKeyEvent(ImGuiKey_RightArrow, SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) != 0);
-                break;
-            }
-        } while(0);
+        ImGui_ImplSDLRenderer2_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
 
         // advance arduboy
         if(arduboy && !arduboy->paused)
@@ -172,9 +154,14 @@ int main(int argc, char* argv[])
             if(ImGui::IsKeyDown(keys[2])) pinf &= ~0x10;
             if(ImGui::IsKeyDown(keys[3])) pinf &= ~0x20;
 
-            if(ImGui::IsKeyDown(ImGuiKey_A) || ImGui::IsKeyDown(ImGuiKey_Z))
+            if( ImGui::IsKeyDown(ImGuiKey_A) ||
+                ImGui::IsKeyDown(ImGuiKey_Z) ||
+                ImGui::IsKeyDown(ImGuiKey_GamepadFaceDown))
                 pine &= ~0x40;
-            if(ImGui::IsKeyDown(ImGuiKey_B) || ImGui::IsKeyDown(ImGuiKey_S) || ImGui::IsKeyDown(ImGuiKey_X))
+            if( ImGui::IsKeyDown(ImGuiKey_B) ||
+                ImGui::IsKeyDown(ImGuiKey_S) ||
+                ImGui::IsKeyDown(ImGuiKey_X) ||
+                ImGui::IsKeyDown(ImGuiKey_GamepadFaceRight))
                 pinb &= ~0x10;
 
             arduboy->cpu.data[0x23] = pinb;
@@ -221,7 +208,7 @@ int main(int argc, char* argv[])
         SDL_SetRenderDrawColor(renderer, 25, 25, 25, 255);
         SDL_RenderClear(renderer);
 
-        ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData());
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
 
         SDL_RenderPresent(renderer);
     }
@@ -232,11 +219,11 @@ int main(int argc, char* argv[])
         display_texture = nullptr;
     }
 
-    ImGui_ImplSDLRenderer3_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
+    ImGui_ImplSDLRenderer2_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_DestroyAudioStream(audio_stream);
+    SDL_CloseAudioDevice(audio_device);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

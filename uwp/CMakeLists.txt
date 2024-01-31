@@ -23,7 +23,7 @@ file(GLOB DATA_FILES "data/*")
 add_subdirectory(../deps/fmt "${CMAKE_CURRENT_BINARY_DIR}/UWP/fmt")
 add_subdirectory(../deps/miniz "${CMAKE_CURRENT_BINARY_DIR}/UWP/miniz")
 add_subdirectory(../deps/bitsery "${CMAKE_CURRENT_BINARY_DIR}/UWP/bitsery")
-add_subdirectory(../deps/SDL "${CMAKE_CURRENT_BINARY_DIR}/UWP/SDL" EXCLUDE_FROM_ALL)
+add_subdirectory(SDL "${CMAKE_CURRENT_BINARY_DIR}/UWP/SDL" EXCLUDE_FROM_ALL)
 
 set(SRCDIR "${CMAKE_CURRENT_SOURCE_DIR}/../src")
 set(DEPDIR "${CMAKE_CURRENT_SOURCE_DIR}/../deps")
@@ -52,11 +52,6 @@ set(ARDENS_SOURCES
     ${SRCDIR}/absim_sound.hpp
     ${SRCDIR}/absim_led.cpp
     ${SRCDIR}/absim_usb.cpp
-
-    ${DEPDIR}/imgui/imgui_impl_sdl3.h
-    ${DEPDIR}/imgui/imgui_impl_sdl3.cpp
-    ${DEPDIR}/imgui/imgui_impl_sdlrenderer3.h
-    ${DEPDIR}/imgui/imgui_impl_sdlrenderer3.cpp
     ${DEPDIR}/imgui/imconfig.h
     ${DEPDIR}/imgui/imgui_internal.h
     ${DEPDIR}/imgui/imgui.h
@@ -79,6 +74,10 @@ set(ARDENS_SOURCES
     
     #${SRCDIR}/main_sdl.cpp
 
+    imgui/imgui_impl_sdl2.h
+    imgui/imgui_impl_sdl2.cpp
+    imgui/imgui_impl_sdlrenderer2.h
+    imgui/imgui_impl_sdlrenderer2.cpp
     main.cpp
 )
 
@@ -112,6 +111,7 @@ macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_I
     )
     
     add_executable(${ARG_TARGET_NAME} WIN32
+        SDL/src/main/winrt/SDL_winrt_main_NonXAML.cpp
         ${ARDENS_SOURCES}
         "${APPXMANIFEST}"
         "${ARDUBOY_C}"
@@ -123,6 +123,7 @@ macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_I
         ../src
         ../deps
         ../deps/imgui
+        imgui
         ../deps/rapidjson/include
         "${TARGET_BINARY_DIR}"
     )
@@ -142,7 +143,7 @@ macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_I
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -D_SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING)
 
     target_compile_options(${ARG_TARGET_NAME} PRIVATE "/ZW" "/EHsc" "/Zc:__cplusplus")
-    target_link_libraries(${ARG_TARGET_NAME} PRIVATE bitsery miniz fmt SDL3::SDL3)
+    target_link_libraries(${ARG_TARGET_NAME} PRIVATE bitsery miniz fmt SDL2::SDL2)
 
 endmacro()
 
