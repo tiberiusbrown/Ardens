@@ -289,11 +289,11 @@ bool arduboy_t::save_snapshot(std::ostream& f)
 
     // compress
     std::vector<uint8_t> dst;
-    dst.resize(mz_compressBound(data.size()));
-    mz_ulong dst_size = dst.size();
+    dst.resize(mz_compressBound((mz_ulong)data.size()));
+    mz_ulong dst_size = (mz_ulong)dst.size();
     if(MZ_OK != mz_compress2(
         dst.data(), &dst_size,
-        (uint8_t const*)data.data(), data.size(),
+        (uint8_t const*)data.data(), (mz_ulong)data.size(),
         MZ_BEST_COMPRESSION))
         return false;
 

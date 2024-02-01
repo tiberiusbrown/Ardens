@@ -37,7 +37,7 @@ void arduboy_t::reload_fx()
     size_t fxsave_offset = w25q128_t::DATA_BYTES - fxsave_bytes;
     size_t fxdata_offset = fxsave_offset - fxdata_bytes;
 
-    fx.min_page = fxdata_offset / 256;
+    fx.min_page = uint32_t(fxdata_offset / 256);
     fx.max_page = 0xffff;
 
     fx.erase_all_data();
@@ -179,10 +179,10 @@ void arduboy_t::profiler_build_hotspots()
             if(sym.notype) continue;
             if(sym.object) continue;
             hotspot_t h;
-            h.begin = cpu.addr_to_disassembled_index(sym.addr);
-            h.end = cpu.addr_to_disassembled_index(sym.addr + sym.size - 1);
+            h.begin = (uint16_t)cpu.addr_to_disassembled_index(sym.addr);
+            h.end = (uint16_t)cpu.addr_to_disassembled_index(sym.addr + sym.size - 1);
             h.count = 0;
-            for(uint32_t i = sym.addr / 2; i < (sym.addr + sym.size) / 2; ++i)
+            for(uint32_t i = sym.addr / 2u; i < (sym.addr + sym.size) / 2u; ++i)
             {
                 if(i >= profiler_counts.size()) break;
                 h.count += profiler_counts[i];

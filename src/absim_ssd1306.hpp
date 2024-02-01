@@ -442,7 +442,7 @@ void ssd1306_t::reset()
     memset(&pixels, 0, sizeof(pixels));
     memset(&filtered_pixels, 0, sizeof(filtered_pixels));
 
-    ref_segment_current = 0.195;
+    ref_segment_current = 0.195f;
     current_limit_slope = 0.75f;
     enable_current_limiting = true;
     prev_row_drive = 0;

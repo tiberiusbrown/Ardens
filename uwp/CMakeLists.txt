@@ -130,7 +130,6 @@ macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_I
 
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_VERSION="${ARDENS_VERSION}")
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_PLAYER)
-    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_SNAPSHOTS)
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_DEBUGGER)
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_GUI)
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -DARDENS_NO_SAVED_SETTINGS)
@@ -141,6 +140,7 @@ macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_I
 
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -D_CRT_SECURE_NO_WARNINGS)
     target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -D_SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING)
+    target_compile_definitions(${ARG_TARGET_NAME} PRIVATE -D_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
 
     target_compile_options(${ARG_TARGET_NAME} PRIVATE "/ZW" "/EHsc" "/Zc:__cplusplus")
     target_link_libraries(${ARG_TARGET_NAME} PRIVATE bitsery miniz fmt SDL2::SDL2)
@@ -151,6 +151,6 @@ add_uwp_target(
     "DazzleDash"
     "targets/DazzleDash.arduboy"
     "27355PeterBrown.DazzleDash"
-    "9NML9NWHX8N5"
+    "9PHVFH1QSV9W"
     "1.0.0.0"
 )

@@ -11,7 +11,7 @@
   <Properties>
     <DisplayName>@SHORT_NAME@</DisplayName>
     <PublisherDisplayName>@PUBLISHER_NAME@</PublisherDisplayName>
-    <Logo>Assets/StoreLogo.png</Logo>
+    <Logo>logo50.png</Logo>
   </Properties>
 
   <Dependencies>
