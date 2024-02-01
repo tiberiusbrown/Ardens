@@ -17,9 +17,6 @@ message(STATUS "ARDENS_VERSION_SHORT: ${ARDENS_VERSION_SHORT}")
 
 project(Ardens_UWP)
 
-file(GLOB TARGETS "targets/*.arduboy")
-file(GLOB DATA_FILES "data/*")
-
 add_subdirectory(../deps/fmt "${CMAKE_CURRENT_BINARY_DIR}/UWP/fmt")
 add_subdirectory(../deps/miniz "${CMAKE_CURRENT_BINARY_DIR}/UWP/miniz")
 add_subdirectory(../deps/bitsery "${CMAKE_CURRENT_BINARY_DIR}/UWP/bitsery")
@@ -81,7 +78,7 @@ set(ARDENS_SOURCES
     main.cpp
 )
 
-macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_ID ARG_APP_VERSION)
+macro(add_uwp_target ARG_TARGET_NAME ARG_PACKAGE_ID ARG_STORE_ID ARG_APP_VERSION)
 
     set(TARGET_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/${ARG_TARGET_NAME}")
     set(APPXMANIFEST "${TARGET_BINARY_DIR}/Package.appxmanifest")
@@ -106,10 +103,12 @@ macro(add_uwp_target ARG_TARGET_NAME ARG_ARDUBOY_FILE ARG_PACKAGE_ID ARG_STORE_I
     bin2c(
         "${ARDUBOY_C}"
         "${ARDUBOY_H}"
-        "${ARG_ARDUBOY_FILE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/targets/${ARG_TARGET_NAME}/game.arduboy"
         "game_arduboy"
     )
     
+    file(GLOB DATA_FILES "${CMAKE_CURRENT_SOURCE_DIR}/targets/${ARG_TARGET_NAME}/*.png")
+
     add_executable(${ARG_TARGET_NAME} WIN32
         SDL/src/main/winrt/SDL_winrt_main_NonXAML.cpp
         ${ARDENS_SOURCES}
@@ -149,8 +148,14 @@ endmacro()
 
 add_uwp_target(
     "DazzleDash"
-    "targets/DazzleDash.arduboy"
     "27355PeterBrown.DazzleDash"
     "9PHVFH1QSV9W"
+    "1.0.0.0"
+)
+
+add_uwp_target(
+    "ArduRogue"
+    "27355PeterBrown.ArduRogue"
+    "9N3CF41XWRZK"
     "1.0.0.0"
 )
