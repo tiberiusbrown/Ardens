@@ -600,7 +600,6 @@ if(EMSCRIPTEN)
     endif()
 endif()
 
-message(STATUS "HELLO ${CMAKE_SYSTEM_NAME}")
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
     set(APPXMANIFEST_FILE "${CMAKE_CURRENT_BINARY_DIR}/Package.appxmanifest")
     configure_file(uwp/Package.appxmanifest.in "${APPXMANIFEST_FILE}" @ONLY)

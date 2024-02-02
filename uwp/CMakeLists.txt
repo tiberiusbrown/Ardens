@@ -159,3 +159,17 @@ add_uwp_target(
     "9N3CF41XWRZK"
     "1.0.0.0"
 )
+
+add_uwp_target(
+    "ArduChess"
+    "27355PeterBrown.ArduChess"
+    "9NFKWX4QSN8C"
+    "1.0.0.0"
+)
+
+add_uwp_target(
+    "ArduGolf"
+    "27355PeterBrown.ArduGolf"
+    "9N26W43D1BBD"
+    "1.0.0.0"
+)
