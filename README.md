@@ -13,6 +13,49 @@ Try the minimal player with one of the game URLs below:
 - [ArduGolf](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
 - [ArduRogue](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
 
+## Features
+
+- Profiler
+  - Identify performance hotspots at the instruction level
+  - View inclusive CPU load or raw cycle counts per instruction, hotspot, or symbol
+- Live CPU Usage Graph
+- Disassembly View
+  - Source lines, symbols, and labels intermixed with instructions
+  - Addresses of jumps, branches, and calls expanded to label/offset
+  - Click on jump addresses to scroll to their destination
+  - Hover over RAM addresses to see their symbol, data type, and value
+  - Jump to any symbol from sorted list
+- Source View
+- Call Stack
+- RAM/Registers View
+  - Edit any register or RAM value live
+  - Show RAM consumption from global variables
+  - Track current and maximum stack usage
+  - Set read/write breakpoints on RAM address
+  - View a portion of RAM as a display buffer
+- Simulation Control
+  - Slow down or speed up simulation speed
+  - Pause, continue, step into, step over, step out
+- Serial Monitor
+- LEDs
+- EEPROM (editable)
+- External flash (editable)
+- Display (SSD1306) Internals
+- Display View
+  - Customize palette and filters
+  - Optionally model row driver current limiting
+  - Temporal filtering for grayscale games
+- Sound Waveform (Time and Frequency)
+- Global and Local Variables
+  - Show all accessible locals and their data types and values
+  - User-defined list of globals to watch
+- Screenshots
+  - Record PNG or GIF
+  - Optionally record sound as WAV
+  - Customize palettes and filters for recording
+- Snapshots
+  - Save/restore snapshot of entire device state
+
 ## Keyboard Bindings
 
 |   Key  | Purpose                            |
