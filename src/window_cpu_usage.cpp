@@ -8,8 +8,6 @@
 
 extern std::unique_ptr<absim::arduboy_t> arduboy;
 
-static bool frame_based = true;
-
 static int xaxis_ms_formatter(double value, char* buf, int size, void* user)
 {
     (void)user;
@@ -25,6 +23,8 @@ static int yaxis_formatter(double value, char* buf, int size, void* user)
 static void window_contents()
 {
     using namespace ImPlot;
+
+    bool& frame_based = settings.frame_based_cpu_usage;
 
     if(!arduboy)
         return;
