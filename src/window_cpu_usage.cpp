@@ -8,6 +8,12 @@
 
 extern std::unique_ptr<absim::arduboy_t> arduboy;
 
+static int xaxis_ms_formatter(double value, char* buf, int size, void* user)
+{
+    (void)user;
+    return snprintf(buf, (size_t)size, "%.1f", value * 0.02);
+}
+
 static int yaxis_formatter(double value, char* buf, int size, void* user)
 {
     (void)user;
@@ -18,21 +24,29 @@ static void window_contents()
 {
     using namespace ImPlot;
 
-    if(arduboy->frame_cpu_usage.empty())
+    bool& frame_based = settings.frame_based_cpu_usage;
+
+    if(!arduboy)
+        return;
+    if(!frame_based && arduboy->ms_cpu_usage.empty() ||
+        frame_based && arduboy->frame_cpu_usage.empty())
         return;
 
     {
         float usage = 0.f;
         size_t i;
-        for(i = 0; i < 16; ++i)
+        size_t n = frame_based ? 16 : 3;
+        auto const& d = frame_based ? arduboy->frame_cpu_usage : arduboy->ms_cpu_usage;
+        for(i = 0; i < n; ++i)
         {
-            if(i >= arduboy->frame_cpu_usage.size())
+            if(i >= d.size())
                 break;
-            usage += arduboy->frame_cpu_usage[arduboy->frame_cpu_usage.size() - i - 1];
+            usage += d[d.size() - i - 1];
         }
-        usage /= i;
-        bool red = arduboy->frame_cpu_usage.back() > 0.999;
+        usage /= n;
+        bool red = usage > 0.999f;
         if(red) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
+        ImGui::AlignTextToFramePadding();
         ImGui::Text("CPU Usage: %5.1f%%", usage * 100);
         if(red) ImGui::PopStyleColor();
     }
@@ -46,8 +60,12 @@ static void window_contents()
         fps_i = (fps_i + 1) % fps_queue.size();
         fps = std::accumulate(fps_queue.begin(), fps_queue.end(), 0.f) * (1.f / fps_queue.size());
         ImGui::SameLine();
-        ImGui::Text("     FPS: %5.1f", fps);
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("     FPS: %5.1f     ", fps);
     }
+
+    ImGui::SameLine();
+    ImGui::Checkbox("Align to frames", &frame_based);
 
     constexpr auto plot_flags =
         ImPlotFlags_NoTitle |
@@ -61,8 +79,9 @@ static void window_contents()
         auto* plot = GetCurrentPlot();
         constexpr double ZOOM = 4.0;
         constexpr double IZOOM = 1.0 / ZOOM;
-        double n = double(arduboy->total_frames);
-        double m = n - arduboy->frame_cpu_usage.size();
+        double n = double(frame_based? arduboy->total_frames : arduboy->total_ms);
+        auto const& d = frame_based ? arduboy->frame_cpu_usage : arduboy->ms_cpu_usage;
+        double m = n - d.size();
         double w = plot->FrameRect.GetWidth();
 
         double z = plot->Axes[ImAxis_X1].Range.Size();
@@ -74,8 +93,10 @@ static void window_contents()
             ImPlotAxisFlags_NoHighlight |
             //ImPlotAxisFlags_NoDecorations |
             0;
-        SetupAxis(ImAxis_X1, "Frame", axis_flags);
+        SetupAxis(ImAxis_X1, frame_based ? "Frame" : "Time (s)", axis_flags);
         SetupAxis(ImAxis_Y1, nullptr, axis_flags);
+        if(!frame_based)
+            SetupAxisFormat(ImAxis_X1, xaxis_ms_formatter);
         SetupAxisFormat(ImAxis_Y1, yaxis_formatter);
 
         double lim_min = m;
@@ -103,13 +124,13 @@ static void window_contents()
         SetupFinish();
         PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
         PlotShaded("##usage",
-            arduboy->frame_cpu_usage.data(),
-            (int)arduboy->frame_cpu_usage.size(),
+            d.data(),
+            (int)d.size(),
             0.0, 1.0, m);
         PopStyleVar();
         PlotLine("##usage",
-            arduboy->frame_cpu_usage.data(),
-            (int)arduboy->frame_cpu_usage.size(),
+            d.data(),
+            (int)d.size(),
             1.0, m);
         EndPlot();
     }

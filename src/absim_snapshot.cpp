@@ -240,9 +240,12 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.profiler_total_with_sleep);
     ar(a.prev_frame_cycles);
     ar(a.total_frames);
+    ar(a.prev_ms_cycles);
+    ar(a.total_ms);
     ar(a.frame_bytes_total);
     ar(a.frame_bytes);
     ar(a.frame_cpu_usage);
+    ar(a.ms_cpu_usage);
     ar(a.profiler_enabled);
     ar(a.cached_profiler_total);
     ar(a.cached_profiler_total_with_sleep);

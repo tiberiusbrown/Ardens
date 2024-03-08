@@ -800,14 +800,24 @@ struct arduboy_t
     std::array<uint64_t, NUM_INSTRS> profiler_counts;
     uint64_t profiler_total;
     uint64_t profiler_total_with_sleep;
+
     // counts for previous frame
     uint64_t prev_profiler_total;
     uint64_t prev_profiler_total_with_sleep;
     uint64_t prev_frame_cycles;
     uint32_t total_frames;
+    uint32_t total_ms;
     uint32_t frame_bytes_total;
     uint32_t frame_bytes;
     std::vector<float> frame_cpu_usage;
+
+    // time-based cpu usage
+    std::vector<float> ms_cpu_usage_raw;
+    std::vector<float> ms_cpu_usage;
+    uint64_t prev_profiler_total_ms;
+    uint64_t prev_profiler_total_with_sleep_ms;
+    uint64_t prev_ms_cycles;
+
     bool profiler_enabled;
     
     uint64_t cached_profiler_total;

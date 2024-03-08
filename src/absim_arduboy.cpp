@@ -112,11 +112,17 @@ void arduboy_t::reset()
     profiler_reset();
     frame_cpu_usage.clear();
     total_frames = 0;
+    total_ms = 0;
     cpu.reset();
     display.reset();
     fx.reset();
     paused = false;
     break_step = 0xffffffff;
+
+    prev_profiler_total = 0;
+    prev_profiler_total_with_sleep = 0;
+    prev_ms_cycles = 0;
+    ms_cpu_usage.clear();
 
     if(breakpoints.test(0))
         paused = true;
@@ -461,6 +467,38 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
             frame_cpu_usage.erase(
                 frame_cpu_usage.begin(),
                 frame_cpu_usage.begin() + 32768);
+        }
+    }
+
+    // time-based cpu usage
+    if(cpu.cycle_count >= prev_ms_cycles)
+    {
+        constexpr size_t MS_PROF_FILT_NUM = 5;
+        constexpr uint64_t PROF_MS = 1000000000ull * 20 / CYCLE_PS;
+        prev_ms_cycles += PROF_MS;
+
+        // one millisecond has passed: store cpu usage
+        uint64_t ms_total = profiler_total - prev_profiler_total_ms;
+        uint64_t ms_sleep = profiler_total_with_sleep - prev_profiler_total_with_sleep_ms;
+        prev_profiler_total_ms = profiler_total;
+        prev_profiler_total_with_sleep_ms = profiler_total_with_sleep;
+        double f = ms_sleep ? double(ms_total) / double(ms_sleep) : 0.0;
+        ms_cpu_usage_raw.push_back((float)f);
+        if(ms_cpu_usage_raw.size() >= MS_PROF_FILT_NUM)
+        {
+            float t = 0.f;
+            for(size_t i = 0; i < MS_PROF_FILT_NUM; ++i)
+                t += ms_cpu_usage_raw[ms_cpu_usage_raw.size() - MS_PROF_FILT_NUM + i];
+            ms_cpu_usage.push_back(t * (1.f / MS_PROF_FILT_NUM));
+        }
+        ++total_ms;
+
+        // limit memory usage
+        if(ms_cpu_usage.size() >= 65536)
+        {
+            ms_cpu_usage.erase(
+                ms_cpu_usage.begin(),
+                ms_cpu_usage.begin() + 32768);
         }
     }
 

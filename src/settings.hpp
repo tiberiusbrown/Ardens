@@ -56,6 +56,7 @@ struct settings_t
     bool profiler_group_symbols = false;
     bool enable_step_breaks = true;
     bool nondeterminism = false;
+    bool frame_based_cpu_usage = true;
 
     struct
     {
