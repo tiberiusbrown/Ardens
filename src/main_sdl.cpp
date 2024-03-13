@@ -369,7 +369,7 @@ int main(int argc, char** argv)
                 if(dropfile_err.empty())
                 {
                     load_savedata();
-                    file_watch(value);
+                    if(!save) file_watch(value);
                 }
             }
             else
