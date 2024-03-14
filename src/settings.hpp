@@ -18,10 +18,20 @@ enum
     FILTER_MAX = FILTER_MAX_PLUS_ONE - 1,
 };
 
+enum
+{
+    FXPORT_D1,
+    FXPORT_D2,
+    FXPORT_E2,
+    FXPORT_NUM,
+};
+
 constexpr int RECORDING_ZOOM_MAX = 4;
 
 struct settings_t
 {
+    // Non-persistent settings
+    int fxport = FXPORT_D1;
 
     bool open_disassembly = false;
     bool open_display = true;

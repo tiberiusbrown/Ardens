@@ -780,6 +780,9 @@ struct arduboy_t
     ssd1306_t display;
     w25q128_t fx;
 
+    uint8_t fxport_reg;
+    uint8_t fxport_mask;
+
     uint64_t game_hash;
     void update_game_hash();
 

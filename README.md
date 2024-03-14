@@ -133,6 +133,12 @@ Restricts the display scaling to an integral scaling factor. Defaults to false f
 #### `c` or `current`
 Enables modeling the display row driver current limit. This effectively darkens rows that have many lit pixels. Defaults to false.
 
+#### `fxport`
+Sets the port to be used for the flash select. Values:
+- `0` or `d1` or `fx`
+- `1` or `d2`
+- `2` or `e2` or `mini`
+
 ## Libraries Used
 
 - [SDL](https://github.com/libsdl-org/SDL) (zlib)

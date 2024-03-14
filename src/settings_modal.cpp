@@ -77,9 +77,27 @@ void modal_settings()
                 if(SliderInt("##volume", &settings.volume, 0, 200, "%d%%"))
                     update_settings();
 
+                static char const* const FXPORT_ITEMS[] =
+                {
+                    "D1 (Arduboy FX)",
+                    "D2 (Original)",
+                    "E2 (Arduboy Mini)",
+                };
+                constexpr int NUM_FXPORT_ITEMS = sizeof(FXPORT_ITEMS) / sizeof(FXPORT_ITEMS[0]);
+                static_assert(NUM_FXPORT_ITEMS == FXPORT_NUM);
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("FX Chip-Select Port");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##fxport", &settings.fxport,
+                    FXPORT_ITEMS, NUM_FXPORT_ITEMS, NUM_FXPORT_ITEMS))
+                    update_settings();
+
                 static char const* const CURRENT_ITEMS[] =
                 {
-                        "Off", "Subtle", "Normal", "Exaggerated",
+                    "Off", "Subtle", "Normal", "Exaggerated",
                 };
                 constexpr int NUM_CURRENT_ITEMS = sizeof(CURRENT_ITEMS) / sizeof(CURRENT_ITEMS[0]);
                 TableNextRow();
