@@ -546,6 +546,14 @@ struct display_t
     std::array<uint8_t, 8192> filtered_pixels;
     std::array<uint16_t, 8192> filtered_pixel_counts;
 
+    enum type_t
+    {
+        SSD1306,
+        SSD1309,
+        SH1106,
+    };
+    type_t type;
+
     // moving average
     static constexpr int MAX_PIXEL_HISTORY = 4;
     std::array<std::array<uint8_t, 8192>, MAX_PIXEL_HISTORY> pixels;

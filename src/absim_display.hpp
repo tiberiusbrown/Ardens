@@ -30,7 +30,8 @@ void display_t::send_command(uint8_t byte)
     case 0x1c: case 0x1d: case 0x1e: case 0x1f:
         data_col &= 0x0f;
         data_col |= current_command << 4;
-        data_col &= 0x7f;
+        if(type != SH1106)
+            data_col &= 0x7f;
         processing_command = false;
         break;
 
@@ -99,6 +100,21 @@ void display_t::send_command(uint8_t byte)
         processing_command = false;
         break;
 
+    case 0x30:
+    case 0x31:
+    case 0x32:
+    case 0x33:
+        if(type == SH1106)
+        {
+            // TODO: set pump voltage value
+            // 0: VPP = 6.4 V
+            // 1: VPP = 7.4 V
+            // 2: VPP = 8.0 V (power on)
+            // 3: VPP = 9.0 V
+        }
+        processing_command = false;
+        break;
+
     case 0x81:
         if(command_byte_index == 1)
         {
@@ -108,6 +124,11 @@ void display_t::send_command(uint8_t byte)
         break;
 
     case 0x8d:
+        if(type == SSD1309)
+        {
+            processing_command = false;
+            break;
+        }
         if(command_byte_index == 1)
         {
             enable_charge_pump = (byte == 0x14);
@@ -244,10 +265,15 @@ void display_t::send_command(uint8_t byte)
 
 void display_t::send_data(uint8_t byte)
 {
-    uint8_t mapped_col = segment_remap ? 127 - data_col : data_col;
-    size_t i = data_page * 128 + mapped_col;
-
-    ram[i & 1023] = byte;
+    if(type != SH1106 || uint8_t(data_col - 2) < 128)
+    {
+        uint8_t col = data_col;
+        if(type == SH1106)
+            col -= 2;
+        uint8_t mapped_col = segment_remap ? 127 - col : col;
+        size_t i = data_page * 128 + mapped_col;
+        ram[i & 1023] = byte;
+    }
 
     switch(addressing_mode)
     {
@@ -456,7 +482,7 @@ void display_t::reset()
     addressing_mode = addr_mode::PAGE;
 
     col_start = 0;
-    col_end = 127;
+    col_end = (type == SH1106? 131 : 127);
     page_start = 0;
     page_end = 7;
 
@@ -495,7 +521,10 @@ void display_t::reset()
 
 double display_t::fosc() const
 {
-    return FOSC[fosc_index % 16] * 1000.0;
+    double f = FOSC[fosc_index % 16] * 1000.0;
+    if(type == SH1106)
+        f *= 0.8f;
+    return f;
 }
 
 double display_t::refresh_rate() const

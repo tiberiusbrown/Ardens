@@ -359,6 +359,7 @@ void init()
 #endif
 
     arduboy = std::make_unique<absim::arduboy_t>();
+    arduboy->display.type = absim::display_t::SSD1306;
 
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::CreateContext();
@@ -584,6 +585,21 @@ void frame_logic()
         case FXPORT_E2:
             arduboy->fxport_reg = 0x2e;
             arduboy->fxport_mask = 1 << 2;
+            break;
+        default:
+            break;
+        }
+
+        switch(settings.display)
+        {
+        case DISPLAY_SSD1306:
+            arduboy->display.type = absim::display_t::SSD1306;
+            break;
+        case DISPLAY_SSD1309:
+            arduboy->display.type = absim::display_t::SSD1309;
+            break;
+        case DISPLAY_SH1106:
+            arduboy->display.type = absim::display_t::SH1106;
             break;
         default:
             break;

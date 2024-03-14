@@ -218,6 +218,11 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.adc_seed);
     ar(a.cpu.adc_nondeterminism);
 
+    // v0.22.0
+    ar(a.fxport_reg);
+    ar(a.fxport_mask);
+    ar(a.display.type);
+
     return "";
 }
 
