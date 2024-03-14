@@ -25,7 +25,7 @@
 #include <bitsery/traits/vector.h>
 
 #include "absim_atmega32u4.hpp"
-#include "absim_ssd1306.hpp"
+#include "absim_display.hpp"
 
 namespace absim
 {

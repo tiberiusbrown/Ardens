@@ -26,12 +26,21 @@ enum
     FXPORT_NUM,
 };
 
+enum
+{
+    DISPLAY_SSD1306,
+    DISPLAY_SSD1309,
+    DISPLAY_SH1106,
+    DISPLAY_NUM,
+};
+
 constexpr int RECORDING_ZOOM_MAX = 4;
 
 struct settings_t
 {
     // Non-persistent settings
     int fxport = FXPORT_D1;
+    int display = DISPLAY_SSD1306;
 
     bool open_disassembly = false;
     bool open_display = true;
@@ -98,6 +107,9 @@ struct settings_t
     int recording_downsample = 1;
     int recording_zoom = 1;
     int recording_orientation = 0;
+
+    // 50%, 75%, 100%, 125%, 150%, 175%, 200%
+    int uiscale = 2;
 
     int volume = 100;
 

@@ -68,15 +68,6 @@ void modal_settings()
         {
             if(settings_begin_table())
             {
-                TableNextRow();
-                TableSetColumnIndex(0);
-                AlignTextToFramePadding();
-                TextUnformatted("Audio Volume");
-                TableSetColumnIndex(1);
-                SetNextItemWidth(-1.f);
-                if(SliderInt("##volume", &settings.volume, 0, 200, "%d%%"))
-                    update_settings();
-
                 static char const* const FXPORT_ITEMS[] =
                 {
                     "D1 (Arduboy FX)",
@@ -93,6 +84,24 @@ void modal_settings()
                 SetNextItemWidth(-1.f);
                 if(Combo("##fxport", &settings.fxport,
                     FXPORT_ITEMS, NUM_FXPORT_ITEMS, NUM_FXPORT_ITEMS))
+                    update_settings();
+
+                static char const* const DISPLAY_ITEMS[] =
+                {
+                    "SSD1306 (Official)",
+                    "SSD1309",
+                    "SH1106",
+                };
+                constexpr int NUM_DISPLAY_ITEMS = sizeof(DISPLAY_ITEMS) / sizeof(DISPLAY_ITEMS[0]);
+                static_assert(NUM_DISPLAY_ITEMS == DISPLAY_NUM);
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Display Type");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##displaytype", &settings.display,
+                    DISPLAY_ITEMS, NUM_DISPLAY_ITEMS, NUM_DISPLAY_ITEMS))
                     update_settings();
 
                 static char const* const CURRENT_ITEMS[] =
@@ -117,6 +126,39 @@ void modal_settings()
                 TableSetColumnIndex(1);
                 if(Checkbox("##nondeterminism", &settings.nondeterminism))
                     update_settings();
+
+                EndTable();
+            }
+            EndTabItem();
+        }
+        if(BeginTabItem("Interface"))
+        {
+            if(settings_begin_table())
+            {
+                static char const* const UISCALE_ITEMS[] =
+                {
+                    "50%", "75%", "100%", "125%", "150%", "175%", "200%",
+                };
+                constexpr int NUM_UISCALE_ITEMS = sizeof(UISCALE_ITEMS) / sizeof(UISCALE_ITEMS[0]);
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("UI Scale");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(Combo("##uiscale", &settings.uiscale,
+                    UISCALE_ITEMS, NUM_UISCALE_ITEMS, NUM_UISCALE_ITEMS))
+                    update_settings();
+
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("Audio Volume");
+                TableSetColumnIndex(1);
+                SetNextItemWidth(-1.f);
+                if(SliderInt("##volume", &settings.volume, 0, 200, "%d%%"))
+                    update_settings();
+
                 EndTable();
             }
             EndTabItem();

@@ -211,7 +211,7 @@ set(ARDENS_SOURCES
     src/absim_cpu_data.cpp
 
     src/absim_arduboy.cpp
-    src/absim_ssd1306.hpp
+    src/absim_display.hpp
     src/absim_atmega32u4.hpp
     src/absim_w25q128.hpp
 

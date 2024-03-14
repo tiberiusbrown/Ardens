@@ -541,7 +541,7 @@ struct atmega32u4_t
     void update_all();
 };
 
-struct ssd1306_t
+struct display_t
 {
     std::array<uint8_t, 8192> filtered_pixels;
     std::array<uint16_t, 8192> filtered_pixel_counts;
@@ -777,7 +777,7 @@ struct savedata_t
 struct arduboy_t
 {
     atmega32u4_t cpu;
-    ssd1306_t display;
+    display_t display;
     w25q128_t fx;
 
     uint8_t fxport_reg;

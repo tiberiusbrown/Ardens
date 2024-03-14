@@ -299,6 +299,7 @@ extern "C" void postsyncfs()
 bool update_pixel_ratio()
 {
     float ratio = platform_pixel_ratio();
+    ratio *= (settings.uiscale * 0.25f + 0.5f);
     bool changed = (ratio != pixel_ratio);
     pixel_ratio = ratio;
     return changed;
