@@ -29,6 +29,9 @@ if(MSVC)
         $<$<NOT:$<CONFIG:DEBUG>>:/Ot>
         $<$<NOT:$<CONFIG:DEBUG>>:/Ox>
     )
+    add_compile_definitions(
+        _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING
+    )
 endif()
 
 option(ARDENS_LLVM     "Build and link LLVM (enables loading ELF and debug info)" ON)
@@ -437,6 +440,12 @@ if(ARDENS_PLAYER)
     configure_app_target(ArdensPlayer)
 
 endif()
+
+add_executable(integration_tests
+    .editorconfig
+    tests/integration_tests.cpp
+    )
+target_link_libraries(integration_tests PRIVATE ardenslib)
 
 if(ARDENS_DIST)
 

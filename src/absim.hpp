@@ -304,7 +304,7 @@ struct atmega32u4_t
     {
         uint64_t prev_update_cycle;
         uint64_t next_update_cycle;
-        uint32_t divider_cycle;
+        uint32_t prescaler_cycle;
         uint32_t divider;
         uint32_t top;
         uint32_t tov;
@@ -317,7 +317,7 @@ struct atmega32u4_t
         template<class A> void serialize(A& a)
         {
             a(prev_update_cycle, next_update_cycle);
-            a(divider_cycle, divider);
+            a(prescaler_cycle, divider);
             a(top, tov, tcnt, ocrNa, ocrNb);
             a(phase_correct, count_down, update_ocrN_at_top);
         }
@@ -334,7 +334,7 @@ struct atmega32u4_t
     {
         uint64_t prev_update_cycle;
         uint64_t next_update_cycle;
-        uint32_t divider_cycle;
+        uint32_t prescaler_cycle;
         uint32_t divider;
         uint32_t top;
         uint32_t tov;
@@ -356,7 +356,7 @@ struct atmega32u4_t
         template<class A> void serialize(A& a)
         {
             a(prev_update_cycle, next_update_cycle);
-            a(divider_cycle, divider);
+            a(prescaler_cycle, divider);
             a(top, tov, tcnt, ocrNa, ocrNb, ocrNc);
             a(tifrN_addr, timskN_addr, prr_addr, prr_mask, base_addr);
             a(temp);
