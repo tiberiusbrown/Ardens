@@ -66,6 +66,7 @@ void atmega32u4_t::reset()
 
     for(int i = 0x44; i <= 0x48; ++i)
         st_handlers[i] = timer0_handle_st_regs;
+    st_handlers[0x46] = timer0_handle_st_tcnt;
     for(int i = 0x80; i <= 0x8d; ++i)
         st_handlers[i] = timer1_handle_st_regs;
     for(int i = 0x90; i <= 0x9d; ++i)
