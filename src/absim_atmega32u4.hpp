@@ -110,6 +110,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 cycles = 1;
             else
                 cycles = INSTR_MAP[i.func](*this, i);
+            cycle_count += cycles;
         }
         else
         {
@@ -129,7 +130,9 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                     cycles += 1;
                     break;
                 }
-                cycles += INSTR_MAP[i.func](*this, i);
+                auto instr_cycles = INSTR_MAP[i.func](*this, i);
+                cycles += instr_cycles;
+                cycle_count += instr_cycles;
                 if(should_autobreak() || just_written < 0x100 || just_read < 0x100)
                 {
                     // need to check peripherals below
@@ -152,6 +155,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
         if(--wakeup_cycles == 0)
             active = true;
+
+        cycle_count += cycles;
     }
     else
     {
@@ -173,9 +178,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             cycles = (uint32_t)t;
         }
         single_instr_only = true;
+        cycle_count += cycles;
     }
-
-    cycle_count += cycles;
 
     spi_done = false;
     if(single_instr_only)

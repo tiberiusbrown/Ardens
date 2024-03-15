@@ -325,6 +325,7 @@ struct atmega32u4_t
     timer8_t timer0;
     static void timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer0_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void timer0_handle_st_tcnt(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
     void update_timer0();
 
