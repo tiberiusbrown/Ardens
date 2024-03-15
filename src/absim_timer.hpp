@@ -843,6 +843,14 @@ uint8_t atmega32u4_t::timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
     return cpu.data[ptr];
 }
 
+void atmega32u4_t::timer0_handle_st_tcnt(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    cpu.update_timer0();
+    cpu.data[ptr] = x;
+    cpu.timer0.tcnt = x;
+    cpu.update_timer0();
+}
+
 ARDENS_FORCEINLINE void atmega32u4_t::update_timer1()
 {
     update_timer16(*this, timer1);
