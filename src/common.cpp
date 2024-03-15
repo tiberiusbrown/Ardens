@@ -269,6 +269,19 @@ extern "C" int setparam(char const* name, char const* value)
         update_settings();
         r = 1;
     }
+    else if(!strcmp(name, "fxport"))
+    {
+        if(!strcmp(value, "d1") || !strcmp(value, "fx"))
+            settings.fxport = FXPORT_D1;
+        else if(!strcmp(value, "d2") || !strcmp(value, "orig"))
+            settings.fxport = FXPORT_D2;
+        else if(!strcmp(value, "32") || !strcmp(value, "mini"))
+            settings.fxport = FXPORT_E2;
+        else
+            settings.fxport = std::clamp<int>(nvalue, 0, FXPORT_NUM - 1);
+        update_settings();
+        r = 1;
+    }
     else if(!strcmp(name, "loading"))
     {
         loading_indicator = bvalue;
@@ -286,6 +299,7 @@ extern "C" void postsyncfs()
 bool update_pixel_ratio()
 {
     float ratio = platform_pixel_ratio();
+    ratio *= (settings.uiscale * 0.25f + 0.5f);
     bool changed = (ratio != pixel_ratio);
     pixel_ratio = ratio;
     return changed;
@@ -345,6 +359,7 @@ void init()
 #endif
 
     arduboy = std::make_unique<absim::arduboy_t>();
+    arduboy->display.type = absim::display_t::SSD1306;
 
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::CreateContext();
@@ -555,6 +570,39 @@ void frame_logic()
         case 2:  arduboy->display.current_limit_slope = 0.45f; break;
         case 3:  arduboy->display.current_limit_slope = 0.f;   break;
         default: arduboy->display.current_limit_slope = 0.f;   break;
+        }
+
+        switch(settings.fxport)
+        {
+        case FXPORT_D1:
+            arduboy->fxport_reg = 0x2b;
+            arduboy->fxport_mask = 1 << 1;
+            break;
+        case FXPORT_D2:
+            arduboy->fxport_reg = 0x2b;
+            arduboy->fxport_mask = 1 << 2;
+            break;
+        case FXPORT_E2:
+            arduboy->fxport_reg = 0x2e;
+            arduboy->fxport_mask = 1 << 2;
+            break;
+        default:
+            break;
+        }
+
+        switch(settings.display)
+        {
+        case DISPLAY_SSD1306:
+            arduboy->display.type = absim::display_t::SSD1306;
+            break;
+        case DISPLAY_SSD1309:
+            arduboy->display.type = absim::display_t::SSD1309;
+            break;
+        case DISPLAY_SH1106:
+            arduboy->display.type = absim::display_t::SH1106;
+            break;
+        default:
+            break;
         }
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;

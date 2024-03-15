@@ -25,7 +25,7 @@
 #include <bitsery/traits/vector.h>
 
 #include "absim_atmega32u4.hpp"
-#include "absim_ssd1306.hpp"
+#include "absim_display.hpp"
 
 namespace absim
 {
@@ -126,6 +126,9 @@ void arduboy_t::reset()
 
     if(breakpoints.test(0))
         paused = true;
+
+    fxport_reg = 0x2b;    // PORTD
+    fxport_mask = 1 << 1; // PORTD1
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(
@@ -400,21 +403,22 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     assert(cpu.decoded);
 
     bool vsync = false;
-    uint8_t portd = cpu.data[0x2b];
+    uint8_t displayport = cpu.data[0x2b];
+    uint8_t fxport = cpu.data[fxport_reg];
     uint32_t cycles = cpu.advance_cycle();
 
     // TODO: model SPI connection more precisely?
     // send SPI commands and data to display
-    fx.set_enabled((portd & (1 << 1)) == 0);
+    fx.set_enabled((fxport & fxport_mask) == 0);
 
     if(cpu.spi_done_shifting)
     {
         uint8_t byte = cpu.spi_data_byte;
 
         // display enabled?
-        if(!(portd & (1 << 6)))
+        if(!(displayport & (1 << 6)))
         {
-            if(portd & (1 << 4))
+            if(displayport & (1 << 4))
             {
                 if(frame_bytes_total != 0 && ++frame_bytes >= frame_bytes_total)
                 {

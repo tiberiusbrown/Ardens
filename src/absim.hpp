@@ -542,10 +542,18 @@ struct atmega32u4_t
     void update_all();
 };
 
-struct ssd1306_t
+struct display_t
 {
     std::array<uint8_t, 8192> filtered_pixels;
     std::array<uint16_t, 8192> filtered_pixel_counts;
+
+    enum type_t
+    {
+        SSD1306,
+        SSD1309,
+        SH1106,
+    };
+    type_t type;
 
     // moving average
     static constexpr int MAX_PIXEL_HISTORY = 4;
@@ -778,8 +786,11 @@ struct savedata_t
 struct arduboy_t
 {
     atmega32u4_t cpu;
-    ssd1306_t display;
+    display_t display;
     w25q128_t fx;
+
+    uint8_t fxport_reg;
+    uint8_t fxport_mask;
 
     uint64_t game_hash;
     void update_game_hash();

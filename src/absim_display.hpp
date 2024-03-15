@@ -5,7 +5,7 @@
 namespace absim
 {
 
-void ssd1306_t::send_command(uint8_t byte)
+void display_t::send_command(uint8_t byte)
 {
     if(!processing_command)
     {
@@ -30,7 +30,8 @@ void ssd1306_t::send_command(uint8_t byte)
     case 0x1c: case 0x1d: case 0x1e: case 0x1f:
         data_col &= 0x0f;
         data_col |= current_command << 4;
-        data_col &= 0x7f;
+        if(type != SH1106)
+            data_col &= 0x7f;
         processing_command = false;
         break;
 
@@ -99,6 +100,21 @@ void ssd1306_t::send_command(uint8_t byte)
         processing_command = false;
         break;
 
+    case 0x30:
+    case 0x31:
+    case 0x32:
+    case 0x33:
+        if(type == SH1106)
+        {
+            // TODO: set pump voltage value
+            // 0: VPP = 6.4 V
+            // 1: VPP = 7.4 V
+            // 2: VPP = 8.0 V (power on)
+            // 3: VPP = 9.0 V
+        }
+        processing_command = false;
+        break;
+
     case 0x81:
         if(command_byte_index == 1)
         {
@@ -108,6 +124,11 @@ void ssd1306_t::send_command(uint8_t byte)
         break;
 
     case 0x8d:
+        if(type == SSD1309)
+        {
+            processing_command = false;
+            break;
+        }
         if(command_byte_index == 1)
         {
             enable_charge_pump = (byte == 0x14);
@@ -242,12 +263,17 @@ void ssd1306_t::send_command(uint8_t byte)
     ++command_byte_index;
 }
 
-void ssd1306_t::send_data(uint8_t byte)
+void display_t::send_data(uint8_t byte)
 {
-    uint8_t mapped_col = segment_remap ? 127 - data_col : data_col;
-    size_t i = data_page * 128 + mapped_col;
-
-    ram[i & 1023] = byte;
+    if(type != SH1106 || uint8_t(data_col - 2) < 128)
+    {
+        uint8_t col = data_col;
+        if(type == SH1106)
+            col -= 2;
+        uint8_t mapped_col = segment_remap ? 127 - col : col;
+        size_t i = data_page * 128 + mapped_col;
+        ram[i & 1023] = byte;
+    }
 
     switch(addressing_mode)
     {
@@ -289,7 +315,7 @@ void ssd1306_t::send_data(uint8_t byte)
     }
 }
 
-void ARDENS_FORCEINLINE ssd1306_t::update_pixels_row()
+void ARDENS_FORCEINLINE display_t::update_pixels_row()
 {
     uint8_t ram_row = row;
     ram_row += display_start;
@@ -384,7 +410,7 @@ void ARDENS_FORCEINLINE ssd1306_t::update_pixels_row()
         filter_pixels();
 }
 
-void ssd1306_t::filter_pixels()
+void display_t::filter_pixels()
 {
     memset(&filtered_pixel_counts, 0, sizeof(filtered_pixel_counts));
     static constexpr uint8_t C[4] = { 42, 84, 84, 42 };
@@ -398,7 +424,7 @@ void ssd1306_t::filter_pixels()
         filtered_pixels[i] = uint8_t(filtered_pixel_counts[i] / 256);
 }
 
-bool ARDENS_FORCEINLINE ssd1306_t::advance(uint64_t ps)
+bool ARDENS_FORCEINLINE display_t::advance(uint64_t ps)
 {
     vsync = false;
     ps += ps_rem;
@@ -430,13 +456,13 @@ constexpr std::array<double, 16> FOSC =
     392, 416, 440, 464, 488, 512, 536, 570,
 };
 
-void ARDENS_FORCEINLINE ssd1306_t::update_clocking()
+void ARDENS_FORCEINLINE display_t::update_clocking()
 {
     cycles_per_row = phase_1 + phase_2 + 50;
     ps_per_clk = (uint64_t)std::round(1e12 * (divide_ratio + 1) / fosc());
 }
 
-void ssd1306_t::reset()
+void display_t::reset()
 {
     memset(&ram, 0, sizeof(ram));
     memset(&pixels, 0, sizeof(pixels));
@@ -456,7 +482,7 @@ void ssd1306_t::reset()
     addressing_mode = addr_mode::PAGE;
 
     col_start = 0;
-    col_end = 127;
+    col_end = (type == SH1106? 131 : 127);
     page_start = 0;
     page_end = 7;
 
@@ -493,12 +519,15 @@ void ssd1306_t::reset()
     update_clocking();
 }
 
-double ssd1306_t::fosc() const
+double display_t::fosc() const
 {
-    return FOSC[fosc_index % 16] * 1000.0;
+    double f = FOSC[fosc_index % 16] * 1000.0;
+    if(type == SH1106)
+        f *= 0.8f;
+    return f;
 }
 
-double ssd1306_t::refresh_rate() const
+double display_t::refresh_rate() const
 {
     int D = divide_ratio + 1;
     int K = phase_1 + phase_2 + 50;
