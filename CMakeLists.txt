@@ -85,7 +85,7 @@ add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
-if(ARDENS_SDL)
+if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_DEBUGGER))
     add_subdirectory(deps/SDL)
 endif()
 
