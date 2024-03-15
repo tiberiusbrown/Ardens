@@ -826,8 +826,16 @@ void atmega32u4_t::update_timer4()
 
 void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
+    // give an extra cycle to timer
+    // (reg write should hit at the end of the cycle)
+    cpu.timer0.prev_update_cycle -= 1;
+    cpu.update_timer0();
+
     cpu.data[ptr] = x;
     cpu.update_timer0();
+
+    // take cycle back
+    cpu.timer0.prev_update_cycle += 1;
 }
 
 void atmega32u4_t::timer0_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
@@ -864,7 +872,11 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_timer3()
 static void timer16_handle_st_regs(
     atmega32u4_t& cpu, atmega32u4_t::timer16_t& timer, uint16_t ptr, uint8_t x)
 {
+    // give an extra cycle to timer
+    // (reg write should hit at the end of the cycle)
+    timer.prev_update_cycle -= 1;
     update_timer16(cpu, timer);
+
     if( ptr >= timer.base_addr + 0x4 &&
         ptr <= timer.base_addr + 0xd &&
         (ptr & 1) == 0)
@@ -885,8 +897,12 @@ static void timer16_handle_st_regs(
             timer.ocrNc = val;
 #endif
         update_timer16(cpu, timer);
+        // take cycle back
+        timer.prev_update_cycle += 1;
         return;
     }
+    // take cycle back
+    timer.prev_update_cycle += 1;
     if( ptr >= timer.base_addr + 0x4 &&
         ptr <= timer.base_addr + 0xd &&
         (ptr & 1) == 1)
@@ -956,10 +972,18 @@ uint8_t atmega32u4_t::timer3_handle_ld_regs(atmega32u4_t& cpu, uint16_t ptr)
 
 void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
+    // give an extra cycle to timer
+    // (reg write should hit at the end of the cycle)
+    cpu.timer4.prev_update_cycle -= 1;
+    cpu.update_timer4();
+
     if(ptr == 0x39)
         x = (cpu.data[0x39] & ~x);
     cpu.data[ptr] = x;
     cpu.update_timer4();
+
+    // take cycle back
+    cpu.timer4.prev_update_cycle += 1;
 }
 
 void atmega32u4_t::timer4_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
