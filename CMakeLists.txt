@@ -381,7 +381,7 @@ if(ARDENS_LIB OR ARDENS_PLAYER OR ARDENS_DIST)
 
     add_library(ardenslib STATIC
         .editorconfig
-        ${ARDENS_SOURCES}    
+        ${ARDENS_SOURCES}
         )
 
     target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
