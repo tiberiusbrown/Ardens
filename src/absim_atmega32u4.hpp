@@ -35,6 +35,33 @@ void atmega32u4_t::st_handle_port(
     cpu.data[ptr] = x;
 }
 
+void atmega32u4_t::st_handle_gtccr(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    constexpr uint16_t addr = 0x43;
+    assert(ptr == addr);
+    uint8_t t = cpu.data[addr];
+
+    // reset synchronous prescalars
+    if(x & 0x01)
+    {
+        cpu.update_timer0();
+        cpu.update_timer1();
+        cpu.update_timer3();
+        cpu.timer0.prescaler_cycle = 0;
+        cpu.timer1.prescaler_cycle = 0;
+        cpu.timer3.prescaler_cycle = 0;
+    }
+    
+    x &= 0x83;
+
+    // if TSM bit is set, don't retain PSRASY or PSRSYNC
+    if(!(t & 0x80))
+        x &= 0x80;
+
+    cpu.data[addr] = x;
+}
+
 ARDENS_FORCEINLINE void atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
