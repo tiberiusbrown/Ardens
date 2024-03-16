@@ -32,6 +32,8 @@ int main()
     arduboy = std::make_unique<absim::arduboy_t>();
 
     r |= test("timer_tcnt_write");
+    r |= test("timer_prescaler_reset");
+    r |= test("timer_prescaler_reset2");
 
     return r;
 }

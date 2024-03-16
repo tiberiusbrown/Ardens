@@ -75,11 +75,8 @@ static ARDENS_FORCEINLINE void timer8_update_ocrN(
 static ARDENS_FORCEINLINE void update_timer8_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer8_t& timer,
-    uint64_t cycles)
+    uint32_t timer_cycles)
 {
-    // find out how many timer cycles happened after prescaler
-    uint32_t timer_cycles = increase_counter(timer.prescaler_cycle, cycles, timer.divider);
-
     auto tcnt = timer.tcnt;
     bool count_down = timer.count_down;
     bool phase_correct = timer.phase_correct;
@@ -143,13 +140,18 @@ static ARDENS_FORCEINLINE void update_timer8_state(
 void atmega32u4_t::update_timer0()
 {
     // first compute what happened to tcnt/tifr during the cycles
+    uint64_t cycles = cycle_count - timer0.prev_update_cycle;
+    uint32_t timer_cycles = increase_counter(timer0.prescaler_cycle, cycles, timer0.divider);
     if(!(timer0.divider == 0 || (data[0x64] & (1 << 5))))
     {
         // timer clock is running and timer is not powered down...
-        uint64_t cycles = cycle_count - timer0.prev_update_cycle;
-        update_timer8_state(*this, timer0, cycles);
+        update_timer8_state(*this, timer0, timer_cycles);
     }
     timer0.prev_update_cycle = cycle_count;
+
+    // reset prescaler
+    if(data[0x39] & 0x01)
+        timer0.prescaler_cycle = 0;
 
     // now set up timer state for next update
 
@@ -332,11 +334,8 @@ static ARDENS_FORCEINLINE void set_portc6(atmega32u4_t& cpu)
 static ARDENS_FORCEINLINE void update_timer16_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
-    uint64_t cycles)
+    uint32_t timer_cycles)
 {
-    // find out how many timer cycles happened after prescaler
-    uint32_t timer_cycles = increase_counter(timer.prescaler_cycle, cycles, timer.divider);
-
     auto tcnt = timer.tcnt;
     bool count_down = timer.count_down;
     bool phase_correct = timer.phase_correct;
@@ -434,14 +433,22 @@ static void update_timer16(
     atmega32u4_t::timer16_t& timer)
 {
     // first compute what happened to tcnt/tifr during the cycles
+
+    // find out how many timer cycles happened after prescaler
+    uint64_t cycles = cpu.cycle_count - timer.prev_update_cycle;
+    uint32_t timer_cycles = increase_counter(timer.prescaler_cycle, cycles, timer.divider);
+
     if(!(timer.divider == 0 || (cpu.data[timer.prr_addr] & timer.prr_mask)))
     {
         // timer clock is running and timer is not powered down...
-        uint64_t cycles = cpu.cycle_count - timer.prev_update_cycle;
         if(cycles > 0)
-            update_timer16_state(cpu, timer, cycles);
+            update_timer16_state(cpu, timer, timer_cycles);
     }
     timer.prev_update_cycle = cpu.cycle_count;
+
+    // reset prescaler
+    if(cpu.data[0x39] & 0x01)
+        timer.prescaler_cycle = 0;
 
     // now set up timer state for next update
 
@@ -678,6 +685,8 @@ static ARDENS_FORCEINLINE void update_timer10_state(
 
 void atmega32u4_t::update_timer4()
 {
+    // TODO: prescalar should not halt if timer4 is not running
+
     // first compute what happened to tcnt/tifr during the cycles
     if(!(timer4.divider == 0 || (data[0x65] & 0x10)))
     {
@@ -977,10 +986,18 @@ void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
     cpu.timer4.prev_update_cycle -= 1;
     cpu.update_timer4();
 
-    if(ptr == 0x39)
-        x = (cpu.data[0x39] & ~x);
+    //if(ptr == 0x39)
+    //    x = (cpu.data[0x39] & ~x);
+
     cpu.data[ptr] = x;
     cpu.update_timer4();
+
+    if(ptr == 0xc1 && (x & 0x40))
+    {
+        // reset timer4 prescaler
+        cpu.data[ptr] = x & ~0x40;
+        cpu.timer4.divider_cycle = 0;
+    }
 
     // take cycle back
     cpu.timer4.prev_update_cycle += 1;
