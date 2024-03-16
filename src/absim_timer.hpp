@@ -78,7 +78,7 @@ static ARDENS_FORCEINLINE void update_timer8_state(
     uint64_t cycles)
 {
     // find out how many timer cycles happened after prescaler
-    uint32_t timer_cycles = increase_counter(timer.divider_cycle, cycles, timer.divider);
+    uint32_t timer_cycles = increase_counter(timer.prescaler_cycle, cycles, timer.divider);
 
     auto tcnt = timer.tcnt;
     bool count_down = timer.count_down;
@@ -205,7 +205,7 @@ void atmega32u4_t::update_timer0()
             update_tcycles *= 2;
     }
 
-    uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.divider_cycle;
+    uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.prescaler_cycle;
 
     timer0.next_update_cycle = cycle_count + update_cycles;
 }
@@ -335,7 +335,7 @@ static ARDENS_FORCEINLINE void update_timer16_state(
     uint64_t cycles)
 {
     // find out how many timer cycles happened after prescaler
-    uint32_t timer_cycles = increase_counter(timer.divider_cycle, cycles, timer.divider);
+    uint32_t timer_cycles = increase_counter(timer.prescaler_cycle, cycles, timer.divider);
 
     auto tcnt = timer.tcnt;
     bool count_down = timer.count_down;
@@ -510,7 +510,7 @@ static void update_timer16(
         timer.next_update_cycle = UINT64_MAX;
     else
     {
-        uint64_t update_cycles = (uint64_t)update_tcycles * timer.divider - timer.divider_cycle;
+        uint64_t update_cycles = (uint64_t)update_tcycles * timer.divider - timer.prescaler_cycle;
         timer.next_update_cycle = cpu.cycle_count + update_cycles;
     }
 }

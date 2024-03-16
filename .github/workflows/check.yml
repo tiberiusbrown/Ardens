@@ -13,9 +13,31 @@ env:
 
 jobs:
 
+  integration_tests:
+    
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+        
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DARDENS_LIB=1 -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=0
+      
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build -j --config Release --target integration_tests
+      
+    - name: Run Tests
+      run: ${{github.workspace}}/build/integration_tests
+
   check_web:
   
     name: Build (Web)
+    needs: [integration_tests]
     runs-on: ubuntu-latest
   
     steps:
@@ -99,6 +121,7 @@ jobs:
   check_linux:
   
     name: Build (Linux)
+    needs: [integration_tests]
     runs-on: ubuntu-latest
   
     steps:
@@ -131,6 +154,7 @@ jobs:
   check_windows_x86:
   
     name: Build (Windows x86)
+    needs: [integration_tests]
     runs-on: windows-latest
   
     steps:
@@ -169,6 +193,7 @@ jobs:
   check_windows_x64:
   
     name: Build (Windows x64)
+    needs: [integration_tests]
     runs-on: windows-latest
   
     steps:
@@ -207,6 +232,7 @@ jobs:
   check_macos_x64:
   
     name: Build (MacOS x64)
+    needs: [integration_tests]
     runs-on: macos-latest
   
     steps:
@@ -247,6 +273,7 @@ jobs:
   check_macos_arm64:
   
     name: Build (MacOS arm64)
+    needs: [integration_tests]
     runs-on: macos-latest
   
     steps:

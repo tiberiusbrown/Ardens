@@ -29,6 +29,9 @@ if(MSVC)
         $<$<NOT:$<CONFIG:DEBUG>>:/Ot>
         $<$<NOT:$<CONFIG:DEBUG>>:/Ox>
     )
+    add_compile_definitions(
+        _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING
+    )
 endif()
 
 option(ARDENS_LLVM     "Build and link LLVM (enables loading ELF and debug info)" ON)
@@ -82,7 +85,7 @@ add_subdirectory(deps/fmt)
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
-if(ARDENS_SDL)
+if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_DEBUGGER))
     add_subdirectory(deps/SDL)
 endif()
 
@@ -378,7 +381,7 @@ if(ARDENS_LIB OR ARDENS_PLAYER OR ARDENS_DIST)
 
     add_library(ardenslib STATIC
         .editorconfig
-        ${ARDENS_SOURCES}    
+        ${ARDENS_SOURCES}
         )
 
     target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
@@ -437,6 +440,14 @@ if(ARDENS_PLAYER)
     configure_app_target(ArdensPlayer)
 
 endif()
+
+add_executable(integration_tests
+    .editorconfig
+    tests/integration_tests.cpp
+    )
+target_link_libraries(integration_tests PRIVATE ardenslib)
+target_compile_definitions(integration_tests PRIVATE
+    -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
 
 if(ARDENS_DIST)
 
