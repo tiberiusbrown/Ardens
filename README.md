@@ -135,9 +135,15 @@ Enables modeling the display row driver current limit. This effectively darkens 
 
 #### `fxport`
 Sets the port to be used for the flash select. Values:
-- `0` or `d1` or `fx`
+- `0` or `d1` or `fx` (default)
 - `1` or `d2`
 - `2` or `e2` or `mini`
+
+#### `display`
+Sets the type of emulated display. Values:
+- `0` or `ssd1306` (default)
+- `1` or `ssd1309`
+- `2` or `sh1106`
 
 ## Libraries Used
 
