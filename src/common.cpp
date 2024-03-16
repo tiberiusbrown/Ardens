@@ -282,6 +282,19 @@ extern "C" int setparam(char const* name, char const* value)
         update_settings();
         r = 1;
     }
+    else if(!strcmp(name, "display"))
+    {
+        if(!strcmp(value, "ssd1306"))
+            settings.display = DISPLAY_SSD1306;
+        else if(!strcmp(value, "ssd1309"))
+            settings.display = DISPLAY_SSD1309;
+        else if(!strcmp(value, "sh1106"))
+            settings.display = DISPLAY_SH1106;
+        else
+            settings.display = std::clamp<int>(nvalue, 0, DISPLAY_NUM - 1);
+        update_settings();
+        r = 1;
+    }
     else if(!strcmp(name, "loading"))
     {
         loading_indicator = bvalue;
