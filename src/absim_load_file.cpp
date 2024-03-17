@@ -920,6 +920,13 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
 
     a.fxdata.clear();
     a.fxsave.clear();
+    a.device_type.clear();
+    if(bin.HasMember("device"))
+    {
+        auto const& device = bin["device"];
+        if(device.IsString())
+            a.device_type = device.GetString();
+    }
     if(bin.HasMember("flashdata"))
     {
         auto const& binfile = bin["flashdata"];
@@ -1044,6 +1051,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
     {
         reset();
         elf.reset();
+        device_type.clear();
         r = load_hex(*this, f);
         if(r.empty())
             check_for_fx_usage_in_prog(*this);
@@ -1061,6 +1069,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
     if(ends_with(fname, ".elf"))
     {
         reset();
+        device_type.clear();
         r = load_elf(*this, f, fname);
         if(r.empty())
             check_for_fx_usage_in_prog(*this);
@@ -1072,6 +1081,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
     {
         reset();
         elf.reset();
+        device_type.clear();
         r = load_arduboy(*this, f);
         reload_fx();
     }

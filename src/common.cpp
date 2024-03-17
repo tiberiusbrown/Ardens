@@ -126,11 +126,12 @@ extern "C" int load_file(
     std::istrstream f((char const*)data, size);
     bool save = !strcmp(param, "save");
     dropfile_err = arduboy->load_file(filename, f, save);
+    autoset_from_device_type();
     if(dropfile_err.empty())
     {
         load_savedata();
 #ifndef ARDENS_DIST
-        file_watch(filename);
+        if(!save) file_watch(filename);
 #endif
     }
     return 0;

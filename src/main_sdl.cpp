@@ -366,6 +366,7 @@ int main(int argc, char** argv)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
                 dropfile_err = arduboy->load_file(value, f, save);
+                autoset_from_device_type();
                 if(dropfile_err.empty())
                 {
                     load_savedata();

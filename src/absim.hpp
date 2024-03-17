@@ -798,6 +798,7 @@ struct arduboy_t
     void update_game_hash();
 
     std::string title;
+    std::string device_type;
     std::string prog_filename;
     std::vector<uint8_t> prog_filedata;
     

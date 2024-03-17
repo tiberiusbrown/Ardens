@@ -120,3 +120,4 @@ extern settings_t settings;
 
 void init_settings();
 void update_settings();
+void autoset_from_device_type();

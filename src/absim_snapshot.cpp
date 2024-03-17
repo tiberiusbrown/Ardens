@@ -222,6 +222,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.fxport_reg);
     ar(a.fxport_mask);
     ar(a.display.type);
+    ar(a.device_type);
 
     return "";
 }
