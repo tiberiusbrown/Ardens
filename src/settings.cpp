@@ -45,6 +45,7 @@ static void settings_read_line(
     ARDENS_BOOL_SETTING(open_sound);
     ARDENS_BOOL_SETTING(open_source);
     ARDENS_BOOL_SETTING(open_progmem);
+    ARDENS_BOOL_SETTING(open_timers);
 
     ARDENS_BOOL_SETTING(profiler_cycle_counts);
     ARDENS_BOOL_SETTING(profiler_group_symbols);
@@ -116,6 +117,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_BOOL_SETTING(open_sound);
     ARDENS_BOOL_SETTING(open_source);
     ARDENS_BOOL_SETTING(open_progmem);
+    ARDENS_BOOL_SETTING(open_timers);
 
     ARDENS_BOOL_SETTING(profiler_cycle_counts);
     ARDENS_BOOL_SETTING(profiler_group_symbols);

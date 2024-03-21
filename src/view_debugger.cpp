@@ -100,6 +100,7 @@ void view_debugger()
                     ImGui::MenuItem("Call Stack", nullptr, &settings.open_call_stack);
                     ImGui::MenuItem("CPU Data Space", nullptr, &settings.open_data_space);
                     ImGui::MenuItem("CPU PROGMEM Space", nullptr, &settings.open_progmem);
+                    ImGui::MenuItem("CPU Timers", nullptr, &settings.open_timers);
 #ifdef ARDENS_LLVM
                     ImGui::MenuItem("Globals", nullptr, &settings.open_globals);
                     ImGui::MenuItem("Locals", nullptr, &settings.open_locals);
@@ -204,6 +205,7 @@ void view_debugger()
             window_led(settings.open_led);
             window_serial(settings.open_serial);
             window_sound(settings.open_sound);
+            window_timers(settings.open_timers);
         }
     }
 }

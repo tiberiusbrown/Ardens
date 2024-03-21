@@ -331,6 +331,7 @@ if(ARDENS_DEBUGGER)
         src/window_serial.cpp
         src/window_sound.cpp
         src/window_source.cpp
+        src/window_timers.cpp
 
         ${ARDENS_SOURCES}
 

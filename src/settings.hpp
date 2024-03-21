@@ -62,6 +62,7 @@ struct settings_t
     bool open_sound = false;
     bool open_source = false;
     bool open_progmem = false;
+    bool open_timers = false;
 
     bool fullzoom = false;
     bool record_wav = false;
