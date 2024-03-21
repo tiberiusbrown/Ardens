@@ -179,3 +179,13 @@ void update_settings()
     }
     ImGui::MarkIniSettingsDirty();
 }
+
+void autoset_from_device_type()
+{
+    if(arduboy->device_type == "ArduboyFX")
+        settings.fxport = FXPORT_D1;
+    if(arduboy->device_type == "ArduboyFXDevKit")
+        settings.fxport = FXPORT_D2;
+    if(arduboy->device_type == "ArduboyMini")
+        settings.fxport = FXPORT_E2;
+}

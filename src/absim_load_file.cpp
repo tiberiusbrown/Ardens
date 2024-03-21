@@ -46,7 +46,7 @@ static bool icompare(std::string const& a, std::string const& b)
 
 size_t elf_data_t::addr_to_disassembled_index(uint16_t addr)
 {
-    absim::disassembled_instr_t temp;
+    disassembled_instr_t temp;
     temp.addr = addr;
     auto it = std::lower_bound(
         asm_with_source.begin(),
@@ -920,6 +920,13 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
 
     a.fxdata.clear();
     a.fxsave.clear();
+    a.device_type.clear();
+    if(bin.HasMember("device"))
+    {
+        auto const& device = bin["device"];
+        if(device.IsString())
+            a.device_type = device.GetString();
+    }
     if(bin.HasMember("flashdata"))
     {
         auto const& binfile = bin["flashdata"];
@@ -984,12 +991,11 @@ static bool ends_with(std::string const& str, std::string const& end)
     return str.substr(str.size() - end.size()) == end;
 }
 
-static void check_for_fx_usage_in_prog(arduboy_t& a)
+// returns true if fx usage detected
+static bool check_for_fx_usage_in_prog_helper(arduboy_t& a, uint8_t fxport, uint8_t fxbit)
 {
     // analyze instructions to detect FX usage.
     // if none, erase FX data to ensure correct game hash
-    constexpr uint8_t fxport = 0x0b;
-    constexpr uint8_t fxbit = 1 << 1;
     bool found_sbi = false;
     bool found_cbi = false;
     auto const& p = a.cpu.decoded_prog;
@@ -1014,7 +1020,7 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
             p[i + 6].func == INSTR_BRBC && p[i + 6].src == 1  && p[i + 6].word == 1 &&
             true)
         {
-            return;
+            return true;
         }
 
         // check for BOTH cbi/sbi %[fxport], %[fxbit]
@@ -1026,10 +1032,30 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
                 if(di.func == INSTR_SBI) found_sbi = true;
             }
             if(found_cbi && found_sbi)
-                return;
+                return true;
         }
     }
     a.fx.erase_all_data();
+    return false;
+}
+
+static void check_for_fx_usage_in_prog(arduboy_t& a)
+{
+    if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 1))
+    {
+        a.device_type = "ArduboyFX";
+        return;
+    }
+    if(check_for_fx_usage_in_prog_helper(a, 0x2e, 1 << 2))
+    {
+        a.device_type = "ArduboyMini";
+        return;
+    }
+    if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 2))
+    {
+        a.device_type = "ArduboyFXDevKit";
+        return;
+    }
 }
 
 std::string arduboy_t::load_file(char const* filename, std::istream& f, bool save)
@@ -1044,6 +1070,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
     {
         reset();
         elf.reset();
+        device_type.clear();
         r = load_hex(*this, f);
         if(r.empty())
             check_for_fx_usage_in_prog(*this);
@@ -1061,6 +1088,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
     if(ends_with(fname, ".elf"))
     {
         reset();
+        device_type.clear();
         r = load_elf(*this, f, fname);
         if(r.empty())
             check_for_fx_usage_in_prog(*this);
@@ -1072,6 +1100,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
     {
         reset();
         elf.reset();
+        device_type.clear();
         r = load_arduboy(*this, f);
         reload_fx();
     }
