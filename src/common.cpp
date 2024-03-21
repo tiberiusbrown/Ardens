@@ -12,7 +12,7 @@
 
 #include <imgui.h>
 
-constexpr int PROFILING = 1;
+constexpr int PROFILING = 0;
 
 constexpr int SPEEDUP = PROFILING ? 50 : 1;
 
