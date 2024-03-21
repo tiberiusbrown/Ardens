@@ -196,7 +196,7 @@ struct atmega32u4_t
     }
     ARDENS_FORCEINLINE bool should_autobreak() const
     {
-        return (autobreaks & enabled_autobreaks).any();
+        return autobreaks.any() && (autobreaks & enabled_autobreaks).any();
     }
     ARDENS_FORCEINLINE bool should_autobreak_gui() const
     {
