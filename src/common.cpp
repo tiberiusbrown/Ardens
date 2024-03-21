@@ -12,6 +12,10 @@
 
 #include <imgui.h>
 
+constexpr int PROFILING = 0;
+
+constexpr int SPEEDUP = PROFILING ? 50 : 1;
+
 #ifdef ARDENS_DIST
 extern "C" {
 #include <distgame.h>
@@ -636,7 +640,7 @@ void frame_logic()
             gif_ps_rem += dtps;
         }
         if(dtps > 0)
-            arduboy->advance(dtps);
+            arduboy->advance(dtps * SPEEDUP);
 
         check_save_savedata();
 
@@ -869,9 +873,8 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-#if PROFILING
+if(PROFILING)
     ImGui::ShowMetricsWindow();
-#endif
     //ImGui::ShowDemoWindow();
 #endif
 }
