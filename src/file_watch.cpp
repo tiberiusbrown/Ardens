@@ -13,9 +13,12 @@ void file_watch_check() {}
 
 #include <filewatch/FileWatch.hpp>
 
+constexpr uint64_t RELOAD_AFTER_MS = 500;
+
 using Watch = filewatch::FileWatch<std::string>;
 
-static uint64_t ms_reload = 0;
+static uint64_t ms_reload_hex = 0;
+static uint64_t ms_reload_bin = 0;
 
 static std::unique_ptr<Watch> watch_hex;
 static std::unique_ptr<Watch> watch_bin;
@@ -29,13 +32,18 @@ std::atomic<bool> load_bin;
 template<bool hex>
 static void watch_action(std::string const& path, filewatch::Event const e)
 {
-    if( e != filewatch::Event::modified &&
+    if(e != filewatch::Event::modified &&
         e != filewatch::Event::added) return;
     if(hex)
-        load_hex.exchange(true);
+    {
+        load_hex.store(true);
+        ms_reload_hex = ms_since_start + RELOAD_AFTER_MS;
+    }
     else
-        load_bin.exchange(true);
-    ms_reload = ms_since_start + 500;
+    {
+        load_bin.store(true);
+        ms_reload_bin = ms_since_start + RELOAD_AFTER_MS;
+    }
 }
 
 void file_watch(std::string const& filename)
@@ -74,15 +82,15 @@ void file_watch_clear()
 
 void file_watch_check()
 {
-    if(ms_since_start < ms_reload)
+    if(!arduboy)
         return;
-    if(load_hex.exchange(false) && arduboy)
+    if(ms_since_start >= ms_reload_hex && load_hex.exchange(false))
     {
         std::ifstream f(fname_hex.c_str(), std::ios::in | std::ios::binary);
         if(f.fail()) load_hex.store(true);
         else dropfile_err = arduboy->load_file(fname_hex.c_str(), f);
     }
-    if(load_bin.exchange(false) && arduboy)
+    if(ms_since_start >= ms_reload_bin && load_bin.exchange(false))
     {
         std::ifstream f(fname_bin.c_str(), std::ios::in | std::ios::binary);
         if(f.fail()) load_bin.store(true);
