@@ -64,8 +64,6 @@ void atmega32u4_t::reset()
     //st_handlers[0x2e] = st_handle_port;
     //st_handlers[0x31] = st_handle_port;
 
-    st_handlers[0x43] = st_handle_gtccr;
-
     for(int i = 0x44; i <= 0x48; ++i)
         st_handlers[i] = timer0_handle_st_regs;
     st_handlers[0x46] = timer0_handle_st_tcnt;

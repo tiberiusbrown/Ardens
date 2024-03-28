@@ -299,8 +299,6 @@ struct atmega32u4_t
 
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
-    static void st_handle_gtccr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
-
     // timer0
     struct timer8_t
     {
@@ -910,11 +908,6 @@ constexpr uint8_t SREG_HSVNZC = 0x3f;
 
 static ARDENS_FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
 {
-    if(top == 0)
-    {
-        counter += inc;
-        return 0;
-    }
     uint32_t c = counter + inc;
     uint32_t n = c / top;
     counter = c % top;
