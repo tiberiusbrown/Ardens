@@ -411,7 +411,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     // send SPI commands and data to display
     fx.set_enabled((fxport & fxport_mask) == 0);
 
-    if(cpu.spi_done_shifting)
+    if(cpu.spi_data_latched)
     {
         uint8_t byte = cpu.spi_data_byte;
 
@@ -435,7 +435,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
         cpu.spi_datain_byte = fx.spi_transceive(byte);
         if(fx.busy_error)
             cpu.autobreak(AB_FX_BUSY);
-        cpu.spi_done_shifting = false;
+        cpu.spi_data_latched = false;
     }
 
     profiler_total_with_sleep += cycles;
