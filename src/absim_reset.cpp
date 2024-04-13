@@ -137,13 +137,12 @@ void atmega32u4_t::reset()
     spsr_read_after_transmit = false;
     spi_busy = false;
     spi_busy_clear = false;
-    spi_done = false;
-    spi_done_shifting = false;
+    spi_latch_read = false;
+    spi_data_latched = false;
     spi_data_byte = 0;
     spi_datain_byte = 0;
     spi_clock_cycles = 4;
-    spi_clock_cycle = 0;
-    spi_bit_progress = 0;
+    spi_done_cycle = UINT64_MAX;
 
     eeprom_clear_eempe_cycles = 0;
     eeprom_write_addr = 0;

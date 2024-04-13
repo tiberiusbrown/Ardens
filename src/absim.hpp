@@ -439,14 +439,13 @@ struct atmega32u4_t
     bool spsr_read_after_transmit;
     bool spi_busy;
     bool spi_busy_clear;
-    bool spi_done;
-    bool spi_done_shifting;
+    bool spi_latch_read;
+    bool spi_data_latched;
     uint8_t spi_data_byte;
     uint8_t spi_datain_byte;
+    uint64_t spi_done_cycle;
     uint32_t spi_clock_cycles;
-    uint32_t spi_clock_cycle;
-    uint32_t spi_bit_progress;
-    void cycle_spi(uint32_t cycles);
+    void update_spi();
     static void spi_handle_st_spcr_or_spsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void spi_handle_st_spdr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr);

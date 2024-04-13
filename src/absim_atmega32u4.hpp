@@ -181,11 +181,10 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         cycle_count += cycles;
     }
 
-    spi_done = false;
     if(single_instr_only)
     {
         // peripheral updates
-        cycle_spi(cycles);
+        update_spi();
         cycle_pll(cycles);
         cycle_eeprom(cycles);
         cycle_adc(cycles);

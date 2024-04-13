@@ -110,11 +110,13 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 
     ar(a.cpu.spsr_read_after_transmit);
     ar(a.cpu.spi_busy);
+    ar(a.cpu.spi_busy_clear);
+    ar(a.cpu.spi_latch_read);
+    ar(a.cpu.spi_data_latched);
     ar(a.cpu.spi_data_byte);
     ar(a.cpu.spi_datain_byte);
+    ar(a.cpu.spi_done_cycle);
     ar(a.cpu.spi_clock_cycles);
-    ar(a.cpu.spi_clock_cycle);
-    ar(a.cpu.spi_bit_progress);
 
     ar(a.cpu.eeprom_clear_eempe_cycles);
     ar(a.cpu.eeprom_write_addr);

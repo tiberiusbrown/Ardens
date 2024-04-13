@@ -83,6 +83,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
         if(reading <= 3)
         {
             current_addr = (current_addr << 8) | byte;
+            current_addr &= 0xffffff;
             ++reading;
         }
         if(reading >= 4)
