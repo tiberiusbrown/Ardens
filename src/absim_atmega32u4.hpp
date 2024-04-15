@@ -88,6 +88,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
         t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
         t = std::min<uint64_t>(t, usb_next_update_cycle - cycle_count);
+        t = std::min<uint64_t>(t, spi_done_cycle - cycle_count);
 
         max_merged_cycles = std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
 
@@ -139,7 +140,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                     single_instr_only = true;
                     break;
                 }
-            } while(cycles <= max_merged_cycles);
+            } while(cycles < max_merged_cycles);
         }
         //if(pc >= decoded_prog.size()) __debugbreak();
     }
