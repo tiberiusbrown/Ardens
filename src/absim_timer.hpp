@@ -364,12 +364,6 @@ static ARDENS_FORCEINLINE void update_timer16_state(
             timer_cycles -= t;
             tcnt -= t;
             if(tcnt == 0) tifr |= 0x1, count_down = false;
-            if(&timer == &cpu.timer3 && tcnt == ocrNa)
-            {
-                if(com3a == 1) toggle_portc6(cpu);
-                if(com3a == 2) clear_portc6(cpu);
-                if(com3a == 3) set_portc6(cpu);
-            }
         }
         else if(tcnt == top)
         {
@@ -407,18 +401,12 @@ static ARDENS_FORCEINLINE void update_timer16_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt += t;
-            if(&timer == &cpu.timer3 && tcnt == ocrNa)
-            {
-                if(com3a == 1) toggle_portc6(cpu);
-                if(com3a == 2) clear_portc6(cpu);
-                if(com3a == 3) set_portc6(cpu);
-            }
-            if(&timer == &cpu.timer3 && !phase_correct && tcnt == top + 1)
-            {
-                if(com3a == 1) toggle_portc6(cpu);
-                if(com3a == 2) set_portc6(cpu);
-                if(com3a == 3) clear_portc6(cpu);
-            }
+        }
+        if(&timer == &cpu.timer3 && tcnt == ocrNa)
+        {
+            if(com3a == 1) toggle_portc6(cpu);
+            if(com3a == 2) clear_portc6(cpu);
+            if(com3a == 3) set_portc6(cpu);
         }
     }
 
@@ -513,6 +501,8 @@ static void update_timer16(
         uint64_t update_cycles = (uint64_t)update_tcycles * timer.divider - timer.prescaler_cycle;
         timer.next_update_cycle = cpu.cycle_count + update_cycles;
     }
+
+    //timer.next_update_cycle = cpu.cycle_count + 1;
 }
 
 static ARDENS_FORCEINLINE void timer10_update_ocrN(
@@ -612,12 +602,6 @@ static ARDENS_FORCEINLINE void update_timer10_state(
             timer_cycles -= t;
             tcnt -= t;
             if(tcnt == 0) tifr |= 0x4, count_down = false;
-            if(tcnt == ocrNa)
-            {
-                if(com4a == 1) set_portc(cpu, true, false);
-                if(com4a == 2) set_portc(cpu, true);
-                if(com4a == 3) set_portc(cpu, false);
-            }
         }
         else if(tcnt == top)
         {
@@ -655,18 +639,12 @@ static ARDENS_FORCEINLINE void update_timer10_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt += t;
-            if(tcnt == ocrNa)
-            {
-                if(com4a == 1) set_portc(cpu, false, true);
-                if(com4a == 2) set_portc(cpu, false);
-                if(com4a == 3) set_portc(cpu, true);
-            }
-            if(!phase_correct && tcnt == top + 1)
-            {
-                if(com4a == 1) set_portc(cpu, true, false);
-                if(com4a == 2) set_portc(cpu, true);
-                if(com4a == 3) set_portc(cpu, false);
-            }
+        }
+        if(tcnt == ocrNa)
+        {
+            if(com4a == 1) set_portc(cpu, false, true);
+            if(com4a == 2) set_portc(cpu, false);
+            if(com4a == 3) set_portc(cpu, true);
         }
     }
 
@@ -912,6 +890,7 @@ static void timer16_handle_st_regs(
         return;
     }
     cpu.data[ptr] = x;
+    update_timer16(cpu, timer);
 }
 
 void atmega32u4_t::timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
