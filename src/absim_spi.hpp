@@ -8,8 +8,8 @@ void atmega32u4_t::spi_handle_st_spcr_or_spsr(
 {
     cpu.update_spi();
     cpu.data[ptr] = x;
-    uint8_t spcr = cpu.data[0x4c];
-    uint8_t spsr = cpu.data[0x4d];
+    uint8_t spcr = cpu.SPCR();
+    uint8_t spsr = cpu.SPSR();
     uint8_t n = ((spsr & 0x1) << 2) | (spcr & 0x3);
     switch(n)
     {
@@ -77,13 +77,13 @@ void atmega32u4_t::spi_handle_st_spdr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     cpu.update_spi();
-    uint8_t& spsr = cpu.data[0x4d];
+    uint8_t& spsr = cpu.SPSR();
     constexpr uint8_t SPIF = (1 << 7);
     constexpr uint8_t WCOL = (1 << 6);
 
     //cpu.data[ptr] = x;
 
-    uint8_t spcr = cpu.data[0x4c];
+    uint8_t spcr = cpu.SPCR();
     constexpr uint8_t DORD = (1 << 5);
 
     constexpr uint8_t SPE = (1 << 6);
@@ -119,7 +119,7 @@ void atmega32u4_t::spi_handle_st_spdr(
 uint8_t atmega32u4_t::spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr)
 {
     cpu.update_spi();
-    auto r = cpu.data[0x4d];
+    auto r = cpu.SPSR();
     if(!cpu.spi_busy && (r & 0x80))
         cpu.spsr_read_after_transmit = true;
     return r;
@@ -131,10 +131,10 @@ uint8_t atmega32u4_t::spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr)
     if(cpu.spsr_read_after_transmit)
     {
         cpu.spsr_read_after_transmit = false;
-        cpu.data[0x4d] &= 0x3f;
+        cpu.SPDR() &= 0x3f;
     }
     assert(ptr == 0x4e);
-    return cpu.data[0x4e];
+    return cpu.SPDR();
 }
 
 ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
@@ -142,8 +142,8 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
     if(!spi_busy)
         return;
 
-    uint8_t  spcr = data[0x4c];
-    uint8_t& spsr = data[0x4d];
+    uint8_t  spcr = SPCR();
+    uint8_t& spsr = SPSR();
 
     constexpr uint8_t SPIE = (1 << 7);
     constexpr uint8_t SPE  = (1 << 6);
@@ -159,7 +159,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
 
     if(spi_latch_read)
     {
-        data[0x4e] = spi_datain_byte;
+        SPDR() = spi_datain_byte;
         spi_busy = false;
         spi_latch_read = false;
         spi_data_latched = true;
@@ -173,7 +173,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
 
         if(cycle_count > spi_done_cycle)
         {
-            data[0x4e] = spi_datain_byte;
+            SPDR() = spi_datain_byte;
             spi_busy = false;
             spi_latch_read = false;
             spi_data_latched = true;
