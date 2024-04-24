@@ -93,7 +93,160 @@ struct atmega32u4_t
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
 
-    ARDENS_FORCEINLINE uint8_t& gpr(uint8_t n)
+    inline uint8_t& sfr(uint8_t n) { return data[n + 0x20]; }
+
+    inline uint8_t& PINB   () { return sfr(0x03); }
+    inline uint8_t& DDRB   () { return sfr(0x04); }
+    inline uint8_t& PORTB  () { return sfr(0x05); }
+    inline uint8_t& PINC   () { return sfr(0x06); }
+    inline uint8_t& DDRC   () { return sfr(0x07); }
+    inline uint8_t& PORTC  () { return sfr(0x08); }
+    inline uint8_t& PIND   () { return sfr(0x09); }
+    inline uint8_t& DDRD   () { return sfr(0x0a); }
+    inline uint8_t& PORTD  () { return sfr(0x0b); }
+    inline uint8_t& PINE   () { return sfr(0x0c); }
+    inline uint8_t& DDRE   () { return sfr(0x0d); }
+    inline uint8_t& PORTE  () { return sfr(0x0e); }
+    inline uint8_t& PINF   () { return sfr(0x0f); }
+    inline uint8_t& DDRF   () { return sfr(0x10); }
+    inline uint8_t& PORTF  () { return sfr(0x11); }
+    inline uint8_t& TIFR0  () { return sfr(0x15); }
+    inline uint8_t& TIFR1  () { return sfr(0x16); }
+    inline uint8_t& TIFR3  () { return sfr(0x18); }
+    inline uint8_t& TIFR4  () { return sfr(0x19); }
+    inline uint8_t& PCIFR  () { return sfr(0x1b); }
+    inline uint8_t& EIFR   () { return sfr(0x1c); }
+    inline uint8_t& EIMSK  () { return sfr(0x1d); }
+    inline uint8_t& GPIOR0 () { return sfr(0x1e); }
+    inline uint8_t& EECR   () { return sfr(0x1f); }
+    inline uint8_t& EEDR   () { return sfr(0x20); }
+    inline uint8_t& EEARL  () { return sfr(0x21); }
+    inline uint8_t& EEARH  () { return sfr(0x22); }
+    inline uint8_t& GTCCR  () { return sfr(0x23); }
+    inline uint8_t& TCCR0A () { return sfr(0x24); }
+    inline uint8_t& TCCR0B () { return sfr(0x25); }
+    inline uint8_t& TCNT0  () { return sfr(0x26); }
+    inline uint8_t& OCR0A  () { return sfr(0x27); }
+    inline uint8_t& OCR0B  () { return sfr(0x28); }
+    inline uint8_t& PLLCSR () { return sfr(0x29); }
+    inline uint8_t& GPIOR1 () { return sfr(0x2a); }
+    inline uint8_t& GPIOR2 () { return sfr(0x2b); }
+    inline uint8_t& SPCR   () { return sfr(0x2c); }
+    inline uint8_t& SPSR   () { return sfr(0x2d); }
+    inline uint8_t& SPDR   () { return sfr(0x2e); }
+    inline uint8_t& ACSR   () { return sfr(0x30); }
+    inline uint8_t& OCDR   () { return sfr(0x31); }
+    inline uint8_t& MONDR  () { return sfr(0x31); }
+    inline uint8_t& PLLFRQ () { return sfr(0x32); }
+    inline uint8_t& SMCR   () { return sfr(0x33); }
+    inline uint8_t& MCUSR  () { return sfr(0x34); }
+    inline uint8_t& MCUCR  () { return sfr(0x35); }
+    inline uint8_t& SPMCSR () { return sfr(0x37); }
+    inline uint8_t& SPL    () { return sfr(0x3d); }
+    inline uint8_t& SPH    () { return sfr(0x3e); }
+    inline uint8_t& SREG   () { return sfr(0x3f); }
+    inline uint8_t& WDTCSR () { return sfr(0x40); }
+    inline uint8_t& CLKPR  () { return sfr(0x41); }
+    inline uint8_t& PRR0   () { return sfr(0x44); }
+    inline uint8_t& PRR1   () { return sfr(0x45); }
+    inline uint8_t& OSCCAL () { return sfr(0x46); }
+    inline uint8_t& RCCTRL () { return sfr(0x47); }
+    inline uint8_t& PCICR  () { return sfr(0x48); }
+    inline uint8_t& EICRA  () { return sfr(0x49); }
+    inline uint8_t& EICRB  () { return sfr(0x4a); }
+    inline uint8_t& PCMSK0 () { return sfr(0x4b); }
+    inline uint8_t& TIMSK0 () { return sfr(0x4e); }
+    inline uint8_t& TIMSK1 () { return sfr(0x4f); }
+    inline uint8_t& TIMSK3 () { return sfr(0x51); }
+    inline uint8_t& TIMSK4 () { return sfr(0x52); }
+    inline uint8_t& ADCL   () { return sfr(0x58); }
+    inline uint8_t& ADCH   () { return sfr(0x59); }
+    inline uint8_t& ADCSRA () { return sfr(0x5a); }
+    inline uint8_t& ADCSRB () { return sfr(0x5b); }
+    inline uint8_t& ADMUX  () { return sfr(0x5c); }
+    inline uint8_t& DIDR2  () { return sfr(0x5d); }
+    inline uint8_t& DIDR0  () { return sfr(0x5e); }
+    inline uint8_t& DIDR1  () { return sfr(0x5f); }
+    inline uint8_t& TCCR1A () { return sfr(0x60); }
+    inline uint8_t& TCCR1B () { return sfr(0x61); }
+    inline uint8_t& TCCR1C () { return sfr(0x62); }
+    inline uint8_t& TCNT1L () { return sfr(0x64); }
+    inline uint8_t& TCNT1H () { return sfr(0x65); }
+    inline uint8_t& ICR1L  () { return sfr(0x66); }
+    inline uint8_t& ICR1H  () { return sfr(0x67); }
+    inline uint8_t& OCR1AL () { return sfr(0x68); }
+    inline uint8_t& OCR1AH () { return sfr(0x69); }
+    inline uint8_t& OCR1BL () { return sfr(0x6a); }
+    inline uint8_t& OCR1BH () { return sfr(0x6b); }
+    inline uint8_t& OCR1CL () { return sfr(0x6c); }
+    inline uint8_t& OCR1CH () { return sfr(0x6d); }
+    inline uint8_t& TCCR3A () { return sfr(0x70); }
+    inline uint8_t& TCCR3B () { return sfr(0x71); }
+    inline uint8_t& TCCR3C () { return sfr(0x72); }
+    inline uint8_t& TCNT3L () { return sfr(0x74); }
+    inline uint8_t& TCNT3H () { return sfr(0x75); }
+    inline uint8_t& ICR3L  () { return sfr(0x76); }
+    inline uint8_t& ICR3H  () { return sfr(0x77); }
+    inline uint8_t& OCR3AL () { return sfr(0x78); }
+    inline uint8_t& OCR3AH () { return sfr(0x79); }
+    inline uint8_t& OCR3BL () { return sfr(0x7a); }
+    inline uint8_t& OCR3BH () { return sfr(0x7b); }
+    inline uint8_t& OCR3CL () { return sfr(0x7c); }
+    inline uint8_t& OCR3CH () { return sfr(0x7d); }
+    inline uint8_t& TWBR   () { return sfr(0x98); }
+    inline uint8_t& TWSR   () { return sfr(0x99); }
+    inline uint8_t& TWAR   () { return sfr(0x9a); }
+    inline uint8_t& TWDR   () { return sfr(0x9b); }
+    inline uint8_t& TWCR   () { return sfr(0x9c); }
+    inline uint8_t& TWAMR  () { return sfr(0x9d); }
+    inline uint8_t& TCNT4  () { return sfr(0x9e); }
+    inline uint8_t& TC4H   () { return sfr(0x9f); }
+    inline uint8_t& TCCR4A () { return sfr(0xa0); }
+    inline uint8_t& TCCR4B () { return sfr(0xa1); }
+    inline uint8_t& TCCR4C () { return sfr(0xa2); }
+    inline uint8_t& TCCR4D () { return sfr(0xa3); }
+    inline uint8_t& TCCR4E () { return sfr(0xa4); }
+    inline uint8_t& CLKSEL0() { return sfr(0xa5); }
+    inline uint8_t& CLKSEL1() { return sfr(0xa6); }
+    inline uint8_t& CLKSTA () { return sfr(0xa7); }
+    inline uint8_t& UCSR1A () { return sfr(0xa8); }
+    inline uint8_t& UCSR1B () { return sfr(0xa9); }
+    inline uint8_t& UCSR1C () { return sfr(0xaa); }
+    inline uint8_t& UCSR1D () { return sfr(0xab); }
+    inline uint8_t& UBRR1L () { return sfr(0xac); }
+    inline uint8_t& UBRR1H () { return sfr(0xad); }
+    inline uint8_t& UDR1   () { return sfr(0xae); }
+    inline uint8_t& OCR4A  () { return sfr(0xaf); }
+    inline uint8_t& OCR4B  () { return sfr(0xb0); }
+    inline uint8_t& OCR4C  () { return sfr(0xb1); }
+    inline uint8_t& OCR4D  () { return sfr(0xb2); }
+    inline uint8_t& DT4    () { return sfr(0xb4); }
+    inline uint8_t& UHWCON () { return sfr(0xb7); }
+    inline uint8_t& USBCON () { return sfr(0xb8); }
+    inline uint8_t& USBSTA () { return sfr(0xb9); }
+    inline uint8_t& USBINT () { return sfr(0xba); }
+    inline uint8_t& UDCON  () { return sfr(0xc0); }
+    inline uint8_t& UDINT  () { return sfr(0xc1); }
+    inline uint8_t& UDIEN  () { return sfr(0xc2); }
+    inline uint8_t& UDADDR () { return sfr(0xc3); }
+    inline uint8_t& UDFNUML() { return sfr(0xc4); }
+    inline uint8_t& UDFNUMH() { return sfr(0xc5); }
+    inline uint8_t& UDMFN  () { return sfr(0xc6); }
+    inline uint8_t& UEINTX () { return sfr(0xc8); }
+    inline uint8_t& UENUM  () { return sfr(0xc9); }
+    inline uint8_t& UERST  () { return sfr(0xca); }
+    inline uint8_t& UECONX () { return sfr(0xcb); }
+    inline uint8_t& UECFG0X() { return sfr(0xcc); }
+    inline uint8_t& UECFG1X() { return sfr(0xcd); }
+    inline uint8_t& UESTA0X() { return sfr(0xce); }
+    inline uint8_t& UESTA1X() { return sfr(0xcf); }
+    inline uint8_t& UEIENX () { return sfr(0xd0); }
+    inline uint8_t& UEDATX () { return sfr(0xd1); }
+    inline uint8_t& UEBCLX () { return sfr(0xd2); }
+    inline uint8_t& UEBCHX () { return sfr(0xd3); }
+    inline uint8_t& UEINT  () { return sfr(0xd4); }
+
+    inline uint8_t& gpr(uint8_t n)
     {
         assert(n < 32);
         return data[n];
