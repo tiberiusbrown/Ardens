@@ -131,7 +131,7 @@ uint8_t atmega32u4_t::spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr)
     if(cpu.spsr_read_after_transmit)
     {
         cpu.spsr_read_after_transmit = false;
-        cpu.SPDR() &= 0x3f;
+        cpu.SPSR() &= 0x3f;
     }
     assert(ptr == 0x4e);
     return cpu.SPDR();
