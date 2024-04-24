@@ -619,6 +619,9 @@ static ARDENS_FORCEINLINE void update_timer10_state(
                 ocrNb = timer.ocrNb;
                 ocrNd = timer.ocrNd;
             }
+            if(com4a == 1) set_portc(cpu, true, false);
+            if(com4a == 2) set_portc(cpu, true);
+            if(com4a == 3) set_portc(cpu, false);
         }
         else if(tcnt > top)
         {
@@ -754,7 +757,7 @@ void atmega32u4_t::update_timer4()
     // compute next update cycle
 
     // shortcut: if no interrupts are enabled, just update occasionally
-    if(timsk4() == 0)
+    if(timsk4() == 0 && timer4.com4a == 0)
     {
         timer4.next_update_cycle = cycle_count + 65536;
         return;
