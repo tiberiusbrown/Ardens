@@ -597,6 +597,7 @@ struct atmega32u4_t
     uint8_t spi_data_byte;
     uint8_t spi_datain_byte;
     uint64_t spi_done_cycle;
+    uint64_t spi_transmit_zero_cycle;
     uint32_t spi_clock_cycles;
     void update_spi();
     static void spi_handle_st_spcr_or_spsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);

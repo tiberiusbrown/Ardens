@@ -81,8 +81,6 @@ void atmega32u4_t::spi_handle_st_spdr(
     constexpr uint8_t SPIF = (1 << 7);
     constexpr uint8_t WCOL = (1 << 6);
 
-    //cpu.data[ptr] = x;
-
     uint8_t spcr = cpu.SPCR();
     constexpr uint8_t DORD = (1 << 5);
 
@@ -102,15 +100,15 @@ void atmega32u4_t::spi_handle_st_spdr(
     }
     else
     {
-        //if(cpu.spsr_read_after_transmit)
-        //{
-        //    cpu.spsr_read_after_transmit = false;
-        //    spsr &= ~(SPIF | WCOL);
-        //}
+        if(cpu.spi_transmit_zero_cycle == cpu.cycle_count)
+            cpu.spi_data_byte = 0;
+        else
+            cpu.spi_data_byte = spcr & DORD ? reverse_bits(x) : x;
+
         spsr &= ~(SPIF | WCOL);
-        cpu.spi_data_byte = spcr & DORD ? reverse_bits(x) : x;
         
         cpu.spi_done_cycle = cpu.cycle_count + cpu.spi_clock_cycles * 8;
+        cpu.spi_transmit_zero_cycle = cpu.spi_done_cycle + 1;
 
         cpu.spi_busy = true;
     }
@@ -157,7 +155,13 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
 
     assert(spi_clock_cycles >= 2);
 
-    if(spi_latch_read)
+    if(!spi_latch_read && cycle_count >= spi_done_cycle)
+    {
+        spi_latch_read = true;
+        spi_done_cycle += 1;
+    }
+
+    if(spi_latch_read && cycle_count >= spi_done_cycle)
     {
         SPDR() = spi_datain_byte;
         spi_busy = false;
@@ -165,22 +169,6 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
         spi_data_latched = true;
         spsr_read_after_transmit = false;
         spsr |= SPIF;
-    }
-
-    if(cycle_count >= spi_done_cycle)
-    {
-        spi_latch_read = true;
-
-        if(cycle_count > spi_done_cycle)
-        {
-            SPDR() = spi_datain_byte;
-            spi_busy = false;
-            spi_latch_read = false;
-            spi_data_latched = true;
-            spsr_read_after_transmit = false;
-            spsr |= SPIF;
-        }
-
         spi_done_cycle = UINT64_MAX;
     }
 }

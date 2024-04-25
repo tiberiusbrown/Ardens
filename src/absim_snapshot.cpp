@@ -226,6 +226,9 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.display.type);
     ar(a.device_type);
 
+    // v0.22.3
+    ar(a.cpu.spi_transmit_zero_cycle);
+
     return "";
 }
 
