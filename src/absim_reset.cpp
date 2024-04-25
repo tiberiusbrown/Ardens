@@ -143,6 +143,7 @@ void atmega32u4_t::reset()
     spi_datain_byte = 0;
     spi_clock_cycles = 4;
     spi_done_cycle = UINT64_MAX;
+    spi_transmit_zero_cycle = UINT64_MAX;
 
     eeprom_clear_eempe_cycles = 0;
     eeprom_write_addr = 0;
