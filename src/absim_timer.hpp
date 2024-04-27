@@ -536,7 +536,7 @@ static ARDENS_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
     cpu.data[0x28] = t;
 }
 
-static ARDENS_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6)
+static ARDENS_FORCEINLINE void set_portc6(atmega32u4_t& cpu, bool c6)
 {
     uint8_t c = 0;
     if(c6) c |= 0x40;
@@ -544,6 +544,18 @@ static ARDENS_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6)
     c &= 0x40;
     uint8_t t = cpu.data[0x28];
     t &= ~0x40;
+    t |= c;
+    cpu.data[0x28] = t;
+}
+
+static ARDENS_FORCEINLINE void set_portc7(atmega32u4_t& cpu, bool c7)
+{
+    uint8_t c = 0;
+    if(c7) c |= 0x80;
+    if(!(cpu.data[0x27] & 0x80)) return;
+    c &= 0x80;
+    uint8_t t = cpu.data[0x28];
+    t &= ~0x80;
     t |= c;
     cpu.data[0x28] = t;
 }
@@ -620,8 +632,8 @@ static ARDENS_FORCEINLINE void update_timer10_state(
                 ocrNd = timer.ocrNd;
             }
             if(com4a == 1) set_portc(cpu, true, false);
-            if(com4a == 2) set_portc(cpu, true);
-            if(com4a == 3) set_portc(cpu, false);
+            if(com4a == 2) set_portc7(cpu, true);
+            if(com4a == 3) set_portc7(cpu, false);
         }
         else if(tcnt > top)
         {
@@ -646,8 +658,8 @@ static ARDENS_FORCEINLINE void update_timer10_state(
         if(tcnt == ocrNa)
         {
             if(com4a == 1) set_portc(cpu, false, true);
-            if(com4a == 2) set_portc(cpu, false);
-            if(com4a == 3) set_portc(cpu, true);
+            if(com4a == 2) set_portc7(cpu, false);
+            if(com4a == 3) set_portc7(cpu, true);
         }
     }
 
