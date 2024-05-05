@@ -16,12 +16,8 @@ static uint64_t need_save_time;
 static std::string savedata_filename()
 {
     char buf[128];
-    snprintf(buf, sizeof(buf),
-#ifdef __EMSCRIPTEN__
-        "/offline/"
-#endif
-        "absim_%" PRIx64 ".save", arduboy->game_hash);
-    return std::string(buf);
+    snprintf(buf, sizeof(buf), "absim_%" PRIx64 ".save", arduboy->game_hash);
+    return (userpath / buf).generic_string();
 }
 
 void load_savedata()
