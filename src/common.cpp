@@ -10,6 +10,8 @@
 
 #include <fmt/format.h>
 
+#include <cfgpath.h>
+
 #include <imgui.h>
 
 constexpr int PROFILING = 0;
@@ -50,6 +52,8 @@ void process_sound_samples() {}
 #ifndef ARDENS_NO_GUI
 extern unsigned char const ProggyVector[198188];
 #endif
+
+std::filesystem::path userpath;
 
 texture_t display_texture{};
 texture_t display_buffer_texture{};
@@ -368,13 +372,32 @@ void init()
 #endif
         ARDENS_VERSION " by Peter Brown\n");
 
+    ImGuiIO& io = ImGui::GetIO();
+
 #ifdef __EMSCRIPTEN__
     EM_ASM(
         FS.mkdir('/offline');
     FS.mount(IDBFS, {}, '/offline');
     FS.syncfs(true, function(err) { ccall('postsyncfs', 'v'); });
     );
+    io.IniFilename = "/offline/Ardens.ini";
+    userpath = "/offline";
+#else
+    {
+        static char ini_path[1024];
+        get_user_config_folder(ini_path, sizeof(ini_path), "Ardens");
+        userpath = ini_path;
+        std::error_code ec;
+        std::filesystem::create_directories(userpath, ec);
+        strncpy(
+            ini_path,
+            (userpath / "Ardens.ini").generic_string().c_str(),
+            sizeof(ini_path));
+        io.IniFilename = ini_path;
+    }
 #endif
+
+    printf("Data path: %s\n", userpath.generic_string().c_str());
 
     arduboy = std::make_unique<absim::arduboy_t>();
     arduboy->display.type = absim::display_t::SSD1306;
@@ -387,7 +410,6 @@ void init()
     init_settings();
 #endif
 
-    ImGuiIO& io = ImGui::GetIO();
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_NO_SAVED_SETTINGS)
     ImGui::LoadIniSettingsFromDisk(io.IniFilename);
     settings_loaded = true;

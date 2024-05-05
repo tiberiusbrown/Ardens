@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <stdint.h>
 #include <unordered_map>
@@ -57,6 +58,7 @@ extern texture_t display_buffer_texture;
 extern std::string dropfile_err;
 extern bool loading_indicator;
 extern uint64_t ms_since_start;
+extern std::filesystem::path userpath;
 
 constexpr float CLEAR_R = 0.10f;
 constexpr float CLEAR_G = 0.10f;
