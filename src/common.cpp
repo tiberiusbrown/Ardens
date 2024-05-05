@@ -10,7 +10,9 @@
 
 #include <fmt/format.h>
 
+#ifndef __EMSCRIPTEN__
 #include <cfgpath.h>
+#endif
 
 #include <imgui.h>
 
