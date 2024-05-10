@@ -377,26 +377,22 @@ if(ARDENS_DEBUGGER)
         
 endif()
 
-if(ARDENS_LIB OR ARDENS_PLAYER OR ARDENS_DIST)
+add_library(ardenslib STATIC
+    .editorconfig
+    ${ARDENS_SOURCES}
+    )
 
-    add_library(ardenslib STATIC
-        .editorconfig
-        ${ARDENS_SOURCES}
-        )
+target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
 
-    target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
+target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
+target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
+target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
+target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
+target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
+target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
+#target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_ARDUBOY_FILE)
 
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
-    #target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_ARDUBOY_FILE)
-    
-    target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
-
-endif()
+target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
 
 if(ARDENS_PLAYER)
 
