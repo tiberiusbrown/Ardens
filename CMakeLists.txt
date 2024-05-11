@@ -34,6 +34,10 @@ if(MSVC)
     )
 endif()
 
+if(MSYS)
+    add_link_options(-static-libgcc -static-libstdc++)
+endif()
+
 option(ARDENS_LLVM     "Build and link LLVM (enables loading ELF and debug info)" ON)
 option(ARDENS_DEBUGGER "Build debugger target" ON)
 option(ARDENS_LIB      "Build static library for emulator core" OFF)
