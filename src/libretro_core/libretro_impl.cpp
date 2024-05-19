@@ -116,6 +116,7 @@ void retro_reset()
 
 void retro_run()
 {
+    func_input_poll();
     bool btn_U = func_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
     bool btn_D = func_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
     bool btn_L = func_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
