@@ -111,6 +111,11 @@ jobs:
         name: build-artifact
         path: ${{github.workspace}}/Ardens_web.zip
         
+    - name: Pre-Deploy
+      run: |
+        cp ${{github.workspace}}/src/live_Ardens.html ${{github.workspace}}/Ardens_web/index.html
+        cp ${{github.workspace}}/src/live_ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
+        
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
       with:
