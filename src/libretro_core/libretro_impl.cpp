@@ -188,7 +188,7 @@ size_t retro_serialize_size()
 
 bool retro_serialize(void* data, size_t size)
 {
-    std::ostrstream s((char*)data, (std::streamsize)size);
+    std::ostrstream s((char*)data, (std::streamsize)size, std::ios::out | std::ios::binary);
     bool err = arduboy->save_savestate(s);
     if(err) func_log(RETRO_LOG_ERROR, "Error during serialize\n");
     else func_log(RETRO_LOG_INFO, "Serialized successfully\n");
