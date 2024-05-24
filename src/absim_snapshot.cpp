@@ -91,14 +91,27 @@ public:
 template<class Archive>
 static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 {
+    ar(a.cpu.data);
+    ar(a.cpu.just_read);
+    ar(a.cpu.just_written);
     ar(a.cpu.active);
     ar(a.cpu.wakeup_cycles);
+    ar(a.cpu.just_interrupted);
     ar(a.cpu.min_stack);
     ar(a.cpu.stack_check);
-    ar(a.cpu.data);
+    ar(a.cpu.pushed_at_least_once);
     ar(a.cpu.eeprom);
+    ar(a.cpu.eeprom_modified);
+    ar(a.cpu.eeprom_dirty);
     ar(a.cpu.prev_sreg);
     ar(a.cpu.pc);
+    ar(a.cpu.executing_instr_pc);
+    for(auto& f : a.cpu.stack_frames)
+    {
+        ar(f.pc);
+        ar(f.sp);
+    }
+    ar(a.cpu.num_stack_frames);
     ar(a.cpu.timer0);
     ar(a.cpu.timer1);
     ar(a.cpu.timer3);
@@ -116,6 +129,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.spi_data_byte);
     ar(a.cpu.spi_datain_byte);
     ar(a.cpu.spi_done_cycle);
+    ar(a.cpu.spi_transmit_zero_cycle);
     ar(a.cpu.spi_clock_cycles);
 
     ar(a.cpu.eeprom_clear_eempe_cycles);
@@ -128,20 +142,39 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.adc_cycle);
     ar(a.cpu.adc_ref);
     ar(a.cpu.adc_result);
+    ar(a.cpu.adc_seed);
     ar(a.cpu.adc_busy);
+    ar(a.cpu.adc_nondeterminism);
 
     ar(a.cpu.sound_cycle);
     ar(a.cpu.sound_enabled);
     ar(a.cpu.sound_pwm);
     ar(a.cpu.sound_pwm_val);
+    ar(a.cpu.sound_buffer);
+
+    ar(a.cpu.serial_bytes);
+    ar(a.cpu.usb_ep);
+    ar(a.cpu.usb_next_sofi_cycle);
+    ar(a.cpu.usb_next_eorsti_cycle);
+    ar(a.cpu.usb_next_setconf_cycle);
+    ar(a.cpu.usb_next_setlength_cycle);
+    ar(a.cpu.usb_next_update_cycle);
+    ar(a.cpu.usb_dpram);
+    ar(a.cpu.usb_attached);
 
     ar(a.cpu.cycle_count);
 
     ar(a.display.filtered_pixels);
     ar(a.display.filtered_pixel_counts);
+    ar(a.display.type);
     ar(a.display.pixels);
     ar(a.display.pixel_history_index);
+    ar(a.display.enable_filter);
     ar(a.display.ram);
+    ar(a.display.ref_segment_current);
+    ar(a.display.current_limit_slope);
+    ar(a.display.enable_current_limiting);
+    ar(a.display.prev_row_drive);
     ar(a.display.contrast);
     ar(a.display.entire_display_on);
     ar(a.display.inverse_display);
@@ -174,8 +207,11 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.display.command_byte_index);
     ar(a.display.data_page);
     ar(a.display.data_col);
+    ar(a.display.vsync);
 
     ar(a.fx.data);
+    ar(a.fx.sectors_modified);
+    ar(a.fx.sectors_dirty);
     ar(a.fx.enabled);
     ar(a.fx.woken_up);
     ar(a.fx.write_enabled);
@@ -190,44 +226,13 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.fx.command);
     ar(a.fx.min_page);
     ar(a.fx.max_page);
+    ar(a.fx.busy_error);
 
-    // v0.10.0
-    ar(a.profiler_hotspots_symbol);
-    ar(a.cpu.serial_bytes);
-    ar(a.cpu.usb_ep);
-    ar(a.cpu.usb_next_eorsti_cycle);
-    ar(a.cpu.usb_next_sofi_cycle);
-    ar(a.cpu.usb_next_setconf_cycle);
-    ar(a.cpu.usb_next_setlength_cycle);
-    ar(a.cpu.usb_next_update_cycle);
-    ar(a.cpu.usb_attached);
-    ar(a.cpu.usb_dpram);
-
-    // v0.15.0
-    ar(a.fx.sectors_modified);
-    ar(a.cpu.eeprom_modified);
-
-    // v0.16.8
-    ar(a.cpu.pushed_at_least_once);
-
-    // v0.20.38
-    ar(a.display.prev_row_drive);
-
-    // v0.21.8
-    ar(a.title);
-
-    // v0.21.15
-    ar(a.cpu.adc_seed);
-    ar(a.cpu.adc_nondeterminism);
-
-    // v0.22.0
     ar(a.fxport_reg);
     ar(a.fxport_mask);
-    ar(a.display.type);
+    ar(a.game_hash);
+    ar(a.title);
     ar(a.device_type);
-
-    // v0.22.3
-    ar(a.cpu.spi_transmit_zero_cycle);
 
     return "";
 }
@@ -247,6 +252,7 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
             return r;
     }
 
+    ar(a.profiler_hotspots_symbol);
     ar(a.profiler_total);
     ar(a.profiler_total_with_sleep);
     ar(a.prev_frame_cycles);
