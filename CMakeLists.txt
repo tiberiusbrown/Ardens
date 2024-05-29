@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
@@ -51,8 +51,7 @@ if(NOT EMSCRIPTEN AND NOT APPLE)
 endif()
 option(ARDENS_SDL      "Build Ardens with SDL backend" ${ARDENS_SDL_DEFAULT})
 
-if(ARDENS_LIBRETRO)
-    message(STATUS "compiling libretro!")
+if(ARDENS_LIBRETRO AND NOT LIBRETRO_STATIC)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
@@ -543,7 +542,6 @@ if(ARDENS_LIBRETRO)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SCALING)
     target_link_libraries(ardens_libretro PRIVATE
         miniz
-        fmt
         bitsery
         )
     target_include_directories(ardens_libretro PUBLIC src)

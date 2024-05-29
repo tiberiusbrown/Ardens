@@ -9,6 +9,7 @@
 #include <cctype>
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
+#define RAPIDJSON_NO_THREAD_LOCAL
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <miniz.h>

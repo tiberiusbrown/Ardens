@@ -15,12 +15,12 @@
 .core-defs-linux:
   extends: .core-defs
   variables:
-    CORE_ARGS: -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE -DCMAKE_BUILD_TYPE=Release
+    CORE_ARGS: -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
 
 .core-defs-osx:
   extends: .core-defs
   variables:
-    CORE_ARGS: -G Xcode -DCMAKE_BUILD_TYPE=Release
+    CORE_ARGS: -G Xcode -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
     EXTRA_PATH: Release
 
 # Inclusion templates, required for the build to work

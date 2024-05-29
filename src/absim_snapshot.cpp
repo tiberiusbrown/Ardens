@@ -4,7 +4,6 @@
 
 #include <sstream>
 #include <tuple>
-#include <fmt/format.h>
 
 #include <bitsery/bitsery.h>
 #include <bitsery/brief_syntax.h>
@@ -52,7 +51,9 @@ static constexpr version_t ct_version(char const* t)
 
 static std::string version_str(version_t const& v)
 {
-    return fmt::format("v{}.{}.{}", std::get<0>(v), std::get<1>(v), std::get<2>(v));
+    char buf[32];
+    snprintf(buf, sizeof(buf), "v%u.%u.%u", std::get<0>(v), std::get<1>(v), std::get<2>(v));
+    return buf;
 }
 
 constexpr auto VERSION_INFO = ct_version(ARDENS_VERSION);
