@@ -8,8 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(Ardens)
 
-include(FetchContent)
-
 if(MSVC)
     add_link_options(
         /DEBUG
@@ -98,6 +96,8 @@ if(ARDENS_LLVM)
 	if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
 		cmake_policy(SET CMP0135 NEW)
 	endif()
+
+    include(FetchContent)
 
 	message(STATUS "Fetching llvm-project")
 	FetchContent_Declare(
