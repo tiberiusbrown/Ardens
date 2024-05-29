@@ -1230,7 +1230,10 @@ public:
         else {
             RAPIDJSON_ASSERT(false);    // see above note
 
-#if RAPIDJSON_HAS_CXX11 && !defined(RAPIDJSON_NO_THREAD_LOCAL)
+#if defined(RAPIDJSON_NO_THREAD_LOCAL)
+            static GenericValue buffer;
+            return buffer;
+#elif RAPIDJSON_HAS_CXX11
             // Use thread-local storage to prevent races between threads.
             // Use static buffer and placement-new to prevent destruction, with
             // alignas() to ensure proper alignment.

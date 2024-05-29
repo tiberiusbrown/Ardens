@@ -248,6 +248,9 @@ set(ARDENS_SOURCES
     src/absim_sound.hpp
     src/absim_led.cpp
     src/absim_usb.cpp
+
+    deps/yyjson/yyjson.h
+    deps/yyjson/yyjson.c
     )
 set(EM_FILE_BROWSER_SOURCES)
 if(EMSCRIPTEN)
@@ -544,8 +547,6 @@ if(ARDENS_LIBRETRO)
         ${ARDENS_SOURCES}
         src/libretro_core/libretro.h
         src/libretro_core/libretro_impl.cpp
-        deps/yyjson/yyjson.h
-        deps/yyjson/yyjson.c
         )
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
@@ -556,7 +557,7 @@ if(ARDENS_LIBRETRO)
         miniz
         bitsery
         )
-    target_include_directories(ardens_libretro PUBLIC src deps/yyjson)
+    target_include_directories(ardens_libretro PUBLIC src deps)
     target_include_directories(ardens_libretro PRIVATE deps/rapidjson/include)
     # WHY IS THIS NECESSARY???
     if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))

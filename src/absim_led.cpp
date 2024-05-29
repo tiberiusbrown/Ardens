@@ -23,7 +23,6 @@ void atmega32u4_t::led_rgb(uint8_t& r, uint8_t& g, uint8_t& b) const
 {
     // TODO: accurate modeling of PWM
 
-    uint8_t t;
     r = g = b = 0;
 
     uint8_t ddrb = data[0x24];
