@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 # This logic needs to be considered before project()
 set(_change_MSVC_flags FALSE)
-if(WIN32)
+if(MSVC)
   if(CMAKE_VERSION VERSION_LESS 3.15.0)
     set(_change_MSVC_flags TRUE)
   else()
@@ -17,32 +17,6 @@ set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(Ardens)
-
-if(_change_MSVC_flags)
-  # Modify compile flags to change MSVC runtime from /MD to /MT
-  set(_re_match "([\\/\\-]M)D")
-  set(_re_replace "\\1T")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-endif()
 
 if(MSVC)
     add_link_options(
@@ -631,4 +605,30 @@ if(EMSCRIPTEN)
     if(ARDENS_PLAYER)
         target_link_options(ArdensPlayer PRIVATE "-lidbfs.js")
     endif()
+endif()
+
+if(_change_MSVC_flags)
+  # Modify compile flags to change MSVC runtime from /MD to /MT
+  set(_re_match "([\\/\\-]M)D")
+  set(_re_replace "\\1T")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 endif()
