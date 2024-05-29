@@ -12,7 +12,11 @@ if(WIN32)
   endif()
 endif()
 
-project(MyProj ....)
+set(CMAKE_CXX_STANDARD 17)
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#set(CMAKE_CXX_EXTENSIONS OFF)
+
+project(Ardens)
 
 if(_change_MSVC_flags)
   # Modify compile flags to change MSVC runtime from /MD to /MT
@@ -39,12 +43,6 @@ if(_change_MSVC_flags)
   string(REGEX REPLACE ${_re_match} ${_re_replace}
     CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 endif()
-
-set(CMAKE_CXX_STANDARD 17)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set(CMAKE_CXX_EXTENSIONS OFF)
-
-project(Ardens)
 
 if(MSVC)
     add_link_options(
