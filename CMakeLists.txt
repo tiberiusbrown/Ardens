@@ -1,6 +1,44 @@
 cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+# This logic needs to be considered before project()
+set(_change_MSVC_flags FALSE)
+if(WIN32)
+  if(CMAKE_VERSION VERSION_LESS 3.15.0)
+    set(_change_MSVC_flags TRUE)
+  else()
+    # Set MSVC runtime to MultiThreaded (/MT)
+    cmake_policy(SET CMP0091 NEW)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
+endif()
+
+project(MyProj ....)
+
+if(_change_MSVC_flags)
+  # Modify compile flags to change MSVC runtime from /MD to /MT
+  set(_re_match "([\\/\\-]M)D")
+  set(_re_replace "\\1T")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+  string(REGEX REPLACE ${_re_match} ${_re_replace}
+    CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -534,6 +572,8 @@ if(ARDENS_LIBRETRO)
         ${ARDENS_SOURCES}
         src/libretro_core/libretro.h
         src/libretro_core/libretro_impl.cpp
+        deps/yyjson/yyjson.h
+        deps/yyjson/yyjson.c
         )
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
@@ -544,7 +584,7 @@ if(ARDENS_LIBRETRO)
         miniz
         bitsery
         )
-    target_include_directories(ardens_libretro PUBLIC src)
+    target_include_directories(ardens_libretro PUBLIC src deps/yyjson)
     target_include_directories(ardens_libretro PRIVATE deps/rapidjson/include)
     # WHY IS THIS NECESSARY???
     if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
