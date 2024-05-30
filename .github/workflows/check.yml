@@ -182,7 +182,7 @@ jobs:
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LIBRETRO=1
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
@@ -221,7 +221,7 @@ jobs:
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LIBRETRO=1
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/Ardens.exe" "Ardens.exe"
         cmake -E copy "${{github.workspace}}/build/${{env.BUILD_TYPE}}/ArdensPlayer.exe" "ArdensPlayer.exe"
@@ -261,7 +261,7 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LIBRETRO=1
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         mkdir Ardens_macos
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens_macos/Ardens.app"
@@ -319,7 +319,7 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=1
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DARDENS_LIBRETRO=1
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target ardens_libretro
         mkdir Ardens_macos
         cmake -E copy_directory "${{github.workspace}}/build/Ardens.app" "Ardens_macos/Ardens.app"
