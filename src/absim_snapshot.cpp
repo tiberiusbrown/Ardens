@@ -21,19 +21,6 @@ static constexpr std::array<char, 8> SNAPSHOT_ID =
     '_', 'A', 'B', 'S', 'I', 'M', '_', '\0',
 };
 
-static constexpr bool ct_isdigit(char c)
-{
-    return c >= '0' && c <= '9';
-}
-
-static constexpr uint32_t ct_parse_dec(char const*& t)
-{
-    uint32_t r = 0;
-    while(ct_isdigit(*t))
-        r = r * 10 + (*t++ - '0');
-    return r;
-}
-
 struct version_t
 {
     uint32_t major;
