@@ -1,17 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 
-# This logic needs to be considered before project()
-set(_change_MSVC_flags FALSE)
-if(MSVC)
-  if(CMAKE_VERSION VERSION_LESS 3.15.0)
-    set(_change_MSVC_flags TRUE)
-  else()
-    # Set MSVC runtime to MultiThreaded (/MT)
-    cmake_policy(SET CMP0091 NEW)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  endif()
-endif()
-
 set(CMAKE_CXX_STANDARD 17)
 #set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #set(CMAKE_CXX_EXTENSIONS OFF)
@@ -19,6 +7,22 @@ set(CMAKE_CXX_STANDARD 17)
 project(Ardens)
 
 if(MSVC)
+    set(msvc_flags
+        CMAKE_C_FLAGS_DEBUG
+        CMAKE_C_FLAGS_MINSIZEREL
+        CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_RELWITHDEBINFO
+        CMAKE_CXX_FLAGS_DEBUG
+        CMAKE_CXX_FLAGS_MINSIZEREL
+        CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_RELWITHDEBINFO
+    )
+    foreach(msvc_flag ${msvc_flags})
+        if(${msvc_flag} MATCHES "/MD")
+            string(REGEX REPLACE "/MD" "/MT" ${msvc_flag} "${${msvc_flag}}")
+        endif()
+    endforeach()
+
     add_link_options(
         /DEBUG
         /INCREMENTAL:NO                     # Disable incremental linking.
@@ -53,6 +57,14 @@ option(ARDENS_PLAYER   "Build player target" ON)
 option(ARDENS_LIBRETRO "Build libretro core target" OFF)
 option(ARDENS_DIST     "Build distributable game from dist/game.arduboy" OFF)
 
+if(ARDENS_LIBRETRO)
+    set(ARDENS_LLVM     OFF)
+    set(ARDENS_DEBUGGER OFF)
+    set(ARDENS_PLAYER   OFF)
+    set(ARDENS_DIST     OFF)
+    set(CMAKE_CXX_STANDARD 14)
+endif()
+
 set(SDL_DEFAULT OFF)
 if(NOT EMSCRIPTEN AND NOT APPLE)
     set(ARDENS_SDL_DEFAULT ON)
@@ -73,9 +85,22 @@ git_describe(ARDENS_VERSION)
 message(STATUS "ARDENS_VERSION: ${ARDENS_VERSION}")
 string(REGEX REPLACE "^v" "" ARDENS_VERSION_SHORT ${ARDENS_VERSION})
 string(REGEX REPLACE "-.*" "" ARDENS_VERSION_SHORT ${ARDENS_VERSION_SHORT})
+string(REGEX MATCHALL "[0-9]+" ARDENS_VERSION_COMPONENTS "${ARDENS_VERSION_SHORT}")
+list(LENGTH ARDENS_VERSION_COMPONENTS ARDENS_VERSION_COMPONENTS_NUM)
+set(ARDENS_VERSION_MAJOR 0)
+set(ARDENS_VERSION_MINOR 0)
+set(ARDENS_VERSION_PATCH 0)
+if(ARDENS_VERSION_COMPONENTS EQUAL 3)
+    list(GET ARDENS_VERSION_COMPONENTS 0 ARDENS_VERSION_MAJOR)
+    list(GET ARDENS_VERSION_COMPONENTS 1 ARDENS_VERSION_MINOR)
+    list(GET ARDENS_VERSION_COMPONENTS 2 ARDENS_VERSION_PATCH)
+endif()
 message(STATUS "ARDENS_VERSION_SHORT: ${ARDENS_VERSION_SHORT}")
+message(STATUS "ARDENS_VERSION_MAJOR: ${ARDENS_VERSION_MAJOR}")
+message(STATUS "ARDENS_VERSION_MINOR: ${ARDENS_VERSION_MINOR}")
+message(STATUS "ARDENS_VERSION_PATCH: ${ARDENS_VERSION_PATCH}")
 
-if(EMSCRIPTEN)
+if(EMSCRIPTEN AND NOT ARDENS_LIBRETRO)
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -O3")
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -flto")
     add_link_options("--closure 1")
@@ -248,6 +273,9 @@ set(ARDENS_SOURCES
     src/absim_sound.hpp
     src/absim_led.cpp
     src/absim_usb.cpp
+
+    deps/yyjson/yyjson.h
+    deps/yyjson/yyjson.c
     )
 set(EM_FILE_BROWSER_SOURCES)
 if(EMSCRIPTEN)
@@ -274,6 +302,9 @@ macro(configure_app_target target)
         set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/img/ardens.icns" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
         target_compile_options(${target} PRIVATE -x objective-c++)
     endif()
+    #if(MSVC)
+    #    target_link_libraries(${target} PRIVATE vcruntime.lib)
+    #endif()
     if(ARDENS_SDL)
         target_compile_definitions(${target} PUBLIC -DARDENS_PLATFORM_SDL)
         target_link_libraries(${target} PRIVATE SDL3-static)
@@ -544,8 +575,6 @@ if(ARDENS_LIBRETRO)
         ${ARDENS_SOURCES}
         src/libretro_core/libretro.h
         src/libretro_core/libretro_impl.cpp
-        deps/yyjson/yyjson.h
-        deps/yyjson/yyjson.c
         )
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
@@ -556,7 +585,7 @@ if(ARDENS_LIBRETRO)
         miniz
         bitsery
         )
-    target_include_directories(ardens_libretro PUBLIC src deps/yyjson)
+    target_include_directories(ardens_libretro PUBLIC src deps)
     target_include_directories(ardens_libretro PRIVATE deps/rapidjson/include)
     # WHY IS THIS NECESSARY???
     if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
@@ -574,14 +603,23 @@ if(ARDENS_LIBRETRO)
 
 endif()
 
-set_source_files_properties(
+set(version_files
     src/absim_snapshot.cpp
     src/view_debugger.cpp
     src/common.cpp
     src/libretro_core/libretro_impl.cpp
-    PROPERTIES
-        COMPILE_OPTIONS "-DARDENS_VERSION=\"${ARDENS_VERSION}\""
     )
+foreach(f ${version_files})
+    set_property(
+        SOURCE ${f}
+        APPEND
+        PROPERTY COMPILE_DEFINITIONS
+            ARDENS_VERSION=\"${ARDENS_VERSION}\"
+            ARDENS_VERSION_MAJOR=${ARDENS_VERSION_MAJOR}
+            ARDENS_VERSION_MINOR=${ARDENS_VERSION_MINOR}
+            ARDENS_VERSION_PATCH=${ARDENS_VERSION_PATCH}
+    )
+endforeach()
 
 if(MSVC)
     if(ARDENS_DEBUGGER)
@@ -605,30 +643,4 @@ if(EMSCRIPTEN)
     if(ARDENS_PLAYER)
         target_link_options(ArdensPlayer PRIVATE "-lidbfs.js")
     endif()
-endif()
-
-if(_change_MSVC_flags)
-  # Modify compile flags to change MSVC runtime from /MD to /MT
-  set(_re_match "([\\/\\-]M)D")
-  set(_re_replace "\\1T")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
-  string(REGEX REPLACE ${_re_match} ${_re_replace}
-    CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 endif()

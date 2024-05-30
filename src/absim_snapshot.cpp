@@ -9,7 +9,6 @@
 #include <bitsery/brief_syntax.h>
 #include <bitsery/brief_syntax/array.h>
 #include <bitsery/brief_syntax/string.h>
-#include <bitsery/brief_syntax/tuple.h>
 #include <bitsery/brief_syntax/vector.h>
 #include <bitsery/ext/std_bitset.h>
 #include <bitsery/adapter/buffer.h>
@@ -35,28 +34,34 @@ static constexpr uint32_t ct_parse_dec(char const*& t)
     return r;
 }
 
-using version_t = std::tuple<uint32_t, uint32_t, uint32_t>;
-
-static constexpr version_t ct_version(char const* t)
+struct version_t
 {
-    version_t r = {};
-    if(*t != 'v') return r;
-    std::get<0>(r) = ct_parse_dec(++t);
-    if(*t != '.') return r;
-    std::get<1>(r) = ct_parse_dec(++t);
-    if(*t != '.') return r;
-    std::get<2>(r) = ct_parse_dec(++t);
-    return r;
-}
+    uint32_t major;
+    uint32_t minor;
+    uint32_t patch;
+    constexpr bool operator!=(version_t const& v) const
+    {
+        return major != v.major || minor != v.minor || patch != v.patch;
+    }
+    template<class A> void serialize(A& a)
+    {
+        a(major, minor, patch);
+    }
+};
 
 static std::string version_str(version_t const& v)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "v%u.%u.%u", std::get<0>(v), std::get<1>(v), std::get<2>(v));
+    snprintf(buf, sizeof(buf), "v%u.%u.%u", v.major, v.minor, v.patch);
     return buf;
 }
 
-constexpr auto VERSION_INFO = ct_version(ARDENS_VERSION);
+constexpr version_t VERSION_INFO =
+{
+    ARDENS_VERSION_MAJOR,
+    ARDENS_VERSION_MINOR,
+    ARDENS_VERSION_PATCH
+};
 
 namespace bitsery
 {

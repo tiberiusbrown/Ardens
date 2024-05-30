@@ -9,16 +9,7 @@
 #include <cctype>
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
-
-#if __APPLE__
-#include <TargetConditionals.h>
-#if TARGET_OS_IPHONE
-#define RAPIDJSON_NO_THREAD_LOCAL
-#endif
-#endif
-
-#include <rapidjson/document.h>
-#include <rapidjson/error/en.h>
+#include <yyjson/yyjson.h>
 #include <miniz.h>
 #include <miniz_zip.h>
 #endif
@@ -885,33 +876,59 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         mz_zip_reader_extract_to_mem(z, i, info.data(), info.size(), 0);
     }
 
-    rapidjson::Document doc;
-    rapidjson::ParseResult ok = doc.Parse<
-        rapidjson::kParseCommentsFlag |
-        rapidjson::kParseTrailingCommasFlag |
-        0>(info.data(), info.size());
-    if(!ok)
-        return std::string("ARDUBOY: ") + rapidjson::GetParseError_En(ok.Code());
-    if(!doc.HasMember("binaries"))
+    yyjson_read_err json_err{};
+    yyjson_doc* doc;
+    {
+        // yyjson doesn't like BOM
+        char* raw_info = info.data();
+        size_t raw_size = info.size();
+        if(raw_size >= 3 &&
+            raw_info[0] == (char)0xef &&
+            raw_info[1] == (char)0xbb &&
+            raw_info[2] == (char)0xbf)
+        {
+            raw_size -= 3;
+            raw_info += 3;
+        }
+        doc = yyjson_read_opts(raw_info, raw_size,
+            YYJSON_READ_STOP_WHEN_DONE |
+            YYJSON_READ_ALLOW_TRAILING_COMMAS |
+            YYJSON_READ_ALLOW_COMMENTS |
+            0,
+            nullptr,
+            &json_err);
+    }
+    if(!doc)
+        return std::string("ARDUBOY: ") + json_err.msg;
+
+    struct doc_deleter {
+        yyjson_doc* doc;
+        ~doc_deleter() { yyjson_doc_free(doc); }
+    } doc_deleter_obj = { doc };
+
+    yyjson_val* root = yyjson_doc_get_root(doc);
+    yyjson_val* bins = yyjson_obj_get(root, "binaries");
+    if(!bins)
         return "ARDUBOY: info.json missing 'binaries'";
-    auto const& bins = doc["binaries"];
-    if(!bins.IsArray())
+    if(!yyjson_is_arr(bins))
         return "ARDUBOY: 'binaries' not array";
-    auto const& bin = bins[0];
-    if(!bin.HasMember("filename"))
+    yyjson_val* bin = yyjson_arr_get_first(bins);
+    if(!bin)
+        return "ARDUBOY: empty 'binaries'";
+    yyjson_val* hexfile = yyjson_obj_get(bin, "filename");
+    if(!hexfile)
         return "ARDUBOY: primary binary missing 'filename'";
-    auto const& hexfile = bin["filename"];
-    if(!hexfile.IsString())
+    if(!yyjson_is_str(hexfile))
         return "ARDUBOY: primary binary filename not string type";
 
     a.title.clear();
-    if(doc.HasMember("title") && doc["title"].IsString())
-        a.title = doc["title"].GetString();
+    yyjson_val* title = yyjson_obj_get(root, "title");
+    if(title && yyjson_is_str(title))
+        a.title = yyjson_get_str(title);
 
     std::vector<char> data;
     {
-        std::string hexfilename(hexfile.GetString(), hexfile.GetStringLength());
-        int i = mz_zip_reader_locate_file(z, hexfilename.c_str(), nullptr, 0);
+        int i = mz_zip_reader_locate_file(z, yyjson_get_str(hexfile), nullptr, 0);
         if(i == -1)
             return "ARDUBOY: missing hex file indicated in info.json";
         mz_zip_archive_file_stat stat{};
@@ -929,21 +946,17 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
     a.fxdata.clear();
     a.fxsave.clear();
     a.device_type.clear();
-    if(bin.HasMember("device"))
+    yyjson_val* device = yyjson_obj_get(bin, "device");
+    if(device && yyjson_is_str(device))
+        a.device_type = yyjson_get_str(device);
+    yyjson_val* binfile = yyjson_obj_get(bin, "flashdata");
+    if(binfile)
     {
-        auto const& device = bin["device"];
-        if(device.IsString())
-            a.device_type = device.GetString();
-    }
-    if(bin.HasMember("flashdata"))
-    {
-        auto const& binfile = bin["flashdata"];
-        if(!binfile.IsString())
+        if(!yyjson_is_str(binfile))
             return "ARDUBOY: FX data filename not string type";
 
         {
-            std::string binfilename(binfile.GetString(), binfile.GetStringLength());
-            int i = mz_zip_reader_locate_file(z, binfilename.c_str(), nullptr, 0);
+            int i = mz_zip_reader_locate_file(z, yyjson_get_str(binfile), nullptr, 0);
             if(i == -1)
                 return "ARDUBOY: missing FX data file indicated in info.json";
             mz_zip_archive_file_stat stat{};
@@ -953,15 +966,14 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         }
 
         // check for save bin
-        if(bin.HasMember("flashsave"))
+        yyjson_val* savefile = yyjson_obj_get(bin, "flashsave");
+        if(savefile)
         {
-            auto const& savefile = bin["flashsave"];
-            if(!savefile.IsString())
+            if(!yyjson_is_str(savefile))
                 return "ARDUBOY: FX save filename not string type";
 
             {
-                std::string savefilename(savefile.GetString(), savefile.GetStringLength());
-                int i = mz_zip_reader_locate_file(z, savefilename.c_str(), nullptr, 0);
+                int i = mz_zip_reader_locate_file(z, yyjson_get_str(savefile), nullptr, 0);
                 if(i == -1)
                     return "ARDUBOY: missing FX save file indicated in info.json";
                 mz_zip_archive_file_stat stat{};
