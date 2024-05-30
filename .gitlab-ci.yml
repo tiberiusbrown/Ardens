@@ -12,6 +12,11 @@
     CORE_ARGS: -DCMAKE_BUILD_TYPE=Release -DARDENS_LIBRETRO=1
     CMAKE_SOURCE_ROOT: .
 
+.core-defs-linux:
+  extends: .core-defs
+  variables:
+    CORE_ARGS: -DCMAKE_BUILD_TYPE=Release -DARDENS_LIBRETRO=1
+
 .core-defs-osx:
   extends: .core-defs
   variables:
