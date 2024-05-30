@@ -117,7 +117,10 @@ if(EMSCRIPTEN AND NOT ARDENS_LIBRETRO)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
-add_subdirectory(deps/fmt)
+if(NOT ARDENS_LIBRETRO)
+    add_subdirectory(deps/fmt)
+endif()
+
 add_subdirectory(deps/miniz)
 add_subdirectory(deps/bitsery)
 
@@ -481,13 +484,15 @@ if(ARDENS_PLAYER)
 
 endif()
 
-add_executable(integration_tests
-    .editorconfig
-    tests/integration_tests.cpp
-    )
-target_link_libraries(integration_tests PRIVATE ardenslib)
-target_compile_definitions(integration_tests PRIVATE
-    -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
+if(NOT ARDENS_LIBRETRO)
+    add_executable(integration_tests
+        .editorconfig
+        tests/integration_tests.cpp
+        )
+    target_link_libraries(integration_tests PRIVATE ardenslib)
+    target_compile_definitions(integration_tests PRIVATE
+        -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
+endif()
 
 if(ARDENS_DIST)
 
