@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <stdarg.h>
+#include <stdio.h>
 
 constexpr double FPS = 60.0;
 
