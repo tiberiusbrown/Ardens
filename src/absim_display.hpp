@@ -459,7 +459,7 @@ constexpr std::array<double, 16> FOSC =
 void ARDENS_FORCEINLINE display_t::update_clocking()
 {
     cycles_per_row = phase_1 + phase_2 + 50;
-    ps_per_clk = (uint64_t)std::round(1e12 * (divide_ratio + 1) / fosc());
+    ps_per_clk = (uint64_t)round(1e12 * (divide_ratio + 1) / fosc());
 }
 
 void display_t::reset()

@@ -87,13 +87,14 @@ string(REGEX REPLACE "^v" "" ARDENS_VERSION_SHORT ${ARDENS_VERSION})
 string(REGEX REPLACE "-.*" "" ARDENS_VERSION_SHORT ${ARDENS_VERSION_SHORT})
 string(REGEX MATCHALL "[0-9]+" ARDENS_VERSION_COMPONENTS "${ARDENS_VERSION_SHORT}")
 list(LENGTH ARDENS_VERSION_COMPONENTS ARDENS_VERSION_COMPONENTS_NUM)
-set(ARDENS_VERSION_MAJOR 0)
-set(ARDENS_VERSION_MINOR 0)
-set(ARDENS_VERSION_PATCH 0)
-if(ARDENS_VERSION_COMPONENTS EQUAL 3)
+if(ARDENS_VERSION_COMPONENTS_NUM EQUAL 3)
     list(GET ARDENS_VERSION_COMPONENTS 0 ARDENS_VERSION_MAJOR)
     list(GET ARDENS_VERSION_COMPONENTS 1 ARDENS_VERSION_MINOR)
     list(GET ARDENS_VERSION_COMPONENTS 2 ARDENS_VERSION_PATCH)
+else()
+    set(ARDENS_VERSION_MAJOR 0)
+    set(ARDENS_VERSION_MINOR 0)
+    set(ARDENS_VERSION_PATCH 0)
 endif()
 message(STATUS "ARDENS_VERSION_SHORT: ${ARDENS_VERSION_SHORT}")
 message(STATUS "ARDENS_VERSION_MAJOR: ${ARDENS_VERSION_MAJOR}")
@@ -117,8 +118,11 @@ if(EMSCRIPTEN AND NOT ARDENS_LIBRETRO)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
-add_subdirectory(deps/fmt)
-add_subdirectory(deps/miniz)
+if(NOT ARDENS_LIBRETRO)
+    add_subdirectory(deps/fmt)
+    add_subdirectory(deps/miniz)
+endif()
+
 add_subdirectory(deps/bitsery)
 
 if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_DEBUGGER))
@@ -421,22 +425,24 @@ if(ARDENS_DEBUGGER)
         
 endif()
 
-add_library(ardenslib STATIC
-    .editorconfig
-    ${ARDENS_SOURCES}
-    )
+if(NOT ARDENS_LIBRETRO)
+    add_library(ardenslib STATIC
+        .editorconfig
+        ${ARDENS_SOURCES}
+        )
 
-target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
+    target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
 
-target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
-target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
-target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
-target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
-target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
-target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
-#target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_ARDUBOY_FILE)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
+    #target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_ARDUBOY_FILE)
 
-target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
+    target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
+endif()
 
 if(ARDENS_PLAYER)
 
@@ -481,13 +487,15 @@ if(ARDENS_PLAYER)
 
 endif()
 
-add_executable(integration_tests
-    .editorconfig
-    tests/integration_tests.cpp
-    )
-target_link_libraries(integration_tests PRIVATE ardenslib)
-target_compile_definitions(integration_tests PRIVATE
-    -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
+if(NOT ARDENS_LIBRETRO)
+    add_executable(integration_tests
+        .editorconfig
+        tests/integration_tests.cpp
+        )
+    target_link_libraries(integration_tests PRIVATE ardenslib)
+    target_compile_definitions(integration_tests PRIVATE
+        -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
+endif()
 
 if(ARDENS_DIST)
 
@@ -570,23 +578,21 @@ if(ARDENS_LIBRETRO)
     if(LIBRETRO_STATIC)
         set(ARDENS_LIBRETRO_TYPE STATIC)
     endif()
+    file(GLOB MINIZ_SOURCES deps/miniz/*.h deps/miniz/*.c)
     add_library(ardens_libretro ${ARDENS_LIBRETRO_TYPE}
         .editorconfig
         ${ARDENS_SOURCES}
         src/libretro_core/libretro.h
         src/libretro_core/libretro_impl.cpp
+        ${MINIZ_SOURCES}
         )
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_GUI)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SCALING)
-    target_link_libraries(ardens_libretro PRIVATE
-        miniz
-        bitsery
-        )
-    target_include_directories(ardens_libretro PUBLIC src deps)
-    target_include_directories(ardens_libretro PRIVATE deps/rapidjson/include)
+    target_link_libraries(ardens_libretro PRIVATE bitsery)
+    target_include_directories(ardens_libretro PUBLIC src src/libretro_core deps deps/miniz)
     # WHY IS THIS NECESSARY???
     if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
         target_compile_options(ardens_libretro PRIVATE "/Zc:__cplusplus")
@@ -598,8 +604,18 @@ if(ARDENS_LIBRETRO)
     elseif(LIBRETRO_STATIC)
         set_target_properties(ardens_libretro PROPERTIES SUFFIX "${LIBRETRO_SUFFIX}.a")
     endif()
-    set_target_properties(ardens_libretro PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    if(NOT LIBRETRO_STATIC)
+        set_target_properties(ardens_libretro PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    endif()
     set_target_properties(ardens_libretro PROPERTIES PREFIX "")
+
+    set(LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/src/libretro_core/link.T")
+    set(CMAKE_EXE_LINKER_FLAGS "-T ${LINKER_SCRIPT}")
+    set_source_files_properties(
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/libretro_core/libretro_impl.cpp"
+        PROPERTIES
+        OBJECT_DEPENDS ${LINKER_SCRIPT}
+        )
 
 endif()
 
