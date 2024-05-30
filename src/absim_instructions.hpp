@@ -12,21 +12,25 @@ extern instr_func_t const INSTR_MAP[];
 
 struct disassembled_instr_arg_t
 {
-    enum class type : uint8_t
+    struct type
     {
-        NONE,
-        REG,
-        PTR_REG,
-        PTR_REG_PRE_DEC,
-        PTR_REG_POST_INC,
-        PTR_REG_OFFSET,
-        IO_REG,
-        IMM,
-        BIT,
-        PROG_ADDR,
-        DS_ADDR,
-        OFFSET,
-    } type;
+        enum
+        {
+            NONE,
+            REG,
+            PTR_REG,
+            PTR_REG_PRE_DEC,
+            PTR_REG_POST_INC,
+            PTR_REG_OFFSET,
+            IO_REG,
+            IMM,
+            BIT,
+            PROG_ADDR,
+            DS_ADDR,
+            OFFSET,
+        };
+    };
+    uint8_t type;
     uint16_t val;
 };
 struct disassembled_instr_t
