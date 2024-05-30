@@ -39,7 +39,7 @@ struct version_t
     uint32_t major;
     uint32_t minor;
     uint32_t patch;
-    constexpr bool operator!=(version_t const& v)
+    constexpr bool operator!=(version_t const& v) const
     {
         return major != v.major || minor != v.minor || patch != v.patch;
     }
@@ -48,17 +48,6 @@ struct version_t
         a(major, minor, patch);
     }
 };
-static constexpr version_t ct_version(char const* t)
-{
-    version_t r = {};
-    if(*t != 'v') return r;
-    r.major = ct_parse_dec(++t);
-    if(*t != '.') return r;
-    r.minor = ct_parse_dec(++t);
-    if(*t != '.') return r;
-    r.patch = ct_parse_dec(++t);
-    return r;
-}
 
 static std::string version_str(version_t const& v)
 {
@@ -67,7 +56,12 @@ static std::string version_str(version_t const& v)
     return buf;
 }
 
-constexpr auto VERSION_INFO = ct_version(ARDENS_VERSION);
+constexpr version_t VERSION_INFO =
+{
+    ARDENS_VERSION_MAJOR,
+    ARDENS_VERSION_MINOR,
+    ARDENS_VERSION_PATCH
+};
 
 namespace bitsery
 {

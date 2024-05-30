@@ -21,10 +21,8 @@ if(MSVC)
         if(${msvc_flag} MATCHES "/MD")
             string(REGEX REPLACE "/MD" "/MT" ${msvc_flag} "${${msvc_flag}}")
         endif()
-  endforeach()
-endif()
+    endforeach()
 
-if(MSVC)
     add_link_options(
         /DEBUG
         /INCREMENTAL:NO                     # Disable incremental linking.
@@ -87,7 +85,14 @@ git_describe(ARDENS_VERSION)
 message(STATUS "ARDENS_VERSION: ${ARDENS_VERSION}")
 string(REGEX REPLACE "^v" "" ARDENS_VERSION_SHORT ${ARDENS_VERSION})
 string(REGEX REPLACE "-.*" "" ARDENS_VERSION_SHORT ${ARDENS_VERSION_SHORT})
+string(REGEX MATCHALL "[0-9]+" ARDENS_VERSION_COMPONENTS "${ARDENS_VERSION_SHORT}")
+list(GET ARDENS_VERSION_COMPONENTS 0 ARDENS_VERSION_MAJOR)
+list(GET ARDENS_VERSION_COMPONENTS 1 ARDENS_VERSION_MINOR)
+list(GET ARDENS_VERSION_COMPONENTS 2 ARDENS_VERSION_PATCH)
 message(STATUS "ARDENS_VERSION_SHORT: ${ARDENS_VERSION_SHORT}")
+message(STATUS "ARDENS_VERSION_MAJOR: ${ARDENS_VERSION_MAJOR}")
+message(STATUS "ARDENS_VERSION_MINOR: ${ARDENS_VERSION_MINOR}")
+message(STATUS "ARDENS_VERSION_PATCH: ${ARDENS_VERSION_PATCH}")
 
 if(EMSCRIPTEN AND NOT ARDENS_LIBRETRO)
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -O3")
@@ -592,14 +597,23 @@ if(ARDENS_LIBRETRO)
 
 endif()
 
-set_source_files_properties(
+set(version_files
     src/absim_snapshot.cpp
     src/view_debugger.cpp
     src/common.cpp
     src/libretro_core/libretro_impl.cpp
-    PROPERTIES
-        COMPILE_OPTIONS "-DARDENS_VERSION=\"${ARDENS_VERSION}\""
     )
+foreach(f ${version_files})
+    set_property(
+        SOURCE ${f}
+        APPEND
+        PROPERTY COMPILE_DEFINITIONS
+            ARDENS_VERSION=\"${ARDENS_VERSION}\"
+            ARDENS_VERSION_MAJOR=${ARDENS_VERSION_MAJOR}
+            ARDENS_VERSION_MINOR=${ARDENS_VERSION_MINOR}
+            ARDENS_VERSION_PATCH=${ARDENS_VERSION_PATCH}
+    )
+endforeach()
 
 if(MSVC)
     if(ARDENS_DEBUGGER)
