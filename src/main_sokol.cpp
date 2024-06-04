@@ -242,13 +242,13 @@ void platform_set_clipboard_text(char const* str)
 
 void platform_send_sound()
 {
-    std::vector<int16_t> buf;
-    buf.swap(arduboy->cpu.sound_buffer);
-    if(buf.empty())
-        return;
     if(saudio_expect() <= 0)
         return;
     if(saudio_sample_rate() <= 0)
+        return;
+    std::vector<int16_t> buf;
+    buf.swap(arduboy->cpu.sound_buffer);
+    if(buf.empty())
         return;
     if(saudio_suspended())
         return;
@@ -257,7 +257,7 @@ void platform_send_sound()
 
     double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
     size_t ns = size_t(buf.size() * f + 0.5);
-    //ns = std::min<size_t>(ns, (size_t)saudio_expect());
+    ns = std::min<size_t>(ns, (size_t)saudio_expect());
     sbuf.resize(ns);
 
     float gain = volume_gain();
@@ -271,6 +271,13 @@ void platform_send_sound()
 
     if(!sbuf.empty())
         saudio_push(sbuf.data(), (int)sbuf.size());
+
+    if(sbuf.size() < buf.size())
+    {
+        printf("blah: %d %d\n", (int)sbuf.size(), (int)buf.size());
+        buf.erase(buf.begin(), buf.begin() + sbuf.size());
+        buf.swap(arduboy->cpu.sound_buffer);
+    }
 }
 
 uint64_t platform_get_ms_dt()
