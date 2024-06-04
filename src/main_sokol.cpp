@@ -79,6 +79,9 @@ static void app_init()
         saudio_desc desc{};
         desc.num_channels = 1;
         desc.sample_rate = AUDIO_FREQ;
+#ifdef __EMSCRIPTEN__
+        desc.buffer_frames = 4096;
+#endif
         saudio_setup(&desc);
     }
 
