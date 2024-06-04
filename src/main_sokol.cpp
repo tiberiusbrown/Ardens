@@ -79,9 +79,6 @@ static void app_init()
         saudio_desc desc{};
         desc.num_channels = 1;
         desc.sample_rate = AUDIO_FREQ;
-#ifdef __EMSCRIPTEN__
-        desc.buffer_frames = 4096;
-#endif
         saudio_setup(&desc);
     }
 
@@ -260,7 +257,7 @@ void platform_send_sound()
 
     double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
     size_t ns = size_t(buf.size() * f + 0.5);
-    ns = std::min<size_t>(ns, (size_t)saudio_expect());
+    //ns = std::min<size_t>(ns, (size_t)saudio_expect());
     sbuf.resize(ns);
 
     float gain = volume_gain();
