@@ -13,6 +13,11 @@ env:
 
 jobs:
 
+  extract_branch:
+    name: Extract branch name
+    shell: bash
+    run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+
   integration_tests:
     
     name: Integration Tests
@@ -121,7 +126,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         folder: ${{github.workspace}}/Ardens_web
-        target-folder: staging
+        target-folder: staging/${{ steps.extract_branch.outputs.branch }}
 
   check_linux:
   
