@@ -69,33 +69,35 @@ static void app_frame()
 void platform_send_sound()
 {
     audio_mutex.lock();
-    audio_buf.swap(arduboy->cpu.sound_buffer);
+    audio_buf.insert(
+        audio_buf.end(),
+        arduboy->cpu.sound_buffer.begin(),
+        arduboy->cpu.sound_buffer.end());
     audio_mutex.unlock();
+    arduboy->cpu.sound_buffer.clear();
 }
 
 static void audio_callback(ma_device* dev, void* output, void const* input, ma_uint32 n)
 {
+    if(n == 0) return;
+
     std::vector<int16_t> buf;
     audio_mutex.lock();
-    buf.swap(audio_buf);
+
+    buf.resize(n);
+    size_t ns = std::min<size_t>(n, audio_buf.size());
+    memcpy(buf.data(), audio_buf.data(), sizeof(int16_t) * ns);
+    int16_t x = ns != 0 ? buf[ns - 1] : 0;
+    for(size_t i = ns; i < n; ++i)
+        buf[i] = x;
+    audio_buf.erase(audio_buf.begin(), audio_buf.begin() + ns);
+
     audio_mutex.unlock();
 
     float* sbuf = (float*)output;
-    ma_device_info info{};
-    constexpr double f = 1.0;
-    size_t ns = size_t(buf.size() * f + 0.5);
-    ns = std::min<size_t>(ns, n);
-
     float gain = volume_gain();
-
-    for(size_t i = 0; i < ns; ++i)
-    {
-        size_t j = size_t(i * f);
-        if(j >= buf.size()) j = buf.size() - 1;
-        sbuf[i] = float(buf[j]) * gain;
-    }
-    for(size_t i = ns; i < n; ++i)
-        sbuf[i] = sbuf[ns - 1];
+    for(size_t i = 0; i < n; ++i)
+        sbuf[i] = float(buf[i]) * gain;
 }
 
 static void app_init()
@@ -120,6 +122,7 @@ static void app_init()
         config.playback.format = ma_format_f32;
         config.playback.channels = 1;
         config.sampleRate = AUDIO_FREQ;
+        config.noFixedSizedCallback = 1;
         config.dataCallback = audio_callback;
 
         if(ma_device_init(nullptr, &config, &audio_device) != MA_SUCCESS)
