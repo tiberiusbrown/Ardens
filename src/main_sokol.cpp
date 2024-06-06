@@ -23,13 +23,21 @@
 #ifndef __EMSCRIPTEN__
 #include "sokol/sokol_args.h"
 #endif
-#include "sokol/sokol_audio.h"
 #include "sokol/sokol_gfx.h"
 #include "sokol/sokol_glue.h"
 #include "sokol/sokol_time.h"
 #include "sokol/sokol_imgui.h"
 
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
+
 #include "ardens_icon.hpp"
+
+#include <mutex>
+
+static ma_device audio_device;
+static std::vector<int16_t> audio_buf;
+static std::mutex audio_mutex;
 
 static void app_frame()
 {
@@ -58,6 +66,40 @@ static void app_frame()
     sg_commit();
 }
 
+void platform_send_sound()
+{
+    audio_mutex.lock();
+    audio_buf.insert(
+        audio_buf.end(),
+        arduboy->cpu.sound_buffer.begin(),
+        arduboy->cpu.sound_buffer.end());
+    audio_mutex.unlock();
+    arduboy->cpu.sound_buffer.clear();
+}
+
+static void audio_callback(ma_device* dev, void* output, void const* input, ma_uint32 n)
+{
+    if(n == 0) return;
+
+    std::vector<int16_t> buf;
+    audio_mutex.lock();
+
+    buf.resize(n);
+    size_t ns = std::min<size_t>(n, audio_buf.size());
+    memcpy(buf.data(), audio_buf.data(), sizeof(int16_t) * ns);
+    int16_t x = ns != 0 ? buf[ns - 1] : 0;
+    for(size_t i = ns; i < n; ++i)
+        buf[i] = x;
+    audio_buf.erase(audio_buf.begin(), audio_buf.begin() + ns);
+
+    audio_mutex.unlock();
+
+    float* sbuf = (float*)output;
+    float gain = volume_gain();
+    for(size_t i = 0; i < n; ++i)
+        sbuf[i] = float(buf[i]) * gain;
+}
+
 static void app_init()
 {
     stm_setup();
@@ -76,11 +118,17 @@ static void app_init()
     }
 
     {
-        saudio_desc desc{};
-        desc.num_channels = 1;
-        desc.sample_rate = AUDIO_FREQ;
-        desc.packet_frames = 2048;
-        saudio_setup(&desc);
+        ma_device_config config = ma_device_config_init(ma_device_type_playback);
+        config.playback.format = ma_format_f32;
+        config.playback.channels = 1;
+        config.sampleRate = AUDIO_FREQ;
+        config.noFixedSizedCallback = 1;
+        config.dataCallback = audio_callback;
+
+        if(ma_device_init(nullptr, &config, &audio_device) != MA_SUCCESS)
+            printf("Audion initialization failed\n");
+        else
+            ma_device_start(&audio_device);
     }
 
     init();
@@ -189,7 +237,7 @@ static void app_cleanup()
 #ifndef __EMSCRIPTEN__
     sargs_shutdown();
 #endif
-    saudio_shutdown();
+    ma_device_uninit(&audio_device);
     simgui_shutdown();
     platform_destroy_texture(display_texture);
 #ifndef ARDENS_NO_DEBUGGER
@@ -239,39 +287,6 @@ void platform_texture_scale_nearest(texture_t t)
 void platform_set_clipboard_text(char const* str)
 {
     sapp_set_clipboard_string(str);
-}
-
-void platform_send_sound()
-{
-    std::vector<int16_t> buf;
-    buf.swap(arduboy->cpu.sound_buffer);
-    if(buf.empty())
-        return;
-    if(saudio_expect() <= 0)
-        return;
-    if(saudio_sample_rate() <= 0)
-        return;
-    if(saudio_suspended())
-        return;
-
-    std::vector<float> sbuf;
-
-    double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
-    size_t ns = size_t(buf.size() * f + 0.5);
-    ns = std::min<size_t>(ns, (size_t)saudio_expect());
-    sbuf.resize(ns);
-
-    float gain = volume_gain();
-
-    for(size_t i = 0; i < sbuf.size(); ++i)
-    {
-        size_t j = size_t(i * f);
-        if(j >= buf.size()) j = buf.size() - 1;
-        sbuf[i] = float(buf[j]) * gain;
-    }
-
-    if(!sbuf.empty())
-        saudio_push(sbuf.data(), (int)sbuf.size());
 }
 
 uint64_t platform_get_ms_dt()
