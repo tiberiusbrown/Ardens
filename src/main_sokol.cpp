@@ -248,6 +248,8 @@ void platform_send_sound()
         return;
     if(saudio_sample_rate() <= 0)
         return;
+    if(saudio_channels() <= 0)
+        return;
     if(buf.empty())
         return;
     if(saudio_suspended())
