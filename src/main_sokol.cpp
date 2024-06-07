@@ -77,7 +77,7 @@ static void app_init()
 
     {
         saudio_desc desc{};
-        desc.num_channels = 2;
+        desc.num_channels = 1;
         desc.sample_rate = AUDIO_FREQ;
         saudio_setup(&desc);
     }
