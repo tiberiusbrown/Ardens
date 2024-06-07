@@ -255,10 +255,11 @@ void platform_send_sound()
 
     std::vector<float> sbuf;
 
+    int nc = saudio_channels();
     double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
     size_t ns = size_t(buf.size() * f + 0.5);
     ns = std::min<size_t>(ns, (size_t)saudio_expect());
-    sbuf.resize(ns);
+    sbuf.resize(ns * nc);
 
     float gain = volume_gain();
 
@@ -266,16 +267,16 @@ void platform_send_sound()
     {
         size_t j = size_t(i * f);
         if(j >= buf.size()) j = buf.size() - 1;
-        sbuf[i] = float(buf[j]) * gain;
+        for(int c = 0; c < nc; ++c)
+            sbuf[i * nc + c] = float(buf[j]) * gain;
     }
 
     if(!sbuf.empty())
         saudio_push(sbuf.data(), (int)sbuf.size());
 
-    if(sbuf.size() < buf.size())
+    if(ns < buf.size())
     {
-        printf("blah: %d %d\n", (int)sbuf.size(), (int)buf.size());
-        buf.erase(buf.begin(), buf.begin() + sbuf.size());
+        buf.erase(buf.begin(), buf.begin() + ns);
         buf.swap(arduboy->cpu.sound_buffer);
     }
 }
