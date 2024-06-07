@@ -242,12 +242,12 @@ void platform_set_clipboard_text(char const* str)
 
 void platform_send_sound()
 {
+    std::vector<int16_t> buf;
+    buf.swap(arduboy->cpu.sound_buffer);
     if(saudio_expect() <= 0)
         return;
     if(saudio_sample_rate() <= 0)
         return;
-    std::vector<int16_t> buf;
-    buf.swap(arduboy->cpu.sound_buffer);
     if(buf.empty())
         return;
     if(saudio_suspended())
