@@ -79,7 +79,7 @@ static void app_init()
         saudio_desc desc{};
         desc.num_channels = 1;
         desc.sample_rate = AUDIO_FREQ;
-        desc.packet_frames = 2048;
+        desc.num_packets = 256;
         saudio_setup(&desc);
     }
 
@@ -245,33 +245,45 @@ void platform_send_sound()
 {
     std::vector<int16_t> buf;
     buf.swap(arduboy->cpu.sound_buffer);
-    if(buf.empty())
-        return;
+
     if(saudio_expect() <= 0)
         return;
     if(saudio_sample_rate() <= 0)
+        return;
+    if(saudio_channels() <= 0)
+        return;
+    if(buf.empty())
         return;
     if(saudio_suspended())
         return;
 
     std::vector<float> sbuf;
 
+    int nc = saudio_channels();
     double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
     size_t ns = size_t(buf.size() * f + 0.5);
     ns = std::min<size_t>(ns, (size_t)saudio_expect());
-    sbuf.resize(ns);
+    sbuf.resize(ns * nc);
 
     float gain = volume_gain();
 
-    for(size_t i = 0; i < sbuf.size(); ++i)
+    for(size_t i = 0; i < ns; ++i)
     {
         size_t j = size_t(i * f);
         if(j >= buf.size()) j = buf.size() - 1;
-        sbuf[i] = float(buf[j]) * gain;
+        float x = float(buf[j]) * gain;
+        for(int c = 0; c < nc; ++c)
+            sbuf[i * nc + c] = x;
     }
 
     if(!sbuf.empty())
-        saudio_push(sbuf.data(), (int)sbuf.size());
+        saudio_push(sbuf.data(), (int)ns);
+
+    if(ns < buf.size())
+    {
+        buf.erase(buf.begin(), buf.begin() + ns);
+        buf.swap(arduboy->cpu.sound_buffer);
+    }
 }
 
 uint64_t platform_get_ms_dt()

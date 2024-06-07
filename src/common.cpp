@@ -536,7 +536,7 @@ void frame_logic()
     uint64_t dt = platform_get_ms_dt();
     ms_since_start += dt;
     ms_since_touch += dt;
-    if(dt > 30) dt = 30;
+    if(dt > 100) dt = 100;
     if(!arduboy->paused)
     {
         // PINF: 4,5,6,7=D,L,R,U
