@@ -77,7 +77,7 @@ static void app_init()
 
     {
         saudio_desc desc{};
-        desc.num_channels = 1;
+        desc.num_channels = 2;
         desc.sample_rate = AUDIO_FREQ;
         saudio_setup(&desc);
     }
@@ -269,12 +269,13 @@ void platform_send_sound()
     {
         size_t j = size_t(i * f);
         if(j >= buf.size()) j = buf.size() - 1;
+        float x = float(buf[j]) * gain;
         for(int c = 0; c < nc; ++c)
-            sbuf[i * nc + c] = float(buf[j]) * gain;
+            sbuf[i * nc + c] = x;
     }
 
     if(!sbuf.empty())
-        saudio_push(sbuf.data(), (int)sbuf.size());
+        saudio_push(sbuf.data(), (int)ns);
 
     if(ns < buf.size())
     {
