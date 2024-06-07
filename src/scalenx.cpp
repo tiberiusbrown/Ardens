@@ -10,6 +10,11 @@ static uint8_t tmpbuf[128 * 64 * 2 * 2];
 
 int display_texture_zoom = -1;
 
+static uint8_t led_modulate(uint8_t x, uint8_t led)
+{
+    return std::min<uint8_t>(255, (x * 3 + led) / 4);
+}
+
 // palette handling
 void palette_rgba(int palette, uint8_t x, uint8_t y[4])
 {
@@ -48,6 +53,19 @@ void palette_rgba(int palette, uint8_t x, uint8_t y[4])
     default:
         y[0] = y[1] = y[2] = x;
         break;
+    }
+    uint8_t r, g, b;
+    arduboy->cpu.led_rgb(r, g, b);
+    uint8_t ledm = std::max(std::max(r, g), b);
+    if(ledm != 0)
+    {
+        float f = 255.f / ledm;
+        r = (uint8_t)std::min<float>(255.f, r * f);
+        g = (uint8_t)std::min<float>(255.f, g * f);
+        b = (uint8_t)std::min<float>(255.f, b * f);
+        y[0] = led_modulate(y[0], r);
+        y[1] = led_modulate(y[1], g);
+        y[2] = led_modulate(y[2], b);
     }
     y[3] = 255;
 }

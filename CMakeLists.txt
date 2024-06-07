@@ -219,9 +219,11 @@ set(IMPLOT_SOURCES
     #deps/implot/implot_demo.cpp
     deps/implot/implot_items.cpp
     )
-set(GIFENC_SOURCES
-    deps/gifenc/gifenc.h
-    deps/gifenc/gifenc.c
+set(CGIF_SOURCES
+    deps/cgif/inc/cgif.h
+    deps/cgif/src/cgif.c
+    deps/cgif/inc/cgif_raw.h
+    deps/cgif/src/cgif_raw.c
     )
 set(SOKOL_SOURCES
     deps/sokol/sokol_app.h
@@ -385,7 +387,7 @@ if(ARDENS_DEBUGGER)
         deps/stb_image_write.h
         ${IMGUI_SOURCES}
         ${IMPLOT_SOURCES}
-        ${GIFENC_SOURCES}
+        ${CGIF_SOURCES}
         ${EM_FILE_BROWSER_SOURCES}
         ${SIMPLE_FFT_SOURCES}
         ${HQX_SOURCES}
@@ -416,7 +418,7 @@ if(ARDENS_DEBUGGER)
         deps
         deps/imgui
         deps/implot
-        deps/gifenc
+        deps/cgif/inc
         deps/Simple-FFT/include
         deps/hqx/include
         deps/rapidjson/include
@@ -470,14 +472,14 @@ if(ARDENS_PLAYER)
 
         deps/stb_image_write.h
         ${IMGUI_SOURCES}
-        ${GIFENC_SOURCES}
+        ${CGIF_SOURCES}
         ${EM_FILE_BROWSER_SOURCES}
         ${SOKOL_SOURCES}
         )
     target_include_directories(ArdensPlayer PRIVATE
         deps
         deps/imgui
-        deps/gifenc
+        deps/cgif/inc
         )
     target_link_libraries(ArdensPlayer PRIVATE
         ardenslib
@@ -543,7 +545,7 @@ if(ARDENS_DIST)
 
             deps/stb_image_write.h
             ${IMGUI_SOURCES}
-            ${GIFENC_SOURCES}
+            ${CGIF_SOURCES}
             ${EM_FILE_BROWSER_SOURCES}
             ${SOKOL_SOURCES}
 
@@ -553,7 +555,7 @@ if(ARDENS_DIST)
         target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE
             deps
             deps/imgui
-            deps/gifenc
+            deps/cgif/inc
             )
         target_link_libraries("${ARDENS_DIST_TARGET}" PRIVATE
             ardenslib
