@@ -246,7 +246,7 @@ void platform_send_sound()
     std::vector<int16_t> buf;
     buf.swap(arduboy->cpu.sound_buffer);
 
-#if 1
+#if 0
     int nc = saudio_channels();
     float gain = volume_gain();
     double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
