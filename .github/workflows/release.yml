@@ -108,6 +108,13 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         folder: ${{github.workspace}}/Ardens_web
+         
+    - name: Deploy to GitHub Pages (version)
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        folder: ${{github.workspace}}/Ardens_web
+        target-folder: ${{ needs.release.outputs.tag }}
   
     - name: Release
       env:
