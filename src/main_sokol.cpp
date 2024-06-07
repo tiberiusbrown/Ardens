@@ -265,7 +265,7 @@ void platform_send_sound()
 
     float gain = volume_gain();
 
-    for(size_t i = 0; i < sbuf.size(); ++i)
+    for(size_t i = 0; i < ns; ++i)
     {
         size_t j = size_t(i * f);
         if(j >= buf.size()) j = buf.size() - 1;
