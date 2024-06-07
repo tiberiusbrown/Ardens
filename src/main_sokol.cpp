@@ -77,7 +77,7 @@ static void app_init()
 
     {
         saudio_desc desc{};
-        desc.num_channels = 2;
+        desc.num_channels = 1;
         desc.sample_rate = AUDIO_FREQ;
         desc.num_packets = 256;
         saudio_setup(&desc);
@@ -246,24 +246,6 @@ void platform_send_sound()
     std::vector<int16_t> buf;
     buf.swap(arduboy->cpu.sound_buffer);
 
-#if 0
-    int nc = saudio_channels();
-    float gain = volume_gain();
-    double const f = double(saudio_sample_rate()) / AUDIO_FREQ;
-    std::vector<float> sbuf;
-    size_t ns = size_t(buf.size() * f + 0.5);
-    sbuf.resize(ns * nc);
-    for(size_t i = 0; i < ns; ++i)
-    {
-        size_t j = size_t(i * f);
-        if(j >= buf.size()) j = buf.size() - 1;
-        float x = float(buf[j]) * gain;
-        for(int c = 0; c < nc; ++c)
-            sbuf[i * nc + c] = x;
-    }
-    saudio_push(sbuf.data(), (int)ns);
-#else
-
     if(saudio_expect() <= 0)
         return;
     if(saudio_sample_rate() <= 0)
@@ -302,7 +284,6 @@ void platform_send_sound()
         buf.erase(buf.begin(), buf.begin() + ns);
         buf.swap(arduboy->cpu.sound_buffer);
     }
-#endif
 }
 
 uint64_t platform_get_ms_dt()
