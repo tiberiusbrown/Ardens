@@ -21,6 +21,9 @@ void atmega32u4_t::sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_
 ARDENS_FORCEINLINE void atmega32u4_t::cycle_sound(uint32_t cycles)
 {
     uint32_t samples = increase_counter(sound_cycle, cycles, SOUND_CYCLES);
+    if(samples == 0)
+        return;
+
     auto pins = sound_enabled;
 
     if(pins == 0)

@@ -69,6 +69,8 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         {
             i.src = src;
             i.dst = dst;
+            if(src == dst && i.func == INSTR_EOR)
+                i.func = INSTR_CLR;
             return;
         }
     }

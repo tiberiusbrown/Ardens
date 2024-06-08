@@ -105,7 +105,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
             t -= cycle_count;
             single_instr_only |= (t < MAX_INSTR_CYCLES);
-            max_merged_cycles = std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
+            max_merged_cycles = (uint32_t)std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
         }
 
         executing_instr_pc = pc;

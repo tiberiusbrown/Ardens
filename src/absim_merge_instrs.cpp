@@ -31,11 +31,12 @@ void atmega32u4_t::merge_instrs()
 {
     memcpy(merged_prog.data(), &decoded_prog, array_bytes(merged_prog));
 
-    for(size_t n = 0; n < merged_prog.size(); ++n)
+    for(size_t n = 0; n + 1 < merged_prog.size(); ++n)
     {
-        auto& i = merged_prog[n];
+        auto& i0 = merged_prog[n + 0];
+        auto& i1 = merged_prog[n + 1];
 
-        if(i.func == INSTR_PUSH)
+        if(i0.func == INSTR_PUSH)
         {
             uint32_t t;
             for(t = 1; t < MAX_INSTR_CYCLES / 2; ++t)
@@ -45,13 +46,13 @@ void atmega32u4_t::merge_instrs()
             }
             if(t > 1)
             {
-                i.func = INSTR_MERGED_PUSH_N;
-                i.word = (uint8_t)t;
+                i0.func = INSTR_MERGED_PUSH_N;
+                i0.word = (uint8_t)t;
             }
             continue;
         }
 
-        if(i.func == INSTR_POP)
+        if(i0.func == INSTR_POP)
         {
             uint32_t t;
             for(t = 1; t < MAX_INSTR_CYCLES / 2; ++t)
@@ -61,13 +62,13 @@ void atmega32u4_t::merge_instrs()
             }
             if(t > 1)
             {
-                i.func = INSTR_MERGED_POP_N;
-                i.word = (uint8_t)t;
+                i0.func = INSTR_MERGED_POP_N;
+                i0.word = (uint8_t)t;
             }
             continue;
         }
 
-        if(i.func == INSTR_LDI)
+        if(i0.func == INSTR_LDI)
         {
             uint32_t t;
             for(t = 1; t < MAX_INSTR_CYCLES; ++t)
@@ -77,21 +78,28 @@ void atmega32u4_t::merge_instrs()
             }
             if(t > 1)
             {
-                i.func = INSTR_MERGED_LDI_N;
-                i.word = (uint8_t)t;
+                i0.func = INSTR_MERGED_LDI_N;
+                i0.word = (uint8_t)t;
             }
             continue;
         }
 
-        if(i.func == INSTR_DEC && n + 1 < merged_prog.size())
+        if(i0.func == INSTR_DEC)
         {
             auto const& ti = merged_prog[n + 1];
             if(ti.func == INSTR_BRBC && ti.src == 1)
-                i.func = INSTR_MERGED_DEC_BRNE;
+                i0.func = INSTR_MERGED_DEC_BRNE;
             continue;
         }
 
-
+        if(i0.func == INSTR_ADD &&
+            i1.func == INSTR_ADC &&
+            i0.dst + 1 == i1.dst &&
+            i0.src + 1 == i1.src)
+        {
+            i0.func = INSTR_MERGED_ADD_ADC;
+            continue;
+        }
     }
 }
 

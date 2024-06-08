@@ -25,6 +25,7 @@ static char const* get_instr_name(avr_instr_t const& i)
         case INSTR_AND     : return "and";
         case INSTR_OR      : return "or";
         case INSTR_EOR     : return "eor";
+        case INSTR_CLR     : return "clr";
         case INSTR_ADD     : return "add";
         case INSTR_ADC     : return "adc";
         case INSTR_SUB     : return "sub";
@@ -314,7 +315,7 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
             d.name = "rol";
             d.arg1.type = disassembled_instr_arg_t::type::NONE;
         }
-        if(i.func == INSTR_EOR)
+        if(i.func == INSTR_EOR || i.func == INSTR_CLR)
         {
             d.name = "clr";
             d.arg1.type = disassembled_instr_arg_t::type::NONE;
