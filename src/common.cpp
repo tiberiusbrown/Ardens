@@ -604,7 +604,7 @@ void frame_logic()
         arduboy->display.enable_filter = settings.display_auto_filter;
 
         arduboy->display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy->display.ref_segment_current = 0.195;
+        arduboy->display.ref_segment_current = 0.195f;
         switch(settings.display_current_modeling)
         {
         case 0:  arduboy->display.current_limit_slope = 0.f;   break;
@@ -867,7 +867,7 @@ void imgui_content()
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
-        int ab = 0;
+        size_t ab = 0;
         auto mask = arduboy->cpu.autobreaks & arduboy->cpu.enabled_autobreaks;
         for(size_t i = 1; i < mask.size(); ++i)
         {
