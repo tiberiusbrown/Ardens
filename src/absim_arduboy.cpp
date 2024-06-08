@@ -440,13 +440,18 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     }
 #endif
 
-    bool actual_vsync = display.advance(cycles * CYCLE_PS);
-    fx.advance(cycles * CYCLE_PS);
-
-    if(frame_bytes_total == 0)
-        vsync |= actual_vsync;
+    {
+        auto cycles_ps = cycles * CYCLE_PS;
+        bool actual_vsync = display.advance(cycles_ps);
+        fx.advance(cycles_ps);
+#ifndef ARDENS_NO_DEBUGGER
+        if(frame_bytes_total == 0)
+            vsync |= actual_vsync;
+#endif
+    }
 
 #ifndef ARDENS_NO_DEBUGGER
+
     if(vsync)
     {
         // vsync occurred and we are profiling: store frame cpu usage
@@ -524,8 +529,6 @@ void arduboy_t::advance_instr()
 
 void arduboy_t::advance(uint64_t ps)
 {
-    cpu.sound_buffer.reserve(1024);
-
     cpu.autobreaks = 0;
 
     ps += ps_rem;
@@ -547,8 +550,6 @@ void arduboy_t::advance(uint64_t ps)
 
     while(ps >= PS_BUFFER)
     {
-        uint32_t prev_pc = cpu.pc;
-
         uint32_t cycles = cycle();
 
         ps -= cycles * CYCLE_PS;

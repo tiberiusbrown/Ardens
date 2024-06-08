@@ -16,7 +16,7 @@
 
 #include <imgui.h>
 
-#define PROFILING 1
+#define PROFILING 0
 
 constexpr int SPEEDUP = PROFILING ? 10 : 1;
 

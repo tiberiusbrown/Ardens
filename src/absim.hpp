@@ -700,7 +700,7 @@ struct atmega32u4_t
     void update_usb();
     void reset_usb();
 
-    void check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
+    bool check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
     uint64_t cycle_count;
 

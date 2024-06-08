@@ -25,6 +25,7 @@ void atmega32u4_t::reset()
     data[0x2b] |= 0x20;
 
     pc = 0;
+    executing_instr_pc = 0;
 
     just_read = 0xffffffff;
     just_written = 0xffffffff;

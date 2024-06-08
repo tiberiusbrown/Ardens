@@ -341,6 +341,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
 void atmega32u4_t::decode()
 {
     uint16_t w0, w1, lo, hi;
+    int lasti = int(last_addr / 2);
     for(int i = 0; i < PROG_SIZE_BYTES / 2; ++i)
     {
         lo = prog[i * 2 + 0];
@@ -353,7 +354,8 @@ void atmega32u4_t::decode()
             hi = prog[i * 2 + 3];
             w1 = lo | (hi << 8);
         }
-        decode_instr(decoded_prog[i], w0, w1);
+        if(i < lasti)
+            decode_instr(decoded_prog[i], w0, w1);
     }
 
     // disassemble
