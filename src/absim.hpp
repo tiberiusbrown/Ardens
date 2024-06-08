@@ -839,7 +839,22 @@ struct w25q128_t
     uint8_t releasing;
     uint64_t busy_ps_rem;
     uint32_t current_addr;
-    std::string command;
+
+    enum
+    {
+        CMD_NONE,
+        CMD_RELEASE_POWER_DOWN,
+        CMD_PAGE_PROGRAM,
+        CMD_READ_DATA,
+        CMD_WRITE_DISABLE,
+        CMD_READ_STATUS_REGISTER_1,
+        CMD_WRITE_ENABLE,
+        CMD_SECTOR_ERASE,
+        CMD_UNKNOWN,
+        NUM_CMDS,
+    };
+
+    uint32_t command;
 
     uint32_t min_page;
     uint32_t max_page;

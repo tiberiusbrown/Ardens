@@ -2,6 +2,19 @@
 
 #include "common.hpp"
 
+static char const* CMD_STRS[absim::w25q128_t::NUM_CMDS] =
+{
+    "None",
+    "Release Power-down",
+    "Page Program",
+    "Read Data",
+    "Write Disable",
+    "Read Status Register-1",
+    "Write Enable",
+    "Sector Erase",
+    "<unknown>",
+};
+
 void window_fx_internals(bool& open)
 {
 	using namespace ImGui;
@@ -10,9 +23,9 @@ void window_fx_internals(bool& open)
     SetNextWindowSize({ 300 * pixel_ratio, 100 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("FX Internals", &open) && arduboy->cpu.decoded)
     {
-        if(!arduboy->fx.command.empty())
+        if(!arduboy->fx.command != absim::w25q128_t::CMD_NONE)
         {
-            Text("Processing command: %s", arduboy->fx.command.c_str());
+            Text("Processing command: %s", CMD_STRS[arduboy->fx.command]);
             Text("Internal address: 0x%06x", arduboy->fx.current_addr);
             SameLine();
             if(SmallButton("Jump"))
