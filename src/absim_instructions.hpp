@@ -125,6 +125,7 @@ enum
     INSTR_MERGED_DEC_BRNE,
 };
 
+uint32_t instr_unknown (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_rcall   (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_call    (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_icall   (atmega32u4_t& cpu, avr_instr_t const& i);

@@ -9,7 +9,7 @@ namespace absim
 
 instr_func_t const INSTR_MAP[] =
 {
-    instr_nop,
+    instr_unknown,
     instr_rcall,
     instr_call,
     instr_icall,
@@ -120,6 +120,13 @@ uint32_t instr_nop(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     (void)i;
     cpu.pc += 1;
+    return 1;
+}
+
+uint32_t instr_unknown(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    (void)cpu;
+    (void)i;
     return 1;
 }
 

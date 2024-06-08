@@ -345,39 +345,55 @@ struct atmega32u4_t
     //std::array<bool, AB_NUM> enable_autobreaks;
     ARDENS_FORCEINLINE void autobreak(autobreak_t t)
     {
+#ifndef ARDENS_NO_DEBUGGER
         autobreaks.set(t);
+#endif
     }
     ARDENS_FORCEINLINE bool should_autobreak() const
     {
+#ifndef ARDENS_NO_DEBUGGER
         return autobreaks.any() && (autobreaks & enabled_autobreaks).any();
+#else
+        return false;
+#endif
     }
     ARDENS_FORCEINLINE bool should_autobreak_gui() const
     {
+#ifndef ARDENS_NO_DEBUGGER
         auto ab = autobreaks;
         ab.reset(AB_BREAK);
         return (ab & enabled_autobreaks).any();
+#else
+        return false;
+#endif
     }
 
     ARDENS_FORCEINLINE void check_deref(uint16_t addr)
     {
+#ifndef ARDENS_NO_DEBUGGER
         if(addr == 0)
             autobreak(AB_NULL_DEREF);
         else if(addr >= data.size())
             autobreak(AB_OOB_DEREF);
+#endif
     }
 
     ARDENS_FORCEINLINE void check_stack_overflow(uint16_t tsp)
     {
+#ifndef ARDENS_NO_DEBUGGER
         if(!pushed_at_least_once) return;
         // check min stack
         min_stack = std::min<uint32_t>(min_stack, tsp);
         if(tsp < stack_check)
             autobreak(AB_STACK_OVERFLOW);
+#endif
     }
 
     ARDENS_FORCEINLINE void check_stack_overflow()
     {
+#ifndef ARDENS_NO_DEBUGGER
         check_stack_overflow(sp());
+#endif
     }
 
     ARDENS_FORCEINLINE void push(uint8_t x)
@@ -419,12 +435,14 @@ struct atmega32u4_t
     uint32_t num_stack_frames;
     ARDENS_FORCEINLINE void push_stack_frame(uint16_t ret_addr)
     {
-        //assert(num_stack_frames < stack_frames.size());
+#ifndef ARDENS_NO_DEBUGGER
         if(num_stack_frames < stack_frames.size())
             stack_frames[num_stack_frames++] = { ret_addr, sp() };
+#endif
     }
     ARDENS_FORCEINLINE void pop_stack_frame()
     {
+#ifndef ARDENS_NO_DEBUGGER
         auto tsp = sp();
         while(num_stack_frames > 0)
         {
@@ -432,6 +450,7 @@ struct atmega32u4_t
             if(f.sp > tsp) break;
             --num_stack_frames;
         }
+#endif
     }
 
     static constexpr int MAX_INSTR_CYCLES = 32;

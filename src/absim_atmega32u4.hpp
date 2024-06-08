@@ -77,46 +77,54 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     just_written = 0xffffffff;
     just_interrupted = false;
     bool single_instr_only = true;
-    uint32_t max_merged_cycles;
 
     if(active)
     {
         // not sleeping: execute instruction(s)
 
-        uint64_t t = timer0.next_update_cycle - cycle_count;
-        t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
-        t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
-        t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
-        t = std::min<uint64_t>(t, usb_next_update_cycle - cycle_count);
-        t = std::min<uint64_t>(t, spi_done_cycle - cycle_count);
-
-        max_merged_cycles = std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
+        uint32_t max_merged_cycles = 1;
 
         single_instr_only = (
             spi_busy ||
             eeprom_busy ||
             pll_busy ||
             adc_busy ||
-            t < MAX_INSTR_CYCLES ||
-            no_merged);
+#ifndef ARDENS_NO_DEBUGGER
+            no_merged ||
+#endif
+            false);
+
+        if(!single_instr_only)
+        {
+            uint64_t t = timer0.next_update_cycle;
+            t = std::min<uint64_t>(t, timer1.next_update_cycle);
+            t = std::min<uint64_t>(t, timer3.next_update_cycle);
+            t = std::min<uint64_t>(t, timer4.next_update_cycle);
+            t = std::min<uint64_t>(t, usb_next_update_cycle);
+            t = std::min<uint64_t>(t, spi_done_cycle);
+
+            t -= cycle_count;
+            single_instr_only |= (t < MAX_INSTR_CYCLES);
+            max_merged_cycles = std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
+        }
 
         executing_instr_pc = pc;
+        uint16_t last_pc = last_addr / 2;
         if(single_instr_only)
         {
-            if(pc >= decoded_prog.size())
-                return cycles;
+            if(pc >= last_pc)
+            {
+                autobreak(AB_OOB_PC);
+                return cycles + 1;
+            }
             auto const& i = decoded_prog[pc];
             prev_sreg = sreg();
-            if(i.func == INSTR_UNKNOWN)
-                cycles = 1;
-            else
-                cycles = INSTR_MAP[i.func](*this, i);
+            cycles = INSTR_MAP[i.func](*this, i);
             cycle_count += cycles;
         }
         else
         {
             cycles = 0;
-            uint16_t last_pc = last_addr / 2;
             do
             {
                 if(pc >= last_pc)
@@ -126,11 +134,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 }
                 auto const& i = merged_prog[pc];
                 prev_sreg = sreg();
-                if(i.func == INSTR_UNKNOWN)
-                {
-                    cycles += 1;
-                    break;
-                }
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
                 cycles += instr_cycles;
                 cycle_count += instr_cycles;

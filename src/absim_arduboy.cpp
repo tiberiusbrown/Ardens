@@ -428,6 +428,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
         cpu.spi_data_latched = false;
     }
 
+#ifndef ARDENS_NO_DEBUGGER
     profiler_total_with_sleep += cycles;
     if(cpu.active || cpu.wakeup_cycles != 0)
     {
@@ -437,12 +438,15 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
             profiler_counts[cpu.executing_instr_pc] += cycles;
         }
     }
+#endif
 
     bool actual_vsync = display.advance(cycles * CYCLE_PS);
     fx.advance(cycles * CYCLE_PS);
 
     if(frame_bytes_total == 0)
         vsync |= actual_vsync;
+
+#ifndef ARDENS_NO_DEBUGGER
     if(vsync)
     {
         // vsync occurred and we are profiling: store frame cpu usage
@@ -463,7 +467,9 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
                 frame_cpu_usage.begin() + 32768);
         }
     }
+#endif
 
+#ifndef ARDENS_NO_DEBUGGER
     // time-based cpu usage
     if(cpu.cycle_count >= prev_ms_cycles)
     {
@@ -495,6 +501,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
                 ms_cpu_usage.begin() + 32768);
         }
     }
+#endif
 
     return cycles;
 }
@@ -517,6 +524,8 @@ void arduboy_t::advance_instr()
 
 void arduboy_t::advance(uint64_t ps)
 {
+    cpu.sound_buffer.reserve(1024);
+
     cpu.autobreaks = 0;
 
     ps += ps_rem;
@@ -525,6 +534,7 @@ void arduboy_t::advance(uint64_t ps)
     if(!cpu.decoded) return;
     if(paused) return;
 
+#ifndef ARDENS_NO_DEBUGGER
     bool any_breakpoints =
         allow_nonstep_breakpoints && (
         breakpoints.any() ||
@@ -533,6 +543,7 @@ void arduboy_t::advance(uint64_t ps)
         break_step != 0xffffffff;
 
     cpu.no_merged = profiler_enabled || any_breakpoints;
+#endif
 
     while(ps >= PS_BUFFER)
     {
@@ -542,6 +553,7 @@ void arduboy_t::advance(uint64_t ps)
 
         ps -= cycles * CYCLE_PS;
 
+#ifndef ARDENS_NO_DEBUGGER
         if(any_breakpoints)
         {
             if(cpu.pc == break_step || allow_nonstep_breakpoints && (
@@ -553,12 +565,15 @@ void arduboy_t::advance(uint64_t ps)
                 break;
             }
         }
+#endif
 
+#ifndef ARDENS_NO_DEBUGGER
         if(cpu.should_autobreak())
         {
             paused = true;
             break;
         }
+#endif
 
     }
 

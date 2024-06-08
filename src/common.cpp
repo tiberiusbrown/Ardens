@@ -16,9 +16,9 @@
 
 #include <imgui.h>
 
-constexpr int PROFILING = 0;
+#define PROFILING 1
 
-constexpr int SPEEDUP = PROFILING ? 50 : 1;
+constexpr int SPEEDUP = PROFILING ? 10 : 1;
 
 #ifdef ARDENS_DIST
 extern "C" {
@@ -338,7 +338,7 @@ void define_font()
     cfg.OversampleH = 2;
     cfg.OversampleV = 2;
     io.Fonts->Clear();
-#ifndef ARDENS_NO_GUI
+#if !defined(ARDENS_NO_GUI) && !PROFILING
     io.Fonts->AddFontFromMemoryTTF(
         (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
 #endif
@@ -896,9 +896,9 @@ void imgui_content()
     modal_about();
 #endif
 
-#ifndef ARDENS_NO_GUI
-if(PROFILING)
-    ImGui::ShowMetricsWindow();
-    //ImGui::ShowDemoWindow();
+#if PROFILING
+        ImGui::ShowMetricsWindow();
 #endif
+
+    //ImGui::ShowDemoWindow();
 }
