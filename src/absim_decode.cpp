@@ -193,6 +193,28 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
             else
             {
                 i.func = INSTR_LD_ST;
+                // specialize ld/st
+                int t = 0;
+                if(i.dst <= 2) t = 2;
+                else if(i.dst <= 10) t = 1;
+                if(!i.word)
+                {
+                    if(i.dst & 0x1)
+                        i.func = INSTR_LD_X_INC + t;
+                    else if(i.dst & 0x2)
+                        i.func = INSTR_LD_X_DEC + t;
+                    else
+                        i.func = INSTR_LD_X + t;
+                }
+                else
+                {
+                    if(i.dst & 0x1)
+                        i.func = INSTR_ST_X_INC + t;
+                    else if(i.dst & 0x2)
+                        i.func = INSTR_ST_X_DEC + t;
+                    else
+                        i.func = INSTR_ST_X + t;
+                }
             }
             return;
         }

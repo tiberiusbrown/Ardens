@@ -78,6 +78,24 @@ enum
     INSTR_STS,
     INSTR_LDD_STD,
     INSTR_LD_ST,
+    INSTR_LD_X,
+    INSTR_LD_Y,
+    INSTR_LD_Z,
+    INSTR_LD_X_INC,
+    INSTR_LD_Y_INC,
+    INSTR_LD_Z_INC,
+    INSTR_LD_X_DEC,
+    INSTR_LD_Y_DEC,
+    INSTR_LD_Z_DEC,
+    INSTR_ST_X,
+    INSTR_ST_Y,
+    INSTR_ST_Z,
+    INSTR_ST_X_INC,
+    INSTR_ST_Y_INC,
+    INSTR_ST_Z_INC,
+    INSTR_ST_X_DEC,
+    INSTR_ST_Y_DEC,
+    INSTR_ST_Z_DEC,
     INSTR_PUSH,
     INSTR_POP,
     INSTR_CPSE,
@@ -156,6 +174,24 @@ uint32_t instr_lds     (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_sts     (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_ldd_std (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_ld_st   (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_x    (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_y    (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_z    (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_x_inc(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_y_inc(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_z_inc(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_x_dec(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_y_dec(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_ld_z_dec(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_x    (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_y    (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_z    (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_x_inc(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_y_inc(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_z_inc(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_x_dec(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_y_dec(atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_st_z_dec(atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_push    (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_pop     (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_cpse    (atmega32u4_t& cpu, avr_instr_t const& i);

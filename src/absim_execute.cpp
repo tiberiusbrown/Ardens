@@ -38,6 +38,24 @@ instr_func_t const INSTR_MAP[] =
     instr_sts,
     instr_ldd_std,
     instr_ld_st,
+    instr_ld_x,
+    instr_ld_y,
+    instr_ld_z,
+    instr_ld_x_inc,
+    instr_ld_y_inc,
+    instr_ld_z_inc,
+    instr_ld_x_dec,
+    instr_ld_y_dec,
+    instr_ld_z_dec,
+    instr_st_x,
+    instr_st_y,
+    instr_st_z,
+    instr_st_x_inc,
+    instr_st_y_inc,
+    instr_st_z_inc,
+    instr_st_x_dec,
+    instr_st_y_dec,
+    instr_st_z_dec,
     instr_push,
     instr_pop,
     instr_cpse,
@@ -562,7 +580,7 @@ uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t const& i)
     else if(i.dst <= 10) ptr = cpu.y_word();
     else ptr = cpu.x_word();
 
-    // pre-increment
+    // pre-decrement
     if(i.dst & 0x2)
         --ptr;
 
@@ -595,6 +613,180 @@ uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t const& i)
         }
     }
 
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_x(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    cpu.gpr(i.src) = cpu.ld(cpu.x_word());
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_y(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    cpu.gpr(i.src) = cpu.ld(cpu.y_word());
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_z(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    cpu.gpr(i.src) = cpu.ld(cpu.z_word());
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_x_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.x_word();
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    ++ptr;
+    cpu.gpr(26) = uint8_t(ptr >> 0);
+    cpu.gpr(27) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_y_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.y_word();
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    ++ptr;
+    cpu.gpr(28) = uint8_t(ptr >> 0);
+    cpu.gpr(29) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_z_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.z_word();
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    ++ptr;
+    cpu.gpr(30) = uint8_t(ptr >> 0);
+    cpu.gpr(31) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_x_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.x_word();
+    --ptr;
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    cpu.gpr(26) = uint8_t(ptr >> 0);
+    cpu.gpr(27) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_y_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.y_word();
+    --ptr;
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    cpu.gpr(28) = uint8_t(ptr >> 0);
+    cpu.gpr(29) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ld_z_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.z_word();
+    --ptr;
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    cpu.gpr(30) = uint8_t(ptr >> 0);
+    cpu.gpr(31) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_x(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    cpu.st(cpu.x_word(), cpu.gpr(i.src));
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_y(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    cpu.st(cpu.y_word(), cpu.gpr(i.src));
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_z(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    cpu.st(cpu.z_word(), cpu.gpr(i.src));
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_x_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.x_word();
+    cpu.st(ptr, cpu.gpr(i.src));
+    ++ptr;
+    cpu.gpr(26) = uint8_t(ptr >> 0);
+    cpu.gpr(27) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_y_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.y_word();
+    cpu.st(ptr, cpu.gpr(i.src));
+    ++ptr;
+    cpu.gpr(28) = uint8_t(ptr >> 0);
+    cpu.gpr(29) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_z_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.z_word();
+    cpu.st(ptr, cpu.gpr(i.src));
+    ++ptr;
+    cpu.gpr(30) = uint8_t(ptr >> 0);
+    cpu.gpr(31) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_x_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.x_word();
+    --ptr;
+    cpu.st(ptr, cpu.gpr(i.src));
+    cpu.gpr(26) = uint8_t(ptr >> 0);
+    cpu.gpr(27) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_y_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.y_word();
+    --ptr;
+    cpu.st(ptr, cpu.gpr(i.src));
+    cpu.gpr(28) = uint8_t(ptr >> 0);
+    cpu.gpr(29) = uint8_t(ptr >> 8);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_st_z_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    uint16_t ptr = cpu.z_word();
+    --ptr;
+    cpu.st(ptr, cpu.gpr(i.src));
+    cpu.gpr(30) = uint8_t(ptr >> 0);
+    cpu.gpr(31) = uint8_t(ptr >> 8);
     cpu.pc += 1;
     return 2;
 }
