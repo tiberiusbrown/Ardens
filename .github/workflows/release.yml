@@ -105,12 +105,14 @@ jobs:
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
+      clean: false
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         folder: ${{github.workspace}}/Ardens_web
          
     - name: Deploy to GitHub Pages (version)
       uses: JamesIves/github-pages-deploy-action@v4
+      clean: false
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         folder: ${{github.workspace}}/Ardens_web
