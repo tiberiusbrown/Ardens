@@ -235,11 +235,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 if(check_interrupt(0x14, i, dummy)) break;
             }
 
-            //i = (data[0xe1] & data[0xe2]);
-            //if(i) check_interrupt(0x14, i, data[0xe1]);
-            //i = (data[0xd8] & data[0xda] & 0x1);
-            //if(i) check_interrupt(0x14, i, data[0xda]);
-
             // usb endpoint
             i = data[0xf4];
             if(check_interrupt(0x16, i, data[0xf4])) break;
