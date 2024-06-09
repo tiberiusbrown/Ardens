@@ -16,9 +16,9 @@
 
 #include <imgui.h>
 
-constexpr int PROFILING = 0;
+#define PROFILING 0
 
-constexpr int SPEEDUP = PROFILING ? 50 : 1;
+constexpr int SPEEDUP = PROFILING ? 10 : 1;
 
 #ifdef ARDENS_DIST
 extern "C" {
@@ -338,7 +338,7 @@ void define_font()
     cfg.OversampleH = 2;
     cfg.OversampleV = 2;
     io.Fonts->Clear();
-#ifndef ARDENS_NO_GUI
+#if !defined(ARDENS_NO_GUI) && !PROFILING
     io.Fonts->AddFontFromMemoryTTF(
         (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
 #endif
@@ -604,7 +604,7 @@ void frame_logic()
         arduboy->display.enable_filter = settings.display_auto_filter;
 
         arduboy->display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy->display.ref_segment_current = 0.195;
+        arduboy->display.ref_segment_current = 0.195f;
         switch(settings.display_current_modeling)
         {
         case 0:  arduboy->display.current_limit_slope = 0.f;   break;
@@ -867,7 +867,7 @@ void imgui_content()
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
-        int ab = 0;
+        size_t ab = 0;
         auto mask = arduboy->cpu.autobreaks & arduboy->cpu.enabled_autobreaks;
         for(size_t i = 1; i < mask.size(); ++i)
         {
@@ -896,9 +896,9 @@ void imgui_content()
     modal_about();
 #endif
 
-#ifndef ARDENS_NO_GUI
-if(PROFILING)
-    ImGui::ShowMetricsWindow();
-    //ImGui::ShowDemoWindow();
+#if PROFILING
+        ImGui::ShowMetricsWindow();
 #endif
+
+    //ImGui::ShowDemoWindow();
 }

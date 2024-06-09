@@ -50,12 +50,13 @@ if(MSYS)
     add_link_options(-static-libgcc -static-libstdc++)
 endif()
 
-option(ARDENS_LLVM     "Build and link LLVM (enables loading ELF and debug info)" ON)
-option(ARDENS_DEBUGGER "Build debugger target" ON)
-option(ARDENS_LIB      "Build static library for emulator core" OFF)
-option(ARDENS_PLAYER   "Build player target" ON)
-option(ARDENS_LIBRETRO "Build libretro core target" OFF)
-option(ARDENS_DIST     "Build distributable game from dist/game.arduboy" OFF)
+option(ARDENS_LLVM      "Build and link LLVM (enables loading ELF and debug info)" ON)
+option(ARDENS_DEBUGGER  "Build debugger target" ON)
+option(ARDENS_LIB       "Build static library for emulator core" OFF)
+option(ARDENS_PLAYER    "Build player target" ON)
+option(ARDENS_LIBRETRO  "Build libretro core target" OFF)
+option(ARDENS_DIST      "Build distributable game from dist/game.arduboy" OFF)
+option(ARDENS_BENCHMARK "Build benchmark executable" OFF)
 
 if(ARDENS_LIBRETRO)
     set(ARDENS_LLVM     OFF)
@@ -484,6 +485,18 @@ if(ARDENS_PLAYER)
         ${SYSTEM_LIBS}
         )
     configure_app_target(ArdensPlayer)
+
+endif()
+
+if(ARDENS_BENCHMARK)
+
+    set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE BOOL "" FORCE)
+    add_subdirectory(deps/benchmark EXCLUDE_FROM_ALL)
+
+    add_executable(Ardens_benchmark bench/benchmark.cpp)
+    target_link_libraries(Ardens_benchmark PRIVATE benchmark ardenslib)
+    target_compile_definitions(Ardens_benchmark PRIVATE
+        -DARDENS_BENCHMARK_DIR="${CMAKE_CURRENT_SOURCE_DIR}/bench")
 
 endif()
 

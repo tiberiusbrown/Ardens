@@ -27,7 +27,7 @@ void arduboy_t::reload_fx()
     size_t fxsave_offset = w25q128_t::DATA_BYTES - fxsave_bytes;
     size_t fxdata_offset = fxsave_offset - fxdata_bytes;
 
-    fx.min_page = fxdata_offset / 256;
+    fx.min_page = uint32_t(fxdata_offset / 256);
     fx.max_page = 0xffff;
 
     fx.erase_all_data();
@@ -178,10 +178,10 @@ void arduboy_t::profiler_build_hotspots()
             if(sym.notype) continue;
             if(sym.object) continue;
             hotspot_t h;
-            h.begin = cpu.addr_to_disassembled_index(sym.addr);
-            h.end = cpu.addr_to_disassembled_index(sym.addr + sym.size - 1);
+            h.begin = (uint16_t)cpu.addr_to_disassembled_index(sym.addr);
+            h.end = (uint16_t)cpu.addr_to_disassembled_index(sym.addr + sym.size - 1);
             h.count = 0;
-            for(uint32_t i = sym.addr / 2; i < (sym.addr + sym.size) / 2; ++i)
+            for(uint32_t i = sym.addr / 2; i < (sym.addr + sym.size) / 2u; ++i)
             {
                 if(i >= profiler_counts.size()) break;
                 h.count += profiler_counts[i];
@@ -428,6 +428,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
         cpu.spi_data_latched = false;
     }
 
+#ifndef ARDENS_NO_DEBUGGER
     profiler_total_with_sleep += cycles;
     if(cpu.active || cpu.wakeup_cycles != 0)
     {
@@ -437,12 +438,20 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
             profiler_counts[cpu.executing_instr_pc] += cycles;
         }
     }
+#endif
 
-    bool actual_vsync = display.advance(cycles * CYCLE_PS);
-    fx.advance(cycles * CYCLE_PS);
+    {
+        auto cycles_ps = cycles * CYCLE_PS;
+        bool actual_vsync = display.advance(cycles_ps);
+        fx.advance(cycles_ps);
+#ifndef ARDENS_NO_DEBUGGER
+        if(frame_bytes_total == 0)
+            vsync |= actual_vsync;
+#endif
+    }
 
-    if(frame_bytes_total == 0)
-        vsync |= actual_vsync;
+#ifndef ARDENS_NO_DEBUGGER
+
     if(vsync)
     {
         // vsync occurred and we are profiling: store frame cpu usage
@@ -463,7 +472,9 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
                 frame_cpu_usage.begin() + 32768);
         }
     }
+#endif
 
+#ifndef ARDENS_NO_DEBUGGER
     // time-based cpu usage
     if(cpu.cycle_count >= prev_ms_cycles)
     {
@@ -495,6 +506,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
                 ms_cpu_usage.begin() + 32768);
         }
     }
+#endif
 
     return cycles;
 }
@@ -525,6 +537,7 @@ void arduboy_t::advance(uint64_t ps)
     if(!cpu.decoded) return;
     if(paused) return;
 
+#ifndef ARDENS_NO_DEBUGGER
     bool any_breakpoints =
         allow_nonstep_breakpoints && (
         breakpoints.any() ||
@@ -533,15 +546,15 @@ void arduboy_t::advance(uint64_t ps)
         break_step != 0xffffffff;
 
     cpu.no_merged = profiler_enabled || any_breakpoints;
+#endif
 
     while(ps >= PS_BUFFER)
     {
-        uint32_t prev_pc = cpu.pc;
-
         uint32_t cycles = cycle();
 
         ps -= cycles * CYCLE_PS;
 
+#ifndef ARDENS_NO_DEBUGGER
         if(any_breakpoints)
         {
             if(cpu.pc == break_step || allow_nonstep_breakpoints && (
@@ -553,12 +566,15 @@ void arduboy_t::advance(uint64_t ps)
                 break;
             }
         }
+#endif
 
+#ifndef ARDENS_NO_DEBUGGER
         if(cpu.should_autobreak())
         {
             paused = true;
             break;
         }
+#endif
 
     }
 

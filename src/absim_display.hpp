@@ -417,8 +417,11 @@ void display_t::filter_pixels()
     for(int n = 0; n < 4; ++n)
     {
         uint8_t c = C[(7 - n + pixel_history_index) % 4];
-        for(int i = 0; i < 8192; ++i)
-            filtered_pixel_counts[i] += pixels[n][i] * c;
+        auto* dst = &filtered_pixel_counts[0];
+        auto const* src = &pixels[n][0];
+        auto const* dst_end = dst + 8192;
+        while(dst < dst_end)
+            *dst++ += *src++ * c;
     }
     for(int i = 0; i < 8192; ++i)
         filtered_pixels[i] = uint8_t(filtered_pixel_counts[i] / 256);
@@ -468,7 +471,7 @@ void display_t::reset()
     memset(&pixels, 0, sizeof(pixels));
     memset(&filtered_pixels, 0, sizeof(filtered_pixels));
 
-    ref_segment_current = 0.195;
+    ref_segment_current = 0.195f;
     current_limit_slope = 0.75f;
     enable_current_limiting = true;
     prev_row_drive = 0;

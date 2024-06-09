@@ -31,6 +31,20 @@ static ARDENS_FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
     set_flag_s(cpu);
 }
 
+static ARDENS_FORCEINLINE uint8_t flag_s(uint8_t sreg)
+{
+    sreg |= (((sreg ^ (sreg >> 1)) & 0x4) << 2);
+    return sreg;
+}
+
+static ARDENS_FORCEINLINE uint8_t flags_nzs(uint8_t sreg, uint32_t x)
+{
+    sreg |= ((x & 0x80) >> 5); // N
+    if(x == 0) sreg |= SREG_Z; // Z
+    sreg = flag_s(sreg);      // S
+    return sreg;
+}
+
 uint32_t instr_merged_push_n(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     auto* ip = &i;
@@ -91,6 +105,27 @@ uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t const& i)
         cpu.pc += (int16_t)ib.word + 2;
         return 3;
     }
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.dst + 1) * 256;
+    unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
+    unsigned res = (dst + src) & 0xffff;
+    cpu.gpr(i.dst + 0) = (uint8_t)(res >> 0);
+    cpu.gpr(i.dst + 1) = (uint8_t)(res >> 8);
+
+    unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
+    unsigned v = (dst & src & ~res) | (~dst & ~src & res);
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    sreg |= (hc & 0x0800) >> 6;  // H flag
+    sreg |= hc >> 15;            // C flag
+    sreg |= (v & 0x8000) >> 12;  // V flag
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 2;
     return 2;

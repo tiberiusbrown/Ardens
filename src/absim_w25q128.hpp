@@ -17,7 +17,7 @@ void w25q128_t::reset()
     write_enabled = false;
     reading_status = false;
     processing_command = false;
-    command.clear();
+    command = CMD_NONE;
 
     reading = 0;
     programming = 0;
@@ -46,7 +46,7 @@ ARDENS_FORCEINLINE void w25q128_t::set_enabled(bool e)
             processing_command = false;
             releasing = 0;
             if(busy_ps_rem == 0)
-                command.clear();
+                command = CMD_NONE;
         }
     }
 }
@@ -56,7 +56,7 @@ ARDENS_FORCEINLINE void w25q128_t::advance(uint64_t ps)
     if(ps >= busy_ps_rem)
     {
         if(!enabled)
-            command.clear();
+            command = CMD_NONE;
         busy_ps_rem = 0;
     }
     else
@@ -149,7 +149,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
         if(byte == 0xab)
         {
             processing_command = true;
-            command = "Release Power-down";
+            command = CMD_RELEASE_POWER_DOWN;
             woken_up = true;
             releasing = 1;
         }
@@ -163,35 +163,35 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
         {
         case 0x02: // program page
             if(!write_enabled || busy_ps_rem != 0) break;
-            command = "Page Program";
+            command = CMD_PAGE_PROGRAM;
             programming = 1;
             current_addr = 0;
             break;
         case 0x03: // read data
             if(busy_ps_rem != 0) break;
-            command = "Read Data";
+            command = CMD_READ_DATA;
             reading = 1;
             current_addr = 0;
             break;
         case 0x04: // write disable
             if(busy_ps_rem != 0) break;
-            command = "Write disable";
+            command = CMD_WRITE_DISABLE;
             write_enabled = false;
             break;
         case 0x05: // read status register 1
-            command = "Read Status Register-1";
+            command = CMD_READ_STATUS_REGISTER_1;
             reading_status = true;
             if(busy_ps_rem != 0)
                 data_to_send = 0x1;
             break;
         case 0x06: // write enable
             if(busy_ps_rem != 0) break;
-            command = "Write Disable";
+            command = CMD_WRITE_ENABLE;
             write_enabled = true;
             break;
         case 0x20: // sector erase
             if(!write_enabled || busy_ps_rem != 0) break;
-            command = "Sector Erase";
+            command = CMD_SECTOR_ERASE;
             erasing_sector = 1;
             current_addr = 0;
             break;
@@ -199,7 +199,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
             woken_up = false;
             break;
         default:
-            command = "<unknown>";
+            command = CMD_UNKNOWN;
             break;
         }
     }

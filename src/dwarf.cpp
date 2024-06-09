@@ -119,7 +119,7 @@ std::vector<uint32_t> dwarf_array_bounds(llvm::DWARFDie die)
                 n = *upper_bound - lower_bound + 1;
             }
         }
-        r.push_back(n);
+        r.push_back((uint32_t)n);
     }
 
     return r;
@@ -298,7 +298,7 @@ static std::string recurse_varname(llvm::DWARFDie die)
             {
                 if(auto tf = child.find(llvm::dwarf::DW_AT_upper_bound))
                     if(auto tn = tf.value().getAsUnsignedConstant())
-                        n = tn.value();
+                        n = (int)tn.value();
             }
             if(n < 0)
                 brackets += "[]";

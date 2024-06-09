@@ -25,6 +25,7 @@ static char const* get_instr_name(avr_instr_t const& i)
         case INSTR_AND     : return "and";
         case INSTR_OR      : return "or";
         case INSTR_EOR     : return "eor";
+        case INSTR_CLR     : return "clr";
         case INSTR_ADD     : return "add";
         case INSTR_ADC     : return "adc";
         case INSTR_SUB     : return "sub";
@@ -90,9 +91,27 @@ static char const* get_instr_name(avr_instr_t const& i)
             };
             return NAMES[i.src & 0x7];
         }
-        case INSTR_LDD_STD :
+        case INSTR_LDD_STD:
             return (i.word & 0x200) ? "std" : "ldd";
-        case INSTR_LD_ST   :
+        case INSTR_LD_ST:
+        case INSTR_LD_X:
+        case INSTR_LD_Y:
+        case INSTR_LD_Z:
+        case INSTR_LD_X_INC:
+        case INSTR_LD_Y_INC:
+        case INSTR_LD_Z_INC:
+        case INSTR_LD_X_DEC:
+        case INSTR_LD_Y_DEC:
+        case INSTR_LD_Z_DEC:
+        case INSTR_ST_X:
+        case INSTR_ST_Y:
+        case INSTR_ST_Z:
+        case INSTR_ST_X_INC:
+        case INSTR_ST_Y_INC:
+        case INSTR_ST_Z_INC:
+        case INSTR_ST_X_DEC:
+        case INSTR_ST_Y_DEC:
+        case INSTR_ST_Z_DEC:
             return i.word ? "st" : "ld";
         case INSTR_PUSH:
             return "push";
@@ -235,6 +254,24 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
     }
 
     case INSTR_LD_ST:
+    case INSTR_LD_X:
+    case INSTR_LD_Y:
+    case INSTR_LD_Z:
+    case INSTR_LD_X_INC:
+    case INSTR_LD_Y_INC:
+    case INSTR_LD_Z_INC:
+    case INSTR_LD_X_DEC:
+    case INSTR_LD_Y_DEC:
+    case INSTR_LD_Z_DEC:
+    case INSTR_ST_X:
+    case INSTR_ST_Y:
+    case INSTR_ST_Z:
+    case INSTR_ST_X_INC:
+    case INSTR_ST_Y_INC:
+    case INSTR_ST_Z_INC:
+    case INSTR_ST_X_DEC:
+    case INSTR_ST_Y_DEC:
+    case INSTR_ST_Z_DEC:
     {
         uint8_t reg;
         if(i.dst <= 2) reg = 30;
@@ -314,7 +351,7 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
             d.name = "rol";
             d.arg1.type = disassembled_instr_arg_t::type::NONE;
         }
-        if(i.func == INSTR_EOR)
+        if(i.func == INSTR_EOR || i.func == INSTR_CLR)
         {
             d.name = "clr";
             d.arg1.type = disassembled_instr_arg_t::type::NONE;

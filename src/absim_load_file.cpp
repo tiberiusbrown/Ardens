@@ -402,7 +402,7 @@ static void load_elf_debug_recurse_globals(
             for(auto const& op : e)
             {
                 if(op.getCode() == llvm::dwarf::DW_OP_addr)
-                    g.addr = op.getRawOperand(0);
+                    g.addr = (uint32_t)op.getRawOperand(0);
             }
         }
         if(a.Attr == llvm::dwarf::DW_AT_type)
@@ -715,7 +715,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
             return "ELF: text+data too large";
         if(size > 0)
             memcpy(&cpu.prog[cpu.last_addr], data.data(), size);
-        cpu.last_addr += size;
+        cpu.last_addr += (uint16_t)size;
     }
 
     cpu.decode();

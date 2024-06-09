@@ -69,6 +69,8 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         {
             i.src = src;
             i.dst = dst;
+            if(src == dst && i.func == INSTR_EOR)
+                i.func = INSTR_CLR;
             return;
         }
     }
@@ -191,6 +193,28 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
             else
             {
                 i.func = INSTR_LD_ST;
+                // specialize ld/st
+                int t = 0;
+                if(i.dst <= 2) t = 2;
+                else if(i.dst <= 10) t = 1;
+                if(!i.word)
+                {
+                    if(i.dst & 0x1)
+                        i.func = INSTR_LD_X_INC + t;
+                    else if(i.dst & 0x2)
+                        i.func = INSTR_LD_X_DEC + t;
+                    else
+                        i.func = INSTR_LD_X + t;
+                }
+                else
+                {
+                    if(i.dst & 0x1)
+                        i.func = INSTR_ST_X_INC + t;
+                    else if(i.dst & 0x2)
+                        i.func = INSTR_ST_X_DEC + t;
+                    else
+                        i.func = INSTR_ST_X + t;
+                }
             }
             return;
         }
@@ -317,6 +341,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
 void atmega32u4_t::decode()
 {
     uint16_t w0, w1, lo, hi;
+    int lasti = int(last_addr / 2);
     for(int i = 0; i < PROG_SIZE_BYTES / 2; ++i)
     {
         lo = prog[i * 2 + 0];
@@ -329,7 +354,8 @@ void atmega32u4_t::decode()
             hi = prog[i * 2 + 3];
             w1 = lo | (hi << 8);
         }
-        decode_instr(decoded_prog[i], w0, w1);
+        if(i < lasti)
+            decode_instr(decoded_prog[i], w0, w1);
     }
 
     // disassemble
