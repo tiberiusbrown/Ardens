@@ -123,8 +123,8 @@ jobs:
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
-      clean: false
       with:
+        clean: false
         token: ${{ secrets.GITHUB_TOKEN }}
         folder: ${{github.workspace}}/Ardens_web
         target-folder: staging/${{ steps.extract_branch.outputs.branch }}
