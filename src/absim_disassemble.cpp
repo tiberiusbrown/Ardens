@@ -142,6 +142,7 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
     case INSTR_ADC:
     case INSTR_AND:
     case INSTR_EOR:
+    case INSTR_CLR:
     case INSTR_OR:
     case INSTR_MOV:
     case INSTR_MUL:
