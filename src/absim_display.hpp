@@ -344,8 +344,11 @@ void ARDENS_FORCEINLINE display_t::update_pixels_row()
         vsync = true;
     }
 
+    uint8_t fcontrast =
+        contrast == 0 ? 0 :
+        (uint8_t)std::min<uint32_t>(255, 0x40 + (contrast * 3u / 4u));
     uint8_t p0 = 0;
-    uint8_t p1 = enable_charge_pump ? contrast : contrast >> 4;
+    uint8_t p1 = enable_charge_pump ? fcontrast : contrast >> 4;
 
     // current limiting
     if(enable_current_limiting)
@@ -365,7 +368,7 @@ void ARDENS_FORCEINLINE display_t::update_pixels_row()
                     ++num_pixels_on;
         }
         float row_drive =
-            ref_segment_current * (1.f / 255) * num_pixels_on * contrast;
+            ref_segment_current * (1.f / 255) * num_pixels_on * fcontrast;
 
         constexpr float DIFF = MAX_DRIVER_CURRENT * 0.5f;
         if(row != 0 && std::abs(row_drive - prev_row_drive) > DIFF)
@@ -388,8 +391,8 @@ void ARDENS_FORCEINLINE display_t::update_pixels_row()
         {
             float segment_drive = row_drive / num_pixels_on;
             float t = segment_drive / ref_segment_current * 255;
-            if(t > contrast)
-                t = float(contrast);
+            if(t > fcontrast)
+                t = float(fcontrast);
             p1 = uint8_t(t);
         }
 
