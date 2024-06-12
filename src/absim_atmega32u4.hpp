@@ -218,7 +218,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
         do
         {
-            if(!(prev_sreg & SREG_I))
+            if(!(prev_sreg & sreg() & SREG_I))
                 break;
 
             // check for stack overflow only when interrupts are enabled
