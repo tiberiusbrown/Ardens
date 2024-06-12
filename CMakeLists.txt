@@ -332,6 +332,31 @@ if(WIN32)
     set(RC_FILE "img/Ardens.rc")
 endif()
 
+if(NOT ARDENS_LIBRETRO)
+    add_library(ardenslib STATIC
+        .editorconfig
+        ${ARDENS_SOURCES}
+        )
+
+    target_include_directories(ardenslib PUBLIC src deps)
+
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
+    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
+
+    target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
+
+    add_library(ardensdebuggerlib STATIC
+        .editorconfig
+        ${ARDENS_SOURCES}
+        )
+    target_include_directories(ardensdebuggerlib PUBLIC src deps)
+    target_link_libraries(ardensdebuggerlib PUBLIC bitsery miniz fmt)
+endif()
+
 if(ARDENS_DEBUGGER)
 
     add_executable(Ardens ${EXEFLAG}
@@ -381,8 +406,6 @@ if(ARDENS_DEBUGGER)
         src/window_sound.cpp
         src/window_source.cpp
 
-        ${ARDENS_SOURCES}
-
         deps/stb_image_write.h
         ${IMGUI_SOURCES}
         ${IMPLOT_SOURCES}
@@ -396,6 +419,7 @@ if(ARDENS_DEBUGGER)
         deps/ImGuiColorTextEdit/TextEditor.cpp
         )
     target_link_libraries(Ardens PRIVATE
+        ardensdebuggerlib
         miniz
         fmt
         bitsery
@@ -424,25 +448,6 @@ if(ARDENS_DEBUGGER)
         )
     configure_app_target(Ardens)
         
-endif()
-
-if(NOT ARDENS_LIBRETRO)
-    add_library(ardenslib STATIC
-        .editorconfig
-        ${ARDENS_SOURCES}
-        )
-
-    target_include_directories(ardenslib PUBLIC src deps deps/rapidjson/include)
-
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
-    #target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_ARDUBOY_FILE)
-
-    target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
 endif()
 
 if(ARDENS_PLAYER)
