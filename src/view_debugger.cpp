@@ -153,7 +153,7 @@ void view_debugger()
 
             {
                 std::string info = ARDENS_OS " " ARDENS_ARCH " " ARDENS_VERSION;
-                std::string v = fmt::format("FPS: {}",
+                std::string v = fmt::format("{}",
                     int(std::round(ImGui::GetIO().Framerate)));
                 float w = ImGui::CalcTextSize(v.c_str(), v.data() + v.size(), true).x;
                 w += ImGui::GetStyle().ItemSpacing.x;
