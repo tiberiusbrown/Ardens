@@ -355,6 +355,18 @@ if(NOT ARDENS_LIBRETRO)
         )
     target_include_directories(ardensdebuggerlib PUBLIC src deps)
     target_link_libraries(ardensdebuggerlib PUBLIC bitsery miniz fmt)
+    if(ARDENS_LLVM)
+        target_link_libraries(ardensdebuggerlib PUBLIC
+            LLVMDebugInfoDWARF
+            LLVMDemangle
+            )
+        target_include_directories(ardensdebuggerlib PUBLIC
+            "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
+            "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
+            "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
+            )
+        target_compile_definitions(ardensdebuggerlib PUBLIC -DARDENS_LLVM)
+    endif()
 endif()
 
 if(ARDENS_DEBUGGER)
@@ -425,18 +437,6 @@ if(ARDENS_DEBUGGER)
         bitsery
         ${SYSTEM_LIBS}
         )
-    if(ARDENS_LLVM)
-        target_link_libraries(Ardens PRIVATE
-            LLVMDebugInfoDWARF
-            LLVMDemangle
-            )
-        target_include_directories(Ardens PRIVATE
-            "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
-            "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
-            "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
-            )
-        target_compile_definitions(Ardens PRIVATE -DARDENS_LLVM)
-    endif()
     target_include_directories(Ardens PRIVATE
         deps
         deps/imgui
