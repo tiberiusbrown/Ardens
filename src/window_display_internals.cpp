@@ -47,7 +47,7 @@ void window_display_internals(bool& open)
             Text("Clock Divider          %d", d.divide_ratio + 1);
             Text("Precharge Phase 1      %d cycle%s", d.phase_1, d.phase_1 > 1 ? "s" : "");
             Text("Precharge Phase 2      %d cycle%s", d.phase_2, d.phase_2 > 1 ? "s" : "");
-            Text("Frame Rate             %.1f Hz", d.refresh_rate());
+            Text("Refresh Rate           %.1f Hz", d.refresh_rate());
         }
         if(CollapsingHeader("Driver Config"))
         {
