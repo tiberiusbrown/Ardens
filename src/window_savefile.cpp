@@ -114,6 +114,11 @@ void window_savefile(bool& open)
             );
 #endif
             CloseCurrentPopup();
+            if(arduboy && arduboy->cpu.decoded)
+            {
+                arduboy->reset();
+                load_savedata();
+            }
         }
         SameLine();
         if(Button("Keep save file (do not delete)", { -1.f, 0.f }))

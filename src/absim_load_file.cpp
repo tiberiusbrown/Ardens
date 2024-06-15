@@ -1088,8 +1088,12 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
 
     if(ends_with(fname, ".save"))
     {
-        if(cpu.decoded && load_savedata(f))
-            savedata_dirty = true;
+        if(cpu.decoded)
+        {
+            reset();
+            if(load_savedata(f))
+                savedata_dirty = true;
+        }
         return "";
     }
 
