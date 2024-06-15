@@ -3,16 +3,8 @@
 #include <algorithm>
 #include <iostream>
 
-#include <bitsery/bitsery.h>
-#include <bitsery/brief_syntax.h>
-#include <bitsery/brief_syntax/array.h>
-#include <bitsery/brief_syntax/string.h>
-#include <bitsery/brief_syntax/vector.h>
-#include <bitsery/brief_syntax/map.h>
-#include <bitsery/ext/std_map.h>
-#include <bitsery/adapter/buffer.h>
-#include <bitsery/adapter/stream.h>
-#include <bitsery/traits/vector.h>
+#include <sstream>
+#include <tuple>
 
 #include "absim_atmega32u4.hpp"
 #include "absim_display.hpp"
@@ -60,41 +52,6 @@ void arduboy_t::update_game_hash()
     }
 
     game_hash = h;
-}
-
-void arduboy_t::load_savedata(std::istream& f)
-{
-    using StreamAdapter = bitsery::InputStreamAdapter;
-    bitsery::Deserializer<StreamAdapter> ar(f);
-    savedata.clear();
-    ar(savedata);
-    if(savedata.game_hash != game_hash)
-    {
-        savedata.clear();
-        return;
-    }
-
-    // overwrite eeprom / fx with saved data
-
-    auto const& d = savedata;
-    if(d.eeprom.size() == cpu.eeprom.size())
-        memcpy(cpu.eeprom.data(), d.eeprom.data(), array_bytes(cpu.eeprom));
-
-    for(auto const& kv : d.fx_sectors)
-    {
-        uint32_t sector = kv.first;
-        auto const& sdata = kv.second;
-        if(sector >= fx.NUM_SECTORS) continue;
-        memcpy(&fx.data[sector * 4096], sdata.data(), 4096);
-    }
-}
-
-void arduboy_t::save_savedata(std::ostream& f)
-{
-    using StreamAdapter = bitsery::OutputStreamAdapter;
-    bitsery::Serializer<StreamAdapter> ar(f);
-    savedata.game_hash = game_hash;
-    ar(savedata);
 }
 
 void arduboy_t::reset()
@@ -596,6 +553,7 @@ void arduboy_t::advance(uint64_t ps)
     if(cpu.eeprom_dirty)
     {
         savedata.eeprom.resize(cpu.eeprom.size());
+        savedata.eeprom_modified_bytes = cpu.eeprom_modified_bytes;
         memcpy(savedata.eeprom.data(), cpu.eeprom.data(), array_bytes(savedata.eeprom));
         cpu.eeprom_dirty = false;
         savedata_dirty = true;

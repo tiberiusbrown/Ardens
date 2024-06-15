@@ -106,6 +106,7 @@ void view_debugger()
 #endif
                     ImGui::EndMenu();
                 }
+                ImGui::MenuItem("Save File", nullptr, &settings.open_savefile);
                 ImGui::EndMenu();
             }
 
@@ -202,6 +203,7 @@ void view_debugger()
             window_eeprom(settings.open_eeprom);
             window_cpu_usage(settings.open_cpu_usage);
             window_led(settings.open_led);
+            window_savefile(settings.open_savefile);
             window_serial(settings.open_serial);
             window_sound(settings.open_sound);
         }
