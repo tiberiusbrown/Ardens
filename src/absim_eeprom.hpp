@@ -110,10 +110,12 @@ void ARDENS_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
         {
             eeprom_program_cycles = 0;
             eecr &= ~EEPE;
+            eeprom_write_addr &= 1023;
             eeprom[eeprom_write_addr] = eeprom_write_data;
             eeprom_busy = false;
             eeprom_modified = true;
             eeprom_dirty = true;
+            eeprom_modified_bytes.set(eeprom_write_addr);
         }
         else
             eeprom_program_cycles -= cycles;

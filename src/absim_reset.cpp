@@ -176,6 +176,8 @@ void atmega32u4_t::reset()
     reset_usb();
     usb_dpram = {};
 
+    eeprom_modified_bytes.reset();
+    eeprom_modified = false;
     eeprom_dirty = false;
 }
 

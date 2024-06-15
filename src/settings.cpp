@@ -41,6 +41,7 @@ static void settings_read_line(
     ARDENS_BOOL_SETTING(open_eeprom);
     ARDENS_BOOL_SETTING(open_cpu_usage);
     ARDENS_BOOL_SETTING(open_led);
+    ARDENS_BOOL_SETTING(open_savefile);
     ARDENS_BOOL_SETTING(open_serial);
     ARDENS_BOOL_SETTING(open_sound);
     ARDENS_BOOL_SETTING(open_source);
@@ -112,6 +113,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_BOOL_SETTING(open_eeprom);
     ARDENS_BOOL_SETTING(open_cpu_usage);
     ARDENS_BOOL_SETTING(open_led);
+    ARDENS_BOOL_SETTING(open_savefile);
     ARDENS_BOOL_SETTING(open_serial);
     ARDENS_BOOL_SETTING(open_sound);
     ARDENS_BOOL_SETTING(open_source);

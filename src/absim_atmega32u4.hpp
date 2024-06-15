@@ -224,6 +224,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             // check for stack overflow only when interrupts are enabled
             check_stack_overflow();
 
+            if(wakeup_cycles != 0) break;
+
             // handle interrupts here
             uint8_t i;
 

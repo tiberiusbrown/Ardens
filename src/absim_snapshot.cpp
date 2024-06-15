@@ -1,5 +1,3 @@
-#ifndef ARDENS_NO_SNAPSHOTS
-
 #include "absim.hpp"
 
 #include <sstream>
@@ -8,12 +6,15 @@
 #include <bitsery/bitsery.h>
 #include <bitsery/brief_syntax.h>
 #include <bitsery/brief_syntax/array.h>
+#include <bitsery/brief_syntax/map.h>
 #include <bitsery/brief_syntax/string.h>
 #include <bitsery/brief_syntax/vector.h>
 #include <bitsery/ext/std_bitset.h>
+#include <bitsery/ext/std_map.h>
 #include <bitsery/adapter/buffer.h>
 #include <bitsery/adapter/stream.h>
 #include <bitsery/traits/vector.h>
+
 #include <miniz.h>
 
 static constexpr std::array<char, 8> SNAPSHOT_ID =
@@ -94,6 +95,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.stack_check);
     ar(a.cpu.pushed_at_least_once);
     ar(a.cpu.eeprom);
+    ar(a.cpu.eeprom_modified_bytes);
     ar(a.cpu.eeprom_modified);
     ar(a.cpu.eeprom_dirty);
     ar(a.cpu.prev_sreg);
@@ -376,5 +378,41 @@ std::string arduboy_t::load_snapshot(std::istream& f)
     return "";
 }
 
+void arduboy_t::save_savedata(std::ostream& f)
+{
+    using StreamAdapter = bitsery::OutputStreamAdapter;
+    bitsery::Serializer<StreamAdapter> ar(f);
+    savedata.game_hash = game_hash;
+    ar(savedata);
 }
-#endif
+
+bool arduboy_t::load_savedata(std::istream& f)
+{
+    using StreamAdapter = bitsery::InputStreamAdapter;
+    bitsery::Deserializer<StreamAdapter> ar(f);
+    savedata.clear();
+    ar(savedata);
+    if(savedata.game_hash != game_hash)
+    {
+        savedata.clear();
+        return false;
+    }
+
+    // overwrite eeprom / fx with saved data
+
+    auto const& d = savedata;
+    if(d.eeprom.size() == cpu.eeprom.size())
+        memcpy(cpu.eeprom.data(), d.eeprom.data(), array_bytes(cpu.eeprom));
+
+    for(auto const& kv : d.fx_sectors)
+    {
+        uint32_t sector = kv.first;
+        auto const& sdata = kv.second;
+        if(sector >= fx.NUM_SECTORS) continue;
+        memcpy(&fx.data[sector * 4096], sdata.data(), 4096);
+    }
+
+    return true;
+}
+
+}

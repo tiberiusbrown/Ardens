@@ -419,6 +419,7 @@ struct atmega32u4_t
 
     std::array<uint8_t, PROG_SIZE_BYTES> prog; // program flash memory
     std::array<uint8_t, 1024>  eeprom; // EEPROM
+    std::bitset<1024> eeprom_modified_bytes;
     bool eeprom_modified;
     bool eeprom_dirty;
 
@@ -966,8 +967,20 @@ struct savedata_t
     uint64_t game_hash;
     std::vector<uint8_t> eeprom;
     std::map<uint32_t, std::array<uint8_t, 4096>> fx_sectors;
-    template<class A> void serialize(A& a) { a(game_hash, eeprom, fx_sectors); }
-    void clear() { game_hash = 0; eeprom.clear(); fx_sectors.clear(); }
+    std::bitset<1024> eeprom_modified_bytes;
+
+    template<class A> void serialize(A& a)
+    {
+        a(game_hash, eeprom, fx_sectors);
+        a(eeprom_modified_bytes);
+    }
+    void clear()
+    {
+        game_hash = 0;
+        eeprom.clear();
+        fx_sectors.clear();
+        eeprom_modified_bytes.reset();
+    }
 };
 
 struct arduboy_t
@@ -1050,7 +1063,7 @@ struct arduboy_t
     // saved data
     savedata_t savedata;
     bool savedata_dirty;
-    void load_savedata(std::istream& f);
+    bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
     void reset();

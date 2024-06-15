@@ -107,7 +107,9 @@ void file_download(
 
 #ifndef ARDENS_PLATFORM_SDL
 #ifdef _WIN32
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <windows.h>
 #include <shellapi.h>
 #endif
@@ -723,7 +725,10 @@ void frame_logic()
         arduboy->paused = !arduboy->paused;
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
+    {
         arduboy->reset();
+        load_savedata();
+    }
 
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))
         platform_toggle_fullscreen();

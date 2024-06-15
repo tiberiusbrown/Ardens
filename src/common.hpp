@@ -200,6 +200,7 @@ int recording_filter_zoom();
 void recreate_display_texture();
 void scalenx(uint8_t* dst, uint8_t const* src, bool rgba);
 
+std::string savedata_filename();
 void load_savedata();
 void check_save_savedata(); // save savedata if necessary
 
@@ -226,6 +227,7 @@ void window_fx_internals(bool& open);
 void window_eeprom(bool& open);
 void window_cpu_usage(bool& open);
 void window_led(bool& open);
+void window_savefile(bool& open);
 void window_serial(bool& open);
 void window_sound(bool& open);
 void window_source(bool& open);

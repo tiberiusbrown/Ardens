@@ -414,6 +414,7 @@ if(ARDENS_DEBUGGER)
         src/window_eeprom.cpp
         src/window_cpu_usage.cpp
         src/window_led.cpp
+        src/window_savefile.cpp
         src/window_serial.cpp
         src/window_sound.cpp
         src/window_source.cpp

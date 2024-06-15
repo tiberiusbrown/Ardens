@@ -13,7 +13,7 @@ constexpr uint64_t SAVE_INTERVAL_MS = 500;
 static bool need_save = false;
 static uint64_t need_save_time;
 
-static std::string savedata_filename()
+std::string savedata_filename()
 {
     char buf[128];
     snprintf(buf, sizeof(buf), "absim_%" PRIx64 ".save", arduboy->game_hash);

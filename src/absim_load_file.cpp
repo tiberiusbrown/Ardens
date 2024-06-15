@@ -1086,6 +1086,13 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
     std::string fname(filename);
     std::string r;
 
+    if(ends_with(fname, ".save"))
+    {
+        if(cpu.decoded && load_savedata(f))
+            savedata_dirty = true;
+        return "";
+    }
+
     if(ends_with(fname, ".hex"))
     {
         reset();
