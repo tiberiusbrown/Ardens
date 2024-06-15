@@ -23,14 +23,21 @@ void window_savefile(bool& open)
     {
         auto const& d = arduboy->savedata;
         auto fname = savedata_filename();
-        Text("Game Hash: %016" PRIx64, d.game_hash);
+        Text("Hash: %016" PRIx64, arduboy->game_hash);
         NewLine();
         if(std::filesystem::exists(fname))
         {
             TextUnformatted("Save file found.");
+#ifdef __EMSCRIPTEN__
             SameLine();
-            if(SmallButton("Delete save file"))
-                open_confirm_delete_popup = true;
+            if(SmallButton("Download"))
+            {
+                file_download(
+                    fname.c_str(),
+                    std::filesystem::path(fname).filename().c_str(),
+                    "application/octet-stream");
+            }
+#endif
             if(!d.fx_sectors.empty())
             {
                 TextUnformatted("Modified flash sectors:");
@@ -44,7 +51,7 @@ void window_savefile(bool& open)
             }
             if(d.eeprom.size() == 1024 && d.eeprom_modified_bytes.any())
             {
-                TextUnformatted("Modified EEPROM addresses:");
+                TextUnformatted("Modified EEPROM bytes:");
                 Text("   ");
                 size_t i = 0;
                 size_t a = 0;
@@ -72,6 +79,9 @@ void window_savefile(bool& open)
                         Text("%d-%d%s", r.first, r.second, comma);
                 }
             }
+            NewLine();
+            if(SmallButton("Delete save file"))
+                open_confirm_delete_popup = true;
         }
         else
         {
@@ -87,7 +97,7 @@ void window_savefile(bool& open)
     {
         TextUnformatted("Are you sure you want to delete the save file for this game?");
         NewLine();
-        if(Button("Yes"))
+        if(Button("Delete"))
         {
             auto fname = savedata_filename();
             std::error_code ec{};
@@ -100,7 +110,7 @@ void window_savefile(bool& open)
             CloseCurrentPopup();
         }
         SameLine();
-        if(Button("No", { -1.f, 0.f }))
+        if(Button("Keep save file (do not delete)", { -1.f, 0.f }))
         {
             CloseCurrentPopup();
         }
