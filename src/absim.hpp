@@ -1063,7 +1063,7 @@ struct arduboy_t
     // saved data
     savedata_t savedata;
     bool savedata_dirty;
-    void load_savedata(std::istream& f);
+    bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
     void reset();

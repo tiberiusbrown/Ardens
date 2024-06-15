@@ -386,7 +386,7 @@ void arduboy_t::save_savedata(std::ostream& f)
     ar(savedata);
 }
 
-void arduboy_t::load_savedata(std::istream& f)
+bool arduboy_t::load_savedata(std::istream& f)
 {
     using StreamAdapter = bitsery::InputStreamAdapter;
     bitsery::Deserializer<StreamAdapter> ar(f);
@@ -395,7 +395,7 @@ void arduboy_t::load_savedata(std::istream& f)
     if(savedata.game_hash != game_hash)
     {
         savedata.clear();
-        return;
+        return false;
     }
 
     // overwrite eeprom / fx with saved data
@@ -411,6 +411,8 @@ void arduboy_t::load_savedata(std::istream& f)
         if(sector >= fx.NUM_SECTORS) continue;
         memcpy(&fx.data[sector * 4096], sdata.data(), 4096);
     }
+
+    return true;
 }
 
 }

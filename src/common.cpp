@@ -725,7 +725,10 @@ void frame_logic()
         arduboy->paused = !arduboy->paused;
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
+    {
         arduboy->reset();
+        load_savedata();
+    }
 
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))
         platform_toggle_fullscreen();

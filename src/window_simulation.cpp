@@ -33,6 +33,7 @@ void window_simulation(bool& open)
         {
             arduboy->paused = false;
             arduboy->reset();
+            load_savedata();
         }
         SameLine();
         if(arduboy->paused)
