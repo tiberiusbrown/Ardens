@@ -52,7 +52,7 @@ void window_savefile(bool& open)
                 for(auto const& [k, v] : d.fx_sectors)
                 {
                     SameLine();
-                    Text("%04x%s", k, ++i == d.fx_sectors.size() ? "" : ",");
+                    Text("0x%03x%s", k, ++i == d.fx_sectors.size() ? "" : ",");
                 }
             }
             if(d.eeprom.size() == 1024 && d.eeprom_modified_bytes.any())
