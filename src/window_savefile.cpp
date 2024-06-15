@@ -37,6 +37,12 @@ void window_savefile(bool& open)
                     std::filesystem::path(fname).filename().c_str(),
                     "application/octet-stream");
             }
+#else
+            SameLine();
+            if(SmallButton("Open save directory"))
+            {
+                platform_open_url(std::filesystem::path(fname).parent_path().string().c_str());
+            }
 #endif
             if(!d.fx_sectors.empty())
             {
