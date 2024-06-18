@@ -345,8 +345,8 @@ void ARDENS_FORCEINLINE display_t::update_pixels_row()
     }
 
     constexpr float F = 0.65f;
-    constexpr uint8_t FA = uint8_t(F * 256);
-    constexpr uint8_t FB = 280 - FA;
+    constexpr uint32_t FA = uint32_t(F * 256);
+    constexpr uint32_t FB = 280 - FA;
     uint8_t tcontrast = (uint8_t)std::min<uint32_t>(255,
         contrast == 0 ? 0 : FA + contrast * FB / 256);
     uint8_t p0 = 0;
