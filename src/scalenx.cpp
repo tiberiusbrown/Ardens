@@ -42,8 +42,11 @@ void palette_rgba(int palette, uint8_t x, uint8_t y[4])
         y[0] = y[1] = y[2] = uint8_t(16 + x * 192 / 256);
         break;
     case PALETTE_HIGH_CONTRAST:
-        y[0] = y[1] = y[2] = uint8_t(std::min(255, x * 320 / 256));
+    {
+        uint8_t t = x < 128 ? uint8_t(x * 192u / 128u) : 255u - (255u - x) / 2u;
+        y[0] = y[1] = y[2] = t;
         break;
+    }
     case PALETTE_DEFAULT:
     default:
         y[0] = y[1] = y[2] = x;

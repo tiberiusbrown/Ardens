@@ -344,28 +344,27 @@ void ARDENS_FORCEINLINE display_t::update_pixels_row()
         vsync = true;
     }
 
+    constexpr float F = 0.65f;
+    constexpr uint32_t FA = uint32_t(F * 256);
+    constexpr uint32_t FB = 280 - FA;
+    uint8_t tcontrast = (uint8_t)std::min<uint32_t>(255,
+        contrast == 0 ? 0 : FA + contrast * FB / 256);
     uint8_t p0 = 0;
-    uint8_t p1 = enable_charge_pump ? contrast : contrast >> 4;
+    uint8_t p1 = enable_charge_pump ? tcontrast : tcontrast >> 4;
 
     // current limiting
     if(enable_current_limiting)
     {
         // count number of pixels on in the current row
         int num_pixels_on = 0;
-        if(!inverse_display)
-        {
-            for(int i = 0; i < 128; ++i)
-                if(ram[rindex + i] & mask)
-                    ++num_pixels_on;
-        }
-        else
-        {
-            for(int i = 0; i < 128; ++i)
-                if(!(ram[rindex + i] & mask))
-                    ++num_pixels_on;
-        }
+        for(int i = 0; i < 128; ++i)
+            if(ram[rindex + i] & mask)
+                ++num_pixels_on;
+        if(inverse_display)
+            num_pixels_on = 128 - num_pixels_on;
+
         float row_drive =
-            ref_segment_current * (1.f / 255) * num_pixels_on * contrast;
+            ref_segment_current * (1.f / 255) * num_pixels_on * tcontrast;
 
         constexpr float DIFF = MAX_DRIVER_CURRENT * 0.5f;
         if(row != 0 && std::abs(row_drive - prev_row_drive) > DIFF)
@@ -388,8 +387,8 @@ void ARDENS_FORCEINLINE display_t::update_pixels_row()
         {
             float segment_drive = row_drive / num_pixels_on;
             float t = segment_drive / ref_segment_current * 255;
-            if(t > contrast)
-                t = float(contrast);
+            if(t > tcontrast)
+                t = float(tcontrast);
             p1 = uint8_t(t);
         }
 
