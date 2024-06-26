@@ -989,6 +989,8 @@ struct arduboy_t
     display_t display;
     w25q128_t fx;
 
+    bool prev_display_reset;
+
     uint8_t fxport_reg;
     uint8_t fxport_mask;
 
