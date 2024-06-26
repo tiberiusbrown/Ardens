@@ -228,6 +228,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.game_hash);
     ar(a.title);
     ar(a.device_type);
+    ar(a.prev_display_reset);
 
     return "";
 }

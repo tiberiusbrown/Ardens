@@ -66,6 +66,8 @@ void arduboy_t::reset()
     paused = false;
     break_step = 0xffffffff;
 
+    prev_display_reset = true;
+
     prev_profiler_total = 0;
     prev_profiler_total_with_sleep = 0;
     prev_ms_cycles = 0;
@@ -399,7 +401,13 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
 
     {
         auto cycles_ps = cycles * CYCLE_PS;
-        bool actual_vsync = display.advance(cycles_ps);
+        bool display_reset = (cpu.PORTD() & (1 << 7)) == 0;
+        bool actual_vsync = false;
+        if(display_reset && !prev_display_reset)
+            display.reset();
+        prev_display_reset = display_reset;
+        if(!display_reset)
+            actual_vsync = display.advance(cycles_ps);
         fx.advance(cycles_ps);
 #ifndef ARDENS_NO_DEBUGGER
         if(frame_bytes_total == 0)
