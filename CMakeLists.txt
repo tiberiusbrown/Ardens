@@ -6,6 +6,14 @@ set(CMAKE_CXX_STANDARD 17)
 
 project(Ardens)
 
+macro(disable_all_warnings)
+    foreach(tgt ${ARGV})
+        if(MSVC)
+            target_compile_options(${tgt} PRIVATE /w)
+        endif()
+    endforeach()
+endmacro()
+
 if(MSVC)
     set(msvc_flags
         CMAKE_C_FLAGS_DEBUG
@@ -122,12 +130,15 @@ endif()
 if(NOT ARDENS_LIBRETRO)
     add_subdirectory(deps/fmt)
     add_subdirectory(deps/miniz)
+    disable_all_warnings(fmt miniz)
 endif()
 
 add_subdirectory(deps/bitsery)
 
 if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_DEBUGGER))
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
     add_subdirectory(deps/SDL)
+    disable_all_warnings(SDL3-static)
 endif()
 
 if(ARDENS_LLVM)
@@ -185,6 +196,7 @@ if(ARDENS_LLVM)
 		FetchContent_Populate(llvm-project)
 		add_subdirectory(${llvm-project_SOURCE_DIR}/llvm ${llvm-project_BINARY_DIR} EXCLUDE_FROM_ALL)
 	endif()
+
 endif()
 
 set(EXEFLAG)
@@ -251,6 +263,14 @@ set(HQX_SOURCES
     deps/hqx/source/HQ2x.cc
     deps/hqx/source/HQ3x.cc
     )
+if(MSVC)
+    set_source_files_properties(
+        deps/hqx/source/HQ2x.cc
+        deps/hqx/source/HQ3x.cc
+        PROPERTIES
+        COMPILE_OPTIONS /wd4146
+        )
+endif()
 set(ARDENS_SOURCES
     src/absim.hpp
     src/absim_instructions.hpp
@@ -338,7 +358,8 @@ if(NOT ARDENS_LIBRETRO)
         ${ARDENS_SOURCES}
         )
 
-    target_include_directories(ardenslib PUBLIC src deps)
+    target_include_directories(ardenslib PUBLIC src)
+    target_include_directories(ardenslib SYSTEM PUBLIC deps)
 
     target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
     target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
@@ -353,14 +374,15 @@ if(NOT ARDENS_LIBRETRO)
         .editorconfig
         ${ARDENS_SOURCES}
         )
-    target_include_directories(ardensdebuggerlib PUBLIC src deps)
+    target_include_directories(ardensdebuggerlib PUBLIC src)
+    target_include_directories(ardensdebuggerlib SYSTEM PUBLIC deps)
     target_link_libraries(ardensdebuggerlib PUBLIC bitsery miniz fmt)
     if(ARDENS_LLVM)
         target_link_libraries(ardensdebuggerlib PUBLIC
             LLVMDebugInfoDWARF
             LLVMDemangle
             )
-        target_include_directories(ardensdebuggerlib PUBLIC
+        target_include_directories(ardensdebuggerlib SYSTEM PUBLIC
             "$<TARGET_PROPERTY:LLVMDebugInfoDWARF,INCLUDE_DIRECTORIES>"
             "$<TARGET_PROPERTY:LLVMDemangle,INCLUDE_DIRECTORIES>"
             "$<TARGET_PROPERTY:LLVMObject,INCLUDE_DIRECTORIES>"
@@ -438,7 +460,7 @@ if(ARDENS_DEBUGGER)
         bitsery
         ${SYSTEM_LIBS}
         )
-    target_include_directories(Ardens PRIVATE
+    target_include_directories(Ardens SYSTEM PRIVATE
         deps
         deps/imgui
         deps/implot
@@ -481,7 +503,7 @@ if(ARDENS_PLAYER)
         ${EM_FILE_BROWSER_SOURCES}
         ${SOKOL_SOURCES}
         )
-    target_include_directories(ArdensPlayer PRIVATE
+    target_include_directories(ArdensPlayer SYSTEM PRIVATE
         deps
         deps/imgui
         deps/gifenc
@@ -569,7 +591,7 @@ if(ARDENS_DIST)
             "${DISTGAME_DIR}/distgame.c"
             "${DISTGAME_DIR}/distgame.h"
             )
-        target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE
+        target_include_directories("${ARDENS_DIST_TARGET}" SYSTEM PRIVATE
             deps
             deps/imgui
             deps/gifenc
@@ -611,7 +633,8 @@ if(ARDENS_LIBRETRO)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SCALING)
     target_link_libraries(ardens_libretro PRIVATE bitsery)
-    target_include_directories(ardens_libretro PUBLIC src src/libretro_core deps deps/miniz)
+    target_include_directories(ardens_libretro PUBLIC src src/libretro_core)
+    target_include_directories(ardens_libretro SYSTEM PUBLIC deps deps/miniz)
     # WHY IS THIS NECESSARY???
     if(MSVC AND (MSVC_VERSION GREATER_EQUAL 1914))
         target_compile_options(ardens_libretro PRIVATE "/Zc:__cplusplus")

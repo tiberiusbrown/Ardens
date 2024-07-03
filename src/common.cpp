@@ -1,3 +1,11 @@
+#ifndef _SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING
+#define _SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING 1
+#endif
+
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS 1
+#endif
+
 #include "common.hpp"
 
 #include <fstream>

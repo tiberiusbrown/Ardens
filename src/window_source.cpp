@@ -67,7 +67,7 @@ static line_info_t get_line_info(llvm::DWARFContext& dwarf, uint64_t addr)
                 auto last_row = table->Rows.begin() + seq.LastRowIndex;
                 auto row_pos = std::upper_bound(first_row + 1, last_row - 1, row,
                     llvm::DWARFDebugLine::Row::orderByAddress) - 1;
-                uint32_t row_index = row_pos - table->Rows.begin();
+                uint32_t row_index = uint32_t(row_pos - table->Rows.begin());
                 auto const& tr = table->Rows[row_index];
                 table->getFileNameByIndex(tr.File,
                     cu->getCompilationDir(),

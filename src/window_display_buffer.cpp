@@ -108,7 +108,8 @@ void window_display_buffer(bool& open)
 
         {
             auto t = GetContentRegionAvail();
-            float w = display_buffer_w, h = display_buffer_h;
+            float w = (float)display_buffer_w;
+            float h = (float)display_buffer_h;
             while(w + display_buffer_w < t.x && h + display_buffer_h < t.y)
                 w += display_buffer_w, h += display_buffer_h;
             float u = (float)display_buffer_w / 128;

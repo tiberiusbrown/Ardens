@@ -1,5 +1,9 @@
 #ifdef ARDENS_PLATFORM_SDL
 
+#ifndef _CRT_SECURE_NO_WARNINGS
+#define _CRT_SECURE_NO_WARNINGS 1
+#endif
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_impl_sdl3.h"
@@ -136,7 +140,7 @@ void platform_send_sound()
         SDL_PutAudioStreamData(
             audio_stream,
             buf.data(),
-            buf.size() * sizeof(buf[0]));
+            int(buf.size() * sizeof(buf[0])));
     }
 }
 

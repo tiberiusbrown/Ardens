@@ -18,9 +18,9 @@ void window_display(bool& open)
         {
             auto t = GetContentRegionAvail();
 
-            float z = display_filter_zoom();
-            float tw = 128 * z;
-            float th = 64 * z;
+            float z = (float)display_filter_zoom();
+            float tw = 128.f * z;
+            float th = 64.f * z;
             if(settings.display_orientation & 1)
                 std::swap(tw, th);
             float w = tw, h = th;

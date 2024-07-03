@@ -42,7 +42,7 @@ static void window_call_stack_contents()
 
             uint16_t prev_sp = (i > 0) ?
                 arduboy->cpu.stack_frames[i - 1].sp :
-                arduboy->cpu.data.size() - 1;
+                uint16_t(arduboy->cpu.data.size() - 1);
             uint16_t curr_sp = (i < (int)arduboy->cpu.num_stack_frames) ?
                 arduboy->cpu.stack_frames[i].sp :
                 arduboy->cpu.sp();
