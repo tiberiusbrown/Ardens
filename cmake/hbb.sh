@@ -9,6 +9,10 @@ source /hbb_exe_gc_hardened/activate
 
 set -x
 
+sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
 yum -y install python3 libX11-devel libXi-devel libXcursor-devel pulseaudio-libs-devel alsa-lib-devel mesa-libGL-devel
 
 nj=$(nproc)
