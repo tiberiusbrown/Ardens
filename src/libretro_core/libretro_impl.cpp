@@ -65,7 +65,9 @@ static std::vector<uint8_t> save_buf;
 static std::string savedata_filename()
 {
     char buf[128];
-    snprintf(buf, sizeof(buf), "/ardens_%" PRIx64 ".save", arduboy->game_hash);
+    uint32_t hash_hi = uint32_t(arduboy->game_hash >> 32);
+    uint32_t hash_lo = uint32_t(arduboy->game_hash);
+    snprintf(buf, sizeof(buf), "/ardens_%08x%08x.save", hash_hi, hash_lo);
     return std::string(save_path) + buf;
 }
 
