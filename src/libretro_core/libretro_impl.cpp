@@ -2,16 +2,26 @@
 
 #include "../absim.hpp"
 
-#include <memory>
 #include <algorithm>
+#include <fstream>
+#include <memory>
 #include <sstream>
+#include <string>
 #include <strstream>
 #include <vector>
 
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 
 constexpr double FPS = 60.0;
+
+static char const* save_path = nullptr;
+static uint64_t need_save_cycle = UINT64_MAX;
+static bool need_save = false;
+
+// save interval is 200ms
+constexpr uint64_t SAVE_INTERVAL_CYCLES = 16000000 / 5;
 
 static retro_input_descriptor INPUT_DESCS[] =
 {
@@ -52,6 +62,30 @@ constexpr size_t SAVE_RAM_BYTES =
     sizeof(arduboy->cpu.eeprom) + absim::w25q128_t::DATA_BYTES;
 static std::vector<uint8_t> save_buf;
 
+static std::string savedata_filename()
+{
+    char buf[128];
+    snprintf(buf, sizeof(buf), "/ardens_%" PRIx64 ".save", arduboy->game_hash);
+    return std::string(save_path) + buf;
+}
+
+static void load_savedata()
+{
+    if(!save_path) return;
+
+    auto fname = savedata_filename();
+    std::ifstream f(fname, std::ios::in | std::ios::binary);
+    if(!f.fail())
+    {
+        func_log(RETRO_LOG_INFO, "Loaded from %s\n", fname.c_str());
+        arduboy->load_savedata(f);
+    }
+    else
+    {
+        func_log(RETRO_LOG_INFO, "No save file found at %s\n", fname.c_str());
+    }
+}
+
 //
 // REFER TO:
 //    https://docs.libretro.com/development/cores/developing-cores
@@ -64,6 +98,10 @@ void retro_init()
         if(func_env(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &data))
             func_log = data.log;
     }
+    if(!func_env(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &save_path))
+        save_path = nullptr;
+    else
+        func_log(RETRO_LOG_INFO, "Save path: %s\n", save_path);
 
     arduboy = std::make_unique<absim::arduboy_t>();
 }
@@ -113,6 +151,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device) {}
 void retro_reset()
 {
     arduboy->reset();
+    load_savedata();
 }
 
 void retro_run()
@@ -171,6 +210,29 @@ void retro_run()
     func_audio_batch(
         audio_buf.data(),
         audio_buf.size() / 2);
+
+    // Do we need to save?
+    if(arduboy->savedata_dirty)
+    {
+        need_save = true;
+        need_save_cycle = arduboy->cpu.cycle_count + SAVE_INTERVAL_CYCLES;
+        arduboy->savedata_dirty = false;
+    }
+
+    if(save_path && need_save && arduboy->cpu.cycle_count >= need_save_cycle)
+    {
+        need_save = false;
+        std::string fname = savedata_filename();
+        std::ofstream f(fname, std::ios::out | std::ios::binary);
+        if(!f.fail())
+        {
+            arduboy->save_savedata(f);
+            f.close();
+            func_log(RETRO_LOG_INFO, "Saved to %s\n", fname.c_str());
+        }
+        else
+            func_log(RETRO_LOG_ERROR, "Could not save to %s\n", fname.c_str());
+    }
 }
 
 size_t retro_serialize_size()
@@ -181,7 +243,7 @@ size_t retro_serialize_size()
         std::ostringstream ss;
         arduboy->save_savestate(ss);
         size = ss.str().size();
-        func_log(RETRO_LOG_INFO, "Calculated save size: %u\n", (unsigned)size);
+        func_log(RETRO_LOG_INFO, "Calculated serialize size: %u\n", (unsigned)size);
     }
     func_log(RETRO_LOG_INFO, "Save size: %u\n", (unsigned)size);
     return size;
@@ -192,7 +254,6 @@ bool retro_serialize(void* data, size_t size)
     std::ostrstream s((char*)data, (std::streamsize)size, std::ios::out | std::ios::binary);
     bool err = arduboy->save_savestate(s);
     if(err) func_log(RETRO_LOG_ERROR, "Error during serialize\n");
-    else func_log(RETRO_LOG_INFO, "Serialized successfully\n");
     return !err;
 }
 
@@ -200,11 +261,7 @@ bool retro_unserialize(const void* data, size_t size)
 {
     std::istrstream s((char const*)data, (std::streamsize)size);
     std::string err = arduboy->load_savestate(s);
-    if(err.empty())
-    {
-        func_log(RETRO_LOG_INFO, "Deserialized successfully\n");
-        return true;
-    }
+    if(err.empty()) return true;
     func_log(RETRO_LOG_ERROR, "%s\n", err.c_str());
     return false;
 }
@@ -237,6 +294,7 @@ bool retro_load_game(const struct retro_game_info* game)
         func_log(RETRO_LOG_ERROR, "%s\n", err.c_str());
         return false;
     }
+    load_savedata();
     return true;
 }
 
@@ -261,10 +319,8 @@ void* retro_get_memory_data(unsigned id)
     case RETRO_MEMORY_SYSTEM_RAM:
         return arduboy->cpu.data.data();
     case RETRO_MEMORY_SAVE_RAM:
-        save_buf.resize(SAVE_RAM_BYTES);
-        memcpy(&save_buf[0], arduboy->cpu.eeprom.data(), 1024);
-        memcpy(&save_buf[1024], arduboy->fx.data.data(), arduboy->fx.data.size());
-        return save_buf.data();
+        // We need to use the save directory, to save both EEPROM and FX saves.
+        return nullptr;
     case RETRO_MEMORY_VIDEO_RAM:
         return arduboy->display.ram.data();
     default:
@@ -279,7 +335,7 @@ size_t retro_get_memory_size(unsigned id)
     case RETRO_MEMORY_SYSTEM_RAM:
         return sizeof(arduboy->cpu.data);
     case RETRO_MEMORY_SAVE_RAM:
-        return SAVE_RAM_BYTES;
+        return 0;
     case RETRO_MEMORY_VIDEO_RAM:
         return sizeof(arduboy->display.ram);
     default:
