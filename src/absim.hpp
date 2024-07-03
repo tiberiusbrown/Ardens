@@ -345,6 +345,7 @@ struct atmega32u4_t
     //std::array<bool, AB_NUM> enable_autobreaks;
     ARDENS_FORCEINLINE void autobreak(autobreak_t t)
     {
+        (void)t;
 #ifndef ARDENS_NO_DEBUGGER
         autobreaks.set(t);
 #endif
@@ -370,6 +371,7 @@ struct atmega32u4_t
 
     ARDENS_FORCEINLINE void check_deref(uint16_t addr)
     {
+        (void)addr;
 #ifndef ARDENS_NO_DEBUGGER
         if(addr == 0)
             autobreak(AB_NULL_DEREF);
@@ -380,6 +382,7 @@ struct atmega32u4_t
 
     ARDENS_FORCEINLINE void check_stack_overflow(uint16_t tsp)
     {
+        (void)tsp;
 #ifndef ARDENS_NO_DEBUGGER
         if(!pushed_at_least_once) return;
         // check min stack
@@ -436,6 +439,7 @@ struct atmega32u4_t
     uint32_t num_stack_frames;
     ARDENS_FORCEINLINE void push_stack_frame(uint16_t ret_addr)
     {
+        (void)ret_addr;
 #ifndef ARDENS_NO_DEBUGGER
         if(num_stack_frames < stack_frames.size())
             stack_frames[num_stack_frames++] = { ret_addr, sp() };
