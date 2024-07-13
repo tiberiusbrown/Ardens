@@ -872,6 +872,7 @@ struct w25q128_t
     uint8_t programming;
     uint8_t erasing_sector;
     uint8_t releasing;
+    uint8_t reading_jedec_id;
     uint64_t busy_ps_rem;
     uint32_t current_addr;
 
@@ -885,6 +886,7 @@ struct w25q128_t
         CMD_READ_STATUS_REGISTER_1,
         CMD_WRITE_ENABLE,
         CMD_SECTOR_ERASE,
+        CMD_JEDEC_ID,
         CMD_UNKNOWN,
         NUM_CMDS,
     };
@@ -1017,6 +1019,15 @@ struct savedata_t
     }
 };
 
+struct arduboy_config_t
+{
+    display_t::type_t display_type = display_t::type_t::SSD1306;
+    uint8_t fxport_reg = 0x2d;    // PORTD
+    uint8_t fxport_mask = 1 << 1; // PORTD1
+    bool bootloader = false;
+    bool boot_to_menu = false;
+};
+
 struct arduboy_t
 {
     atmega32u4_t cpu;
@@ -1102,16 +1113,9 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
-    struct reset_config_t
-    {
-        display_t::type_t display_type = display_t::type_t::SSD1306;
-        uint8_t fxport_reg = 0x2d;    // PORTD
-        uint8_t fxport_mask = 1 << 1; // PORTD1
-        bool bootloader = false;
-        bool boot_to_menu = false;
-    };
-
-    void reset(reset_config_t const& cfg = {});
+    arduboy_config_t cfg;
+    bool flashcart_loaded;
+    void reset();
 
     // advance at least one cycle (returns how many cycles were advanced)
     uint32_t cycle();

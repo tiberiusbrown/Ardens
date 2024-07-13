@@ -195,8 +195,8 @@ void atmega32u4_t::update_timer0()
             update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.top - timer0.tcnt);
         else
             update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tov - timer0.tcnt + 1);
-        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNa - timer0.tcnt);
-        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNb - timer0.tcnt);
+        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNa - timer0.tcnt + 1);
+        update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNb - timer0.tcnt + 1);
     }
     if(update_tcycles == UINT32_MAX)
     {
@@ -352,9 +352,12 @@ static ARDENS_FORCEINLINE void update_timer16_state(
 
     while(timer_cycles > 0)
     {
-        if(tcnt == ocrNa) tifr |= 0x2;
-        if(tcnt == ocrNb) tifr |= 0x4;
-        if(tcnt == ocrNc) tifr |= 0x8;
+        if(tcnt == ocrNa)
+            tifr |= 0x2;
+        if(tcnt == ocrNb)
+            tifr |= 0x4;
+        if(tcnt == ocrNc)
+            tifr |= 0x8;
         if(count_down)
         {
             uint32_t stop = 0;
@@ -482,9 +485,9 @@ static void update_timer16(
             update_tcycles = min_nonzero(update_tcycles, timer.top, timer.top - timer.tcnt);
         else
             update_tcycles = min_nonzero(update_tcycles, timer.top, timer.tov - timer.tcnt + 1);
-        update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNa - timer.tcnt);
-        update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNb - timer.tcnt);
-        update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNc - timer.tcnt);
+        update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNa - timer.tcnt + 1);
+        update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNb - timer.tcnt + 1);
+        update_tcycles = min_nonzero(update_tcycles, timer.top, timer.ocrNc - timer.tcnt + 1);
         if(timer.tcnt == timer.top && timer.top != 0)
             update_tcycles = 1;
     }

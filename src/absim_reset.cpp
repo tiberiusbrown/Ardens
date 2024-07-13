@@ -24,7 +24,7 @@ void atmega32u4_t::reset()
     data[0x25] |= 0x01;
     data[0x2b] |= 0x20;
 
-    pc = BOOTRST() ? bootloader_address() * 2 : 0;
+    pc = BOOTRST() ? bootloader_address() : 0;
     executing_instr_pc = pc;
 
     just_read = 0xffffffff;

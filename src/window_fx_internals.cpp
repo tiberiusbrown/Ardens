@@ -12,6 +12,7 @@ static char const* CMD_STRS[absim::w25q128_t::NUM_CMDS] =
     "Read Status Register-1",
     "Write Enable",
     "Sector Erase",
+    "Read JEDEC ID",
     "<unknown>",
 };
 

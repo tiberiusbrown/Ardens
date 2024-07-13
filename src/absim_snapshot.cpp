@@ -275,6 +275,13 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.breakpoints_wr);
     ar(a.paused);
 
+    ar(a.cfg.display_type);
+    ar(a.cfg.fxport_reg);
+    ar(a.cfg.fxport_mask);
+    ar(a.cfg.bootloader);
+    ar(a.cfg.boot_to_menu);
+    ar(a.flashcart_loaded);
+
     return serdes_savestate(ar, a);
 }
 

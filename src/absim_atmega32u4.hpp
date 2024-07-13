@@ -44,7 +44,10 @@ ARDENS_FORCEINLINE bool atmega32u4_t::check_interrupt(
     push_stack_frame(pc);
     push(uint8_t(pc >> 0));
     push(uint8_t(pc >> 8));
-    pc = vector;
+    if(vector != 0 && (MCUCR() & (1 << 1)) != 0)
+        pc = vector + bootloader_address();
+    else
+        pc = vector;
     tifr &= ~flag;
     sreg() &= ~SREG_I;
     wakeup_cycles = 4;
