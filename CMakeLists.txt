@@ -302,6 +302,8 @@ set(ARDENS_SOURCES
     deps/yyjson/yyjson.h
     deps/yyjson/yyjson.c
     )
+file(GLOB ARDENS_BOOT_FILES "boot/*.c")
+list(APPEND ARDENS_SOURCES ${ARDENS_BOOT_FILES})
 set(EM_FILE_BROWSER_SOURCES)
 if(EMSCRIPTEN)
     set(EM_FILE_BROWSER_SOURCES deps/emscripten-browser-file/emscripten_browser_file.h)

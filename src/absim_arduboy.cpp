@@ -9,6 +9,9 @@
 #include "absim_atmega32u4.hpp"
 #include "absim_display.hpp"
 
+extern "C" const unsigned char ARDENS_BOOT_GAME[8422];
+extern "C" const unsigned char ARDENS_BOOT_MENU[8422];
+
 namespace absim
 {
 
@@ -54,14 +57,23 @@ void arduboy_t::update_game_hash()
     game_hash = h;
 }
 
-void arduboy_t::reset()
+void arduboy_t::reset(reset_config_t const& cfg)
 {
     profiler_reset();
     frame_cpu_usage.clear();
     total_frames = 0;
     total_ms = 0;
+
+    cpu.lock = 0x00;
+    cpu.fuse_lo = 0x5e;
+    cpu.fuse_hi = 0xd3;
+    cpu.fuse_ext = 0xf3;
+    if(cfg.bootloader)
+        cpu.fuse_hi &= ~(1 << 0);
     cpu.reset();
+
     display.reset();
+    display.type = cfg.display_type;
     fx.reset();
     paused = false;
     break_step = 0xffffffff;
@@ -76,8 +88,13 @@ void arduboy_t::reset()
     if(breakpoints.test(0))
         paused = true;
 
-    fxport_reg = 0x2b;    // PORTD
-    fxport_mask = 1 << 1; // PORTD1
+    fxport_reg = cfg.fxport_reg;
+    fxport_mask = cfg.fxport_mask;
+
+    if(cfg.boot_to_menu)
+        (void)load_bootloader_hex(ARDENS_BOOT_MENU, sizeof(ARDENS_BOOT_MENU));
+    else
+        (void)load_bootloader_hex(ARDENS_BOOT_GAME, sizeof(ARDENS_BOOT_GAME));
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(

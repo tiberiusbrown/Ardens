@@ -88,7 +88,7 @@ struct avr_instr_t
 
 struct atmega32u4_t
 {
-    static constexpr size_t PROG_SIZE_BYTES = 29 * 1024;
+    static constexpr size_t PROG_SIZE_BYTES = 32 * 1024;
     static constexpr size_t DATA_SIZE_BYTES = 2560 + 256;
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
@@ -709,6 +709,36 @@ struct atmega32u4_t
 
     uint64_t cycle_count;
 
+    // lock bits
+    uint8_t lock;
+
+    // fuses
+    uint8_t fuse_lo;
+    uint8_t fuse_hi;
+    uint8_t fuse_ext;
+
+    inline bool HWBE   () const { return (fuse_ext & (1 << 3)) == 0; }
+
+    inline bool OCDEN  () const { return (fuse_hi  & (1 << 7)) == 0; }
+    inline bool JTAGEN () const { return (fuse_hi  & (1 << 6)) == 0; }
+    inline bool SPIEN  () const { return (fuse_hi  & (1 << 5)) == 0; }
+    inline bool WDTON  () const { return (fuse_hi  & (1 << 4)) == 0; }
+    inline bool EESAVE () const { return (fuse_hi  & (1 << 3)) == 0; }
+    inline bool BOOTRST() const { return (fuse_hi  & (1 << 0)) == 0; }
+
+    inline bool CKDIV8 () const { return (fuse_lo  & (1 << 7)) == 0; }
+    inline bool CKOUT  () const { return (fuse_lo  & (1 << 6)) == 0; }
+
+    inline uint8_t BOOTSZ() const { return (fuse_hi >> 1) & 0x3; }
+    inline uint8_t SUT   () const { return (fuse_lo >> 4) & 0x3; }
+    inline uint8_t CLKSEL() const { return (fuse_lo >> 0) & 0xf; }
+    
+    inline uint16_t bootloader_address() const
+    {
+        static uint16_t const ADDRS[4] = { 0x3800, 0x3c00, 0x3e00, 0x3f00 };
+        return ADDRS[BOOTSZ() & 3];
+    }
+
     // set all registers to initial value
     void reset();
 
@@ -1072,7 +1102,16 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
-    void reset();
+    struct reset_config_t
+    {
+        display_t::type_t display_type = display_t::type_t::SSD1306;
+        uint8_t fxport_reg = 0x2d;    // PORTD
+        uint8_t fxport_mask = 1 << 1; // PORTD1
+        bool bootloader = false;
+        bool boot_to_menu = false;
+    };
+
+    void reset(reset_config_t const& cfg = {});
 
     // advance at least one cycle (returns how many cycles were advanced)
     uint32_t cycle();
@@ -1090,6 +1129,8 @@ struct arduboy_t
 
     // returns an error string on error or empty string on success
     std::string load_file(char const* filename, std::istream& f, bool save = false);
+
+    std::string load_bootloader_hex(uint8_t const* data, size_t size);
 
     // snapshots contain full debugger and device state and are compressed
     bool save_snapshot(std::ostream& f);

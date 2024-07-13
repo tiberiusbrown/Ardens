@@ -159,6 +159,11 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 
     ar(a.cpu.cycle_count);
 
+    ar(a.cpu.lock);
+    ar(a.cpu.fuse_lo);
+    ar(a.cpu.fuse_hi);
+    ar(a.cpu.fuse_ext);
+
     ar(a.display.filtered_pixels);
     ar(a.display.filtered_pixel_counts);
     ar(a.display.type);

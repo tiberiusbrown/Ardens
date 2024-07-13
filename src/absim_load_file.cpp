@@ -1,3 +1,7 @@
+#ifndef _SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING
+#define _SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING
+#endif
+
 #include "absim.hpp"
 
 #include <string>
@@ -7,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+
+#include <strstream>
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
 #include <yyjson/yyjson.h>
@@ -1076,6 +1082,12 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
         a.device_type = "ArduboyFXDevKit";
         return;
     }
+}
+
+std::string arduboy_t::load_bootloader_hex(uint8_t const* data, size_t size)
+{
+    std::istrstream f((char const*)data, (int)size);
+    return load_hex(*this, f);
 }
 
 std::string arduboy_t::load_file(char const* filename, std::istream& f, bool save)
