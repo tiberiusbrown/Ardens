@@ -35,6 +35,125 @@ void atmega32u4_t::st_handle_port(
     cpu.data[ptr] = x;
 }
 
+void atmega32u4_t::st_handle_spmcsr(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    if(cpu.spm_op != cpu.SPM_OP_NONE)
+        x |= 0x01;
+    else
+    {
+        if((x & 0x1f) == (1 << 1) + 1)
+            cpu.spm_op = cpu.SPM_OP_PAGE_ERASE;
+        else if((x & 0x1f) == (1 << 2) + 1)
+            cpu.spm_op = cpu.SPM_OP_PAGE_WRITE;
+        else if((x & 0x1f) == (1 << 3) + 1)
+            cpu.spm_op = cpu.SPM_OP_BLB_SET;
+        else if((x & 0x1f) == (1 << 4) + 1)
+        {
+            cpu.spm_op = cpu.SPM_OP_RWW_EN;
+            cpu.erase_spm_buffer();
+        }
+        else if((x & 0x1f) == 1)
+            cpu.spm_op = cpu.SPM_OP_PAGE_LOAD;
+        else
+            return; // no effect
+        cpu.spm_busy = true;
+        cpu.spm_en_cycles = 4;
+    }
+    cpu.data[ptr] = x;
+}
+
+void atmega32u4_t::execute_spm()
+{
+    constexpr uint32_t SPM_CYCLES = 16000000 / 250; // 4ms
+    switch(spm_op)
+    {
+    case SPM_OP_PAGE_LOAD:
+    {
+        // address in Z-reg
+        uint8_t i = data[30] & 0x7e;
+        spm_buffer[i + 0] &= data[0];
+        spm_buffer[i + 1] &= data[1];
+        break;
+    }
+    case SPM_OP_PAGE_ERASE:
+    {
+        if(spm_cycles != 0)
+            break; // TODO: autobreak
+        uint32_t a = std::min<uint32_t>(PROG_SIZE_BYTES, z_word() & 0xff80);
+        uint32_t b = std::min<uint32_t>(PROG_SIZE_BYTES, a + 128);
+        if(a >= bootloader_address() * 2u)
+            break; // TODO: autobreak / this should halt the device
+        for(uint32_t i = a; i < b; ++i)
+            prog[i] = 0xff;
+        SPMCSR() |= (1 << 6); // RWWSB
+        decode();
+        spm_cycles = SPM_CYCLES;
+        break;
+    }
+    case SPM_OP_PAGE_WRITE:
+    {
+        if(spm_cycles != 0)
+            break; // TODO: autobreak
+        uint32_t a = std::min<uint32_t>(PROG_SIZE_BYTES, z_word() & 0xff80);
+        uint32_t b = std::min<uint32_t>(PROG_SIZE_BYTES, a + 128);
+        if(a >= bootloader_address() * 2u)
+            break; // TODO: autobreak / this should halt the device
+        for(uint32_t i = a; i < b; ++i)
+            prog[i] &= spm_buffer[i - a];
+        erase_spm_buffer();
+        SPMCSR() |= (1 << 6); // RWWSB
+        decode();
+        spm_cycles = SPM_CYCLES;
+        break;
+    }
+    case SPM_OP_BLB_SET:
+    {
+        // TODO: complete this
+        if(spm_cycles != 0)
+            break; // TODO: autobreak
+        spm_cycles = SPM_CYCLES;
+        break;
+    }
+    case SPM_OP_RWW_EN:
+    {
+        SPMCSR() &= ~(1 << 6); // RWWSB
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+void atmega32u4_t::update_spm(uint32_t cycles)
+{
+    if(!spm_busy) return;
+
+    if(spm_cycles != 0)
+    {
+        spm_en_cycles = 0;
+        if(spm_cycles <= cycles)
+            spm_busy = false;
+        else
+            spm_cycles -= cycles;
+    }
+    else if(spm_en_cycles != 0)
+    {
+        if(spm_en_cycles <= cycles)
+            spm_busy = false;
+        else
+            spm_en_cycles -= cycles;
+    }
+
+    if(!spm_busy)
+    {
+        spm_op = SPM_OP_NONE;
+        spm_en_cycles = 0;
+        spm_cycles = 0;
+        SPMCSR() &= 0xe0;
+    }
+}
+
 ARDENS_FORCEINLINE bool atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
@@ -93,10 +212,11 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             eeprom_busy ||
             pll_busy ||
             adc_busy ||
+            spm_busy ||
 #ifndef ARDENS_NO_DEBUGGER
             no_merged ||
 #endif
-            false);
+            true);
 
         if(!single_instr_only)
         {
@@ -158,7 +278,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             } while(cycle_count < tcycles_max);
             cycles = uint32_t(cycle_count - tcycles);
         }
-        //if(pc >= decoded_prog.size()) __debugbreak();
     }
     else if(wakeup_cycles > 0)
     {
@@ -183,7 +302,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         // sleeping and not waking up from an interrupt
 
         // boost executed cycles to speed up timer code
-        if(spi_busy || eeprom_busy || pll_busy || adc_busy)
+        if(spi_busy || eeprom_busy || pll_busy || adc_busy || spm_busy)
             cycles = 1;
         else
         {
@@ -207,6 +326,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         cycle_pll(cycles);
         cycle_eeprom(cycles);
         cycle_adc(cycles);
+        update_spm(cycles);
 
         if(cycle_count >= timer0.next_update_cycle)
             update_timer0();

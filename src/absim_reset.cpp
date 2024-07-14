@@ -179,6 +179,12 @@ void atmega32u4_t::reset()
     eeprom_modified_bytes.reset();
     eeprom_modified = false;
     eeprom_dirty = false;
+
+    spm_busy = false;
+    spm_op = SPM_OP_NONE;
+    spm_cycles = 0;
+    st_handlers[0x57] = st_handle_spmcsr;
+    erase_spm_buffer();
 }
 
 }

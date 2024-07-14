@@ -95,6 +95,7 @@ instr_func_t const INSTR_MAP[] =
     instr_jmp,
     instr_ijmp,
     instr_wdr,
+    instr_spm,
     instr_break,
 
     // merged instrs
@@ -154,6 +155,14 @@ uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
 {
     // TODO
     (void)i;
+    cpu.pc += 1;
+    return 1;
+}
+
+uint32_t instr_spm(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    (void)i;
+    cpu.execute_spm();
     cpu.pc += 1;
     return 1;
 }
@@ -506,6 +515,7 @@ uint32_t instr_ldi(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_lpm(atmega32u4_t& cpu, avr_instr_t const& i)
 {
+    // TODO: handle RWW errors (0x0000 - 0x37ff while RWWSB is set in SPMCSR)
     uint16_t z = cpu.z_word();
     uint8_t res = 0x00;
     if(z < cpu.prog.size())

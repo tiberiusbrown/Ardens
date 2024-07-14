@@ -135,6 +135,7 @@ enum
     INSTR_JMP,
     INSTR_IJMP,
     INSTR_WDR,
+    INSTR_SPM,
     INSTR_BREAK,
 
     // merged instrs
@@ -231,6 +232,7 @@ uint32_t instr_rjmp    (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_jmp     (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_ijmp    (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_wdr     (atmega32u4_t& cpu, avr_instr_t const& i);
+uint32_t instr_spm     (atmega32u4_t& cpu, avr_instr_t const& i);
 uint32_t instr_break   (atmega32u4_t& cpu, avr_instr_t const& i);
 
 // merged instrs

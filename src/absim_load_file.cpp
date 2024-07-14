@@ -857,6 +857,7 @@ static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
     a.flashcart_loaded = false;
     if(save) goto not_flashcart;
 
+    if(d.size() < 1024) goto not_flashcart;
     if(0 != memcmp(d.data() + 0x00, "ARDUBOY", 8)) goto not_flashcart;
     if(d[8] != 0xff) goto not_flashcart;
     if(d[9] != 0xff) goto not_flashcart;
