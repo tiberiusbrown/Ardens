@@ -725,6 +725,16 @@ struct atmega32u4_t
     void update_spm(uint32_t cycles);
     void erase_spm_buffer() { memset(spm_buffer.data(), 0xff, spm_buffer.size()); }
 
+    // watchdog
+    uint32_t watchdog_divider;
+    uint32_t watchdog_divider_cycle;
+    uint64_t watchdog_prev_cycle;
+    uint64_t watchdog_next_cycle;
+    static void st_handle_mcusr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void st_handle_wdtcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    void update_watchdog_prescaler();
+    void update_watchdog();
+
     bool check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
     uint64_t cycle_count;
@@ -759,8 +769,8 @@ struct atmega32u4_t
         return ADDRS[BOOTSZ() & 3];
     }
 
-    // set all registers to initial value
     void reset();
+    void soft_reset(); // for WDT
 
     // execute at least one cycle (return how many cycles were executed)
     uint32_t advance_cycle();

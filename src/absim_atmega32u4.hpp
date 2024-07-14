@@ -35,6 +35,75 @@ void atmega32u4_t::st_handle_port(
     cpu.data[ptr] = x;
 }
 
+void atmega32u4_t::st_handle_mcusr(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    x &= 0x17;
+    x |= (cpu.MCUSR() & 0xe0);
+    if(x & (1 << 3))
+        cpu.WDTCSR() |= (1 << 3);
+    cpu.data[ptr] = x;
+}
+
+void atmega32u4_t::st_handle_wdtcsr(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    // TODO: WDTON fuse
+    // TODO: model WDCE behavior
+    cpu.watchdog_divider_cycle = 0;
+    x &= 0x7f; // clear interrupt flag
+    cpu.data[ptr] = x;
+    cpu.update_watchdog();
+}
+
+void atmega32u4_t::update_watchdog_prescaler()
+{
+    uint8_t wdp = WDTCSR();
+    wdp = (wdp & 7) | ((wdp >> 2) & 8);
+    if(wdp > 9) wdp = 9;
+
+    // 128 kHz osc divider
+    watchdog_divider = (16000000 / 128000) << (wdp + 11);
+}
+
+void atmega32u4_t::update_watchdog()
+{
+    uint32_t cycles = uint32_t(cycle_count - watchdog_prev_cycle);
+    watchdog_prev_cycle = cycle_count;
+
+    uint32_t wdt_hits = increase_counter(watchdog_divider_cycle, cycles, watchdog_divider);
+
+    if(wdt_hits != 0)
+    {
+        // watchdog timeout
+        uint8_t csr = WDTCSR();
+        if(csr & (1 << 6))
+        {
+            // interrupt
+            WDTCSR() |= (1 << 7);
+            if(csr & (1 << 3))
+            {
+                // if also system reset, disable interrupt
+                WDTCSR() &= ~(1 << 6);
+            }
+        }
+        else if(csr & (1 << 3))
+        {
+            // system reset
+            soft_reset();
+            return;
+        }
+    }
+
+    update_watchdog_prescaler();
+
+    // normalize divider cycle in case divider decreased
+    watchdog_divider_cycle %= watchdog_divider;
+
+    // schedule next update
+    watchdog_next_cycle = watchdog_prev_cycle + watchdog_divider - watchdog_divider_cycle;
+}
+
 void atmega32u4_t::st_handle_spmcsr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
@@ -226,6 +295,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             t = std::min<uint64_t>(t, timer4.next_update_cycle);
             t = std::min<uint64_t>(t, usb_next_update_cycle);
             t = std::min<uint64_t>(t, spi_done_cycle);
+            t = std::min<uint64_t>(t, watchdog_next_cycle);
 
             t -= cycle_count;
             single_instr_only |= (t < MAX_INSTR_CYCLES);
@@ -338,6 +408,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             update_timer4();
         if(cycle_count >= usb_next_update_cycle)
             update_usb();
+        if(cycle_count >= watchdog_next_cycle)
+            update_watchdog();
 
         do
         {
@@ -363,6 +435,9 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             // usb endpoint
             i = data[0xf4];
             if(check_interrupt(0x16, i, data[0xf4])) break;
+
+            // watchdog timeout
+            if(check_interrupt(0x18, WDTCSR() & 0x80, WDTCSR())) break;
 
             i = tifr1() & timsk1();
             if(i)

@@ -153,8 +153,10 @@ uint32_t instr_unknown(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    // TODO
     (void)i;
+    cpu.watchdog_divider_cycle = 0;
+    cpu.watchdog_prev_cycle = cpu.cycle_count;
+    cpu.watchdog_next_cycle = cpu.cycle_count + cpu.watchdog_divider;
     cpu.pc += 1;
     return 1;
 }
