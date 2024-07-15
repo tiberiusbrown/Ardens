@@ -9,8 +9,11 @@
 #include "absim_atmega32u4.hpp"
 #include "absim_display.hpp"
 
-extern "C" const unsigned char ARDENS_BOOT_GAME[8422];
-extern "C" const unsigned char ARDENS_BOOT_MENU[8422];
+extern "C"
+{
+#include "boot/boot_game.h"
+#include "boot/boot_menu.h"
+}
 
 namespace absim
 {
@@ -29,6 +32,7 @@ void arduboy_t::reload_fx()
             fxdata.end(),
             fx.data.begin());
         fxsave.clear();
+        update_game_hash();
     }
     else
     {
@@ -58,10 +62,13 @@ void arduboy_t::update_game_hash()
     constexpr uint64_t OFFSET = 0xcbf29ce484222325;
     constexpr uint64_t PRIME = 0x100000001b3;
     uint64_t h = OFFSET;
-    for(auto byte : cpu.prog)
+    if(!flashcart_loaded)
     {
-        h ^= byte;
-        h *= PRIME;
+        for(auto byte : cpu.prog)
+        {
+            h ^= byte;
+            h *= PRIME;
+        }
     }
     for(auto byte : fx.data)
     {
@@ -79,10 +86,10 @@ void arduboy_t::reset()
     total_frames = 0;
     total_ms = 0;
 
-    cpu.lock = 0x00;
-    cpu.fuse_lo = 0x5e;
+    cpu.lock = 0xff;
+    cpu.fuse_lo = 0xff;
     cpu.fuse_hi = 0xd3;
-    cpu.fuse_ext = 0xf3;
+    cpu.fuse_ext = 0xcb;
     if(flashcart_loaded || cfg.bootloader)
         cpu.fuse_hi &= ~(1 << 0);
     cpu.reset();

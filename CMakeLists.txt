@@ -302,7 +302,7 @@ set(ARDENS_SOURCES
     deps/yyjson/yyjson.h
     deps/yyjson/yyjson.c
     )
-file(GLOB ARDENS_BOOT_FILES "boot/*.c")
+file(GLOB ARDENS_BOOT_FILES "src/boot/*.c" "src/boot/*.h")
 list(APPEND ARDENS_SOURCES ${ARDENS_BOOT_FILES})
 set(EM_FILE_BROWSER_SOURCES)
 if(EMSCRIPTEN)
@@ -537,7 +537,8 @@ if(NOT ARDENS_LIBRETRO)
         )
     target_link_libraries(integration_tests PRIVATE ardenslib)
     target_compile_definitions(integration_tests PRIVATE
-        -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
+        -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests"
+        -DBOOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/boot")
 endif()
 
 if(ARDENS_DIST)

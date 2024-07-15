@@ -1,12 +1,19 @@
 #include "absim.hpp"
 
+extern "C"
+{
+#include "boot/boot_flashcart.h"
+}
+
 namespace absim
 {
 
 void w25q128_t::erase_all_data()
 {
     memset(&data, 0xff, sizeof(data));
-    memcpy(&data, "ARDUBOY", 7);
+    memcpy(
+        &data, ARDENS_BOOT_FLASHCART,
+        std::min(sizeof(data), sizeof(ARDENS_BOOT_FLASHCART)));
     sectors_modified.reset();
 }
 

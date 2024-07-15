@@ -522,6 +522,19 @@ uint32_t instr_lpm(atmega32u4_t& cpu, avr_instr_t const& i)
     uint8_t res = 0x00;
     if(z < cpu.prog.size())
         res = cpu.prog[z];
+    if(cpu.spm_en_cycles != 0 && cpu.spm_op == cpu.SPM_OP_BLB_SET)
+    {
+        // reading fuse or lock bits
+        switch(z)
+        {
+        case 0x0000: res = cpu.fuse_lo; break;
+        case 0x0001: res = cpu.lock; break;
+        case 0x0002: res = cpu.fuse_ext; break;
+        case 0x0003: res = cpu.fuse_hi; break;
+        default:
+            break;
+        }
+    }
     cpu.gpr(i.dst) = res;
     cpu.pc += 1;
     if(i.word == 1)

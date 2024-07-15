@@ -11,6 +11,9 @@ void atmega32u4_t::reset()
 
     soft_reset();
 
+    // power-on reset flag
+    MCUSR() |= (1 << 0);
+
     for(auto& byte : eeprom) byte = 0xff;
 
     eeprom_modified_bytes.reset();

@@ -1054,7 +1054,7 @@ struct arduboy_config_t
     display_t::type_t display_type = display_t::type_t::SSD1306;
     uint8_t fxport_reg = 0x2d;    // PORTD
     uint8_t fxport_mask = 1 << 1; // PORTD1
-    bool bootloader = false;
+    bool bootloader = true;
     bool boot_to_menu = false;
 };
 
@@ -1164,6 +1164,7 @@ struct arduboy_t
     // returns an error string on error or empty string on success
     std::string load_file(char const* filename, std::istream& f, bool save = false);
 
+    std::string load_bootloader_hex(std::istream& f);
     std::string load_bootloader_hex(uint8_t const* data, size_t size);
 
     // snapshots contain full debugger and device state and are compressed

@@ -191,7 +191,7 @@ static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = fal
     auto& cpu = a.cpu;
     if(!bootloader)
     {
-        memset(&cpu.prog, 0, sizeof(cpu.prog));
+        memset(&cpu.prog, 0, 29 * 1024);
         memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
         memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
         memset(&cpu.eeprom, 0xff, sizeof(cpu.eeprom));
@@ -284,7 +284,8 @@ static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = fal
     if(num_records == 0)
         return "HEX: no records found";
 
-    cpu.decode();
+    if(!bootloader)
+        cpu.decode();
 
     if(!bootloader)
         find_stack_check(cpu);
@@ -1109,10 +1110,15 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
     }
 }
 
+std::string arduboy_t::load_bootloader_hex(std::istream& f)
+{
+    return load_hex(*this, f, true);
+}
+
 std::string arduboy_t::load_bootloader_hex(uint8_t const* data, size_t size)
 {
     std::istrstream f((char const*)data, (int)size);
-    return load_hex(*this, f, true);
+    return load_bootloader_hex(f);
 }
 
 std::string arduboy_t::load_file(char const* filename, std::istream& f, bool save)
@@ -1136,6 +1142,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
 
     if(ends_with(fname, ".hex"))
     {
+        flashcart_loaded = false;
         reset();
         elf.reset();
         device_type.clear();
@@ -1150,13 +1157,17 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         r = load_bin(*this, f, save);
         reload_fx();
         if(flashcart_loaded)
+        {
             reset();
+            cpu.decode();
+        }
         return r;
     }
 
 #ifdef ARDENS_LLVM
     if(ends_with(fname, ".elf"))
     {
+        flashcart_loaded = false;
         reset();
         device_type.clear();
         r = load_elf(*this, f, fname);
@@ -1168,6 +1179,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
 #ifndef ARDENS_NO_ARDUBOY_FILE
     if(ends_with(fname, ".arduboy"))
     {
+        flashcart_loaded = false;
         reset();
         elf.reset();
         device_type.clear();
