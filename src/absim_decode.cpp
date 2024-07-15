@@ -19,6 +19,7 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
     if(w0 == 0x9409) i.func = INSTR_IJMP;
     if(w0 == 0x95a8) i.func = INSTR_WDR;
     if(w0 == 0x9598) i.func = INSTR_BREAK;
+    if(w0 == 0x95e8) i.func = INSTR_SPM;
     if(w0 == 0x0000) i.func = INSTR_NOP;
     if(i.func != INSTR_UNKNOWN) return;
 
@@ -341,7 +342,6 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
 void atmega32u4_t::decode()
 {
     uint16_t w0, w1, lo, hi;
-    int lasti = int(last_addr / 2);
     for(int i = 0; i < PROG_SIZE_BYTES / 2; ++i)
     {
         lo = prog[i * 2 + 0];
@@ -354,22 +354,24 @@ void atmega32u4_t::decode()
             hi = prog[i * 2 + 3];
             w1 = lo | (hi << 8);
         }
-        if(i < lasti)
-            decode_instr(decoded_prog[i], w0, w1);
+        decode_instr(decoded_prog[i], w0, w1);
     }
 
     // disassemble
     num_instrs = 0;
+    num_instrs_total = 0;
     uint16_t addr = 0;
-    while(addr + 1 < last_addr)
+    while(addr + 1 < PROG_SIZE_BYTES)
     {
         auto const& i = decoded_prog[addr / 2];
-        auto& d = disassembled_prog[num_instrs];
+        auto& d = disassembled_prog[num_instrs_total];
 
         disassemble_instr(i, d);
         d.addr = addr;
 
-        ++num_instrs;
+        if(addr < last_addr)
+            ++num_instrs;
+        ++num_instrs_total;
         addr += instr_is_two_words(i) ? 4 : 2;
     }
 

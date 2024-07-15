@@ -16,7 +16,7 @@ void hover_data_space(uint16_t addr);
 
 static absim::disassembled_instr_t const& dis_instr(int row)
 {
-    return arduboy->elf ?
+    return arduboy->elf && row < arduboy->elf->asm_with_source.size() ?
         arduboy->elf->asm_with_source[row] :
         arduboy->cpu.disassembled_prog[row];
 }
@@ -522,7 +522,7 @@ void window_disassembly(bool& open)
                 do_scroll = (do_scroll << 4) + hex_value(*b++);
         }
         SameLine();
-        if(Button("Jump to PC"))
+        if(Button("PC"))
         {
             do_scroll = arduboy->cpu.pc * 2;
         }
@@ -531,6 +531,10 @@ void window_disassembly(bool& open)
         {
             copy_disassembly_to_clipboard();
         }
+
+        static bool show_full_range = false;
+        SameLine();
+        Checkbox("Full", &show_full_range);
 
         if(arduboy->elf)
         {
@@ -567,7 +571,10 @@ void window_disassembly(bool& open)
                 ImGuiTableColumnFlags_WidthFixed,
                 CalcTextSize(settings.profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
             ImGuiListClipper clipper;
-            clipper.Begin(arduboy->elf ?
+            clipper.Begin(
+                show_full_range ?
+                (int)arduboy->cpu.num_instrs_total :
+                arduboy->elf ?
                 (int)arduboy->elf->asm_with_source.size() :
                 (int)arduboy->cpu.num_instrs,
                 GetTextLineHeightWithSpacing());
@@ -694,7 +701,8 @@ void window_disassembly(bool& open)
             auto* draw = GetWindowDrawList();
             auto const cp = GetCursorScreenPos();
 
-            float iend = size.y / float(arduboy->cpu.last_addr + 1);
+            uint32_t last_addr = show_full_range ? 0x7fff : arduboy->cpu.last_addr;
+            float iend = size.y / float(last_addr + 1);
             size_t index = 0;
             auto const mp = GetMousePos();
             for(auto const& kv : arduboy->elf->text_symbols)
@@ -703,8 +711,7 @@ void window_disassembly(bool& open)
                 if(sym.size <= 0) continue;
                 if(sym.weak) continue;
                 float a = iend * sym.addr;
-                float b = iend * (std::min<uint32_t>(
-                    arduboy->cpu.last_addr, sym.addr + sym.size));
+                float b = iend * std::min<uint32_t>(last_addr, sym.addr + sym.size);
                 ImVec2 ra = { cp.x, cp.y + a };
                 ImVec2 rb = { cp.x + cw, cp.y + b };
                 draw->AddRectFilled(ra, rb, color_for_index(index++));

@@ -352,9 +352,6 @@ static ARDENS_FORCEINLINE void update_timer16_state(
 
     while(timer_cycles > 0)
     {
-        if(tcnt == ocrNa) tifr |= 0x2;
-        if(tcnt == ocrNb) tifr |= 0x4;
-        if(tcnt == ocrNc) tifr |= 0x8;
         if(count_down)
         {
             uint32_t stop = 0;
@@ -410,6 +407,12 @@ static ARDENS_FORCEINLINE void update_timer16_state(
             if(com3a == 2) clear_portc6(cpu);
             if(com3a == 3) set_portc6(cpu);
         }
+        if(tcnt == ocrNa)
+            tifr |= 0x2;
+        if(tcnt == ocrNb)
+            tifr |= 0x4;
+        if(tcnt == ocrNc)
+            tifr |= 0x8;
     }
 
     timer.tcnt = tcnt;
@@ -424,12 +427,12 @@ static void update_timer16(
     atmega32u4_t::timer16_t& timer)
 {
     // first compute what happened to tcnt/tifr during the cycles
-    if(!(timer.divider == 0 || (cpu.data[timer.prr_addr] & timer.prr_mask)))
+    if(!(timer.divider == 0 || (cpu.data[timer.prr_addr] & timer.prr_mask)) &&
+        cpu.cycle_count > timer.prev_update_cycle)
     {
         // timer clock is running and timer is not powered down...
         uint64_t cycles = cpu.cycle_count - timer.prev_update_cycle;
-        if(cycles > 0)
-            update_timer16_state(cpu, timer, cycles);
+        update_timer16_state(cpu, timer, cycles);
     }
     timer.prev_update_cycle = cpu.cycle_count;
 

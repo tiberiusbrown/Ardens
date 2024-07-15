@@ -7,43 +7,29 @@ namespace absim
 
 void atmega32u4_t::reset()
 {
-    // clear all registers and RAM, reset state
+    cycle_count = 0;
 
-    // preserve button pins
-    uint8_t pinb = data[0x23];
-    uint8_t pine = data[0x2c];
-    uint8_t pinf = data[0x2f];
+    soft_reset();
 
-    data = {};
-
-    data[0x23] = pinb;
-    data[0x2c] = pine;
-    data[0x2f] = pinf;
-
-    // turn off TX/RX LEDs at reset (assume bootloader has turned them off)
-    data[0x25] |= 0x01;
-    data[0x2b] |= 0x20;
-
-    pc = 0;
-    executing_instr_pc = 0;
-
-    just_read = 0xffffffff;
-    just_written = 0xffffffff;
-
-    active = true;
-    wakeup_cycles = false;
-    just_interrupted = false;
-
-    num_stack_frames = 0;
-    pushed_at_least_once = false;
-    autobreaks.reset();
+    // power-on reset flag
+    MCUSR() |= (1 << 0);
 
     for(auto& byte : eeprom) byte = 0xff;
 
-    prev_sreg = 0;
+    eeprom_modified_bytes.reset();
+    eeprom_modified = false;
+    eeprom_dirty = false;
+
+    serial_bytes.clear();
 
     for(auto& h : ld_handlers) h = nullptr;
     for(auto& h : st_handlers) h = nullptr;
+
+    adc_seed = 0xcafebabe;
+    if(adc_nondeterminism)
+        adc_seed = (uint32_t)std::random_device{}();
+
+    sound_buffer.clear();
 
     st_handlers[0x3f] = eeprom_handle_st_eecr;
     st_handlers[0x49] = pll_handle_st_pllcsr;
@@ -90,6 +76,12 @@ void atmega32u4_t::reset()
     ld_handlers[0x4d] = spi_handle_ld_spsr;
     ld_handlers[0x4e] = spi_handle_ld_spdr;
     ld_handlers[0x46] = timer0_handle_ld_tcnt;
+
+    st_handlers[0x54] = st_handle_mcusr;
+    st_handlers[0x55] = st_handle_mcucr;
+    st_handlers[0x57] = st_handle_spmcsr;
+    st_handlers[0x60] = st_handle_wdtcsr;
+
     for(int i = 0x84; i <= 0x8d; ++i)
         ld_handlers[i] = timer1_handle_ld_regs;
     for(int i = 0x94; i <= 0x9d; ++i)
@@ -107,6 +99,42 @@ void atmega32u4_t::reset()
         st_handlers[i] = usb_st_handler;
 
     ld_handlers[0xf1] = usb_ld_handler_uedatx;
+}
+
+void atmega32u4_t::soft_reset()
+{
+    // clear all registers and RAM, reset state
+
+    // preserve button pins
+    uint8_t pinb = data[0x23];
+    uint8_t pine = data[0x2c];
+    uint8_t pinf = data[0x2f];
+
+    data = {};
+
+    data[0x23] = pinb;
+    data[0x2c] = pine;
+    data[0x2f] = pinf;
+
+    // turn off TX/RX LEDs at reset (assume bootloader has turned them off)
+    data[0x25] |= 0x01;
+    data[0x2b] |= 0x20;
+
+    pc = BOOTRST() ? bootloader_address() : 0;
+    executing_instr_pc = pc;
+
+    just_read = 0xffffffff;
+    just_written = 0xffffffff;
+
+    active = true;
+    wakeup_cycles = false;
+    just_interrupted = false;
+
+    num_stack_frames = 0;
+    pushed_at_least_once = false;
+    autobreaks.reset();
+
+    prev_sreg = 0;
 
     timer0 = {};
     timer1 = {};
@@ -125,6 +153,11 @@ void atmega32u4_t::reset()
     timer3.prr_addr = 0x65;
     timer1.prr_mask = 1 << 3;
     timer3.prr_mask = 1 << 3;
+
+    timer0.prev_update_cycle = cycle_count;
+    timer1.prev_update_cycle = cycle_count;
+    timer3.prev_update_cycle = cycle_count;
+    timer4.prev_update_cycle = cycle_count;
 
     timer0.next_update_cycle = UINT64_MAX;
     timer1.next_update_cycle = UINT64_MAX;
@@ -157,28 +190,31 @@ void atmega32u4_t::reset()
     adc_ref = 0;
     adc_result = 0;
     adc_busy = false;
-    adc_seed = 0xcafebabe;
-    if(adc_nondeterminism)
-        adc_seed = (uint32_t)std::random_device{}();
 
     sound_cycle = 0;
     sound_enabled = 0;
     sound_pwm = false;
     sound_pwm_val = 0;
-    sound_buffer.clear();
-
-    cycle_count = 0;
 
     min_stack = 0xffff;
     pushed_at_least_once = false;
 
-    serial_bytes.clear();
     reset_usb();
     usb_dpram = {};
 
-    eeprom_modified_bytes.reset();
-    eeprom_modified = false;
-    eeprom_dirty = false;
+    spm_prev_cycle = cycle_count;
+    spm_busy = false;
+    spm_op = SPM_OP_NONE;
+    spm_cycles = 0;
+    erase_spm_buffer();
+
+    watchdog_divider = 0;
+    watchdog_divider_cycle = 0;
+    watchdog_prev_cycle = cycle_count;
+    update_watchdog_prescaler();
+    watchdog_next_cycle = cycle_count + watchdog_divider;
+
+    OSCCAL() = 0x6d;
 }
 
 }
