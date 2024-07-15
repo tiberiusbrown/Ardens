@@ -106,6 +106,8 @@ jobs:
         cp ${{github.workspace}}/build/Ardens.wasm ${{github.workspace}}/Ardens_web
         cp ${{github.workspace}}/build/ArdensPlayer.js ${{github.workspace}}/Ardens_web
         cp ${{github.workspace}}/build/ArdensPlayer.wasm ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/build/ArdensFlashcart.js ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/build/ArdensFlashcart.wasm ${{github.workspace}}/Ardens_web
         cp ${{github.workspace}}/src/Ardens.html ${{github.workspace}}/Ardens_web/index.html
         cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
         cp ${{github.workspace}}/src/ArdensFlashcart.html ${{github.workspace}}/Ardens_web/flashcart.html

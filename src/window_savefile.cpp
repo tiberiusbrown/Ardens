@@ -80,9 +80,9 @@ void window_savefile(bool& open)
                     SameLine();
                     char const* comma = (++i == ranges.size() ? "" : ",");
                     if(r.first == r.second)
-                        Text("%d%s", r.first, comma);
+                        Text("%d%s", (int)r.first, comma);
                     else
-                        Text("%d-%d%s", r.first, r.second, comma);
+                        Text("%d-%d%s", (int)r.first, (int)r.second, comma);
                 }
             }
             NewLine();
