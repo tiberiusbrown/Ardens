@@ -462,6 +462,7 @@ struct atmega32u4_t
 
     uint16_t last_addr;
     uint16_t num_instrs;
+    uint16_t num_instrs_total;
     bool no_merged;
     std::array<avr_instr_t, PROG_SIZE_BYTES / 2> decoded_prog;
     std::array<avr_instr_t, PROG_SIZE_BYTES / 2> merged_prog; // decoded and merged instrs

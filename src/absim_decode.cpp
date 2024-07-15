@@ -359,16 +359,19 @@ void atmega32u4_t::decode()
 
     // disassemble
     num_instrs = 0;
+    num_instrs_total = 0;
     uint16_t addr = 0;
     while(addr + 1 < PROG_SIZE_BYTES)
     {
         auto const& i = decoded_prog[addr / 2];
-        auto& d = disassembled_prog[num_instrs];
+        auto& d = disassembled_prog[num_instrs_total];
 
         disassemble_instr(i, d);
         d.addr = addr;
 
-        ++num_instrs;
+        if(addr < last_addr)
+            ++num_instrs;
+        ++num_instrs_total;
         addr += instr_is_two_words(i) ? 4 : 2;
     }
 

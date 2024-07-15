@@ -241,7 +241,7 @@ static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = fal
                     continue;
                 if(addr + i >= cpu.prog.size())
                     return "Too many instructions!";
-                if(addr + i > cpu.last_addr)
+                if(!bootloader && addr + i > cpu.last_addr)
                     cpu.last_addr = addr + i;
                 cpu.prog[addr + i] = (uint8_t)data;
             }
