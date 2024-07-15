@@ -212,6 +212,8 @@ void atmega32u4_t::soft_reset()
     watchdog_prev_cycle = cycle_count;
     update_watchdog_prescaler();
     watchdog_next_cycle = cycle_count + watchdog_divider;
+
+    OSCCAL() = 0x6d;
 }
 
 }
