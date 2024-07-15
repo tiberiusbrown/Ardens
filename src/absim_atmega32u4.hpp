@@ -118,18 +118,20 @@ void atmega32u4_t::st_handle_spmcsr(
         x |= 0x01;
     else
     {
-        if((x & 0x1f) == (1 << 1) + 1)
+        if((x & 0x3f) == (1 << 1) + 1)
             cpu.spm_op = cpu.SPM_OP_PAGE_ERASE;
-        else if((x & 0x1f) == (1 << 2) + 1)
+        else if((x & 0x3f) == (1 << 2) + 1)
             cpu.spm_op = cpu.SPM_OP_PAGE_WRITE;
-        else if((x & 0x1f) == (1 << 3) + 1)
+        else if((x & 0x3f) == (1 << 3) + 1)
             cpu.spm_op = cpu.SPM_OP_BLB_SET;
-        else if((x & 0x1f) == (1 << 4) + 1)
+        else if((x & 0x3f) == (1 << 4) + 1)
         {
             cpu.spm_op = cpu.SPM_OP_RWW_EN;
             cpu.erase_spm_buffer();
         }
-        else if((x & 0x1f) == 1)
+        else if((x & 0x3f) == (1 << 5) + 1)
+            cpu.spm_op = cpu.SPM_OP_SIG_READ;
+        else if((x & 0x3f) == 1)
             cpu.spm_op = cpu.SPM_OP_PAGE_LOAD;
         else
             return; // no effect
@@ -226,7 +228,7 @@ void atmega32u4_t::update_spm(uint32_t cycles)
         spm_op = SPM_OP_NONE;
         spm_en_cycles = 0;
         spm_cycles = 0;
-        SPMCSR() &= 0xe0;
+        SPMCSR() &= 0xc0;
     }
 }
 

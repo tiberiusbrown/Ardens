@@ -717,6 +717,7 @@ struct atmega32u4_t
         SPM_OP_PAGE_WRITE,
         SPM_OP_BLB_SET,
         SPM_OP_RWW_EN,
+        SPM_OP_SIG_READ,
     };
     uint8_t spm_op;
     uint32_t spm_cycles;
