@@ -1121,6 +1121,53 @@ std::string arduboy_t::load_bootloader_hex(uint8_t const* data, size_t size)
     return load_bootloader_hex(f);
 }
 
+std::string arduboy_t::load_flashcart_zip(uint8_t const* data, size_t size)
+{
+    cpu.program_loaded = false;
+    fxdata.clear();
+    fxsave.clear();
+    fx.erase_all_data();
+    reset();
+
+    struct zip_t
+    {
+        mz_zip_archive z = {};
+        ~zip_t() { mz_zip_reader_end(&z); }
+    };
+    zip_t zip;
+    auto* z = &zip.z;
+    if(MZ_FALSE == mz_zip_reader_init_mem(z, data, size, 0))
+        return "FLASHCART: could not open archive";
+
+    if(0 == mz_zip_reader_get_num_files(z))
+        return "FLASHCART: no file in archive";
+
+    mz_zip_archive_file_stat stat{};
+    if(MZ_FALSE == mz_zip_reader_file_stat(z, 0, &stat))
+        return "FLASHCART: could not stat file";
+
+    if(stat.m_uncomp_size > fx.DATA_BYTES)
+        return "FLASHCART: data file too large";
+
+    std::vector<uint8_t> fdata;
+    fdata.resize((size_t)stat.m_uncomp_size);
+    if(MZ_FALSE == mz_zip_reader_extract_to_mem(z, 0, fdata.data(), fdata.size(), 0))
+        return "FLASHCART: could not extract data file";
+
+    std::istrstream f((char const*)fdata.data(), (int)fdata.size());
+    auto r = load_bin(*this, f, false);
+    if(!r.empty()) return r;
+
+    if(!flashcart_loaded)
+        return "FLASHCART: not a valid flashcart";
+
+    cpu.program_loaded = true;
+    reload_fx();
+    reset();
+
+    return "";
+}
+
 std::string arduboy_t::load_file(char const* filename, std::istream& f, bool save)
 {
     if(f.fail())

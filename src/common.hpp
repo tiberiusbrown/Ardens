@@ -39,8 +39,10 @@
 #define ARDENS_OS "unknown"
 #endif
 
-#ifdef ARDENS_DISTNAME
+#if defined(ARDENS_DISTNAME)
 #define ARDENS_TITLE ARDENS_DISTNAME
+#elif defined(ARDENS_FLASHCART)
+#define ARDENS_TITLE "Ardens Flashcart Player"
 #elif defined(ARDENS_PLAYER)
 #define ARDENS_TITLE "Ardens Player"
 #else

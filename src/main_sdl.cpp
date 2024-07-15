@@ -183,7 +183,7 @@ static void main_loop()
             done = true;
         if(event.type == SDL_EVENT_DROP_FILE)
         {
-#ifndef ARDENS_DIST
+#if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
             std::ifstream f(event.drop.file, std::ios::binary);
             std::vector<uint8_t> fdata(
                 (std::istreambuf_iterator<char>(f)),

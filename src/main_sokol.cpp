@@ -166,7 +166,7 @@ static void app_event(sapp_event const* e)
         touch_points.clear();
 #endif
 
-#if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST)
+#if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
     if(e->type == SAPP_EVENTTYPE_FILES_DROPPED)
     {
         int n = sapp_get_num_dropped_files();

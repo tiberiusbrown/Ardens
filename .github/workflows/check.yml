@@ -97,6 +97,7 @@ jobs:
         export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensFlashcart
         mkdir ${{github.workspace}}/Ardens_web
         
     - name: Create zip file
@@ -107,6 +108,8 @@ jobs:
         cp ${{github.workspace}}/build/ArdensPlayer.wasm ${{github.workspace}}/Ardens_web
         cp ${{github.workspace}}/src/Ardens.html ${{github.workspace}}/Ardens_web/index.html
         cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
+        cp ${{github.workspace}}/src/ArdensFlashcart.html ${{github.workspace}}/Ardens_web/flashcart.html
+        cp ${{github.workspace}}/src/boot/flashcart.zip ${{github.workspace}}/Ardens_web/flashcart.zip
         cd ${{github.workspace}}/Ardens_web
         zip -r ${{github.workspace}}/Ardens_web.zip *
 
@@ -120,6 +123,7 @@ jobs:
       run: |
         cp ${{github.workspace}}/src/live_Ardens.html ${{github.workspace}}/Ardens_web/index.html
         cp ${{github.workspace}}/src/live_ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
+        cp ${{github.workspace}}/src/live_ArdensFlashcart.html ${{github.workspace}}/Ardens_web/flashcart.html
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
