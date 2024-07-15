@@ -107,6 +107,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
         ar(f.sp);
     }
     ar(a.cpu.num_stack_frames);
+    ar(a.cpu.program_loaded);
     ar(a.cpu.timer0);
     ar(a.cpu.timer1);
     ar(a.cpu.timer3);
@@ -157,7 +158,22 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.usb_dpram);
     ar(a.cpu.usb_attached);
 
+    ar(a.cpu.spm_prev_cycle);
+    ar(a.cpu.spm_busy);
+    ar(a.cpu.spm_en_cycles);
+    ar(a.cpu.spm_op);
+    ar(a.cpu.spm_cycles);
+    ar(a.cpu.spm_buffer);
+
+    ar(a.cpu.watchdog_divider);
+    ar(a.cpu.watchdog_divider_cycle);
+
     ar(a.cpu.cycle_count);
+
+    ar(a.cpu.lock);
+    ar(a.cpu.fuse_lo);
+    ar(a.cpu.fuse_hi);
+    ar(a.cpu.fuse_ext);
 
     ar(a.display.filtered_pixels);
     ar(a.display.filtered_pixel_counts);
@@ -269,6 +285,13 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.breakpoints_rd);
     ar(a.breakpoints_wr);
     ar(a.paused);
+
+    ar(a.cfg.display_type);
+    ar(a.cfg.fxport_reg);
+    ar(a.cfg.fxport_mask);
+    ar(a.cfg.bootloader);
+    ar(a.cfg.boot_to_menu);
+    ar(a.flashcart_loaded);
 
     return serdes_savestate(ar, a);
 }

@@ -95,6 +95,7 @@ instr_func_t const INSTR_MAP[] =
     instr_jmp,
     instr_ijmp,
     instr_wdr,
+    instr_spm,
     instr_break,
 
     // merged instrs
@@ -152,8 +153,18 @@ uint32_t instr_unknown(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
 {
-    // TODO
     (void)i;
+    cpu.watchdog_divider_cycle = 0;
+    cpu.watchdog_prev_cycle = cpu.cycle_count;
+    cpu.watchdog_next_cycle = cpu.cycle_count + cpu.watchdog_divider;
+    cpu.pc += 1;
+    return 1;
+}
+
+uint32_t instr_spm(atmega32u4_t& cpu, avr_instr_t const& i)
+{
+    (void)i;
+    cpu.execute_spm();
     cpu.pc += 1;
     return 1;
 }
@@ -506,10 +517,39 @@ uint32_t instr_ldi(atmega32u4_t& cpu, avr_instr_t const& i)
 
 uint32_t instr_lpm(atmega32u4_t& cpu, avr_instr_t const& i)
 {
+    // TODO: handle RWW errors (0x0000 - 0x37ff while RWWSB is set in SPMCSR)
     uint16_t z = cpu.z_word();
     uint8_t res = 0x00;
     if(z < cpu.prog.size())
         res = cpu.prog[z];
+    if(cpu.spm_en_cycles != 0)
+    {
+        if(cpu.spm_op == cpu.SPM_OP_BLB_SET)
+        {
+            // reading fuse or lock bits
+            switch(z)
+            {
+            case 0x0000: res = cpu.fuse_lo; break;
+            case 0x0001: res = cpu.lock; break;
+            case 0x0002: res = cpu.fuse_ext; break;
+            case 0x0003: res = cpu.fuse_hi; break;
+            default:
+                break;
+            }
+        }
+        else if(cpu.spm_op == cpu.SPM_OP_SIG_READ)
+        {
+            switch(z)
+            {
+            case 0x0000: res = 0x1e; break;
+            case 0x0002: res = 0x95; break;
+            case 0x0004: res = 0x87; break;
+            case 0x0001: res = 0x6d; break;
+            default:
+                break;
+            }
+        }
+    }
     cpu.gpr(i.dst) = res;
     cpu.pc += 1;
     if(i.word == 1)
@@ -1069,7 +1109,7 @@ uint32_t instr_neg(atmega32u4_t& cpu, avr_instr_t const& i)
     uint8_t res = uint8_t(-src);
     cpu.gpr(i.dst) = res;
 
-    set_flag(cpu, SREG_H, (res | ~src) & 0x8);
+    set_flag(cpu, SREG_H, (res | src) & 0x8);
     set_flag(cpu, SREG_V, res == 0x80);
     set_flag(cpu, SREG_C, res != 0x00);
     set_flags_nzs(cpu, res);
@@ -1143,8 +1183,8 @@ uint32_t instr_ror(atmega32u4_t& cpu, avr_instr_t const& i)
         res |= 0x80;
     cpu.gpr(i.dst) = res;
     set_flag(cpu, SREG_C, dst & 0x1);
-    set_flags_nzs(cpu, res);
     set_flag(cpu, SREG_V, (res >> 7) ^ (dst & 0x1));
+    set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
 }

@@ -1,12 +1,19 @@
 #include "absim.hpp"
 
+extern "C"
+{
+#include "boot/boot_flashcart.h"
+}
+
 namespace absim
 {
 
 void w25q128_t::erase_all_data()
 {
     memset(&data, 0xff, sizeof(data));
-    memcpy(&data, "ARDUBOY", 7);
+    memcpy(
+        &data, ARDENS_BOOT_FLASHCART,
+        std::min(sizeof(data), sizeof(ARDENS_BOOT_FLASHCART)));
     sectors_modified.reset();
 }
 
@@ -45,6 +52,7 @@ ARDENS_FORCEINLINE void w25q128_t::set_enabled(bool e)
             erasing_sector = 0;
             processing_command = false;
             releasing = 0;
+            reading_jedec_id = 0;
             if(busy_ps_rem == 0)
                 command = CMD_NONE;
         }
@@ -139,10 +147,31 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
     }
     else if(releasing)
     {
+        if(releasing == 1) data_to_send = 0x00;
+        if(releasing == 2) data_to_send = 0x00;
+        if(releasing == 3) data_to_send = 0x00;
         if(releasing <= 3)
             ++releasing;
         if(releasing == 4)
-            data_to_send = 0x17;
+        {
+            releasing = 0;
+            command = CMD_NONE;
+            processing_command = false;
+            data_to_send = 0x00;
+        }
+    }
+    else if(reading_jedec_id)
+    {
+        if(reading_jedec_id == 1) data_to_send = 0x40;
+        if(reading_jedec_id == 2) data_to_send = 0x17;
+        if(reading_jedec_id <= 2)
+            ++reading_jedec_id;
+        if(reading_jedec_id >= 3)
+        {
+            reading_jedec_id = 0;
+            command = CMD_NONE;
+            processing_command = false;
+        }
     }
     else if(!woken_up)
     {
@@ -195,11 +224,17 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
             erasing_sector = 1;
             current_addr = 0;
             break;
+        case 0x9f:
+            command = CMD_JEDEC_ID;
+            reading_jedec_id = 1;
+            data_to_send = 0xef;
+            break;
         case 0xb9:
             woken_up = false;
             break;
         default:
             command = CMD_UNKNOWN;
+            processing_command = false;
             break;
         }
     }

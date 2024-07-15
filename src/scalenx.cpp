@@ -57,9 +57,9 @@ void palette_rgba(int palette, uint8_t x, uint8_t y[4])
 
 int filter_zoom(int f)
 {
+#ifndef ARDENS_NO_SCALING
     switch(f)
     {
-#ifndef ARDENS_NO_SCALING
     case FILTER_NONE:    return 1;
     case FILTER_SCALE2X: return 2;
     case FILTER_SCALE3X: return 3;
@@ -67,9 +67,11 @@ int filter_zoom(int f)
     case FILTER_HQ2X:    return 2;
     case FILTER_HQ3X:    return 3;
     case FILTER_HQ4X:    return 4;
-#endif
     default:             return 1;
     }
+#else
+    return 1;
+#endif
 }
 
 int display_filter_zoom()

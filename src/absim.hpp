@@ -88,163 +88,163 @@ struct avr_instr_t
 
 struct atmega32u4_t
 {
-    static constexpr size_t PROG_SIZE_BYTES = 29 * 1024;
+    static constexpr size_t PROG_SIZE_BYTES = 32 * 1024;
     static constexpr size_t DATA_SIZE_BYTES = 2560 + 256;
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
 
     inline uint8_t& sfr(uint8_t n) { return data[n + 0x20]; }
 
-    inline uint8_t& PINB   () { return sfr(0x03); }
-    inline uint8_t& DDRB   () { return sfr(0x04); }
-    inline uint8_t& PORTB  () { return sfr(0x05); }
-    inline uint8_t& PINC   () { return sfr(0x06); }
-    inline uint8_t& DDRC   () { return sfr(0x07); }
-    inline uint8_t& PORTC  () { return sfr(0x08); }
-    inline uint8_t& PIND   () { return sfr(0x09); }
-    inline uint8_t& DDRD   () { return sfr(0x0a); }
-    inline uint8_t& PORTD  () { return sfr(0x0b); }
-    inline uint8_t& PINE   () { return sfr(0x0c); }
-    inline uint8_t& DDRE   () { return sfr(0x0d); }
-    inline uint8_t& PORTE  () { return sfr(0x0e); }
-    inline uint8_t& PINF   () { return sfr(0x0f); }
-    inline uint8_t& DDRF   () { return sfr(0x10); }
-    inline uint8_t& PORTF  () { return sfr(0x11); }
-    inline uint8_t& TIFR0  () { return sfr(0x15); }
-    inline uint8_t& TIFR1  () { return sfr(0x16); }
-    inline uint8_t& TIFR3  () { return sfr(0x18); }
-    inline uint8_t& TIFR4  () { return sfr(0x19); }
-    inline uint8_t& PCIFR  () { return sfr(0x1b); }
-    inline uint8_t& EIFR   () { return sfr(0x1c); }
-    inline uint8_t& EIMSK  () { return sfr(0x1d); }
-    inline uint8_t& GPIOR0 () { return sfr(0x1e); }
-    inline uint8_t& EECR   () { return sfr(0x1f); }
-    inline uint8_t& EEDR   () { return sfr(0x20); }
-    inline uint8_t& EEARL  () { return sfr(0x21); }
-    inline uint8_t& EEARH  () { return sfr(0x22); }
-    inline uint8_t& GTCCR  () { return sfr(0x23); }
-    inline uint8_t& TCCR0A () { return sfr(0x24); }
-    inline uint8_t& TCCR0B () { return sfr(0x25); }
-    inline uint8_t& TCNT0  () { return sfr(0x26); }
-    inline uint8_t& OCR0A  () { return sfr(0x27); }
-    inline uint8_t& OCR0B  () { return sfr(0x28); }
-    inline uint8_t& PLLCSR () { return sfr(0x29); }
-    inline uint8_t& GPIOR1 () { return sfr(0x2a); }
-    inline uint8_t& GPIOR2 () { return sfr(0x2b); }
-    inline uint8_t& SPCR   () { return sfr(0x2c); }
-    inline uint8_t& SPSR   () { return sfr(0x2d); }
-    inline uint8_t& SPDR   () { return sfr(0x2e); }
-    inline uint8_t& ACSR   () { return sfr(0x30); }
-    inline uint8_t& OCDR   () { return sfr(0x31); }
-    inline uint8_t& MONDR  () { return sfr(0x31); }
-    inline uint8_t& PLLFRQ () { return sfr(0x32); }
-    inline uint8_t& SMCR   () { return sfr(0x33); }
-    inline uint8_t& MCUSR  () { return sfr(0x34); }
-    inline uint8_t& MCUCR  () { return sfr(0x35); }
-    inline uint8_t& SPMCSR () { return sfr(0x37); }
-    inline uint8_t& SPL    () { return sfr(0x3d); }
-    inline uint8_t& SPH    () { return sfr(0x3e); }
-    inline uint8_t& SREG   () { return sfr(0x3f); }
-    inline uint8_t& WDTCSR () { return sfr(0x40); }
-    inline uint8_t& CLKPR  () { return sfr(0x41); }
-    inline uint8_t& PRR0   () { return sfr(0x44); }
-    inline uint8_t& PRR1   () { return sfr(0x45); }
-    inline uint8_t& OSCCAL () { return sfr(0x46); }
-    inline uint8_t& RCCTRL () { return sfr(0x47); }
-    inline uint8_t& PCICR  () { return sfr(0x48); }
-    inline uint8_t& EICRA  () { return sfr(0x49); }
-    inline uint8_t& EICRB  () { return sfr(0x4a); }
-    inline uint8_t& PCMSK0 () { return sfr(0x4b); }
-    inline uint8_t& TIMSK0 () { return sfr(0x4e); }
-    inline uint8_t& TIMSK1 () { return sfr(0x4f); }
-    inline uint8_t& TIMSK3 () { return sfr(0x51); }
-    inline uint8_t& TIMSK4 () { return sfr(0x52); }
-    inline uint8_t& ADCL   () { return sfr(0x58); }
-    inline uint8_t& ADCH   () { return sfr(0x59); }
-    inline uint8_t& ADCSRA () { return sfr(0x5a); }
-    inline uint8_t& ADCSRB () { return sfr(0x5b); }
-    inline uint8_t& ADMUX  () { return sfr(0x5c); }
-    inline uint8_t& DIDR2  () { return sfr(0x5d); }
-    inline uint8_t& DIDR0  () { return sfr(0x5e); }
-    inline uint8_t& DIDR1  () { return sfr(0x5f); }
-    inline uint8_t& TCCR1A () { return sfr(0x60); }
-    inline uint8_t& TCCR1B () { return sfr(0x61); }
-    inline uint8_t& TCCR1C () { return sfr(0x62); }
-    inline uint8_t& TCNT1L () { return sfr(0x64); }
-    inline uint8_t& TCNT1H () { return sfr(0x65); }
-    inline uint8_t& ICR1L  () { return sfr(0x66); }
-    inline uint8_t& ICR1H  () { return sfr(0x67); }
-    inline uint8_t& OCR1AL () { return sfr(0x68); }
-    inline uint8_t& OCR1AH () { return sfr(0x69); }
-    inline uint8_t& OCR1BL () { return sfr(0x6a); }
-    inline uint8_t& OCR1BH () { return sfr(0x6b); }
-    inline uint8_t& OCR1CL () { return sfr(0x6c); }
-    inline uint8_t& OCR1CH () { return sfr(0x6d); }
-    inline uint8_t& TCCR3A () { return sfr(0x70); }
-    inline uint8_t& TCCR3B () { return sfr(0x71); }
-    inline uint8_t& TCCR3C () { return sfr(0x72); }
-    inline uint8_t& TCNT3L () { return sfr(0x74); }
-    inline uint8_t& TCNT3H () { return sfr(0x75); }
-    inline uint8_t& ICR3L  () { return sfr(0x76); }
-    inline uint8_t& ICR3H  () { return sfr(0x77); }
-    inline uint8_t& OCR3AL () { return sfr(0x78); }
-    inline uint8_t& OCR3AH () { return sfr(0x79); }
-    inline uint8_t& OCR3BL () { return sfr(0x7a); }
-    inline uint8_t& OCR3BH () { return sfr(0x7b); }
-    inline uint8_t& OCR3CL () { return sfr(0x7c); }
-    inline uint8_t& OCR3CH () { return sfr(0x7d); }
-    inline uint8_t& TWBR   () { return sfr(0x98); }
-    inline uint8_t& TWSR   () { return sfr(0x99); }
-    inline uint8_t& TWAR   () { return sfr(0x9a); }
-    inline uint8_t& TWDR   () { return sfr(0x9b); }
-    inline uint8_t& TWCR   () { return sfr(0x9c); }
-    inline uint8_t& TWAMR  () { return sfr(0x9d); }
-    inline uint8_t& TCNT4  () { return sfr(0x9e); }
-    inline uint8_t& TC4H   () { return sfr(0x9f); }
-    inline uint8_t& TCCR4A () { return sfr(0xa0); }
-    inline uint8_t& TCCR4B () { return sfr(0xa1); }
-    inline uint8_t& TCCR4C () { return sfr(0xa2); }
-    inline uint8_t& TCCR4D () { return sfr(0xa3); }
-    inline uint8_t& TCCR4E () { return sfr(0xa4); }
+    inline uint8_t& PINB() { return sfr(0x03); }
+    inline uint8_t& DDRB() { return sfr(0x04); }
+    inline uint8_t& PORTB() { return sfr(0x05); }
+    inline uint8_t& PINC() { return sfr(0x06); }
+    inline uint8_t& DDRC() { return sfr(0x07); }
+    inline uint8_t& PORTC() { return sfr(0x08); }
+    inline uint8_t& PIND() { return sfr(0x09); }
+    inline uint8_t& DDRD() { return sfr(0x0a); }
+    inline uint8_t& PORTD() { return sfr(0x0b); }
+    inline uint8_t& PINE() { return sfr(0x0c); }
+    inline uint8_t& DDRE() { return sfr(0x0d); }
+    inline uint8_t& PORTE() { return sfr(0x0e); }
+    inline uint8_t& PINF() { return sfr(0x0f); }
+    inline uint8_t& DDRF() { return sfr(0x10); }
+    inline uint8_t& PORTF() { return sfr(0x11); }
+    inline uint8_t& TIFR0() { return sfr(0x15); }
+    inline uint8_t& TIFR1() { return sfr(0x16); }
+    inline uint8_t& TIFR3() { return sfr(0x18); }
+    inline uint8_t& TIFR4() { return sfr(0x19); }
+    inline uint8_t& PCIFR() { return sfr(0x1b); }
+    inline uint8_t& EIFR() { return sfr(0x1c); }
+    inline uint8_t& EIMSK() { return sfr(0x1d); }
+    inline uint8_t& GPIOR0() { return sfr(0x1e); }
+    inline uint8_t& EECR() { return sfr(0x1f); }
+    inline uint8_t& EEDR() { return sfr(0x20); }
+    inline uint8_t& EEARL() { return sfr(0x21); }
+    inline uint8_t& EEARH() { return sfr(0x22); }
+    inline uint8_t& GTCCR() { return sfr(0x23); }
+    inline uint8_t& TCCR0A() { return sfr(0x24); }
+    inline uint8_t& TCCR0B() { return sfr(0x25); }
+    inline uint8_t& TCNT0() { return sfr(0x26); }
+    inline uint8_t& OCR0A() { return sfr(0x27); }
+    inline uint8_t& OCR0B() { return sfr(0x28); }
+    inline uint8_t& PLLCSR() { return sfr(0x29); }
+    inline uint8_t& GPIOR1() { return sfr(0x2a); }
+    inline uint8_t& GPIOR2() { return sfr(0x2b); }
+    inline uint8_t& SPCR() { return sfr(0x2c); }
+    inline uint8_t& SPSR() { return sfr(0x2d); }
+    inline uint8_t& SPDR() { return sfr(0x2e); }
+    inline uint8_t& ACSR() { return sfr(0x30); }
+    inline uint8_t& OCDR() { return sfr(0x31); }
+    inline uint8_t& MONDR() { return sfr(0x31); }
+    inline uint8_t& PLLFRQ() { return sfr(0x32); }
+    inline uint8_t& SMCR() { return sfr(0x33); }
+    inline uint8_t& MCUSR() { return sfr(0x34); }
+    inline uint8_t& MCUCR() { return sfr(0x35); }
+    inline uint8_t& SPMCSR() { return sfr(0x37); }
+    inline uint8_t& SPL() { return sfr(0x3d); }
+    inline uint8_t& SPH() { return sfr(0x3e); }
+    inline uint8_t& SREG() { return sfr(0x3f); }
+    inline uint8_t& WDTCSR() { return sfr(0x40); }
+    inline uint8_t& CLKPR() { return sfr(0x41); }
+    inline uint8_t& PRR0() { return sfr(0x44); }
+    inline uint8_t& PRR1() { return sfr(0x45); }
+    inline uint8_t& OSCCAL() { return sfr(0x46); }
+    inline uint8_t& RCCTRL() { return sfr(0x47); }
+    inline uint8_t& PCICR() { return sfr(0x48); }
+    inline uint8_t& EICRA() { return sfr(0x49); }
+    inline uint8_t& EICRB() { return sfr(0x4a); }
+    inline uint8_t& PCMSK0() { return sfr(0x4b); }
+    inline uint8_t& TIMSK0() { return sfr(0x4e); }
+    inline uint8_t& TIMSK1() { return sfr(0x4f); }
+    inline uint8_t& TIMSK3() { return sfr(0x51); }
+    inline uint8_t& TIMSK4() { return sfr(0x52); }
+    inline uint8_t& ADCL() { return sfr(0x58); }
+    inline uint8_t& ADCH() { return sfr(0x59); }
+    inline uint8_t& ADCSRA() { return sfr(0x5a); }
+    inline uint8_t& ADCSRB() { return sfr(0x5b); }
+    inline uint8_t& ADMUX() { return sfr(0x5c); }
+    inline uint8_t& DIDR2() { return sfr(0x5d); }
+    inline uint8_t& DIDR0() { return sfr(0x5e); }
+    inline uint8_t& DIDR1() { return sfr(0x5f); }
+    inline uint8_t& TCCR1A() { return sfr(0x60); }
+    inline uint8_t& TCCR1B() { return sfr(0x61); }
+    inline uint8_t& TCCR1C() { return sfr(0x62); }
+    inline uint8_t& TCNT1L() { return sfr(0x64); }
+    inline uint8_t& TCNT1H() { return sfr(0x65); }
+    inline uint8_t& ICR1L() { return sfr(0x66); }
+    inline uint8_t& ICR1H() { return sfr(0x67); }
+    inline uint8_t& OCR1AL() { return sfr(0x68); }
+    inline uint8_t& OCR1AH() { return sfr(0x69); }
+    inline uint8_t& OCR1BL() { return sfr(0x6a); }
+    inline uint8_t& OCR1BH() { return sfr(0x6b); }
+    inline uint8_t& OCR1CL() { return sfr(0x6c); }
+    inline uint8_t& OCR1CH() { return sfr(0x6d); }
+    inline uint8_t& TCCR3A() { return sfr(0x70); }
+    inline uint8_t& TCCR3B() { return sfr(0x71); }
+    inline uint8_t& TCCR3C() { return sfr(0x72); }
+    inline uint8_t& TCNT3L() { return sfr(0x74); }
+    inline uint8_t& TCNT3H() { return sfr(0x75); }
+    inline uint8_t& ICR3L() { return sfr(0x76); }
+    inline uint8_t& ICR3H() { return sfr(0x77); }
+    inline uint8_t& OCR3AL() { return sfr(0x78); }
+    inline uint8_t& OCR3AH() { return sfr(0x79); }
+    inline uint8_t& OCR3BL() { return sfr(0x7a); }
+    inline uint8_t& OCR3BH() { return sfr(0x7b); }
+    inline uint8_t& OCR3CL() { return sfr(0x7c); }
+    inline uint8_t& OCR3CH() { return sfr(0x7d); }
+    inline uint8_t& TWBR() { return sfr(0x98); }
+    inline uint8_t& TWSR() { return sfr(0x99); }
+    inline uint8_t& TWAR() { return sfr(0x9a); }
+    inline uint8_t& TWDR() { return sfr(0x9b); }
+    inline uint8_t& TWCR() { return sfr(0x9c); }
+    inline uint8_t& TWAMR() { return sfr(0x9d); }
+    inline uint8_t& TCNT4() { return sfr(0x9e); }
+    inline uint8_t& TC4H() { return sfr(0x9f); }
+    inline uint8_t& TCCR4A() { return sfr(0xa0); }
+    inline uint8_t& TCCR4B() { return sfr(0xa1); }
+    inline uint8_t& TCCR4C() { return sfr(0xa2); }
+    inline uint8_t& TCCR4D() { return sfr(0xa3); }
+    inline uint8_t& TCCR4E() { return sfr(0xa4); }
     inline uint8_t& CLKSEL0() { return sfr(0xa5); }
     inline uint8_t& CLKSEL1() { return sfr(0xa6); }
-    inline uint8_t& CLKSTA () { return sfr(0xa7); }
-    inline uint8_t& UCSR1A () { return sfr(0xa8); }
-    inline uint8_t& UCSR1B () { return sfr(0xa9); }
-    inline uint8_t& UCSR1C () { return sfr(0xaa); }
-    inline uint8_t& UCSR1D () { return sfr(0xab); }
-    inline uint8_t& UBRR1L () { return sfr(0xac); }
-    inline uint8_t& UBRR1H () { return sfr(0xad); }
-    inline uint8_t& UDR1   () { return sfr(0xae); }
-    inline uint8_t& OCR4A  () { return sfr(0xaf); }
-    inline uint8_t& OCR4B  () { return sfr(0xb0); }
-    inline uint8_t& OCR4C  () { return sfr(0xb1); }
-    inline uint8_t& OCR4D  () { return sfr(0xb2); }
-    inline uint8_t& DT4    () { return sfr(0xb4); }
-    inline uint8_t& UHWCON () { return sfr(0xb7); }
-    inline uint8_t& USBCON () { return sfr(0xb8); }
-    inline uint8_t& USBSTA () { return sfr(0xb9); }
-    inline uint8_t& USBINT () { return sfr(0xba); }
-    inline uint8_t& UDCON  () { return sfr(0xc0); }
-    inline uint8_t& UDINT  () { return sfr(0xc1); }
-    inline uint8_t& UDIEN  () { return sfr(0xc2); }
-    inline uint8_t& UDADDR () { return sfr(0xc3); }
+    inline uint8_t& CLKSTA() { return sfr(0xa7); }
+    inline uint8_t& UCSR1A() { return sfr(0xa8); }
+    inline uint8_t& UCSR1B() { return sfr(0xa9); }
+    inline uint8_t& UCSR1C() { return sfr(0xaa); }
+    inline uint8_t& UCSR1D() { return sfr(0xab); }
+    inline uint8_t& UBRR1L() { return sfr(0xac); }
+    inline uint8_t& UBRR1H() { return sfr(0xad); }
+    inline uint8_t& UDR1() { return sfr(0xae); }
+    inline uint8_t& OCR4A() { return sfr(0xaf); }
+    inline uint8_t& OCR4B() { return sfr(0xb0); }
+    inline uint8_t& OCR4C() { return sfr(0xb1); }
+    inline uint8_t& OCR4D() { return sfr(0xb2); }
+    inline uint8_t& DT4() { return sfr(0xb4); }
+    inline uint8_t& UHWCON() { return sfr(0xb7); }
+    inline uint8_t& USBCON() { return sfr(0xb8); }
+    inline uint8_t& USBSTA() { return sfr(0xb9); }
+    inline uint8_t& USBINT() { return sfr(0xba); }
+    inline uint8_t& UDCON() { return sfr(0xc0); }
+    inline uint8_t& UDINT() { return sfr(0xc1); }
+    inline uint8_t& UDIEN() { return sfr(0xc2); }
+    inline uint8_t& UDADDR() { return sfr(0xc3); }
     inline uint8_t& UDFNUML() { return sfr(0xc4); }
     inline uint8_t& UDFNUMH() { return sfr(0xc5); }
-    inline uint8_t& UDMFN  () { return sfr(0xc6); }
-    inline uint8_t& UEINTX () { return sfr(0xc8); }
-    inline uint8_t& UENUM  () { return sfr(0xc9); }
-    inline uint8_t& UERST  () { return sfr(0xca); }
-    inline uint8_t& UECONX () { return sfr(0xcb); }
+    inline uint8_t& UDMFN() { return sfr(0xc6); }
+    inline uint8_t& UEINTX() { return sfr(0xc8); }
+    inline uint8_t& UENUM() { return sfr(0xc9); }
+    inline uint8_t& UERST() { return sfr(0xca); }
+    inline uint8_t& UECONX() { return sfr(0xcb); }
     inline uint8_t& UECFG0X() { return sfr(0xcc); }
     inline uint8_t& UECFG1X() { return sfr(0xcd); }
     inline uint8_t& UESTA0X() { return sfr(0xce); }
     inline uint8_t& UESTA1X() { return sfr(0xcf); }
-    inline uint8_t& UEIENX () { return sfr(0xd0); }
-    inline uint8_t& UEDATX () { return sfr(0xd1); }
-    inline uint8_t& UEBCLX () { return sfr(0xd2); }
-    inline uint8_t& UEBCHX () { return sfr(0xd3); }
-    inline uint8_t& UEINT  () { return sfr(0xd4); }
+    inline uint8_t& UEIENX() { return sfr(0xd0); }
+    inline uint8_t& UEDATX() { return sfr(0xd1); }
+    inline uint8_t& UEBCLX() { return sfr(0xd2); }
+    inline uint8_t& UEBCHX() { return sfr(0xd3); }
+    inline uint8_t& UEINT() { return sfr(0xd4); }
 
     inline uint8_t& gpr(uint8_t n)
     {
@@ -303,16 +303,16 @@ struct atmega32u4_t
     uint8_t wakeup_cycles; // for tracking interrupt wakeup delay
     bool just_interrupted;
 
-    uint8_t& smcr()   { return data[0x53]; }
-    uint8_t& mcucr()  { return data[0x55]; }
-    uint8_t& spl()    { return data[0x5d]; }
-    uint8_t& sph()    { return data[0x5e]; }
-    uint8_t& sreg()   { return data[0x5f]; }
+    uint8_t& smcr() { return data[0x53]; }
+    uint8_t& mcucr() { return data[0x55]; }
+    uint8_t& spl() { return data[0x5d]; }
+    uint8_t& sph() { return data[0x5e]; }
+    uint8_t& sreg() { return data[0x5f]; }
 
-    uint8_t& tifr0()  { return data[0x35]; }
-    uint8_t& tifr1()  { return data[0x36]; }
-    uint8_t& tifr3()  { return data[0x38]; }
-    uint8_t& tifr4()  { return data[0x39]; }
+    uint8_t& tifr0() { return data[0x35]; }
+    uint8_t& tifr1() { return data[0x36]; }
+    uint8_t& tifr3() { return data[0x38]; }
+    uint8_t& tifr4() { return data[0x39]; }
 
     uint8_t& timsk0() { return data[0x6e]; }
     uint8_t& timsk1() { return data[0x6f]; }
@@ -321,9 +321,9 @@ struct atmega32u4_t
 
     uint8_t& tccr0a() { return data[0x44]; }
     uint8_t& tccr0b() { return data[0x45]; }
-    uint8_t& tcnt0()  { return data[0x46]; }
-    uint8_t& ocr0a()  { return data[0x47]; }
-    uint8_t& ocr0b()  { return data[0x48]; }
+    uint8_t& tcnt0() { return data[0x46]; }
+    uint8_t& ocr0a() { return data[0x47]; }
+    uint8_t& ocr0b() { return data[0x48]; }
 
     ARDENS_FORCEINLINE uint16_t sp()
     {
@@ -462,10 +462,12 @@ struct atmega32u4_t
 
     uint16_t last_addr;
     uint16_t num_instrs;
+    uint16_t num_instrs_total;
     bool no_merged;
     std::array<avr_instr_t, PROG_SIZE_BYTES / 2> decoded_prog;
     std::array<avr_instr_t, PROG_SIZE_BYTES / 2> merged_prog; // decoded and merged instrs
     std::array<disassembled_instr_t, PROG_SIZE_BYTES / 2> disassembled_prog;
+    bool program_loaded;
     bool decoded;
     void decode();
     void merge_instrs();
@@ -705,12 +707,75 @@ struct atmega32u4_t
     void update_usb();
     void reset_usb();
 
+    // SPM
+    uint64_t spm_prev_cycle;
+    bool spm_busy;
+    uint8_t spm_en_cycles;
+    enum
+    {
+        SPM_OP_NONE,
+        SPM_OP_PAGE_LOAD,
+        SPM_OP_PAGE_ERASE,
+        SPM_OP_PAGE_WRITE,
+        SPM_OP_BLB_SET,
+        SPM_OP_RWW_EN,
+        SPM_OP_SIG_READ,
+    };
+    uint8_t spm_op;
+    uint32_t spm_cycles;
+    std::array<uint8_t, 128> spm_buffer;
+    static void st_handle_spmcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    void execute_spm();
+    void update_spm();
+    void erase_spm_buffer() { memset(spm_buffer.data(), 0xff, spm_buffer.size()); }
+
+    // watchdog
+    uint32_t watchdog_divider;
+    uint32_t watchdog_divider_cycle;
+    uint64_t watchdog_prev_cycle;
+    uint64_t watchdog_next_cycle;
+    static void st_handle_mcucr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void st_handle_mcusr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void st_handle_wdtcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    void update_watchdog_prescaler();
+    void update_watchdog();
+
     bool check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
     uint64_t cycle_count;
 
-    // set all registers to initial value
+    // lock bits
+    uint8_t lock;
+
+    // fuses
+    uint8_t fuse_lo;
+    uint8_t fuse_hi;
+    uint8_t fuse_ext;
+
+    inline bool HWBE   () const { return (fuse_ext & (1 << 3)) == 0; }
+
+    inline bool OCDEN  () const { return (fuse_hi  & (1 << 7)) == 0; }
+    inline bool JTAGEN () const { return (fuse_hi  & (1 << 6)) == 0; }
+    inline bool SPIEN  () const { return (fuse_hi  & (1 << 5)) == 0; }
+    inline bool WDTON  () const { return (fuse_hi  & (1 << 4)) == 0; }
+    inline bool EESAVE () const { return (fuse_hi  & (1 << 3)) == 0; }
+    inline bool BOOTRST() const { return (fuse_hi  & (1 << 0)) == 0; }
+
+    inline bool CKDIV8 () const { return (fuse_lo  & (1 << 7)) == 0; }
+    inline bool CKOUT  () const { return (fuse_lo  & (1 << 6)) == 0; }
+
+    inline uint8_t BOOTSZ() const { return (fuse_hi >> 1) & 0x3; }
+    inline uint8_t SUT   () const { return (fuse_lo >> 4) & 0x3; }
+    inline uint8_t CLKSEL() const { return (fuse_lo >> 0) & 0xf; }
+    
+    inline uint16_t bootloader_address() const
+    {
+        static uint16_t const ADDRS[4] = { 0x3800, 0x3c00, 0x3e00, 0x3f00 };
+        return ADDRS[BOOTSZ() & 3];
+    }
+
     void reset();
+    void soft_reset(); // for WDT
 
     // execute at least one cycle (return how many cycles were executed)
     uint32_t advance_cycle();
@@ -842,6 +907,7 @@ struct w25q128_t
     uint8_t programming;
     uint8_t erasing_sector;
     uint8_t releasing;
+    uint8_t reading_jedec_id;
     uint64_t busy_ps_rem;
     uint32_t current_addr;
 
@@ -855,6 +921,7 @@ struct w25q128_t
         CMD_READ_STATUS_REGISTER_1,
         CMD_WRITE_ENABLE,
         CMD_SECTOR_ERASE,
+        CMD_JEDEC_ID,
         CMD_UNKNOWN,
         NUM_CMDS,
     };
@@ -987,6 +1054,15 @@ struct savedata_t
     }
 };
 
+struct arduboy_config_t
+{
+    display_t::type_t display_type = display_t::type_t::SSD1306;
+    uint8_t fxport_reg = 0x2d;    // PORTD
+    uint8_t fxport_mask = 1 << 1; // PORTD1
+    bool bootloader = true;
+    bool boot_to_menu = false;
+};
+
 struct arduboy_t
 {
     atmega32u4_t cpu;
@@ -1072,6 +1148,8 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
+    arduboy_config_t cfg;
+    bool flashcart_loaded;
     void reset();
 
     // advance at least one cycle (returns how many cycles were advanced)
@@ -1090,6 +1168,9 @@ struct arduboy_t
 
     // returns an error string on error or empty string on success
     std::string load_file(char const* filename, std::istream& f, bool save = false);
+
+    std::string load_bootloader_hex(std::istream& f);
+    std::string load_bootloader_hex(uint8_t const* data, size_t size);
 
     // snapshots contain full debugger and device state and are compressed
     bool save_snapshot(std::ostream& f);

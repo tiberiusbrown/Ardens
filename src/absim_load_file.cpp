@@ -1,3 +1,7 @@
+#ifndef _SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING
+#define _SILENCE_CXX17_STRSTREAM_DEPRECATION_WARNING
+#endif
+
 #include "absim.hpp"
 
 #include <string>
@@ -7,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+
+#include <strstream>
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
 #include <yyjson/yyjson.h>
@@ -180,18 +186,21 @@ static void find_stack_check(atmega32u4_t& cpu)
     }
 }
 
-static std::string load_hex(arduboy_t& a, std::istream& f)
+static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = false)
 {
     auto& cpu = a.cpu;
-    memset(&cpu.prog, 0, sizeof(cpu.prog));
-    memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
-    memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-    memset(&cpu.eeprom, 0xff, sizeof(cpu.eeprom));
-    cpu.eeprom_modified = false;
+    if(!bootloader)
+    {
+        memset(&cpu.prog, 0, 29 * 1024);
+        memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
+        memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
+        memset(&cpu.eeprom, 0xff, sizeof(cpu.eeprom));
+        cpu.eeprom_modified = false;
 
-    a.breakpoints.reset();
-    a.breakpoints_rd.reset();
-    a.breakpoints_wr.reset();
+        a.breakpoints.reset();
+        a.breakpoints_rd.reset();
+        a.breakpoints_wr.reset();
+    }
 
     uint32_t addr_upper = 0;
     uint32_t num_records = 0;
@@ -232,7 +241,7 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
                     continue;
                 if(addr + i >= cpu.prog.size())
                     return "Too many instructions!";
-                if(addr + i > cpu.last_addr)
+                if(!bootloader && addr + i > cpu.last_addr)
                     cpu.last_addr = addr + i;
                 cpu.prog[addr + i] = (uint8_t)data;
             }
@@ -256,6 +265,12 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
                 addr_upper |= (uint32_t)data;
             }
         }
+        else if(type == 3)
+        {
+            // ignore
+            for(int i = 0; i < count; ++i)
+                checksum += (uint8_t)get_hex_byte(f);
+        }
         else
         {
             return "HEX: unsupported type";
@@ -269,9 +284,11 @@ static std::string load_hex(arduboy_t& a, std::istream& f)
     if(num_records == 0)
         return "HEX: no records found";
 
-    cpu.decode();
+    if(!bootloader)
+        cpu.decode();
 
-    find_stack_check(cpu);
+    if(!bootloader)
+        find_stack_check(cpu);
 
     return "";
 }
@@ -837,6 +854,21 @@ static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
     if(a.fxdata.size() + a.fxsave.size() >= a.fx.data.size())
         return "BIN: FX data too large";
 
+    // analyze data to determine if the binfile was a flashcart
+    a.flashcart_loaded = false;
+    if(save) goto not_flashcart;
+
+    if(d.size() < 1024) goto not_flashcart;
+    if(0 != memcmp(d.data() + 0x00, "ARDUBOY", 8)) goto not_flashcart;
+    if(d[8] != 0xff) goto not_flashcart;
+    if(d[9] != 0xff) goto not_flashcart;
+    for(int i = 0x0f; i < 0x39; ++i)
+        if(d[i] != 0xff) goto not_flashcart;
+    if(0 != memcmp(d.data() + 0x39, "Bootloader", 10)) goto not_flashcart;
+    a.flashcart_loaded = true;
+
+not_flashcart:
+
     return "";
 }
 
@@ -1066,23 +1098,34 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
         a.device_type = "ArduboyFX";
         return;
     }
-    if(check_for_fx_usage_in_prog_helper(a, 0x2e, 1 << 2))
+    else if(check_for_fx_usage_in_prog_helper(a, 0x2e, 1 << 2))
     {
         a.device_type = "ArduboyMini";
         return;
     }
-    if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 2))
+    else if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 2))
     {
         a.device_type = "ArduboyFXDevKit";
         return;
     }
 }
 
+std::string arduboy_t::load_bootloader_hex(std::istream& f)
+{
+    return load_hex(*this, f, true);
+}
+
+std::string arduboy_t::load_bootloader_hex(uint8_t const* data, size_t size)
+{
+    std::istrstream f((char const*)data, (int)size);
+    return load_bootloader_hex(f);
+}
+
 std::string arduboy_t::load_file(char const* filename, std::istream& f, bool save)
 {
     if(f.fail())
         return "Failed to open file";
-    
+
     std::string fname(filename);
     std::string r;
 
@@ -1099,12 +1142,17 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
 
     if(ends_with(fname, ".hex"))
     {
+        flashcart_loaded = false;
         reset();
         elf.reset();
         device_type.clear();
         r = load_hex(*this, f);
         if(r.empty())
+        {
             check_for_fx_usage_in_prog(*this);
+            cpu.program_loaded = true;
+        }
+        reset();
     }
 
     if(ends_with(fname, ".bin"))
@@ -1112,28 +1160,42 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         reset();
         r = load_bin(*this, f, save);
         reload_fx();
+        if(flashcart_loaded)
+        {
+            cpu.program_loaded = true;
+            reset();
+        }
         return r;
     }
 
 #ifdef ARDENS_LLVM
     if(ends_with(fname, ".elf"))
     {
+        flashcart_loaded = false;
         reset();
         device_type.clear();
         r = load_elf(*this, f, fname);
         if(r.empty())
+        {
             check_for_fx_usage_in_prog(*this);
-    }
+            cpu.program_loaded = true;
+        }
+        reset();
+}
 #endif
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
     if(ends_with(fname, ".arduboy"))
     {
+        flashcart_loaded = false;
         reset();
         elf.reset();
         device_type.clear();
         r = load_arduboy(*this, f);
         reload_fx();
+        if(r.empty())
+            cpu.program_loaded = true;
+        reset();
     }
 #endif
 

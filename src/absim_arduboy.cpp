@@ -9,29 +9,52 @@
 #include "absim_atmega32u4.hpp"
 #include "absim_display.hpp"
 
+extern "C"
+{
+#include "boot/boot_game.h"
+#include "boot/boot_menu.h"
+#include "boot/boot_flashcart.h"
+}
+
 namespace absim
 {
 
 void arduboy_t::reload_fx()
 {
-    size_t fxsave_bytes = (fxsave.size() + 4095) & ~4095;
-    size_t fxdata_bytes = (fxdata.size() + 255) & ~255;
-    size_t fxsave_offset = w25q128_t::DATA_BYTES - fxsave_bytes;
-    size_t fxdata_offset = fxsave_offset - fxdata_bytes;
-
-    fx.min_page = uint32_t(fxdata_offset / 256);
-    fx.max_page = 0xffff;
-
     fx.erase_all_data();
-    std::copy(
-        fxdata.begin(),
-        fxdata.end(),
-        fx.data.begin() + fxdata_offset);
-    update_game_hash();
-    std::copy(
-        fxsave.begin(),
-        fxsave.end(),
-        fx.data.begin() + fxsave_offset);
+
+    if(flashcart_loaded)
+    {
+        fx.min_page = 0;
+        fx.max_page = uint32_t((fxdata.size() + 255) / 256 - 1);
+
+        std::copy(
+            fxdata.begin(),
+            fxdata.end(),
+            fx.data.begin());
+        fxsave.clear();
+        update_game_hash();
+    }
+    else
+    {
+        size_t fxsave_bytes = (fxsave.size() + 4095) & ~4095;
+        size_t fxdata_bytes = (fxdata.size() + 255) & ~255;
+        size_t fxsave_offset = w25q128_t::DATA_BYTES - fxsave_bytes;
+        size_t fxdata_offset = fxsave_offset - fxdata_bytes;
+
+        fx.min_page = uint32_t(fxdata_offset / 256);
+        fx.max_page = 0xffff;
+
+        std::copy(
+            fxdata.begin(),
+            fxdata.end(),
+            fx.data.begin() + fxdata_offset);
+        update_game_hash();
+        std::copy(
+            fxsave.begin(),
+            fxsave.end(),
+            fx.data.begin() + fxsave_offset);
+    }
 }
 
 void arduboy_t::update_game_hash()
@@ -40,14 +63,29 @@ void arduboy_t::update_game_hash()
     constexpr uint64_t OFFSET = 0xcbf29ce484222325;
     constexpr uint64_t PRIME = 0x100000001b3;
     uint64_t h = OFFSET;
-    for(auto byte : cpu.prog)
+    if(!flashcart_loaded)
     {
-        h ^= byte;
+        for(size_t i = 0; i < 29 * 1024; ++i)
+        {
+            uint8_t byte = cpu.prog[i];
+            h ^= byte;
+            h *= PRIME;
+        }
+    }
+
+    for(size_t i = 0; i < 7; ++i)
+    {
+        h ^= "ARDUBOY"[i];
         h *= PRIME;
     }
-    for(auto byte : fx.data)
+    for(size_t i = 7; i < sizeof(ARDENS_BOOT_FLASHCART); ++i)
     {
-        h ^= byte;
+        h ^= 0xff;
+        h *= PRIME;
+    }
+    for(size_t i = sizeof(ARDENS_BOOT_FLASHCART); i < fx.data.size(); ++i)
+    {
+        h ^= fx.data[i];
         h *= PRIME;
     }
 
@@ -60,8 +98,17 @@ void arduboy_t::reset()
     frame_cpu_usage.clear();
     total_frames = 0;
     total_ms = 0;
+
+    cpu.lock = 0xff;
+    cpu.fuse_lo = 0xff;
+    cpu.fuse_hi = 0xd3;
+    cpu.fuse_ext = 0xcb;
+    if(flashcart_loaded || cfg.bootloader)
+        cpu.fuse_hi &= ~(1 << 0);
     cpu.reset();
+
     display.reset();
+    display.type = cfg.display_type;
     fx.reset();
     paused = false;
     break_step = 0xffffffff;
@@ -76,8 +123,19 @@ void arduboy_t::reset()
     if(breakpoints.test(0))
         paused = true;
 
-    fxport_reg = 0x2b;    // PORTD
-    fxport_mask = 1 << 1; // PORTD1
+    fxport_reg = cfg.fxport_reg;
+    fxport_mask = cfg.fxport_mask;
+
+    if(flashcart_loaded || cfg.bootloader)
+    {
+        if(flashcart_loaded || cfg.boot_to_menu)
+            (void)load_bootloader_hex(ARDENS_BOOT_MENU, sizeof(ARDENS_BOOT_MENU));
+        else
+            (void)load_bootloader_hex(ARDENS_BOOT_GAME, sizeof(ARDENS_BOOT_GAME));
+    }
+
+    if(cpu.program_loaded)
+        cpu.decode();
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(
