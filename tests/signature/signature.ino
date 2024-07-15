@@ -17,10 +17,9 @@ void setup() {
   sei();
 
   if(
-    t0 == 242 &&
-    t1 == 246 &&
-    t2 == 250 &&
-    t3 == 254)
+    t0 == 0x1e &&
+    t1 == 0x95 &&
+    t2 == 0x87)
     UEDATX = 'P';
   else
     UEDATX = 'F';

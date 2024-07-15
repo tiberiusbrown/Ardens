@@ -38,6 +38,7 @@ int main()
     arduboy = std::make_unique<absim::arduboy_t>();
 
     r |= test("instructions");
+    r |= test("signature");
     r |= test("timer_tcnt_write");
 
     return r;
