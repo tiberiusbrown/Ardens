@@ -35,6 +35,13 @@ void atmega32u4_t::st_handle_port(
     cpu.data[ptr] = x;
 }
 
+void atmega32u4_t::st_handle_mcucr(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    x &= 0xfe;
+    cpu.data[ptr] = x;
+}
+
 void atmega32u4_t::st_handle_mcusr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {

@@ -78,6 +78,7 @@ void atmega32u4_t::reset()
     ld_handlers[0x46] = timer0_handle_ld_tcnt;
 
     st_handlers[0x54] = st_handle_mcusr;
+    st_handlers[0x55] = st_handle_mcucr;
     st_handlers[0x57] = st_handle_spmcsr;
     st_handlers[0x60] = st_handle_wdtcsr;
 

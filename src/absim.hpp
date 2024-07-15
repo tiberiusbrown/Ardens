@@ -730,6 +730,7 @@ struct atmega32u4_t
     uint32_t watchdog_divider_cycle;
     uint64_t watchdog_prev_cycle;
     uint64_t watchdog_next_cycle;
+    static void st_handle_mcucr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void st_handle_mcusr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void st_handle_wdtcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     void update_watchdog_prescaler();
