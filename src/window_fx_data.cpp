@@ -93,6 +93,7 @@ void window_fx_data(bool& open)
         if(Button("Reset all data"))
         {
             arduboy->fx.erase_all_data();
+            arduboy->fxdata.clear();
             arduboy->update_game_hash();
             arduboy->reset();
             load_savedata();
