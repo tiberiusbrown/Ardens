@@ -94,6 +94,7 @@ void window_fx_data(bool& open)
         {
             arduboy->fx.erase_all_data();
             arduboy->fxdata.clear();
+            arduboy->fxsave.clear();
             arduboy->update_game_hash();
             arduboy->reset();
             load_savedata();
