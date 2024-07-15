@@ -106,12 +106,8 @@ jobs:
         cp ${{github.workspace}}/build/Ardens.wasm ${{github.workspace}}/Ardens_web
         cp ${{github.workspace}}/build/ArdensPlayer.js ${{github.workspace}}/Ardens_web
         cp ${{github.workspace}}/build/ArdensPlayer.wasm ${{github.workspace}}/Ardens_web
-        cp ${{github.workspace}}/build/ArdensFlashcart.js ${{github.workspace}}/Ardens_web
-        cp ${{github.workspace}}/build/ArdensFlashcart.wasm ${{github.workspace}}/Ardens_web
         cp ${{github.workspace}}/src/Ardens.html ${{github.workspace}}/Ardens_web/index.html
         cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
-        cp ${{github.workspace}}/src/ArdensFlashcart.html ${{github.workspace}}/Ardens_web/flashcart.html
-        cp ${{github.workspace}}/src/boot/flashcart.zip ${{github.workspace}}/Ardens_web/flashcart.zip
         cd ${{github.workspace}}/Ardens_web
         zip -r ${{github.workspace}}/Ardens_web.zip *
 
@@ -126,6 +122,9 @@ jobs:
         cp ${{github.workspace}}/src/live_Ardens.html ${{github.workspace}}/Ardens_web/index.html
         cp ${{github.workspace}}/src/live_ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
         cp ${{github.workspace}}/src/live_ArdensFlashcart.html ${{github.workspace}}/Ardens_web/flashcart.html
+        cp ${{github.workspace}}/build/ArdensFlashcart.js ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/build/ArdensFlashcart.wasm ${{github.workspace}}/Ardens_web
+        cp ${{github.workspace}}/src/boot/flashcart.zip ${{github.workspace}}/Ardens_web
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
