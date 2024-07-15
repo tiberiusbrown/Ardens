@@ -107,6 +107,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
         ar(f.sp);
     }
     ar(a.cpu.num_stack_frames);
+    ar(a.cpu.program_loaded);
     ar(a.cpu.timer0);
     ar(a.cpu.timer1);
     ar(a.cpu.timer3);

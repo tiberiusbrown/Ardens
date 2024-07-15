@@ -467,6 +467,7 @@ struct atmega32u4_t
     std::array<avr_instr_t, PROG_SIZE_BYTES / 2> decoded_prog;
     std::array<avr_instr_t, PROG_SIZE_BYTES / 2> merged_prog; // decoded and merged instrs
     std::array<disassembled_instr_t, PROG_SIZE_BYTES / 2> disassembled_prog;
+    bool program_loaded;
     bool decoded;
     void decode();
     void merge_instrs();

@@ -1098,12 +1098,12 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
         a.device_type = "ArduboyFX";
         return;
     }
-    if(check_for_fx_usage_in_prog_helper(a, 0x2e, 1 << 2))
+    else if(check_for_fx_usage_in_prog_helper(a, 0x2e, 1 << 2))
     {
         a.device_type = "ArduboyMini";
         return;
     }
-    if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 2))
+    else if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 2))
     {
         a.device_type = "ArduboyFXDevKit";
         return;
@@ -1125,7 +1125,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
 {
     if(f.fail())
         return "Failed to open file";
-    
+
     std::string fname(filename);
     std::string r;
 
@@ -1148,7 +1148,10 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         device_type.clear();
         r = load_hex(*this, f);
         if(r.empty())
+        {
             check_for_fx_usage_in_prog(*this);
+            cpu.program_loaded = true;
+        }
         reset();
     }
 
@@ -1159,8 +1162,8 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         reload_fx();
         if(flashcart_loaded)
         {
+            cpu.program_loaded = true;
             reset();
-            cpu.decode();
         }
         return r;
     }
@@ -1173,7 +1176,10 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         device_type.clear();
         r = load_elf(*this, f, fname);
         if(r.empty())
+        {
             check_for_fx_usage_in_prog(*this);
+            cpu.program_loaded = true;
+        }
         reset();
 }
 #endif
@@ -1187,6 +1193,9 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         device_type.clear();
         r = load_arduboy(*this, f);
         reload_fx();
+        if(r.empty())
+            cpu.program_loaded = true;
+        reset();
     }
 #endif
 

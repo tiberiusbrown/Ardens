@@ -134,7 +134,8 @@ void arduboy_t::reset()
             (void)load_bootloader_hex(ARDENS_BOOT_GAME, sizeof(ARDENS_BOOT_GAME));
     }
 
-    cpu.decode();
+    if(cpu.program_loaded)
+        cpu.decode();
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(

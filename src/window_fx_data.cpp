@@ -47,7 +47,7 @@ void window_fx_data(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("FX Data", &open))
+    if(Begin("FX Data", &open) && arduboy)
     {
         if(autopage || !*minpagebuf)
             snprintf(minpagebuf, sizeof(minpagebuf), "%04x", arduboy->fx.min_page);
@@ -87,6 +87,15 @@ void window_fx_data(bool& open)
         {
             minpage = arduboy->fx.min_page;
             maxpage = arduboy->fx.max_page;
+        }
+
+        SameLine();
+        if(Button("Reset all data"))
+        {
+            arduboy->fx.erase_all_data();
+            arduboy->update_game_hash();
+            arduboy->reset();
+            load_savedata();
         }
 
         maxpage = std::min<uint32_t>(maxpage, 0xffff);
