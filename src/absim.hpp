@@ -1171,6 +1171,7 @@ struct arduboy_t
 
     std::string load_bootloader_hex(std::istream& f);
     std::string load_bootloader_hex(uint8_t const* data, size_t size);
+    std::string load_flashcart_zip(uint8_t const* data, size_t size);
 
     // snapshots contain full debugger and device state and are compressed
     bool save_snapshot(std::ostream& f);

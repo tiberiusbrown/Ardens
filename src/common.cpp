@@ -24,6 +24,9 @@
 
 #include <imgui.h>
 
+#define SOKOL_FETCH_IMPL
+#include "sokol/sokol_fetch.h"
+
 #define PROFILING 0
 
 constexpr int SPEEDUP = PROFILING ? 10 : 1;
@@ -97,6 +100,32 @@ bool settings_loaded = false;
 bool fs_ready = false;
 #else
 bool fs_ready = true;
+#endif
+
+#if defined(ARDENS_FLASHCART)
+static uint8_t FLASHCART_BUFFER[8 * 1024 * 1024];
+static std::string flashcart_error;
+
+static void flashcart_fetch_callback(sfetch_response_t const* r)
+{
+    if(r->fetched && arduboy)
+    {
+        flashcart_error = arduboy->load_flashcart_zip(
+            (uint8_t const*)r->data.ptr, r->data.size);
+    }
+    else if(r->finished)
+    {
+        flashcart_error = "Could not load flashcart";
+    }
+    if(r->finished)
+    {
+        loading_indicator = false;
+        if(flashcart_error.empty())
+            printf("Flashcart loaded successfully.\n");
+        else
+            printf("%s\n", flashcart_error.c_str());
+    }
+}
 #endif
 
 #ifdef __EMSCRIPTEN__
@@ -370,6 +399,7 @@ void rescale_style()
 
 void shutdown()
 {
+    sfetch_shutdown();
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::DestroyContext();
 #endif
@@ -379,10 +409,17 @@ void init()
 {
     printf(
         "Ardens "
-#ifdef ARDENS_PLAYER
+#if defined(ARDENS_FLASHCART)
+        "Flashcart Player "
+#elif defined(ARDENS_PLAYER)
         "Player "
 #endif
         ARDENS_VERSION " by Peter Brown\n");
+
+    {
+        sfetch_desc_t desc{};
+        sfetch_setup(&desc);
+    }
 
     ImGuiIO& io = ImGui::GetIO();
 
@@ -453,6 +490,18 @@ void init()
 
 #ifdef ARDENS_DIST
     load_file("", "game.arduboy", game_arduboy, game_arduboy_size);
+#endif
+
+#if defined(ARDENS_FLASHCART)
+    {
+        sfetch_request_t req{};
+        req.buffer.ptr = FLASHCART_BUFFER;
+        req.buffer.size = sizeof(FLASHCART_BUFFER);
+        req.path = "flashcart.zip";
+        req.callback = flashcart_fetch_callback;
+        sfetch_send(&req);
+        loading_indicator = true;
+    }
 #endif
 }
 
@@ -528,6 +577,8 @@ std::string preferred_title()
 
 void frame_logic()
 {
+    sfetch_dowork();
+
     ImGuiIO& io = ImGui::GetIO();
 
     arduboy->cpu.adc_nondeterminism = settings.nondeterminism;
@@ -797,8 +848,24 @@ void imgui_content()
                     IM_COL32(shade, shade, shade, tf));
             }
         }
+#if defined(ARDENS_FLASHCART)
+        else if(!flashcart_error.empty())
+        {
+            auto const color = IM_COL32(255, 100, 100, 255);
+            float const t = thickness * 3.f;
+            d->AddLine(
+                { cx - w2, cy - w2 },
+                { cx + w2, cy + w2 },
+                color, t);
+            d->AddLine(
+                { cx - w2, cy + w2 },
+                { cx + w2, cy - w2 },
+                color, t);
+        }
+#endif
         else
         {
+#if !defined(ARDENS_FLASHCART)
             d->AddRect(
                 { cx - w2, cy - w2 },
                 { cx + w2, cy + w2 },
@@ -817,6 +884,7 @@ void imgui_content()
                 { cx, cy + w2 * 0.5f },
                 color,
                 thickness);
+#endif
         }
     }
 

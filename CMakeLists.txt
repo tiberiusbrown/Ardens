@@ -62,15 +62,17 @@ option(ARDENS_LLVM      "Build and link LLVM (enables loading ELF and debug info
 option(ARDENS_DEBUGGER  "Build debugger target" ON)
 option(ARDENS_LIB       "Build static library for emulator core" OFF)
 option(ARDENS_PLAYER    "Build player target" ON)
+option(ARDENS_FLASHCART "Build flashcart player target" ON)
 option(ARDENS_LIBRETRO  "Build libretro core target" OFF)
 option(ARDENS_DIST      "Build distributable game from dist/game.arduboy" OFF)
 option(ARDENS_BENCHMARK "Build benchmark executable" OFF)
 
 if(ARDENS_LIBRETRO)
-    set(ARDENS_LLVM     OFF)
-    set(ARDENS_DEBUGGER OFF)
-    set(ARDENS_PLAYER   OFF)
-    set(ARDENS_DIST     OFF)
+    set(ARDENS_LLVM      OFF)
+    set(ARDENS_DEBUGGER  OFF)
+    set(ARDENS_PLAYER    OFF)
+    set(ARDENS_FLASHCART OFF)
+    set(ARDENS_DIST      OFF)
     set(CMAKE_CXX_STANDARD 14)
 endif()
 
@@ -135,7 +137,7 @@ endif()
 
 add_subdirectory(deps/bitsery)
 
-if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_DEBUGGER))
+if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_FLASHCART OR ARDENS_DEBUGGER))
     set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
     add_subdirectory(deps/SDL)
     disable_all_warnings(SDL3-static)
@@ -518,6 +520,50 @@ if(ARDENS_PLAYER)
 
 endif()
 
+if(ARDENS_FLASHCART)
+
+    add_executable(ArdensFlashcart ${EXEFLAG}
+        .editorconfig
+
+        src/main_sdl.cpp
+        src/main_sokol.cpp
+        ${RC_FILE}
+        ${MACOS_ICON}
+        src/ardens_icon.hpp
+
+        src/settings.hpp
+        src/settings.cpp
+        src/common.hpp
+        src/common.cpp
+        src/view_player.cpp
+        src/record_gif.cpp
+        src/record_wav.cpp
+        src/scalenx.cpp
+        src/saveload.cpp
+        src/dwarf.hpp
+        src/dwarf.cpp
+        src/file_watch.cpp
+
+        deps/stb_image_write.h
+        ${IMGUI_SOURCES}
+        ${GIFENC_SOURCES}
+        ${EM_FILE_BROWSER_SOURCES}
+        ${SOKOL_SOURCES}
+        )
+    target_include_directories(ArdensFlashcart SYSTEM PRIVATE
+        deps
+        deps/imgui
+        deps/gifenc
+        )
+    target_link_libraries(ArdensFlashcart PRIVATE
+        ardenslib
+        ${SYSTEM_LIBS}
+        )
+    target_compile_definitions(ArdensFlashcart PRIVATE -DARDENS_FLASHCART)
+    configure_app_target(ArdensFlashcart)
+
+endif()
+
 if(ARDENS_BENCHMARK)
 
     set(BENCHMARK_DOWNLOAD_DEPENDENCIES ON CACHE BOOL "" FORCE)
@@ -703,5 +749,8 @@ if(EMSCRIPTEN)
     endif()
     if(ARDENS_PLAYER)
         target_link_options(ArdensPlayer PRIVATE "-lidbfs.js")
+    endif()
+    if(ARDENS_FLASHCART)
+        target_link_options(ArdensFlashcart PRIVATE "-lidbfs.js")
     endif()
 endif()
