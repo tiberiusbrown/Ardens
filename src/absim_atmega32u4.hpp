@@ -114,6 +114,7 @@ void atmega32u4_t::update_watchdog()
 void atmega32u4_t::st_handle_spmcsr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
+    cpu.update_spm();
     if(cpu.spm_op != cpu.SPM_OP_NONE)
         x |= 0x01;
     else
@@ -136,7 +137,7 @@ void atmega32u4_t::st_handle_spmcsr(
         else
             return; // no effect
         cpu.spm_busy = true;
-        cpu.spm_en_cycles = 4;
+        cpu.spm_en_cycles = 5;
     }
     cpu.data[ptr] = x;
 }
@@ -203,9 +204,16 @@ void atmega32u4_t::execute_spm()
     }
 }
 
-void atmega32u4_t::update_spm(uint32_t cycles)
+void atmega32u4_t::update_spm()
 {
-    if(!spm_busy) return;
+    if(!spm_busy)
+    {
+        spm_prev_cycle = cycle_count;
+        return;
+    }
+
+    uint32_t cycles = uint32_t(cycle_count - spm_prev_cycle);
+    spm_prev_cycle = cycle_count;
 
     if(spm_cycles != 0)
     {
@@ -294,7 +302,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 #ifndef ARDENS_NO_DEBUGGER
             no_merged ||
 #endif
-            true);
+            false);
 
         if(!single_instr_only)
         {
@@ -390,6 +398,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
             t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
             t = std::min<uint64_t>(t, usb_next_update_cycle - cycle_count);
+            t = std::min<uint64_t>(t, spi_done_cycle);
+            t = std::min<uint64_t>(t, watchdog_next_cycle);
             t = std::min<uint64_t>(t, 1024);
             if(t > 1) --t;
             cycles = (uint32_t)t;
@@ -405,7 +415,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         cycle_pll(cycles);
         cycle_eeprom(cycles);
         cycle_adc(cycles);
-        update_spm(cycles);
+        update_spm();
 
         if(cycle_count >= timer0.next_update_cycle)
             update_timer0();

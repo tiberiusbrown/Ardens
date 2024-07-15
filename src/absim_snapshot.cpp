@@ -157,6 +157,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.usb_dpram);
     ar(a.cpu.usb_attached);
 
+    ar(a.cpu.spm_prev_cycle);
     ar(a.cpu.spm_busy);
     ar(a.cpu.spm_en_cycles);
     ar(a.cpu.spm_op);

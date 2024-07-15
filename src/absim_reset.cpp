@@ -202,6 +202,7 @@ void atmega32u4_t::soft_reset()
     reset_usb();
     usb_dpram = {};
 
+    spm_prev_cycle = cycle_count;
     spm_busy = false;
     spm_op = SPM_OP_NONE;
     spm_cycles = 0;

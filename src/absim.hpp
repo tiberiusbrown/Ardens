@@ -707,6 +707,7 @@ struct atmega32u4_t
     void reset_usb();
 
     // SPM
+    uint64_t spm_prev_cycle;
     bool spm_busy;
     uint8_t spm_en_cycles;
     enum
@@ -724,7 +725,7 @@ struct atmega32u4_t
     std::array<uint8_t, 128> spm_buffer;
     static void st_handle_spmcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     void execute_spm();
-    void update_spm(uint32_t cycles);
+    void update_spm();
     void erase_spm_buffer() { memset(spm_buffer.data(), 0xff, spm_buffer.size()); }
 
     // watchdog
