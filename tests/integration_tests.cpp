@@ -16,10 +16,16 @@ static int test(char const* name)
 
     auto err = arduboy->load_file("test.hex", f);
     arduboy->reset();
-    if(err.empty())
-        arduboy->advance(1'000'000'000'000ull); // one second
-
     auto const& d = arduboy->cpu.serial_bytes;
+    if(err.empty())
+    {
+        for(int i = 0; i < 10000; ++i) // up to ten seconds
+        {
+            arduboy->advance(1'000'000'000ull); // 1 ms
+            if(!d.empty()) break;
+        }
+    }
+
     bool pass = (d.size() == 1 && d[0] == 'P');
 
     printf("%-30s : %s\n", name, pass ? "PASS" : "FAIL");
@@ -31,6 +37,7 @@ int main()
     int r = 0;
     arduboy = std::make_unique<absim::arduboy_t>();
 
+    r |= test("instructions");
     r |= test("timer_tcnt_write");
 
     return r;

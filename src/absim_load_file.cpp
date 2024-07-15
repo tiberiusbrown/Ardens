@@ -1149,6 +1149,7 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         r = load_hex(*this, f);
         if(r.empty())
             check_for_fx_usage_in_prog(*this);
+        reset();
     }
 
     if(ends_with(fname, ".bin"))
@@ -1173,7 +1174,8 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         r = load_elf(*this, f, fname);
         if(r.empty())
             check_for_fx_usage_in_prog(*this);
-    }
+        reset();
+}
 #endif
 
 #ifndef ARDENS_NO_ARDUBOY_FILE

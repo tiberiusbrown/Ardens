@@ -313,7 +313,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         executing_instr_pc = pc;
 #endif
 #ifndef ARDENS_NO_DEBUGGER
-        constexpr uint16_t last_pc = 0x8000;
+        constexpr uint16_t last_pc = 0x4000;
 #endif
         if(single_instr_only)
         {

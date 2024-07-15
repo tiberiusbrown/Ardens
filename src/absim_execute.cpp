@@ -1094,7 +1094,7 @@ uint32_t instr_neg(atmega32u4_t& cpu, avr_instr_t const& i)
     uint8_t res = uint8_t(-src);
     cpu.gpr(i.dst) = res;
 
-    set_flag(cpu, SREG_H, (res | ~src) & 0x8);
+    set_flag(cpu, SREG_H, (res | src) & 0x8);
     set_flag(cpu, SREG_V, res == 0x80);
     set_flag(cpu, SREG_C, res != 0x00);
     set_flags_nzs(cpu, res);
@@ -1168,8 +1168,8 @@ uint32_t instr_ror(atmega32u4_t& cpu, avr_instr_t const& i)
         res |= 0x80;
     cpu.gpr(i.dst) = res;
     set_flag(cpu, SREG_C, dst & 0x1);
-    set_flags_nzs(cpu, res);
     set_flag(cpu, SREG_V, (res >> 7) ^ (dst & 0x1));
+    set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
 }
