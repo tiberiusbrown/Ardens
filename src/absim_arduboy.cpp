@@ -13,6 +13,7 @@ extern "C"
 {
 #include "boot/boot_game.h"
 #include "boot/boot_menu.h"
+#include "boot/boot_flashcart.h"
 }
 
 namespace absim
@@ -64,15 +65,27 @@ void arduboy_t::update_game_hash()
     uint64_t h = OFFSET;
     if(!flashcart_loaded)
     {
-        for(auto byte : cpu.prog)
+        for(size_t i = 0; i < 29 * 1024; ++i)
         {
+            uint8_t byte = cpu.prog[i];
             h ^= byte;
             h *= PRIME;
         }
     }
-    for(auto byte : fx.data)
+
+    for(size_t i = 0; i < 7; ++i)
     {
-        h ^= byte;
+        h ^= "ARDUBOY"[i];
+        h *= PRIME;
+    }
+    for(size_t i = 7; i < sizeof(ARDENS_BOOT_FLASHCART); ++i)
+    {
+        h ^= 0xff;
+        h *= PRIME;
+    }
+    for(size_t i = sizeof(ARDENS_BOOT_FLASHCART); i < fx.data.size(); ++i)
+    {
+        h ^= fx.data[i];
         h *= PRIME;
     }
 
