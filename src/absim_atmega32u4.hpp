@@ -269,7 +269,7 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
     temp.addr = addr;
     auto it = std::lower_bound(
         disassembled_prog.begin(),
-        disassembled_prog.begin() + num_instrs,
+        disassembled_prog.begin() + num_instrs_total,
         temp,
         [](auto const& a, auto const& b) { return a.addr < b.addr; }
     );
