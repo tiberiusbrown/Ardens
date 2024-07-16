@@ -163,6 +163,7 @@ static void find_stack_check_bss(atmega32u4_t& cpu, uint16_t n)
 // try to extract stack limit from disassembly
 static void find_stack_check(atmega32u4_t& cpu)
 {
+    cpu.decode();
     cpu.stack_check = 0x100;
 
     uint16_t reset_instr = 0;
@@ -283,9 +284,6 @@ static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = fal
 
     if(num_records == 0)
         return "HEX: no records found";
-
-    if(!bootloader)
-        cpu.decode();
 
     if(!bootloader)
         find_stack_check(cpu);
@@ -1209,6 +1207,13 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         reload_fx();
         if(flashcart_loaded)
         {
+            // add instruction to jump to bootloader
+            uint16_t w0 = 0x940c;
+            uint16_t w1 = cpu.bootloader_address();
+            cpu.prog[0] = uint8_t(w0 >> 0);
+            cpu.prog[1] = uint8_t(w0 >> 8);
+            cpu.prog[2] = uint8_t(w1 >> 0);
+            cpu.prog[3] = uint8_t(w1 >> 8);
             cpu.program_loaded = true;
             reset();
         }
