@@ -1161,6 +1161,15 @@ std::string arduboy_t::load_flashcart_zip(uint8_t const* data, size_t size)
 
     cpu.program_loaded = true;
     reload_fx();
+
+    // add instruction to jump to bootloader
+    uint16_t w0 = 0x940c;
+    uint16_t w1 = cpu.bootloader_address();
+    cpu.prog[0] = uint8_t(w0 >> 0);
+    cpu.prog[1] = uint8_t(w0 >> 8);
+    cpu.prog[2] = uint8_t(w1 >> 0);
+    cpu.prog[3] = uint8_t(w1 >> 8);
+
     reset();
 
     return "";
