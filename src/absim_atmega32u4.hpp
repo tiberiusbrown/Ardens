@@ -378,7 +378,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
         single_instr_only = (
             next_cycle < cycle_count + MAX_INSTR_CYCLES ||
-            spi_busy ||
+            //spi_busy ||
 #ifndef ARDENS_NO_DEBUGGER
             no_merged ||
 #endif
@@ -450,20 +450,15 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     }
     else
     {
-        prev_sreg = sreg();
         // sleeping and not waking up from an interrupt
+        prev_sreg = sreg();
 
         // boost executed cycles to speed up timer code
-        if(spi_busy)
-            cycles = 1;
-        else
-        {
-            uint64_t t = std::max(cycle_count + 1, peripheral_queue.next_cycle());
-            t -= cycle_count;
-            t = std::min<uint64_t>(t, MAX_MERGED_CYCLES);
-            if(t > 1) --t;
-            cycles = (uint32_t)t;
-        }
+        uint64_t t = std::max(cycle_count + 1, peripheral_queue.next_cycle());
+        t -= cycle_count;
+        t = std::min<uint64_t>(t, MAX_MERGED_CYCLES);
+        if(t > 1) --t;
+        cycles = (uint32_t)t;
         single_instr_only = true;
         cycle_count += cycles;
     }
@@ -473,8 +468,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
         // peripheral updates
 
-        update_spi();
-
         for(;;)
         {
             auto qi = peripheral_queue.next();
@@ -483,9 +476,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             peripheral_queue.pop();
             switch(qi.type)
             {
-            case PQ_SPI:
-                //update_spi();
-                break;
+            case PQ_SPI: update_spi(); break;
             case PQ_TIMER0: update_timer0(); break;
             case PQ_TIMER1: update_timer1(); break;
             case PQ_TIMER3: update_timer3(); break;

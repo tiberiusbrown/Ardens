@@ -109,8 +109,8 @@ void atmega32u4_t::spi_handle_st_spdr(
         
         cpu.spi_done_cycle = cpu.cycle_count + cpu.spi_clock_cycles * 8;
         cpu.spi_transmit_zero_cycle = cpu.spi_done_cycle + 1;
-
         cpu.spi_busy = true;
+        cpu.peripheral_queue.schedule(cpu.spi_done_cycle, PQ_SPI);
     }
 }
 
@@ -139,6 +139,8 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
 {
     if(!spi_busy)
         return;
+    if(cycle_count < spi_done_cycle)
+        return;
 
     uint8_t  spcr = SPCR();
     uint8_t& spsr = SPSR();
@@ -155,23 +157,20 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
 
     assert(spi_clock_cycles >= 2);
 
-    if(!spi_latch_read && cycle_count >= spi_done_cycle)
+    if(!spi_latch_read)
     {
         spi_latch_read = true;
         spi_done_cycle += 1;
         peripheral_queue.schedule(spi_done_cycle, PQ_SPI);
     }
 
-    if(spi_latch_read && cycle_count >= spi_done_cycle)
-    {
-        SPDR() = spi_datain_byte;
-        spi_busy = false;
-        spi_latch_read = false;
-        spi_data_latched = true;
-        spsr_read_after_transmit = false;
-        spsr |= SPIF;
-        spi_done_cycle = UINT64_MAX;
-    }
+    SPDR() = spi_datain_byte;
+    spi_busy = false;
+    spi_latch_read = false;
+    spi_data_latched = true;
+    spsr_read_after_transmit = false;
+    spsr |= SPIF;
+    spi_done_cycle = UINT64_MAX;
 }
 
 }
