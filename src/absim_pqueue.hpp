@@ -36,7 +36,7 @@ struct pqueue_compare
 {
     bool operator()(pqueue_item a, pqueue_item b)
     {
-        return a.cycle > b.cycle;
+        return std::tie(a.cycle, a.type) > std::tie(b.cycle, b.type);
     }
 };
 

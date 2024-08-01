@@ -290,6 +290,7 @@ uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t const& i)
     uint16_t lo = cpu.pop();
     cpu.pc = lo | (hi << 8);
     cpu.sreg() |= SREG_I;
+    cpu.just_written = 0x5f;
     cpu.pop_stack_frame();
     return 4;
 }

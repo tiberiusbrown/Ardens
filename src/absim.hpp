@@ -760,6 +760,8 @@ struct atmega32u4_t
     void update_watchdog_prescaler();
     void update_watchdog();
 
+    void schedule_interrupt_check();
+    void check_all_interrupts();
     bool check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
     uint64_t cycle_count;

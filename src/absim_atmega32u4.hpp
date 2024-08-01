@@ -88,6 +88,7 @@ void atmega32u4_t::update_watchdog()
         {
             // interrupt
             WDTCSR() |= (1 << 7);
+            schedule_interrupt_check();
             if(csr & (1 << 3))
             {
                 // if also system reset, disable interrupt
@@ -251,6 +252,11 @@ void atmega32u4_t::update_spm()
     }
 }
 
+ARDENS_FORCEINLINE void atmega32u4_t::schedule_interrupt_check()
+{
+    peripheral_queue.schedule(cycle_count, PQ_INTERRUPT);
+}
+
 ARDENS_FORCEINLINE bool atmega32u4_t::check_interrupt(
     uint8_t vector, uint8_t flag, uint8_t& tifr)
 {
@@ -272,6 +278,70 @@ ARDENS_FORCEINLINE bool atmega32u4_t::check_interrupt(
     active = false;
     just_interrupted = true;
     return true;
+}
+
+ARDENS_FORCEINLINE void atmega32u4_t::check_all_interrupts()
+{
+    if(!(prev_sreg & sreg() & SREG_I))
+        return;
+
+    // check for stack overflow only when interrupts are enabled
+    check_stack_overflow();
+
+    if(wakeup_cycles != 0) return;
+
+    // handle interrupts here
+    uint8_t i;
+
+    // usb general
+    i = (UDINT() & UDIEN()) | (USBINT() & USBCON());
+    if(i)
+    {
+        uint8_t dummy = 0;
+        if(check_interrupt(0x14, i, dummy)) return;
+    }
+
+    // usb endpoint
+    i = UEINT();
+    if(check_interrupt(0x16, i, UEINT())) return;
+
+    // watchdog timeout
+    if(check_interrupt(0x18, WDTCSR() & 0x80, WDTCSR())) return;
+
+    i = tifr1() & timsk1();
+    if(i)
+    {
+        if(check_interrupt(0x22, i & 0x02, tifr1())) return; // TIMER1 COMPA
+        if(check_interrupt(0x24, i & 0x04, tifr1())) return; // TIMER1 COMPB
+        if(check_interrupt(0x26, i & 0x08, tifr1())) return; // TIMER1 COMPC
+        if(check_interrupt(0x28, i & 0x01, tifr1())) return; // TIMER1 OVF
+    }
+
+    i = tifr0() & timsk0();
+    if(i)
+    {
+        if(check_interrupt(0x2a, i & 0x02, tifr0())) return; // TIMER0 COMPA
+        if(check_interrupt(0x2c, i & 0x04, tifr0())) return; // TIMER0 COMPB
+        if(check_interrupt(0x2e, i & 0x01, tifr0())) return; // TIMER0 OVF
+    }
+
+    i = tifr3() & timsk3();
+    if(i)
+    {
+        if(check_interrupt(0x40, i & 0x02, tifr3())) return; // TIMER3 COMPA
+        if(check_interrupt(0x42, i & 0x04, tifr3())) return; // TIMER3 COMPB
+        if(check_interrupt(0x44, i & 0x08, tifr3())) return; // TIMER3 COMPC
+        if(check_interrupt(0x46, i & 0x01, tifr3())) return; // TIMER3 OVF
+    }
+
+    i = tifr4() & timsk4();
+    if(i)
+    {
+        if(check_interrupt(0x4c, i & 0x40, tifr4())) return; // TIMER4 COMPA
+        if(check_interrupt(0x4e, i & 0x20, tifr4())) return; // TIMER4 COMPB
+        if(check_interrupt(0x50, i & 0x80, tifr4())) return; // TIMER4 COMPD
+        if(check_interrupt(0x52, i & 0x04, tifr4())) return; // TIMER4 OVF
+    }
 }
 
 size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
@@ -298,7 +368,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     just_interrupted = false;
     bool single_instr_only = true;
 
-    //peripheral_queue.clear_to_cycle(cycle_count);
+    constexpr uint64_t MAX_MERGED_CYCLES = 1024;
 
     if(active)
     {
@@ -316,8 +386,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
 #ifndef ARDENS_NO_DEBUGGER
         executing_instr_pc = pc;
-#endif
-#ifndef ARDENS_NO_DEBUGGER
         constexpr uint16_t last_pc = 0x4000;
 #endif
         if(single_instr_only)
@@ -337,7 +405,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         else
         {
             uint64_t max_merged_cycles = std::min<uint64_t>(
-                next_cycle - cycle_count - MAX_INSTR_CYCLES, 1024);
+                next_cycle - cycle_count - MAX_INSTR_CYCLES, MAX_MERGED_CYCLES);
             uint64_t tcycles = cycle_count;
             uint64_t tcycles_max = tcycles + max_merged_cycles;
             do
@@ -392,7 +460,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         {
             uint64_t t = std::max(cycle_count + 1, peripheral_queue.next_cycle());
             t -= cycle_count;
-            t = std::min<uint64_t>(t, 1024);
+            t = std::min<uint64_t>(t, MAX_MERGED_CYCLES);
             if(t > 1) --t;
             cycles = (uint32_t)t;
         }
@@ -402,6 +470,10 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
     if(single_instr_only)
     {
+
+        // peripheral updates
+
+        update_spi();
 
         for(;;)
         {
@@ -424,95 +496,16 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             case PQ_PLL: update_pll(); break;
             case PQ_ADC: update_adc(); break;
             case PQ_SPM: update_spm(); break;
+            case PQ_INTERRUPT: check_all_interrupts(); break;
             default: break;
             }
         }
 
-        // peripheral updates
-        update_spi();
-        //update_pll();
-        //update_eeprom();
-        //update_adc(cycles);
-        //update_spm();
-
-        //if(cycle_count >= timer0.next_update_cycle)
-        //    update_timer0();
-        //if(cycle_count >= timer1.next_update_cycle)
-        //    update_timer1();
-        //if(cycle_count >= timer3.next_update_cycle)
-        //    update_timer3();
-        //if(cycle_count >= timer4.next_update_cycle)
-        //    update_timer4();
-        //if(cycle_count >= usb_next_update_cycle)
-        //    update_usb();
-        //if(cycle_count >= watchdog_next_cycle)
-        //    update_watchdog();
-
-        do
-        {
-            if(!(prev_sreg & sreg() & SREG_I))
-                break;
-
-            // check for stack overflow only when interrupts are enabled
-            check_stack_overflow();
-
-            if(wakeup_cycles != 0) break;
-
-            // handle interrupts here
-            uint8_t i;
-
-            // usb general
-            i = (data[0xe1] & data[0xe2]) | (data[0xd8] & data[0xda]);
-            if(i)
-            {
-                uint8_t dummy = 0;
-                if(check_interrupt(0x14, i, dummy)) break;
-            }
-
-            // usb endpoint
-            i = data[0xf4];
-            if(check_interrupt(0x16, i, data[0xf4])) break;
-
-            // watchdog timeout
-            if(check_interrupt(0x18, WDTCSR() & 0x80, WDTCSR())) break;
-
-            i = tifr1() & timsk1();
-            if(i)
-            {
-                if(check_interrupt(0x22, i & 0x02, tifr1())) break; // TIMER1 COMPA
-                if(check_interrupt(0x24, i & 0x04, tifr1())) break; // TIMER1 COMPB
-                if(check_interrupt(0x26, i & 0x08, tifr1())) break; // TIMER1 COMPC
-                if(check_interrupt(0x28, i & 0x01, tifr1())) break; // TIMER1 OVF
-            }
-
-            i = tifr0() & timsk0();
-            if(i)
-            {
-                if(check_interrupt(0x2a, i & 0x02, tifr0())) break; // TIMER0 COMPA
-                if(check_interrupt(0x2c, i & 0x04, tifr0())) break; // TIMER0 COMPB
-                if(check_interrupt(0x2e, i & 0x01, tifr0())) break; // TIMER0 OVF
-            }
-
-            i = tifr3() & timsk3();
-            if(i)
-            {
-                if(check_interrupt(0x40, i & 0x02, tifr3())) break; // TIMER3 COMPA
-                if(check_interrupt(0x42, i & 0x04, tifr3())) break; // TIMER3 COMPB
-                if(check_interrupt(0x44, i & 0x08, tifr3())) break; // TIMER3 COMPC
-                if(check_interrupt(0x46, i & 0x01, tifr3())) break; // TIMER3 OVF
-            }
-
-            i = tifr4() & timsk4();
-            if(i)
-            {
-                if(check_interrupt(0x4c, i & 0x40, tifr4())) break; // TIMER4 COMPA
-                if(check_interrupt(0x4e, i & 0x20, tifr4())) break; // TIMER4 COMPB
-                if(check_interrupt(0x50, i & 0x80, tifr4())) break; // TIMER4 COMPD
-                if(check_interrupt(0x52, i & 0x04, tifr4())) break; // TIMER4 OVF
-            }
-
-        } while(0);
     }
+
+    // if interrupts were just enabled, schedule interrupt check for next cycle
+    if(~prev_sreg & sreg() & SREG_I)
+        schedule_interrupt_check();
 
     cycle_sound(cycles);
 

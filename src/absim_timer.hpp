@@ -137,6 +137,8 @@ static ARDENS_FORCEINLINE void update_timer8_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
+    if(~cpu.data[0x35] & tifr)
+        cpu.schedule_interrupt_check();
     cpu.data[0x35] |= tifr;
     cpu.data[0x46] = uint8_t(tcnt);
 }
@@ -418,6 +420,8 @@ static ARDENS_FORCEINLINE void update_timer16_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
+    if(~cpu.data[timer.tifrN_addr] & tifr)
+        cpu.schedule_interrupt_check();
     cpu.data[timer.tifrN_addr] |= tifr;
     cpu.data[timer.base_addr + 0x4] = uint8_t(tcnt >> 0);
     cpu.data[timer.base_addr + 0x5] = uint8_t(tcnt >> 8);
@@ -675,6 +679,8 @@ static ARDENS_FORCEINLINE void update_timer10_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
+    if(~cpu.data[0x39] & tifr)
+        cpu.schedule_interrupt_check();
     cpu.data[0x39] |= tifr;
     cpu.data[0xbe] = uint8_t(tcnt >> 0);
 }
