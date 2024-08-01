@@ -47,7 +47,7 @@ static void window_contents()
         bool red = usage > 0.999f;
         if(red) ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255));
         ImGui::AlignTextToFramePadding();
-        ImGui::Text("CPU Usage: %5.1f%%", usage * 100);
+        ImGui::Text("CPU Usage: %6.2f%%", usage * 100);
         if(red) ImGui::PopStyleColor();
     }
 
