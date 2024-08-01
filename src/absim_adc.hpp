@@ -31,12 +31,20 @@ void atmega32u4_t::adc_st_handle_adcsra(
     cpu.adc_schedule();
 }
 
-ARDENS_FORCEINLINE void atmega32u4_t::adc_schedule()
+void atmega32u4_t::adc_schedule()
 {
     if(adc_busy)
     {
-        // TODO: actually calculate update cycle
-        peripheral_queue.schedule(cycle_count, PQ_ADC);
+        uint32_t adps = ADCSRA() & 0x7;
+        uint32_t prescaler = 1 << adps;
+        if(prescaler <= 1)
+            prescaler = 2;
+        uint32_t cycles = 0;
+        cycles += prescaler * (13 - adc_cycle);
+        if(adc_prescaler_cycle < prescaler)
+            cycles += prescaler - adc_prescaler_cycle;
+        if(cycles == 0) cycles = 1;
+        peripheral_queue.schedule(cycle_count + cycles, PQ_ADC);
     }
 }
 
@@ -50,13 +58,16 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_adc()
 
 	uint8_t& adcsra = data[0x7a];
 	uint32_t adps  = adcsra & 0x7;
-
 	uint32_t prescaler = 1 << adps;
 	if(prescaler <= 1)
 		prescaler = 2;
 
     uint32_t tcycles = increase_counter(adc_prescaler_cycle, cycles, prescaler);
-    if(tcycles == 0) return;
+    if(tcycles == 0)
+    {
+        adc_schedule();
+        return;
+    }
 
 	uint32_t adcsrb = data[0x7b];
 	uint32_t admux = data[0x7c];
