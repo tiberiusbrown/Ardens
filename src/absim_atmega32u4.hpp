@@ -313,7 +313,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             t = std::min<uint64_t>(t, usb_next_update_cycle);
             t = std::min<uint64_t>(t, spi_done_cycle);
             t = std::min<uint64_t>(t, watchdog_next_cycle);
-
             t -= cycle_count;
             single_instr_only |= (t < MAX_INSTR_CYCLES);
             max_merged_cycles = (uint32_t)std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
@@ -393,13 +392,14 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             cycles = 1;
         else
         {
-            uint64_t t = timer0.next_update_cycle - cycle_count;
-            t = std::min<uint64_t>(t, timer1.next_update_cycle - cycle_count);
-            t = std::min<uint64_t>(t, timer3.next_update_cycle - cycle_count);
-            t = std::min<uint64_t>(t, timer4.next_update_cycle - cycle_count);
-            t = std::min<uint64_t>(t, usb_next_update_cycle - cycle_count);
+            uint64_t t = timer0.next_update_cycle;
+            t = std::min<uint64_t>(t, timer1.next_update_cycle);
+            t = std::min<uint64_t>(t, timer3.next_update_cycle);
+            t = std::min<uint64_t>(t, timer4.next_update_cycle);
+            t = std::min<uint64_t>(t, usb_next_update_cycle);
             t = std::min<uint64_t>(t, spi_done_cycle);
             t = std::min<uint64_t>(t, watchdog_next_cycle);
+            t -= cycle_count;
             t = std::min<uint64_t>(t, 1024);
             if(t > 1) --t;
             cycles = (uint32_t)t;
