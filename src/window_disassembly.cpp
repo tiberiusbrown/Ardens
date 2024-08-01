@@ -14,6 +14,35 @@ constexpr float HIGHLIGHT_DURATION = 2.f;
 // defined in window_data_space
 void hover_data_space(uint16_t addr);
 
+static std::string prog_addr_name(uint16_t addr)
+{
+    if(addr / 4 < absim::INT_VECTOR_INFO.size())
+    {
+        auto const& info = absim::INT_VECTOR_INFO[addr / 4];
+        if(info.name)
+            return info.name;
+    }
+    auto const* sym = arduboy->symbol_for_prog_addr(addr);
+    if(sym)
+    {
+        if(addr == sym->addr)
+            return sym->name.c_str();
+        if(arduboy->elf)
+        {
+            auto index = arduboy->elf->addr_to_disassembled_index(addr);
+            auto const& a = arduboy->elf->asm_with_source[index];
+            if(a.type == a.SYMBOL)
+            {
+                auto it = arduboy->elf->text_symbols.find(a.addr);
+                if(it != arduboy->elf->text_symbols.end())
+                    return it->second.name;
+            }
+        }
+        return fmt::format("{} + {}", sym->name, addr - sym->addr);
+    }
+    return "";
+}
+
 static absim::disassembled_instr_t const& dis_instr(int row)
 {
     return arduboy->elf && row < arduboy->elf->asm_with_source.size() ?
@@ -39,7 +68,9 @@ static char const* get_prog_addr_source_line(uint16_t addr)
     return sf.lines[line].c_str();
 }
 
-static std::string disassembly_arg_str(absim::disassembled_instr_arg_t const& a)
+static std::string disassembly_arg_str(
+    uint16_t addr,
+    absim::disassembled_instr_arg_t const& a)
 {
     switch(a.type)
     {
@@ -50,11 +81,11 @@ static std::string disassembly_arg_str(absim::disassembled_instr_arg_t const& a)
     case absim::disassembled_instr_arg_t::type::BIT:
         return fmt::format("{}", a.val);
     case absim::disassembled_instr_arg_t::type::DS_ADDR:
-        return fmt::format("{:#06x}", a.val);
+        return fmt::format("{:#06x} [{}]", a.val, prog_addr_name(a.val));
     case absim::disassembled_instr_arg_t::type::PROG_ADDR:
-        return fmt::format("{:#06x}", a.val * 2);
+        return fmt::format("{:#06x} [{}]", a.val * 2, prog_addr_name(a.val * 2));
     case absim::disassembled_instr_arg_t::type::OFFSET:
-        return fmt::format(".{:+d}", (int16_t)a.val * 2);
+        return fmt::format(".{:+d} [{}]", (int16_t)a.val * 2, prog_addr_name(addr + (int16_t)a.val * 2));
     case absim::disassembled_instr_arg_t::type::PTR_REG:
         return fmt::format("{}", char('X' + (a.val - 26) / 2));
     case absim::disassembled_instr_arg_t::type::PTR_REG_OFFSET:
@@ -120,9 +151,9 @@ static void copy_disassembly_to_clipboard()
         {
             ss << fmt::format("{:#06x}:   {}", d.addr, d.name ? d.name : "???");
             if(d.arg0.type != absim::disassembled_instr_arg_t::type::NONE)
-                ss << " " << disassembly_arg_str(d.arg0);
+                ss << " " << disassembly_arg_str(d.addr, d.arg0);
             if(d.arg1.type != absim::disassembled_instr_arg_t::type::NONE)
-                ss << ", " << disassembly_arg_str(d.arg1);
+                ss << ", " << disassembly_arg_str(d.addr, d.arg1);
             ss << "\n";
             break;
         }
@@ -219,35 +250,6 @@ static void prog_addr_source_line(uint16_t addr)
         }
         EndTooltip();
     }
-}
-
-static std::string prog_addr_name(uint16_t addr)
-{
-    if(addr / 4 < absim::INT_VECTOR_INFO.size())
-    {
-        auto const& info = absim::INT_VECTOR_INFO[addr / 4];
-        if(info.name)
-            return info.name;
-    }
-    auto const* sym = arduboy->symbol_for_prog_addr(addr);
-    if(sym)
-    {
-        if(addr == sym->addr)
-            return sym->name.c_str();
-        if(arduboy->elf)
-        {
-            auto index = arduboy->elf->addr_to_disassembled_index(addr);
-            auto const& a = arduboy->elf->asm_with_source[index];
-            if(a.type == a.SYMBOL)
-            {
-                auto it = arduboy->elf->text_symbols.find(a.addr);
-                if(it != arduboy->elf->text_symbols.end())
-                    return it->second.name;
-            }
-        }
-        return fmt::format("{} + {}", sym->name, addr - sym->addr);
-    }
-    return "";
 }
 
 static void prog_addr_tooltip(uint16_t addr)
