@@ -301,7 +301,7 @@ set(ARDENS_SOURCES
     src/absim_eeprom.hpp
     src/absim_sound.hpp
     src/absim_led.cpp
-    src/absim_usb.cpp
+    src/absim_usb.hpp
 
     deps/yyjson/yyjson.h
     deps/yyjson/yyjson.c

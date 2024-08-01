@@ -8,6 +8,7 @@
 #include "absim_eeprom.hpp"
 #include "absim_w25q128.hpp"
 #include "absim_sound.hpp"
+#include "absim_usb.hpp"
 
 #include <algorithm>
 
