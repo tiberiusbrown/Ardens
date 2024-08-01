@@ -5,39 +5,39 @@
 namespace absim
 {
 
-static ARDENS_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
+ARDENS_FORCEINLINE static void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
     if(x) cpu.sreg() |= mask;
     else cpu.sreg() &= ~mask;
 }
 
-static ARDENS_FORCEINLINE void set_flag_s(atmega32u4_t& cpu)
+ARDENS_FORCEINLINE static void set_flag_s(atmega32u4_t& cpu)
 {
     uint8_t f = cpu.sreg();
     set_flag(cpu, SREG_S, (f ^ (f >> 1)) & 0x4);
 }
 
-static ARDENS_FORCEINLINE void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
+ARDENS_FORCEINLINE static void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
 {
     set_flag(cpu, SREG_H, h);
     set_flag(cpu, SREG_C, c);
     set_flag(cpu, SREG_V, v);
 }
 
-static ARDENS_FORCEINLINE void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
+ARDENS_FORCEINLINE static void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
 {
     set_flag(cpu, SREG_N, x & 0x80);
     set_flag(cpu, SREG_Z, x == 0);
     set_flag_s(cpu);
 }
 
-static ARDENS_FORCEINLINE uint8_t flag_s(uint8_t sreg)
+ARDENS_FORCEINLINE static uint8_t flag_s(uint8_t sreg)
 {
     sreg |= (((sreg ^ (sreg >> 1)) & 0x4) << 2);
     return sreg;
 }
 
-static ARDENS_FORCEINLINE uint8_t flags_nzs(uint8_t sreg, uint32_t x)
+ARDENS_FORCEINLINE static uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 {
     sreg |= ((x & 0x80) >> 5); // N
     if(x == 0) sreg |= SREG_Z; // Z

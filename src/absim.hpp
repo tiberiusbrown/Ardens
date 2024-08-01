@@ -1199,7 +1199,7 @@ constexpr uint8_t SREG_C = 1 << 0;
 
 constexpr uint8_t SREG_HSVNZC = 0x3f;
 
-static ARDENS_FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
+ARDENS_FORCEINLINE static uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
 {
     uint32_t c = counter + inc;
     uint32_t n = c / top;

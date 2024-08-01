@@ -82,8 +82,7 @@ void atmega32u4_t::eeprom_handle_st_eecr(
     cpu.data[0x3f] = x;
 }
 
-
-void ARDENS_FORCEINLINE atmega32u4_t::update_eeprom()
+ARDENS_FORCEINLINE void atmega32u4_t::update_eeprom()
 {
     if(!eeprom_busy)
         return;
