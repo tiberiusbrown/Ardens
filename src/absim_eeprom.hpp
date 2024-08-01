@@ -99,7 +99,11 @@ void ARDENS_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
                 eeprom_busy = false;
         }
         else
+        {
             eeprom_clear_eempe_cycles -= cycles;
+            //peripheral_queue.schedule(
+            //    cycle_count + eeprom_clear_eempe_cycles, PQ_EEPROM);
+        }
     }
 
     if(eeprom_program_cycles != 0)
@@ -118,8 +122,11 @@ void ARDENS_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
             eeprom_modified_bytes.set(eeprom_write_addr);
         }
         else
+        {
             eeprom_program_cycles -= cycles;
-        return;
+            //peripheral_queue.schedule(
+            //    cycle_count + eeprom_program_cycles, PQ_EEPROM);
+        }
     }
 }
 

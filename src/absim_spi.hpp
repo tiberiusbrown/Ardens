@@ -159,6 +159,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
     {
         spi_latch_read = true;
         spi_done_cycle += 1;
+        peripheral_queue.schedule(spi_done_cycle, PQ_SPI);
     }
 
     if(spi_latch_read && cycle_count >= spi_done_cycle)

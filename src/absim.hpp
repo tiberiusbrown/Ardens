@@ -19,6 +19,7 @@
 #include <assert.h>
 
 #include "absim_instructions.hpp"
+#include "absim_pqueue.hpp"
 
 #if defined(_MSC_VER)
 #define ARDENS_FORCEINLINE __forceinline
@@ -477,6 +478,8 @@ struct atmega32u4_t
     static void st_handle_port(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+
+    pqueue peripheral_queue;
 
     // timer0
     struct timer8_t

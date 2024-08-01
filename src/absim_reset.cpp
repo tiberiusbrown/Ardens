@@ -213,8 +213,11 @@ void atmega32u4_t::soft_reset()
     watchdog_prev_cycle = cycle_count;
     update_watchdog_prescaler();
     watchdog_next_cycle = cycle_count + watchdog_divider;
+    peripheral_queue.schedule(watchdog_next_cycle, PQ_WATCHDOG);
 
     OSCCAL() = 0x6d;
+
+    peripheral_queue.clear();
 }
 
 }

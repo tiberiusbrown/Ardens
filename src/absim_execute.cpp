@@ -157,6 +157,7 @@ uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
     cpu.watchdog_divider_cycle = 0;
     cpu.watchdog_prev_cycle = cpu.cycle_count;
     cpu.watchdog_next_cycle = cpu.cycle_count + cpu.watchdog_divider;
+    cpu.peripheral_queue.schedule(cpu.watchdog_next_cycle, PQ_WATCHDOG);
     cpu.pc += 1;
     return 1;
 }

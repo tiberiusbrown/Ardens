@@ -209,6 +209,7 @@ void atmega32u4_t::update_timer0()
     uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.prescaler_cycle;
 
     timer0.next_update_cycle = cycle_count + update_cycles;
+    peripheral_queue.schedule(timer0.next_update_cycle, PQ_TIMER0);
 }
 
 static ARDENS_FORCEINLINE void process_wgm16(
@@ -508,6 +509,9 @@ static void update_timer16(
     }
 
     //timer.next_update_cycle = cpu.cycle_count + 1;
+    cpu.peripheral_queue.schedule(
+        timer.next_update_cycle,
+        &timer == &cpu.timer1 ? PQ_TIMER1 : PQ_TIMER3);
 }
 
 static ARDENS_FORCEINLINE void timer10_update_ocrN(
@@ -821,6 +825,7 @@ void atmega32u4_t::update_timer4()
         }
         timer4.next_update_cycle = cycle_count + update_cycles;
     }
+    peripheral_queue.schedule(timer4.next_update_cycle, PQ_TIMER4);
 }
 
 void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
