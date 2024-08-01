@@ -2,6 +2,10 @@
 
 #include <cmath>
 
+#if defined(ARDENS_SSE2)
+#include <emmintrin.h>
+#endif
+
 namespace absim
 {
 
@@ -416,14 +420,52 @@ void display_t::filter_pixels()
     for(int n = 0; n < 4; ++n)
     {
         uint8_t c = C[(7 - n + pixel_history_index) % 4];
-        auto* dst = &filtered_pixel_counts[0];
-        auto const* src = &pixels[n][0];
-        auto const* dst_end = dst + 8192;
+        uint8_t const* src = &pixels[n][0];
+        uint16_t* dst = &filtered_pixel_counts[0];
+        uint16_t* dst_end = dst + 8192;
+#if defined(ARDENS_SSE2)
+        __m128i vc = _mm_set1_epi16((int16_t)c);
+        __m128i vz = _mm_setzero_si128();
+        while(dst < dst_end)
+        {
+            __m128i vd0 = _mm_loadu_si128((__m128i const*)dst + 0);
+            __m128i vd1 = _mm_loadu_si128((__m128i const*)dst + 1);
+            __m128i vs = _mm_loadu_si128((__m128i const*)src);
+            __m128i vr0 = _mm_add_epi16(vd0, _mm_mullo_epi16(_mm_unpacklo_epi8(vs, vz), vc));
+            __m128i vr1 = _mm_add_epi16(vd1, _mm_mullo_epi16(_mm_unpackhi_epi8(vs, vz), vc));
+            _mm_storeu_si128((__m128i*)dst + 0, vr0);
+            _mm_storeu_si128((__m128i*)dst + 1, vr1);
+            src += 16;
+            dst += 16;
+        }
+#else
         while(dst < dst_end)
             *dst++ += *src++ * c;
+#endif
     }
+#if defined(ARDENS_SSE2)
+    {
+        uint16_t const* src = &filtered_pixel_counts[0];
+        uint8_t* dst = &filtered_pixels[0];
+        uint8_t* dst_end = dst + 8192;
+        while(dst < dst_end)
+        {
+            // vs0: 0.1.2.3.4.5.6.7.
+            // vs0: 8.9.A.B.C.D.E.F.
+            __m128i vs0 = _mm_loadu_si128((__m128i const*)src + 0);
+            __m128i vs1 = _mm_loadu_si128((__m128i const*)src + 1);
+            __m128i vt0 = _mm_srli_epi16(vs0, 8);
+            __m128i vt1 = _mm_srli_epi16(vs1, 8);
+            __m128i vd = _mm_packus_epi16(vt0, vt1);
+            _mm_storeu_si128((__m128i*)dst, vd);
+            src += 16;
+            dst += 16;
+        }
+    }
+#else
     for(int i = 0; i < 8192; ++i)
         filtered_pixels[i] = uint8_t(filtered_pixel_counts[i] / 256);
+#endif
 }
 
 bool ARDENS_FORCEINLINE display_t::advance(uint64_t ps)
