@@ -252,7 +252,7 @@ void atmega32u4_t::update_spm()
     }
 }
 
-ARDENS_FORCEINLINE void atmega32u4_t::schedule_interrupt_check()
+inline void atmega32u4_t::schedule_interrupt_check()
 {
     peripheral_queue.schedule(cycle_count, PQ_INTERRUPT);
 }
