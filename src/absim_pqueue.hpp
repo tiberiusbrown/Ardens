@@ -74,12 +74,7 @@ struct pqueue
         }
     }
 
-    void clear()
-    {
-        q.swap(decltype(q){});
-        q.push({ UINT64_MAX, PQ_DUMMY });
-        scheduled = {};
-    }
+    void clear();
 
 private:
 
@@ -97,6 +92,13 @@ private:
     std::array<bool, NUM_PQ> scheduled;
 
 };
+
+inline void pqueue::clear()
+{
+    q.container().clear();
+    q.push({ UINT64_MAX, PQ_DUMMY });
+    scheduled = {};
+}
 
 inline void pqueue::schedule(uint64_t cycle, pqueue_type type)
 {
