@@ -3,6 +3,9 @@
 namespace absim
 {
 
+// assume PLL takes 3 ms to lock
+constexpr uint64_t PLL_LOCK_CYCLES = 16000000 * 3 / 1000;
+
 void atmega32u4_t::pll_handle_st_pllcsr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
@@ -29,22 +32,32 @@ void atmega32u4_t::pll_handle_st_pllcsr(
     x |= (csr & PLOCK);
 
     csr = x;
+
+    cpu.pll_schedule();
 }
 
+ARDENS_FORCEINLINE void atmega32u4_t::pll_schedule()
+{
+    if(pll_busy)
+    {
+        peripheral_queue.schedule(
+            cycle_count + (PLL_LOCK_CYCLES - pll_lock_cycle), PQ_PLL);
+    }
+}
 
-void ARDENS_FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
+ARDENS_FORCEINLINE void atmega32u4_t::update_pll()
 {
     if(!pll_busy)
         return;
+
+    uint32_t cycles = uint32_t(cycle_count - pll_prev_cycle);
+    pll_prev_cycle = cycle_count;
 
     uint8_t& csr = data[0x49];
 
     constexpr uint8_t PLOCK = 1 << 0;
 
-    // assume PLL takes 3 ms to lock
-    constexpr uint64_t LOCK_CYCLES = 16000000 * 3 / 1000;
-
-    if((pll_lock_cycle += cycles) >= LOCK_CYCLES)
+    if((pll_lock_cycle += cycles) >= PLL_LOCK_CYCLES)
     {
         csr |= PLOCK;
         pll_busy = false;
@@ -68,6 +81,8 @@ void ARDENS_FORCEINLINE atmega32u4_t::cycle_pll(uint32_t cycles)
 
         update_timer4();
     }
+
+    pll_schedule();
 }
 
 }

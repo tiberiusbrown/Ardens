@@ -15,6 +15,7 @@ void atmega32u4_t::adc_handle_prr0(uint8_t x)
         uint8_t adcsra = data[0x7a];
         adc_busy = (adcsra & 0xc0) != 0;
     }
+    adc_schedule();
 }
 
 void atmega32u4_t::adc_st_handle_adcsra(
@@ -27,12 +28,25 @@ void atmega32u4_t::adc_st_handle_adcsra(
     if(x & 0xc0)
         cpu.adc_busy = true;
     cpu.data[0x7a] = x;
+    cpu.adc_schedule();
 }
 
-ARDENS_FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
+ARDENS_FORCEINLINE void atmega32u4_t::adc_schedule()
+{
+    if(adc_busy)
+    {
+        // TODO: actually calculate update cycle
+        peripheral_queue.schedule(cycle_count, PQ_ADC);
+    }
+}
+
+ARDENS_FORCEINLINE void atmega32u4_t::update_adc()
 {
     if(!adc_busy)
         return;
+
+    uint32_t cycles = uint32_t(cycle_count - adc_prev_cycle);
+    adc_prev_cycle = cycle_count;
 
 	uint8_t& adcsra = data[0x7a];
 	uint32_t adps  = adcsra & 0x7;
@@ -105,6 +119,8 @@ ARDENS_FORCEINLINE void atmega32u4_t::cycle_adc(uint32_t cycles)
 	uint8_t& adch = data[0x79];
 	adcl = uint8_t(adc >> 0);
 	adch = uint8_t(adc >> 8);
+
+    adc_schedule();
 }
 
 }

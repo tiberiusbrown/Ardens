@@ -18,6 +18,8 @@ void atmega32u4_t::eeprom_handle_st_eecr(
     {
         cpu.eeprom_clear_eempe_cycles = 5;
         cpu.eeprom_busy = true;
+        cpu.peripheral_queue.schedule(
+            cpu.cycle_count + cpu.eeprom_clear_eempe_cycles, PQ_EEPROM);
     }
 
     uint16_t eearl = cpu.data[0x41];
@@ -60,6 +62,11 @@ void atmega32u4_t::eeprom_handle_st_eecr(
                 cpu.eeprom_write_data = eedr & cpu.eeprom[addr];
                 cpu.eeprom_busy = true;
             }
+            if(cpu.eeprom_program_cycles != 0)
+            {
+                cpu.peripheral_queue.schedule(
+                    cpu.cycle_count + cpu.eeprom_program_cycles, PQ_EEPROM);
+            }
         }
     }
 
@@ -76,10 +83,13 @@ void atmega32u4_t::eeprom_handle_st_eecr(
 }
 
 
-void ARDENS_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
+void ARDENS_FORCEINLINE atmega32u4_t::update_eeprom()
 {
     if(!eeprom_busy)
         return;
+
+    uint32_t cycles = uint32_t(cycle_count - eeprom_prev_cycle);
+    eeprom_prev_cycle = cycle_count;
 
 #define eecr data[0x3f]
 #define eedr data[0x40]
@@ -101,8 +111,8 @@ void ARDENS_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
         else
         {
             eeprom_clear_eempe_cycles -= cycles;
-            //peripheral_queue.schedule(
-            //    cycle_count + eeprom_clear_eempe_cycles, PQ_EEPROM);
+            peripheral_queue.schedule(
+                cycle_count + eeprom_clear_eempe_cycles, PQ_EEPROM);
         }
     }
 
@@ -124,8 +134,8 @@ void ARDENS_FORCEINLINE atmega32u4_t::cycle_eeprom(uint32_t cycles)
         else
         {
             eeprom_program_cycles -= cycles;
-            //peripheral_queue.schedule(
-            //    cycle_count + eeprom_program_cycles, PQ_EEPROM);
+            peripheral_queue.schedule(
+                cycle_count + eeprom_program_cycles, PQ_EEPROM);
         }
     }
 }

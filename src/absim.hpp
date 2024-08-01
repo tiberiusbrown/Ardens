@@ -623,10 +623,12 @@ struct atmega32u4_t
     void led_rgb(uint8_t& r, uint8_t& g, uint8_t& b) const;
 
     // PLL
+    uint64_t pll_prev_cycle;
     uint64_t pll_lock_cycle;
     uint32_t pll_num12; // numerator /12 of pll cycles per main cycle
     bool pll_busy;
-    void cycle_pll(uint32_t cycles);
+    void update_pll();
+    void pll_schedule();
     static void pll_handle_st_pllcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // SPI
@@ -647,15 +649,17 @@ struct atmega32u4_t
     static uint8_t spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr);
 
     // EEPROM
+    uint64_t eeprom_prev_cycle;
     uint32_t eeprom_clear_eempe_cycles;
     uint32_t eeprom_write_addr;
     uint32_t eeprom_write_data;
     uint32_t eeprom_program_cycles;
     bool eeprom_busy;
-    void cycle_eeprom(uint32_t cycles);
+    void update_eeprom();
     static void eeprom_handle_st_eecr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // ADC
+    uint64_t adc_prev_cycle;
     uint32_t adc_prescaler_cycle;
     uint32_t adc_cycle;
     uint32_t adc_ref;
@@ -663,7 +667,8 @@ struct atmega32u4_t
     uint32_t adc_seed;
     bool adc_busy;
     bool adc_nondeterminism;
-    void cycle_adc(uint32_t cycles);
+    void update_adc();
+    void adc_schedule();
     void adc_handle_prr0(uint8_t x);
     static void adc_st_handle_adcsra(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 

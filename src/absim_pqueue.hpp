@@ -22,6 +22,7 @@ enum pqueue_type
     PQ_PLL,
     PQ_ADC,
     PQ_SPM,
+    PQ_INTERRUPT,
     NUM_PQ
 };
 
@@ -106,6 +107,8 @@ inline void pqueue::schedule(uint64_t cycle, pqueue_type type)
         {
             if(t.type == type)
             {
+                if(t.cycle < cycle)
+                    return;
                 t.cycle = cycle;
                 break;
             }

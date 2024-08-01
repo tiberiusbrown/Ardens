@@ -139,6 +139,7 @@ void atmega32u4_t::st_handle_spmcsr(
             return; // no effect
         cpu.spm_busy = true;
         cpu.spm_en_cycles = 5;
+        cpu.peripheral_queue.schedule(cpu.cycle_count + cpu.spm_en_cycles, PQ_SPM);
     }
     cpu.data[ptr] = x;
 }
@@ -203,6 +204,8 @@ void atmega32u4_t::execute_spm()
     default:
         break;
     }
+    if(spm_cycles != 0)
+        peripheral_queue.schedule(cycle_count + spm_cycles, PQ_SPM);
 }
 
 void atmega32u4_t::update_spm()
@@ -222,14 +225,21 @@ void atmega32u4_t::update_spm()
         if(spm_cycles <= cycles)
             spm_busy = false;
         else
+        {
             spm_cycles -= cycles;
+            peripheral_queue.schedule(cycle_count + spm_cycles, PQ_SPM);
+        }
     }
-    else if(spm_en_cycles != 0)
+    else
     {
+        assert(spm_en_cycles != 0);
         if(spm_en_cycles <= cycles)
             spm_busy = false;
         else
+        {
             spm_en_cycles -= cycles;
+            peripheral_queue.schedule(cycle_count + spm_en_cycles, PQ_SPM);
+        }
     }
 
     if(!spm_busy)
@@ -294,34 +304,15 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     {
         // not sleeping: execute instruction(s)
 
-        uint32_t max_merged_cycles = 1;
+        uint64_t next_cycle = peripheral_queue.next_cycle();
 
         single_instr_only = (
-            peripheral_queue.next_cycle() < cycle_count + MAX_INSTR_CYCLES ||
+            next_cycle < cycle_count + MAX_INSTR_CYCLES ||
             spi_busy ||
-            eeprom_busy ||
-            pll_busy ||
-            adc_busy ||
-            spm_busy ||
 #ifndef ARDENS_NO_DEBUGGER
             no_merged ||
 #endif
             false);
-
-        if(!single_instr_only)
-        {
-            uint64_t t = peripheral_queue.next_cycle();
-            //t = std::min<uint64_t>(t, timer0.next_update_cycle);
-            //t = std::min<uint64_t>(t, timer1.next_update_cycle);
-            //t = std::min<uint64_t>(t, timer3.next_update_cycle);
-            //t = std::min<uint64_t>(t, timer4.next_update_cycle);
-            t = std::min<uint64_t>(t, usb_next_update_cycle);
-            //t = std::min<uint64_t>(t, spi_done_cycle);
-            //t = std::min<uint64_t>(t, watchdog_next_cycle);
-            t -= cycle_count;
-            single_instr_only |= (t < MAX_INSTR_CYCLES);
-            max_merged_cycles = (uint32_t)std::min<uint64_t>(t, 1024) - MAX_INSTR_CYCLES;
-        }
 
 #ifndef ARDENS_NO_DEBUGGER
         executing_instr_pc = pc;
@@ -345,6 +336,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         }
         else
         {
+            uint64_t max_merged_cycles = std::min<uint64_t>(
+                next_cycle - cycle_count - MAX_INSTR_CYCLES, 1024);
             uint64_t tcycles = cycle_count;
             uint64_t tcycles_max = tcycles + max_merged_cycles;
             do
@@ -393,18 +386,11 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         // sleeping and not waking up from an interrupt
 
         // boost executed cycles to speed up timer code
-        if(spi_busy || eeprom_busy || pll_busy || adc_busy || spm_busy)
+        if(spi_busy)
             cycles = 1;
         else
         {
-            uint64_t t = peripheral_queue.next_cycle();
-            //t = std::min<uint64_t>(t, timer0.next_update_cycle);
-            //t = std::min<uint64_t>(t, timer1.next_update_cycle);
-            //t = std::min<uint64_t>(t, timer3.next_update_cycle);
-            //t = std::min<uint64_t>(t, timer4.next_update_cycle);
-            t = std::min<uint64_t>(t, usb_next_update_cycle);
-            //t = std::min<uint64_t>(t, spi_done_cycle);
-            //t = std::min<uint64_t>(t, watchdog_next_cycle);
+            uint64_t t = std::max(cycle_count + 1, peripheral_queue.next_cycle());
             t -= cycle_count;
             t = std::min<uint64_t>(t, 1024);
             if(t > 1) --t;
@@ -432,17 +418,22 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             case PQ_TIMER1: update_timer1(); break;
             case PQ_TIMER3: update_timer3(); break;
             case PQ_TIMER4: update_timer4(); break;
+            case PQ_USB: update_usb(); break;
             case PQ_WATCHDOG: update_watchdog(); break;
+            case PQ_EEPROM: update_eeprom(); break;
+            case PQ_PLL: update_pll(); break;
+            case PQ_ADC: update_adc(); break;
+            case PQ_SPM: update_spm(); break;
             default: break;
             }
         }
 
         // peripheral updates
         update_spi();
-        cycle_pll(cycles);
-        cycle_eeprom(cycles);
-        cycle_adc(cycles);
-        update_spm();
+        //update_pll();
+        //update_eeprom();
+        //update_adc(cycles);
+        //update_spm();
 
         //if(cycle_count >= timer0.next_update_cycle)
         //    update_timer0();
@@ -452,8 +443,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         //    update_timer3();
         //if(cycle_count >= timer4.next_update_cycle)
         //    update_timer4();
-        if(cycle_count >= usb_next_update_cycle)
-            update_usb();
+        //if(cycle_count >= usb_next_update_cycle)
+        //    update_usb();
         //if(cycle_count >= watchdog_next_cycle)
         //    update_watchdog();
 

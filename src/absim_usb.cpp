@@ -26,11 +26,14 @@ constexpr uint16_t ADDR_UEINT   = 0xf4;
 
 static void usb_set_next_update_cycle(atmega32u4_t& cpu)
 {
-    cpu.usb_next_update_cycle = UINT64_MAX;
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_eorsti_cycle);
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_sofi_cycle);
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_setconf_cycle);
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_setlength_cycle);
+    uint64_t c = UINT64_MAX;
+    c = std::min(c, cpu.usb_next_eorsti_cycle);
+    c = std::min(c, cpu.usb_next_sofi_cycle);
+    c = std::min(c, cpu.usb_next_setconf_cycle);
+    c = std::min(c, cpu.usb_next_setlength_cycle);
+    cpu.usb_next_update_cycle = c;
+    if(c != UINT64_MAX)
+        cpu.peripheral_queue.schedule(c, PQ_USB);
 }
 
 void atmega32u4_t::reset_usb()
