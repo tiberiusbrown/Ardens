@@ -1,7 +1,8 @@
 #pragma once
 
-#include <queue>
-#include <vector>
+#include <array>
+
+#include "absim_config.hpp"
 
 #include <stdint.h>
 
@@ -32,96 +33,68 @@ struct pqueue_item
     pqueue_type type;
 };
 
-struct pqueue_compare
-{
-    bool operator()(pqueue_item a, pqueue_item b)
-    {
-        return std::tie(a.cycle, a.type) > std::tie(b.cycle, b.type);
-    }
-};
-
 // A priority queue for scheduling peripheral update cycles
 struct pqueue
 {
-    void schedule(uint64_t cycle, pqueue_type type);
-
-    pqueue_item next() const
+    ARDENS_FORCEINLINE void schedule(uint64_t cycle, pqueue_type type)
     {
-        return q.top();
-    }
-
-    uint64_t next_cycle() const
-    {
-        return next().cycle;
-    }
-
-    void pop()
-    {
-        pqueue_type t = q.top().type;
-        if(t == PQ_DUMMY) return;
-        scheduled[t] = false;
-        q.pop();
-    }
-
-    void clear_to_cycle(uint64_t cycle)
-    {
-        for(;;)
+        if(cycles[type] > cycle)
         {
-            auto t = q.top();
-            if(t.cycle >= cycle) break;
-            scheduled[t.type] = false;
-            q.pop();
+            cycles[type] = cycle;
+            if(cycle < least_cycle)
+            {
+                least_cycle = cycle;
+                least_index = type;
+            }
         }
     }
 
-    void clear();
+    ARDENS_FORCEINLINE pqueue_item next() const
+    {
+        return { least_cycle, least_index };
+    }
+
+    ARDENS_FORCEINLINE uint64_t next_cycle() const
+    {
+        return least_cycle;
+    }
+
+    ARDENS_FORCEINLINE void pop()
+    {
+        cycles[least_index] = UINT64_MAX;
+        update_next();
+    }
+
+    void clear()
+    {
+        for(auto& c : cycles)
+            c = UINT64_MAX;
+        least_cycle = UINT64_MAX;
+        least_index = PQ_DUMMY;
+    }
 
 private:
 
-    struct queue_type : public std::priority_queue<
-        pqueue_item,
-        std::vector<pqueue_item>,
-        pqueue_compare>
+    std::array<uint64_t, NUM_PQ> cycles;
+
+    pqueue_type least_index;
+    uint64_t least_cycle;
+
+    void update_next()
     {
-        auto& container() { return c; }
-        auto comparator() { return comp; }
-    };
-
-    queue_type q;
-
-    std::array<bool, NUM_PQ> scheduled;
-
-};
-
-inline void pqueue::clear()
-{
-    q.container().clear();
-    q.push({ UINT64_MAX, PQ_DUMMY });
-    scheduled = {};
-}
-
-inline void pqueue::schedule(uint64_t cycle, pqueue_type type)
-{
-    if(scheduled[type])
-    {
-        auto& c = q.container();
-        for(auto& t : c)
+        least_cycle = UINT64_MAX;
+        least_index = PQ_DUMMY;
+        for(size_t i = 1; i < cycles.size(); ++i)
         {
-            if(t.type == type)
+            auto c = cycles[i];
+            if(c < least_cycle)
             {
-                if(t.cycle < cycle)
-                    return;
-                t.cycle = cycle;
-                break;
+                least_cycle = c;
+                least_index = (pqueue_type)i;
             }
         }
-        std::make_heap(c.begin(), c.end(), q.comparator());
     }
-    else
-    {
-        q.push({ cycle, type });
-        scheduled[type] = true;
-    }
-}
+
+};
 
 }

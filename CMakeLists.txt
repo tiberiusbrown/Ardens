@@ -275,6 +275,7 @@ if(MSVC)
 endif()
 set(ARDENS_SOURCES
     src/absim.hpp
+    src/absim_config.hpp
     src/absim_instructions.hpp
     src/absim_cpu_data.cpp
     src/absim_pqueue.hpp

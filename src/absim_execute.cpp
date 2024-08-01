@@ -185,6 +185,7 @@ static ARDENS_FORCEINLINE void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_
 
 static ARDENS_FORCEINLINE uint8_t flag_s(uint8_t sreg)
 {
+    // S |= N ^ V
     sreg |= (((sreg ^ (sreg >> 1)) & 0x4) << 2);
     return sreg;
 }
@@ -204,7 +205,7 @@ static ARDENS_FORCEINLINE uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 {
     sreg |= ((x & 0x80) >> 5); // N
     if(x == 0) sreg |= SREG_Z; // Z
-    sreg = flag_s(sreg);      // S
+    sreg = flag_s(sreg);       // S
     return sreg;
 }
 

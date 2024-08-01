@@ -319,7 +319,7 @@ void display_t::send_data(uint8_t byte)
     }
 }
 
-void ARDENS_FORCEINLINE display_t::update_pixels_row()
+ARDENS_FORCEINLINE void display_t::update_pixels_row()
 {
     uint8_t ram_row = row;
     ram_row += display_start;
@@ -468,27 +468,30 @@ void display_t::filter_pixels()
 #endif
 }
 
-bool ARDENS_FORCEINLINE display_t::advance(uint64_t ps)
+ARDENS_FORCEINLINE bool display_t::advance(uint64_t ps)
 {
     vsync = false;
     ps += ps_rem;
     ps_rem = 0;
 
-    while(ps >= ps_per_clk)
+    if(ps < ps_per_clk)
     {
-        if(++row_cycle >= cycles_per_row)
-        {
-            update_pixels_row();
-            row_cycle = 0;
-            if(row == mux_ratio)
-                row = 0;
-            else
-                row = (row + 1) % 64;
-        }
-        ps -= ps_per_clk;
+        ps_rem = ps;
+        return false;
     }
 
-    ps_rem = ps;
+    uint32_t rc = row_cycle + uint32_t(ps / ps_per_clk);
+    ps_rem = ps % ps_per_clk;
+    while(rc >= cycles_per_row)
+    {
+        update_pixels_row();
+        if(row == mux_ratio)
+            row = 0;
+        else
+            row = (row + 1) % 64;
+        rc -= cycles_per_row;
+    }
+    row_cycle = (uint8_t)rc;
 
     return vsync;
 }
@@ -500,7 +503,7 @@ constexpr std::array<double, 16> FOSC =
     392, 416, 440, 464, 488, 512, 536, 570,
 };
 
-void ARDENS_FORCEINLINE display_t::update_clocking()
+ARDENS_FORCEINLINE void display_t::update_clocking()
 {
     cycles_per_row = phase_1 + phase_2 + 50;
     ps_per_clk = (uint64_t)round(1e12 * (divide_ratio + 1) / fosc());
