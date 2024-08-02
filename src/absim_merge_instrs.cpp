@@ -100,6 +100,15 @@ void atmega32u4_t::merge_instrs()
             i0.func = INSTR_MERGED_ADD_ADC;
             continue;
         }
+
+        if(i0.func == INSTR_SUBI &&
+            i1.func == INSTR_SBCI)
+        {
+            i0.func = INSTR_MERGED_SUBI_SBCI;
+            i0.word = i0.src + i1.src * 256;
+            i0.src = i1.dst;
+            continue;
+        }
     }
 }
 
