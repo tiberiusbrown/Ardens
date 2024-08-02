@@ -26,11 +26,14 @@ constexpr uint16_t ADDR_UEINT   = 0xf4;
 
 static void usb_set_next_update_cycle(atmega32u4_t& cpu)
 {
-    cpu.usb_next_update_cycle = UINT64_MAX;
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_eorsti_cycle);
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_sofi_cycle);
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_setconf_cycle);
-    cpu.usb_next_update_cycle = std::min(cpu.usb_next_update_cycle, cpu.usb_next_setlength_cycle);
+    uint64_t c = UINT64_MAX;
+    c = std::min(c, cpu.usb_next_eorsti_cycle);
+    c = std::min(c, cpu.usb_next_sofi_cycle);
+    c = std::min(c, cpu.usb_next_setconf_cycle);
+    c = std::min(c, cpu.usb_next_setlength_cycle);
+    cpu.usb_next_update_cycle = c;
+    if(c != UINT64_MAX)
+        cpu.peripheral_queue.schedule(c, PQ_USB);
 }
 
 void atmega32u4_t::reset_usb()
@@ -169,6 +172,7 @@ void atmega32u4_t::usb_st_handler(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
         else
             cpu.reset_usb();
         usb_set_next_update_cycle(cpu);
+        cpu.schedule_interrupt_check();
         break;
     case ADDR_UDCON:
         if((cpu.data[ptr] & 1) && !(x & 1))
@@ -192,6 +196,8 @@ static void usb_endpoint_ints(atmega32u4_t& cpu)
         if(cpu.usb_ep[n].ueintx & cpu.usb_ep[n].ueienx)
             i |= (1 << n);
     cpu.UEINT() = i;
+    if(i != 0)
+        cpu.schedule_interrupt_check();
 }
 
 void atmega32u4_t::update_usb()
@@ -201,12 +207,14 @@ void atmega32u4_t::update_usb()
         // generate sofi (start of frame) interrupt
         UDINT() |= (1 << 2);
         usb_next_sofi_cycle += 16000;
+        schedule_interrupt_check();
     }
     if(cycle_count >= usb_next_eorsti_cycle)
     {
         // generate eorsti (end of reset) interrupt
         UDINT() |= (1 << 3);
         usb_next_eorsti_cycle = UINT64_MAX;
+        schedule_interrupt_check();
     }
     if(cycle_count >= usb_next_setconf_cycle)
     {

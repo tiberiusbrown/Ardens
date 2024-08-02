@@ -3,14 +3,14 @@
 namespace absim
 {
 
-static ARDENS_FORCEINLINE uint32_t word(atmega32u4_t const& cpu, uint32_t addr)
+ARDENS_FORCEINLINE static uint32_t word(atmega32u4_t const& cpu, uint32_t addr)
 {
     uint32_t lo = cpu.data[addr + 0];
     uint32_t hi = cpu.data[addr + 1];
     return lo | (hi << 8);
 }
 
-static ARDENS_FORCEINLINE uint32_t get_divider(uint32_t cs)
+ARDENS_FORCEINLINE static uint32_t get_divider(uint32_t cs)
 {
     assert((cs & ~7) == 0);
     static constexpr uint32_t DIVIDERS[8] =
@@ -20,13 +20,13 @@ static ARDENS_FORCEINLINE uint32_t get_divider(uint32_t cs)
     return DIVIDERS[cs];
 }
 
-static ARDENS_FORCEINLINE uint32_t min_nonzero(uint32_t a, uint32_t top, int32_t b)
+ARDENS_FORCEINLINE static uint32_t min_nonzero(uint32_t a, uint32_t top, int32_t b)
 {
     if(b <= 0) return std::min(a, top);
     return std::min(a, (uint32_t)b);
 }
 
-static ARDENS_FORCEINLINE void process_wgm8(
+ARDENS_FORCEINLINE static void process_wgm8(
     uint32_t wgm, uint32_t& top, uint32_t& tov, uint32_t ocr)
 {
     top = 0xff;
@@ -59,7 +59,7 @@ static ARDENS_FORCEINLINE void process_wgm8(
         top = std::max<uint32_t>(3, top);
 }
 
-static ARDENS_FORCEINLINE void timer8_update_ocrN(
+ARDENS_FORCEINLINE static void timer8_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer8_t& timer)
 {
@@ -72,7 +72,7 @@ static ARDENS_FORCEINLINE void timer8_update_ocrN(
     process_wgm8(wgm, timer.top, timer.tov, timer.ocrNa);
 }
 
-static ARDENS_FORCEINLINE void update_timer8_state(
+ARDENS_FORCEINLINE static void update_timer8_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer8_t& timer,
     uint64_t cycles)
@@ -137,6 +137,8 @@ static ARDENS_FORCEINLINE void update_timer8_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
+    if(~cpu.data[0x35] & tifr)
+        cpu.schedule_interrupt_check();
     cpu.data[0x35] |= tifr;
     cpu.data[0x46] = uint8_t(tcnt);
 }
@@ -209,9 +211,10 @@ void atmega32u4_t::update_timer0()
     uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.prescaler_cycle;
 
     timer0.next_update_cycle = cycle_count + update_cycles;
+    peripheral_queue.schedule(timer0.next_update_cycle, PQ_TIMER0);
 }
 
-static ARDENS_FORCEINLINE void process_wgm16(
+ARDENS_FORCEINLINE static void process_wgm16(
     uint32_t wgm, uint32_t& top, uint32_t& tov, uint32_t ocr, uint32_t icr)
 {
     uint32_t ttop = 0xffff;
@@ -282,7 +285,7 @@ static ARDENS_FORCEINLINE void process_wgm16(
     tov = ttov;
 }
 
-static ARDENS_FORCEINLINE void timer16_update_ocrN(
+ARDENS_FORCEINLINE static void timer16_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
     uint32_t addr)
@@ -299,7 +302,7 @@ static ARDENS_FORCEINLINE void timer16_update_ocrN(
     process_wgm16(wgm, timer.top, timer.tov, timer.ocrNa, icrN);
 }
 
-static ARDENS_FORCEINLINE uint32_t timer16_period(
+ARDENS_FORCEINLINE static uint32_t timer16_period(
     atmega32u4_t const& cpu,
     atmega32u4_t::timer16_t const& timer)
 {
@@ -312,25 +315,25 @@ static ARDENS_FORCEINLINE uint32_t timer16_period(
     return period;
 }
 
-static ARDENS_FORCEINLINE void toggle_portc6(atmega32u4_t& cpu)
+ARDENS_FORCEINLINE static void toggle_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.data[0x28] ^= (1 << 6);
 }
 
-static ARDENS_FORCEINLINE void clear_portc6(atmega32u4_t& cpu)
+ARDENS_FORCEINLINE static void clear_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.data[0x28] &= ~(1 << 6);
 }
 
-static ARDENS_FORCEINLINE void set_portc6(atmega32u4_t& cpu)
+ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.data[0x28] |= (1 << 6);
 }
 
-static ARDENS_FORCEINLINE void update_timer16_state(
+ARDENS_FORCEINLINE static void update_timer16_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
     uint64_t cycles)
@@ -417,6 +420,8 @@ static ARDENS_FORCEINLINE void update_timer16_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
+    if(~cpu.data[timer.tifrN_addr] & tifr)
+        cpu.schedule_interrupt_check();
     cpu.data[timer.tifrN_addr] |= tifr;
     cpu.data[timer.base_addr + 0x4] = uint8_t(tcnt >> 0);
     cpu.data[timer.base_addr + 0x5] = uint8_t(tcnt >> 8);
@@ -508,9 +513,12 @@ static void update_timer16(
     }
 
     //timer.next_update_cycle = cpu.cycle_count + 1;
+    cpu.peripheral_queue.schedule(
+        timer.next_update_cycle,
+        &timer == &cpu.timer1 ? PQ_TIMER1 : PQ_TIMER3);
 }
 
-static ARDENS_FORCEINLINE void timer10_update_ocrN(
+ARDENS_FORCEINLINE static void timer10_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer10_t& timer)
 {
@@ -528,7 +536,7 @@ static ARDENS_FORCEINLINE void timer10_update_ocrN(
     }
 }
 
-static ARDENS_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
+ARDENS_FORCEINLINE static void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
 {
     uint8_t c = 0;
     if(c6) c |= 0x40;
@@ -541,7 +549,7 @@ static ARDENS_FORCEINLINE void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
     cpu.data[0x28] = t;
 }
 
-static ARDENS_FORCEINLINE void set_portc6(atmega32u4_t& cpu, bool c6)
+ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu, bool c6)
 {
     uint8_t c = 0;
     if(c6) c |= 0x40;
@@ -553,7 +561,7 @@ static ARDENS_FORCEINLINE void set_portc6(atmega32u4_t& cpu, bool c6)
     cpu.data[0x28] = t;
 }
 
-static ARDENS_FORCEINLINE void set_portc7(atmega32u4_t& cpu, bool c7)
+ARDENS_FORCEINLINE static void set_portc7(atmega32u4_t& cpu, bool c7)
 {
     uint8_t c = 0;
     if(c7) c |= 0x80;
@@ -565,7 +573,7 @@ static ARDENS_FORCEINLINE void set_portc7(atmega32u4_t& cpu, bool c7)
     cpu.data[0x28] = t;
 }
 
-static ARDENS_FORCEINLINE void update_timer10_state(
+ARDENS_FORCEINLINE static void update_timer10_state(
     atmega32u4_t& cpu,
     atmega32u4_t::timer10_t& timer,
     uint64_t cycles)
@@ -671,6 +679,8 @@ static ARDENS_FORCEINLINE void update_timer10_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
+    if(~cpu.data[0x39] & tifr)
+        cpu.schedule_interrupt_check();
     cpu.data[0x39] |= tifr;
     cpu.data[0xbe] = uint8_t(tcnt >> 0);
 }
@@ -821,6 +831,7 @@ void atmega32u4_t::update_timer4()
         }
         timer4.next_update_cycle = cycle_count + update_cycles;
     }
+    peripheral_queue.schedule(timer4.next_update_cycle, PQ_TIMER4);
 }
 
 void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)

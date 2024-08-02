@@ -20,26 +20,10 @@
 #include <string.h>
 #include <assert.h>
 
+#include "absim_config.hpp"
+
 #include "absim_instructions.hpp"
-
-#if defined(_MSC_VER)
-#define ARDENS_FORCEINLINE __forceinline
-//#define ARDENS_FORCEINLINE
-#elif defined(__GNUC__) || defined(__clang__) 
-#define ARDENS_FORCEINLINE
-#else
-#define ARDENS_FORCEINLINE
-#endif
-
-#if defined(__x86_64__) || defined(_M_X64)
-#define ARDENS_ARCH_X86_64
-#elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
-#define ARDENS_ARCH_X86_32
-#endif
-
-#ifdef ARDENS_ARCH_X86_64
-#define ARDENS_SSE2
-#endif
+#include "absim_pqueue.hpp"
 
 #ifdef ARDENS_LLVM
 namespace llvm
@@ -490,6 +474,8 @@ struct atmega32u4_t
 
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
+    pqueue peripheral_queue;
+
     // timer0
     struct timer8_t
     {
@@ -620,10 +606,12 @@ struct atmega32u4_t
     void led_rgb(uint8_t& r, uint8_t& g, uint8_t& b) const;
 
     // PLL
+    uint64_t pll_prev_cycle;
     uint64_t pll_lock_cycle;
     uint32_t pll_num12; // numerator /12 of pll cycles per main cycle
     bool pll_busy;
-    void cycle_pll(uint32_t cycles);
+    void update_pll();
+    void pll_schedule();
     static void pll_handle_st_pllcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // SPI
@@ -644,15 +632,17 @@ struct atmega32u4_t
     static uint8_t spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr);
 
     // EEPROM
+    uint64_t eeprom_prev_cycle;
     uint32_t eeprom_clear_eempe_cycles;
     uint32_t eeprom_write_addr;
     uint32_t eeprom_write_data;
     uint32_t eeprom_program_cycles;
     bool eeprom_busy;
-    void cycle_eeprom(uint32_t cycles);
+    void update_eeprom();
     static void eeprom_handle_st_eecr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // ADC
+    uint64_t adc_prev_cycle;
     uint32_t adc_prescaler_cycle;
     uint32_t adc_cycle;
     uint32_t adc_ref;
@@ -660,7 +650,8 @@ struct atmega32u4_t
     uint32_t adc_seed;
     bool adc_busy;
     bool adc_nondeterminism;
-    void cycle_adc(uint32_t cycles);
+    void update_adc();
+    void adc_schedule();
     void adc_handle_prr0(uint8_t x);
     static void adc_st_handle_adcsra(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
@@ -752,6 +743,8 @@ struct atmega32u4_t
     void update_watchdog_prescaler();
     void update_watchdog();
 
+    void schedule_interrupt_check();
+    void check_all_interrupts();
     bool check_interrupt(uint8_t vector, uint8_t flag, uint8_t& tifr);
 
     uint64_t cycle_count;
@@ -1206,7 +1199,7 @@ constexpr uint8_t SREG_C = 1 << 0;
 
 constexpr uint8_t SREG_HSVNZC = 0x3f;
 
-static ARDENS_FORCEINLINE uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
+ARDENS_FORCEINLINE static uint32_t increase_counter(uint32_t& counter, uint32_t inc, uint32_t top)
 {
     uint32_t c = counter + inc;
     uint32_t n = c / top;

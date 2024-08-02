@@ -275,8 +275,10 @@ if(MSVC)
 endif()
 set(ARDENS_SOURCES
     src/absim.hpp
+    src/absim_config.hpp
     src/absim_instructions.hpp
     src/absim_cpu_data.cpp
+    src/absim_pqueue.hpp
 
     src/absim_arduboy.cpp
     src/absim_display.hpp
@@ -299,7 +301,7 @@ set(ARDENS_SOURCES
     src/absim_eeprom.hpp
     src/absim_sound.hpp
     src/absim_led.cpp
-    src/absim_usb.cpp
+    src/absim_usb.hpp
 
     deps/yyjson/yyjson.h
     deps/yyjson/yyjson.c

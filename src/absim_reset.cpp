@@ -54,6 +54,7 @@ void atmega32u4_t::reset()
     for(int i = 0x44; i <= 0x48; ++i)
         st_handlers[i] = timer0_handle_st_regs;
     st_handlers[0x46] = timer0_handle_st_tcnt;
+
     for(int i = 0x80; i <= 0x8d; ++i)
         st_handlers[i] = timer1_handle_st_regs;
     for(int i = 0x90; i <= 0x9d; ++i)
@@ -164,6 +165,7 @@ void atmega32u4_t::soft_reset()
     timer3.next_update_cycle = UINT64_MAX;
     timer4.next_update_cycle = UINT64_MAX;
 
+    pll_prev_cycle = cycle_count;
     pll_lock_cycle = 0;
     pll_num12 = 0;
     pll_busy = false;
@@ -179,12 +181,14 @@ void atmega32u4_t::soft_reset()
     spi_done_cycle = UINT64_MAX;
     spi_transmit_zero_cycle = UINT64_MAX;
 
+    eeprom_prev_cycle = cycle_count;
     eeprom_clear_eempe_cycles = 0;
     eeprom_write_addr = 0;
     eeprom_write_data = 0;
     eeprom_program_cycles = 0;
     eeprom_busy = false;
 
+    adc_prev_cycle = cycle_count;
     adc_prescaler_cycle = 0;
     adc_cycle = 0;
     adc_ref = 0;
@@ -213,8 +217,11 @@ void atmega32u4_t::soft_reset()
     watchdog_prev_cycle = cycle_count;
     update_watchdog_prescaler();
     watchdog_next_cycle = cycle_count + watchdog_divider;
+    peripheral_queue.schedule(watchdog_next_cycle, PQ_WATCHDOG);
 
     OSCCAL() = 0x6d;
+
+    peripheral_queue.clear();
 }
 
 }

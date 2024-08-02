@@ -113,6 +113,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.timer3);
     ar(a.cpu.timer4);
 
+    ar(a.cpu.pll_prev_cycle);
     ar(a.cpu.pll_lock_cycle);
     ar(a.cpu.pll_num12);
     ar(a.cpu.pll_busy);
@@ -128,12 +129,14 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.spi_transmit_zero_cycle);
     ar(a.cpu.spi_clock_cycles);
 
+    ar(a.cpu.eeprom_prev_cycle);
     ar(a.cpu.eeprom_clear_eempe_cycles);
     ar(a.cpu.eeprom_write_addr);
     ar(a.cpu.eeprom_write_data);
     ar(a.cpu.eeprom_program_cycles);
     ar(a.cpu.eeprom_busy);
 
+    ar(a.cpu.adc_prev_cycle);
     ar(a.cpu.adc_prescaler_cycle);
     ar(a.cpu.adc_cycle);
     ar(a.cpu.adc_ref);
