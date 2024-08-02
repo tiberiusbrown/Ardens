@@ -47,7 +47,7 @@ bool instr_is_two_words(avr_instr_t const& i);
 bool instr_is_call(avr_instr_t const& i);
 bool instr_is_ret(avr_instr_t const& i);
 
-enum
+enum instr_id_t
 {
     INSTR_UNKNOWN,
     INSTR_RCALL,

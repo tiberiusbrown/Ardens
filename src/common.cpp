@@ -645,10 +645,6 @@ void frame_logic()
             arduboy->cpu.data[0x2f] = pinf;
         }
 
-#if PROFILING
-        dt = 200;
-#endif
-
         bool prev_paused = arduboy->paused;
         arduboy->frame_bytes_total = 1024;
 

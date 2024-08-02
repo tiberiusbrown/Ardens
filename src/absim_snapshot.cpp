@@ -171,6 +171,8 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.watchdog_divider);
     ar(a.cpu.watchdog_divider_cycle);
 
+    ar(a.cpu.peripheral_queue);
+
     ar(a.cpu.cycle_count);
 
     ar(a.cpu.lock);

@@ -73,6 +73,11 @@ struct pqueue
         least_index = PQ_DUMMY;
     }
 
+    template<class A> void serialize(A& a)
+    {
+        a(cycles, least_index, least_cycle);
+    }
+
 private:
 
     std::array<uint64_t, NUM_PQ> cycles;

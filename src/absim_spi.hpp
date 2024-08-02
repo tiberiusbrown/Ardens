@@ -140,7 +140,10 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
     if(!spi_busy)
         return;
     if(cycle_count < spi_done_cycle)
+    {
+        peripheral_queue.schedule(spi_done_cycle, PQ_SPI);
         return;
+    }
 
     uint8_t  spcr = SPCR();
     uint8_t& spsr = SPSR();
