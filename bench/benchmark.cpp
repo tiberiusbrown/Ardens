@@ -35,8 +35,7 @@ static void bench(benchmark::State& state, std::string const& fname)
     arduboy->advance(1000 * MS);
     arduboy->save_savestate(ss);
 
-    uint64_t c0, c1;
-    for (auto _ : state)
+    for(auto _ : state)
     {
         state.PauseTiming();
         arduboy->reset();
@@ -47,7 +46,7 @@ static void bench(benchmark::State& state, std::string const& fname)
         arduboy->fxport_mask = 1 << 1;
         arduboy->display.enable_filter = true;
         state.ResumeTiming();
-        arduboy->advance(100 * MS);
+        arduboy->advance(10 * MS);
     }
 
     save_screenshot(*arduboy, fname + ".png");
@@ -55,12 +54,12 @@ static void bench(benchmark::State& state, std::string const& fname)
 
 BENCHMARK_CAPTURE(bench, ReturnOfTheArdu, "ReturnOfTheArdu.arduboy")
 ->Unit(benchmark::kMillisecond)
-->Repetitions(1)
+->Repetitions(3)
 ;
 
 BENCHMARK_CAPTURE(bench, racing_game, "racing_game.hex")
 ->Unit(benchmark::kMillisecond)
-->Repetitions(1)
+->Repetitions(3)
 ;
 
 BENCHMARK_MAIN();
