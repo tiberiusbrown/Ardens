@@ -19,11 +19,11 @@ void window_savefile(bool& open)
     bool open_confirm_delete_popup = false;
 
     SetNextWindowSize({ 300 * pixel_ratio, 100 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Save File", &open) && arduboy->cpu.decoded)
+    if(Begin("Save File", &open) && arduboy.cpu.decoded)
     {
-        auto const& d = arduboy->savedata;
+        auto const& d = arduboy.savedata;
         auto fname = savedata_filename();
-        Text("Hash: %016" PRIx64, arduboy->game_hash);
+        Text("Hash: %016" PRIx64, arduboy.game_hash);
         NewLine();
         if(std::filesystem::exists(fname))
         {
@@ -114,9 +114,9 @@ void window_savefile(bool& open)
             );
 #endif
             CloseCurrentPopup();
-            if(arduboy && arduboy->cpu.decoded)
+            if(arduboy.cpu.decoded)
             {
-                arduboy->reset();
+                arduboy.reset();
                 load_savedata();
             }
         }

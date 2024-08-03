@@ -1,14 +1,20 @@
 #pragma once
 
 #if defined(_MSC_VER)
+
 #define ARDENS_FORCEINLINE __forceinline
 #define ARDENS_NOINLINE __declspec(noinline)
+
 #elif defined(__GNUC__) || defined(__clang__) 
+
 #define ARDENS_FORCEINLINE [[gnu::always_inline]] inline
 #define ARDENS_NOINLINE [[gnu::noinline]]
+
 #else
+
 #define ARDENS_FORCEINLINE inline
 #define ARDENS_NOINLINE
+
 #endif
 
 #if defined(__x86_64__) || defined(_M_X64)

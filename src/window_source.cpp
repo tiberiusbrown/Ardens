@@ -91,23 +91,23 @@ void window_source(bool& open)
 
     SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Source##SourceWindow", &open)
-        && arduboy->cpu.decoded && arduboy->elf && arduboy->paused)
+        && arduboy.cpu.decoded && arduboy.elf && arduboy.paused)
     {
-        auto pc = arduboy->cpu.pc;
+        auto pc = arduboy.cpu.pc;
 
 #ifdef ARDENS_LLVM
         init_texteditor();
-        auto& dwarf = *arduboy->elf->dwarf_ctx;
+        auto& dwarf = *arduboy.elf->dwarf_ctx;
         //auto info = dwarf.getLineInfoForAddress(
         //    { uint64_t(pc) * 2 },
         //    { llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath });
         auto info = get_line_info(dwarf, uint64_t(pc) * 2);
        
-        auto it = arduboy->elf->source_file_names.find(info.FileName);
-        if(it != arduboy->elf->source_file_names.end() &&
-            it->second >= 0 && it->second < arduboy->elf->source_files.size())
+        auto it = arduboy.elf->source_file_names.find(info.FileName);
+        if(it != arduboy.elf->source_file_names.end() &&
+            it->second >= 0 && it->second < arduboy.elf->source_files.size())
         {
-            load_file_to_editor(arduboy->elf->source_files[it->second]);
+            load_file_to_editor(arduboy.elf->source_files[it->second]);
             editor.Render(info.FileName.c_str());
             if(prev_pc != pc)
             {

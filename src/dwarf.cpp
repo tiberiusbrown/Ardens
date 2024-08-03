@@ -518,8 +518,8 @@ std::string dwarf_value_string(
 	dwarf_value_base base)
 {
     dwarf_span mem;
-    if(prog) mem = to_dwarf_span(arduboy->cpu.prog);
-    else     mem = to_dwarf_span(arduboy->cpu.data);
+    if(prog) mem = to_dwarf_span(arduboy.cpu.prog);
+    else     mem = to_dwarf_span(arduboy.cpu.data);
     return recurse_value(die, mem.offset(addr), base, bit_offset, bit_size);
 }
 
