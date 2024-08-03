@@ -99,15 +99,15 @@ instr_func_t const INSTR_MAP[] =
     instr_break,
 
     // merged instrs
-    instr_merged_push_n,
-    instr_merged_pop_n,
-    instr_merged_ldi_n,
+    instr_merged_push4,
+    instr_merged_pop4,
+    instr_merged_ldi2,
     instr_merged_dec_brne,
     instr_merged_add_adc,
     instr_merged_subi_sbci,
 };
 
-bool instr_is_two_words(avr_instr_t const& i)
+bool instr_is_two_words(avr_instr_t i)
 {
     return
         i.func == INSTR_CALL ||
@@ -116,7 +116,7 @@ bool instr_is_two_words(avr_instr_t const& i)
         i.func == INSTR_STS;
 }
 
-bool instr_is_call(avr_instr_t const& i)
+bool instr_is_call(avr_instr_t i)
 {
     return
         i.func == INSTR_CALL ||
@@ -124,7 +124,7 @@ bool instr_is_call(avr_instr_t const& i)
         i.func == INSTR_ICALL;
 }
 
-bool instr_is_ret(avr_instr_t const& i)
+bool instr_is_ret(avr_instr_t i)
 {
     return
         i.func == INSTR_RET ||
@@ -138,21 +138,21 @@ ARDENS_FORCEINLINE static bool next_instr_is_two_words(atmega32u4_t const& cpu)
     return instr_is_two_words(cpu.decoded_prog[cpu.pc + 1]);
 }
 
-uint32_t instr_nop(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_nop(atmega32u4_t& cpu, avr_instr_t i)
 {
     (void)i;
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_unknown(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_unknown(atmega32u4_t& cpu, avr_instr_t i)
 {
     (void)cpu;
     (void)i;
     return 1;
 }
 
-uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t i)
 {
     (void)i;
     cpu.watchdog_divider_cycle = 0;
@@ -163,7 +163,7 @@ uint32_t instr_wdr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_spm(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_spm(atmega32u4_t& cpu, avr_instr_t i)
 {
     (void)i;
     cpu.execute_spm();
@@ -171,7 +171,7 @@ uint32_t instr_spm(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_break(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_break(atmega32u4_t& cpu, avr_instr_t i)
 {
     (void)i;
     cpu.pc += 1;
@@ -217,19 +217,19 @@ ARDENS_FORCEINLINE static void set_flags_nzs(atmega32u4_t& cpu, uint32_t x)
     cpu.sreg() = sreg;
 }
 
-uint32_t instr_rjmp(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_rjmp(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.pc += (int16_t)i.word + 1;
     return 2;
 }
 
-uint32_t instr_jmp(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_jmp(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.pc = i.word;
     return 3;
 }
 
-uint32_t instr_ijmp(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ijmp(atmega32u4_t& cpu, avr_instr_t i)
 {
     (void)i;
     uint16_t z = cpu.z_word();
@@ -246,7 +246,7 @@ uint32_t instr_ijmp(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_rcall(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_rcall(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ret_addr = cpu.pc + 1;
     cpu.pc += (int16_t)i.word + 1;
@@ -257,7 +257,7 @@ uint32_t instr_rcall(atmega32u4_t& cpu, avr_instr_t const& i)
     return 3;
 }
 
-uint32_t instr_call(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_call(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ret_addr = cpu.pc + 2;
     cpu.pc = i.word;
@@ -267,7 +267,7 @@ uint32_t instr_call(atmega32u4_t& cpu, avr_instr_t const& i)
     return 4;
 }
 
-uint32_t instr_icall(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_icall(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ret_addr = cpu.pc + 1;
     cpu.pc = cpu.z_word();
@@ -277,7 +277,7 @@ uint32_t instr_icall(atmega32u4_t& cpu, avr_instr_t const& i)
     return 3;
 }
 
-uint32_t instr_ret(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ret(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t hi = cpu.pop();
     uint16_t lo = cpu.pop();
@@ -286,7 +286,7 @@ uint32_t instr_ret(atmega32u4_t& cpu, avr_instr_t const& i)
     return 4;
 }
 
-uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t hi = cpu.pop();
     uint16_t lo = cpu.pop();
@@ -297,7 +297,7 @@ uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t const& i)
     return 4;
 }
 
-uint32_t instr_movw(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_movw(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.dst * 2 + 0) = cpu.gpr(i.src * 2 + 0);
     cpu.gpr(i.dst * 2 + 1) = cpu.gpr(i.src * 2 + 1);
@@ -305,14 +305,14 @@ uint32_t instr_movw(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_mov(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_mov(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.dst) = cpu.gpr(i.src);
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_and(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_and(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst & cpu.gpr(i.src);
@@ -325,7 +325,7 @@ uint32_t instr_and(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_or(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_or(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst | cpu.gpr(i.src);
@@ -337,7 +337,7 @@ uint32_t instr_or(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst ^ cpu.gpr(i.src);
@@ -350,7 +350,7 @@ uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_clr(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_clr(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.dst) = 0;
     uint8_t sreg = cpu.sreg();
@@ -361,7 +361,7 @@ uint32_t instr_clr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
@@ -381,7 +381,7 @@ uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
@@ -423,14 +423,14 @@ ARDENS_FORCEINLINE static void sub_imm(atmega32u4_t& cpu, unsigned rdst, unsigne
     sub_flags(cpu, res, dst, src);
 }
 
-uint32_t instr_sub(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sub(atmega32u4_t& cpu, avr_instr_t i)
 {
     sub_imm(cpu, i.dst, cpu.gpr(i.src), 0);
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_sbc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbc(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned sreg = cpu.sreg();
     unsigned dst = cpu.gpr(i.dst);
@@ -453,7 +453,7 @@ uint32_t instr_sbc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_cpi(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_cpi(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = i.src;
@@ -463,7 +463,7 @@ uint32_t instr_cpi(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_cp(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_cp(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
@@ -473,7 +473,7 @@ uint32_t instr_cp(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned sreg = cpu.sreg();
     unsigned dst = cpu.gpr(i.dst);
@@ -496,28 +496,28 @@ uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t const& i)
 
 }
 
-uint32_t instr_out(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_out(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.st_ior(i.dst, cpu.gpr(i.src));
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_in(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_in(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.dst) = cpu.ld_ior(i.src);
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_ldi(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ldi(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.dst) = i.src;
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_lpm(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_lpm(atmega32u4_t& cpu, avr_instr_t i)
 {
     // TODO: handle RWW errors (0x0000 - 0x37ff while RWWSB is set in SPMCSR)
     uint16_t z = cpu.z_word();
@@ -564,7 +564,7 @@ uint32_t instr_lpm(atmega32u4_t& cpu, avr_instr_t const& i)
     return 3;
 }
 
-uint32_t instr_brbs(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_brbs(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(cpu.sreg() & (1 << i.src))
     {
@@ -575,7 +575,7 @@ uint32_t instr_brbs(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_brbc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_brbc(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(!(cpu.sreg() & (1 << i.src)))
     {
@@ -586,21 +586,21 @@ uint32_t instr_brbc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_lds(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_lds(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.dst) = cpu.ld(i.word);
     cpu.pc += 2;
     return 2;
 }
 
-uint32_t instr_sts(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sts(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.st(i.word, cpu.gpr(i.src));
     cpu.pc += 2;
     return 2;
 }
 
-uint32_t instr_ldd_std(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ldd_std(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = (i.word & 0x8) ? cpu.y_word() : cpu.z_word();
     if(ptr == 0)
@@ -614,7 +614,7 @@ uint32_t instr_ldd_std(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr;
 
@@ -659,28 +659,28 @@ uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_ld_x(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_x(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.src) = cpu.ld(cpu.x_word());
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_ld_y(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_y(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.src) = cpu.ld(cpu.y_word());
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_ld_z(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_z(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.src) = cpu.ld(cpu.z_word());
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_ld_x_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_x_inc(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.x_word();
     cpu.gpr(i.src) = cpu.ld(ptr);
@@ -691,7 +691,7 @@ uint32_t instr_ld_x_inc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_ld_y_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_y_inc(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.y_word();
     cpu.gpr(i.src) = cpu.ld(ptr);
@@ -702,7 +702,7 @@ uint32_t instr_ld_y_inc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_ld_z_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_z_inc(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.z_word();
     cpu.gpr(i.src) = cpu.ld(ptr);
@@ -713,7 +713,7 @@ uint32_t instr_ld_z_inc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_ld_x_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_x_dec(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.x_word();
     --ptr;
@@ -724,7 +724,7 @@ uint32_t instr_ld_x_dec(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_ld_y_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_y_dec(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.y_word();
     --ptr;
@@ -735,7 +735,7 @@ uint32_t instr_ld_y_dec(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_ld_z_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ld_z_dec(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.z_word();
     --ptr;
@@ -746,28 +746,28 @@ uint32_t instr_ld_z_dec(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_st_x(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_x(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.st(cpu.x_word(), cpu.gpr(i.src));
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_st_y(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_y(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.st(cpu.y_word(), cpu.gpr(i.src));
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_st_z(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_z(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.st(cpu.z_word(), cpu.gpr(i.src));
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_st_x_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_x_inc(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.x_word();
     cpu.st(ptr, cpu.gpr(i.src));
@@ -778,7 +778,7 @@ uint32_t instr_st_x_inc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_st_y_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_y_inc(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.y_word();
     cpu.st(ptr, cpu.gpr(i.src));
@@ -789,7 +789,7 @@ uint32_t instr_st_y_inc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_st_z_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_z_inc(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.z_word();
     cpu.st(ptr, cpu.gpr(i.src));
@@ -800,7 +800,7 @@ uint32_t instr_st_z_inc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_st_x_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_x_dec(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.x_word();
     --ptr;
@@ -811,7 +811,7 @@ uint32_t instr_st_x_dec(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_st_y_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_y_dec(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.y_word();
     --ptr;
@@ -822,7 +822,7 @@ uint32_t instr_st_y_dec(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_st_z_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_st_z_dec(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.z_word();
     --ptr;
@@ -833,21 +833,21 @@ uint32_t instr_st_z_dec(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_push(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_push(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.push(cpu.gpr(i.src));
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_pop(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_pop(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.src) = cpu.pop();
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_cpse(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_cpse(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t dst = cpu.gpr(i.dst);
     uint16_t src = cpu.gpr(i.src);
@@ -865,14 +865,14 @@ uint32_t instr_cpse(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_subi(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_subi(atmega32u4_t& cpu, avr_instr_t i)
 {
     sub_imm(cpu, i.dst, i.src, 0);
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned sreg = cpu.sreg();
     unsigned dst = cpu.gpr(i.dst);
@@ -895,7 +895,7 @@ uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_ori(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ori(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst | i.src;
@@ -908,7 +908,7 @@ uint32_t instr_ori(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_andi(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_andi(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst & i.src;
@@ -921,7 +921,7 @@ uint32_t instr_andi(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_adiw(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_adiw(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t src = i.src;
     uint16_t dst = cpu.gpr_word(i.dst);
@@ -949,7 +949,7 @@ uint32_t instr_adiw(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t src = i.src;
     uint16_t dst = cpu.gpr_word(i.dst);
@@ -980,7 +980,7 @@ uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_bset(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_bset(atmega32u4_t& cpu, avr_instr_t i)
 {
     // src: bit, dst: mask
     cpu.sreg() |= i.dst;
@@ -988,7 +988,7 @@ uint32_t instr_bset(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_bclr(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_bclr(atmega32u4_t& cpu, avr_instr_t i)
 {
     // src: bit, dst: mask
     cpu.sreg() &= i.dst;
@@ -996,21 +996,21 @@ uint32_t instr_bclr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_sbi(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbi(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.st_ior(i.dst, cpu.ld_ior(i.dst) | i.src);
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_cbi(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_cbi(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.st_ior(i.dst, cpu.ld_ior(i.dst) & ~i.src);
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(cpu.ld_ior(i.dst) & i.src)
     {
@@ -1026,7 +1026,7 @@ uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(!(cpu.ld_ior(i.dst) & i.src))
     {
@@ -1042,7 +1042,7 @@ uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_sbrs(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbrs(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(cpu.gpr(i.dst) & i.src)
     {
@@ -1058,7 +1058,7 @@ uint32_t instr_sbrs(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_sbrc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sbrc(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(!(cpu.gpr(i.dst) & i.src))
     {
@@ -1074,7 +1074,7 @@ uint32_t instr_sbrc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_bld(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_bld(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(cpu.sreg() & SREG_T)
         cpu.gpr(i.dst) |= i.src;
@@ -1084,14 +1084,14 @@ uint32_t instr_bld(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_bst(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_bst(atmega32u4_t& cpu, avr_instr_t i)
 {
     set_flag(cpu, SREG_T, cpu.gpr(i.dst) & i.src);
     cpu.pc += 1;
     return 1;
 }
 
-uint32_t instr_com(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_com(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t src = cpu.gpr(i.dst);
     uint8_t res = ~src;
@@ -1103,7 +1103,7 @@ uint32_t instr_com(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_neg(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_neg(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t src = cpu.gpr(i.dst);
     uint8_t res = uint8_t(-src);
@@ -1118,7 +1118,7 @@ uint32_t instr_neg(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_swap(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_swap(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t dst = cpu.gpr(i.dst);
     dst = (dst >> 4) | (dst << 4);
@@ -1127,7 +1127,7 @@ uint32_t instr_swap(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_inc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_inc(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst + 1;
@@ -1138,7 +1138,7 @@ uint32_t instr_inc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_dec(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_dec(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst - 1;
@@ -1149,7 +1149,7 @@ uint32_t instr_dec(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_asr(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_asr(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = (dst >> 1) | (dst & 0x80);
@@ -1161,7 +1161,7 @@ uint32_t instr_asr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_lsr(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_lsr(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = (dst >> 1);
@@ -1175,7 +1175,7 @@ uint32_t instr_lsr(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_ror(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_ror(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst >> 1;
@@ -1189,7 +1189,7 @@ uint32_t instr_ror(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_sleep(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_sleep(atmega32u4_t& cpu, avr_instr_t i)
 {
     if(cpu.smcr() & 0x1)
         cpu.active = false;
@@ -1197,7 +1197,7 @@ uint32_t instr_sleep(atmega32u4_t& cpu, avr_instr_t const& i)
     return 1;
 }
 
-uint32_t instr_mul(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_mul(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t src = cpu.gpr(i.src);
     uint16_t dst = cpu.gpr(i.dst);
@@ -1210,7 +1210,7 @@ uint32_t instr_mul(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_muls(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_muls(atmega32u4_t& cpu, avr_instr_t i)
 {
     int16_t src = (int8_t)cpu.gpr(i.src);
     int16_t dst = (int8_t)cpu.gpr(i.dst);
@@ -1223,7 +1223,7 @@ uint32_t instr_muls(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_mulsu(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_mulsu(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t src = cpu.gpr(i.src);
     int16_t dst = (int8_t)cpu.gpr(i.dst);
@@ -1236,7 +1236,7 @@ uint32_t instr_mulsu(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_fmul(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_fmul(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t src = cpu.gpr(i.src);
     uint16_t dst = cpu.gpr(i.dst);
@@ -1249,7 +1249,7 @@ uint32_t instr_fmul(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_fmuls(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_fmuls(atmega32u4_t& cpu, avr_instr_t i)
 {
     int16_t src = (int8_t)cpu.gpr(i.src);
     int16_t dst = (int8_t)cpu.gpr(i.dst);
@@ -1262,7 +1262,7 @@ uint32_t instr_fmuls(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_fmulsu(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_fmulsu(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t src = cpu.gpr(i.src);
     int16_t dst = (int8_t)cpu.gpr(i.dst);

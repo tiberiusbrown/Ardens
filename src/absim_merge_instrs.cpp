@@ -39,15 +39,17 @@ void atmega32u4_t::merge_instrs()
         if(i0.func == INSTR_PUSH)
         {
             uint32_t t;
-            for(t = 1; t < MAX_INSTR_CYCLES / 2; ++t)
+            for(t = 1; t < 4; ++t)
             {
                 if(n + t >= merged_prog.size()) break;
                 if(merged_prog[n + t].func != INSTR_PUSH) break;
             }
-            if(t > 1)
+            if(t >= 4)
             {
-                i0.func = INSTR_MERGED_PUSH_N;
-                i0.word = (uint8_t)t;
+                i0.func = INSTR_MERGED_PUSH4;
+                i0.m0 = i1.src;
+                i0.m1 = merged_prog[n + 2].src;
+                i0.m2 = merged_prog[n + 3].src;
             }
             continue;
         }
@@ -55,32 +57,26 @@ void atmega32u4_t::merge_instrs()
         if(i0.func == INSTR_POP)
         {
             uint32_t t;
-            for(t = 1; t < MAX_INSTR_CYCLES / 2; ++t)
+            for(t = 1; t < 4; ++t)
             {
                 if(n + t >= merged_prog.size()) break;
                 if(merged_prog[n + t].func != INSTR_POP) break;
             }
-            if(t > 1)
+            if(t >= 4)
             {
-                i0.func = INSTR_MERGED_POP_N;
-                i0.word = (uint8_t)t;
+                i0.func = INSTR_MERGED_POP4;
+                i0.m0 = i1.src;
+                i0.m1 = merged_prog[n + 2].src;
+                i0.m2 = merged_prog[n + 3].src;
             }
             continue;
         }
 
-        if(i0.func == INSTR_LDI)
+        if(i0.func == INSTR_LDI && i1.func == INSTR_LDI)
         {
-            uint32_t t;
-            for(t = 1; t < MAX_INSTR_CYCLES; ++t)
-            {
-                if(n + t >= merged_prog.size()) break;
-                if(merged_prog[n + t].func != INSTR_LDI) break;
-            }
-            if(t > 1)
-            {
-                i0.func = INSTR_MERGED_LDI_N;
-                i0.word = (uint8_t)t;
-            }
+            i0.func = INSTR_MERGED_LDI2;
+            i0.m0 = i1.dst;
+            i0.m1 = i1.src;
             continue;
         }
 
@@ -88,7 +84,10 @@ void atmega32u4_t::merge_instrs()
         {
             auto const& ti = merged_prog[n + 1];
             if(ti.func == INSTR_BRBC && ti.src == 1)
+            {
                 i0.func = INSTR_MERGED_DEC_BRNE;
+                i0.word = i1.word;
+            }
             continue;
         }
 

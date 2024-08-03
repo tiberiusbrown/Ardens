@@ -45,55 +45,39 @@ ARDENS_FORCEINLINE static uint8_t flags_nzs(uint8_t sreg, uint32_t x)
     return sreg;
 }
 
-uint32_t instr_merged_push_n(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_merged_push4(atmega32u4_t& cpu, avr_instr_t i)
 {
-    auto* ip = &i;
-    uint32_t n = i.word;
-    uint32_t r = 0;
-    do
-    {
-        cpu.push(cpu.gpr(ip->src));
-        --n;
-        ++ip;
-        r += 2;
-        cpu.pc += 1;
-    } while(!cpu.should_autobreak() && n != 0);
-    return r;
+    cpu.push(cpu.gpr(i.src));
+    if(cpu.should_autobreak()) { cpu.pc += 1; return 2; }
+    cpu.push(cpu.gpr(i.m0));
+    if(cpu.should_autobreak()) { cpu.pc += 2; return 4; }
+    cpu.push(cpu.gpr(i.m1));
+    if(cpu.should_autobreak()) { cpu.pc += 3; return 6; }
+    cpu.push(cpu.gpr(i.m2));
+    cpu.pc += 4;
+    return 8;
 }
 
-uint32_t instr_merged_pop_n(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_merged_pop4(atmega32u4_t& cpu, avr_instr_t i)
 {
-    auto* ip = &i;
-    uint32_t n = i.word;
-    uint32_t r = n * 2;
-    cpu.pc += n;
-    do
-    {
-        cpu.gpr(ip->src) = cpu.pop();
-        --n;
-        ++ip;
-    } while(n != 0);
-    return r;
+    cpu.gpr(i.src) = cpu.pop();
+    cpu.gpr(i.m0 ) = cpu.pop();
+    cpu.gpr(i.m1 ) = cpu.pop();
+    cpu.gpr(i.m2 ) = cpu.pop();
+    cpu.pc += 4;
+    return 8;
 }
 
-uint32_t instr_merged_ldi_n(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_merged_ldi2(atmega32u4_t& cpu, avr_instr_t i)
 {
-    auto* ip = &i;
-    uint32_t n = i.word;
-    uint32_t r = n;
-    cpu.pc += n;
-    do
-    {
-        cpu.gpr(ip->dst) = ip->src;
-        --n;
-        ++ip;
-    } while(n != 0);
-    return r;
+    cpu.gpr(i.dst) = i.src;
+    cpu.gpr(i.m0 ) = i.m1;
+    cpu.pc += 2;
+    return 2;
 }
 
-uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t i)
 {
-    auto const& ib = *(&i + 1);
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst - 1;
     cpu.gpr(i.dst) = res;
@@ -102,7 +86,7 @@ uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t const& i)
 
     if(res != 0)
     {
-        cpu.pc += (int16_t)ib.word + 2;
+        cpu.pc += (int16_t)i.word + 2;
         return 3;
     }
 
@@ -110,7 +94,7 @@ uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.dst + 1) * 256;
     unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
@@ -131,7 +115,7 @@ uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_merged_subi_sbci(atmega32u4_t& cpu, avr_instr_t const& i)
+uint32_t instr_merged_subi_sbci(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.src) * 256;
     unsigned src = i.word;

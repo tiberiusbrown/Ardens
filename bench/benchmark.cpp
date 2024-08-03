@@ -67,17 +67,17 @@ static void bench(benchmark::State& state, std::string const& fname)
 
 BENCHMARK_CAPTURE(bench, ReturnOfTheArdu, "ReturnOfTheArdu.arduboy")
 ->Unit(benchmark::kMillisecond)
-->MinTime(10.0)
+->MinTime(3.0)
 ;
 
-//BENCHMARK_CAPTURE(bench, racing_game, "racing_game.hex")
-//->Unit(benchmark::kMillisecond)
-//->MinTime(3.0)
-//;
-//
-//BENCHMARK_CAPTURE(bench, ardugolf, "ardugolf.hex")
-//->Unit(benchmark::kMillisecond)
-//->MinTime(3.0)
-//;
+BENCHMARK_CAPTURE(bench, racing_game, "racing_game.hex")
+->Unit(benchmark::kMillisecond)
+->MinTime(3.0)
+;
+
+BENCHMARK_CAPTURE(bench, ardugolf, "ardugolf.hex")
+->Unit(benchmark::kMillisecond)
+->MinTime(3.0)
+;
 
 BENCHMARK_MAIN();
