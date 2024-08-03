@@ -104,7 +104,10 @@ instr_func_t const INSTR_MAP[] =
     instr_merged_ldi2,
     instr_merged_dec_brne,
     instr_merged_add_adc,
+    instr_merged_sub_sbc,
+    instr_merged_cp_cpc,
     instr_merged_subi_sbci,
+    instr_merged_delay,
 };
 
 bool instr_is_two_words(avr_instr_t i)
@@ -178,6 +181,7 @@ uint32_t instr_break(atmega32u4_t& cpu, avr_instr_t i)
     cpu.autobreak(AB_BREAK);
     return 1;
 }
+
 ARDENS_FORCEINLINE static void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
     if(x) cpu.sreg() |= mask;

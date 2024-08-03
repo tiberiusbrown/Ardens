@@ -144,7 +144,10 @@ enum instr_id_t
     INSTR_MERGED_LDI2,
     INSTR_MERGED_DEC_BRNE,
     INSTR_MERGED_ADD_ADC,
+    INSTR_MERGED_SUB_SBC,
+    INSTR_MERGED_CP_CPC,
     INSTR_MERGED_SUBI_SBCI,
+    INSTR_MERGED_DELAY,
 };
 
 uint32_t instr_unknown (atmega32u4_t& cpu, avr_instr_t const i);
@@ -242,6 +245,9 @@ uint32_t instr_merged_pop4     (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_merged_ldi2     (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_merged_dec_brne (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_merged_add_adc  (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_sub_sbc  (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_cp_cpc   (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_merged_subi_sbci(atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_delay    (atmega32u4_t& cpu, avr_instr_t const i);
 
 }

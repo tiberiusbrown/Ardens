@@ -5,34 +5,9 @@
 namespace absim
 {
 
-ARDENS_FORCEINLINE static void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
-{
-    if(x) cpu.sreg() |= mask;
-    else cpu.sreg() &= ~mask;
-}
-
-ARDENS_FORCEINLINE static void set_flag_s(atmega32u4_t& cpu)
-{
-    uint8_t f = cpu.sreg();
-    set_flag(cpu, SREG_S, (f ^ (f >> 1)) & 0x4);
-}
-
-ARDENS_FORCEINLINE static void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
-{
-    set_flag(cpu, SREG_H, h);
-    set_flag(cpu, SREG_C, c);
-    set_flag(cpu, SREG_V, v);
-}
-
-ARDENS_FORCEINLINE static void set_flags_nzs(atmega32u4_t& cpu, uint16_t x)
-{
-    set_flag(cpu, SREG_N, x & 0x80);
-    set_flag(cpu, SREG_Z, x == 0);
-    set_flag_s(cpu);
-}
-
 ARDENS_FORCEINLINE static uint8_t flag_s(uint8_t sreg)
 {
+    // S |= N ^ V
     sreg |= (((sreg ^ (sreg >> 1)) & 0x4) << 2);
     return sreg;
 }
@@ -41,7 +16,15 @@ ARDENS_FORCEINLINE static uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 {
     sreg |= ((x & 0x80) >> 5); // N
     if(x == 0) sreg |= SREG_Z; // Z
-    sreg = flag_s(sreg);      // S
+    sreg = flag_s(sreg);       // S
+    return sreg;
+}
+
+ARDENS_FORCEINLINE static uint8_t flags_nzs16(uint8_t sreg, uint32_t x)
+{
+    sreg |= ((x & 0x8000) >> 13); // N
+    if(x == 0) sreg |= SREG_Z; // Z
+    sreg = flag_s(sreg);       // S
     return sreg;
 }
 
@@ -81,8 +64,10 @@ uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst - 1;
     cpu.gpr(i.dst) = res;
-    set_flag(cpu, SREG_V, dst == 0x80);
-    set_flags_nzs(cpu, res);
+    unsigned sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    if(dst == 0x80) sreg |= SREG_V;
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = sreg;
 
     if(res != 0)
     {
@@ -108,7 +93,47 @@ uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t i)
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
     sreg |= (v & 0x8000) >> 12;  // V flag
-    sreg = flags_nzs(sreg, res);
+    sreg = flags_nzs16(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_sub_sbc(atmega32u4_t& cpu, avr_instr_t i)
+{
+    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.dst + 1) * 256;
+    unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
+    unsigned res = (dst - src) & 0xffff;
+    cpu.gpr(i.dst + 0) = (uint8_t)(res >> 0);
+    cpu.gpr(i.dst + 1) = (uint8_t)(res >> 8);
+
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    sreg |= (hc & 0x0800) >> 6;  // H flag
+    sreg |= hc >> 15;            // C flag
+    sreg |= (v & 0x8000) >> 12;  // V flag
+    sreg = flags_nzs16(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_cp_cpc(atmega32u4_t& cpu, avr_instr_t i)
+{
+    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.dst + 1) * 256;
+    unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
+    unsigned res = (dst - src) & 0xffff;
+
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    sreg |= (hc & 0x0800) >> 6;  // H flag
+    sreg |= hc >> 15;            // C flag
+    sreg |= (v & 0x8000) >> 12;  // V flag
+    sreg = flags_nzs16(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 2;
@@ -129,11 +154,17 @@ uint32_t instr_merged_subi_sbci(atmega32u4_t& cpu, avr_instr_t i)
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
     sreg |= (v & 0x8000) >> 12;  // V flag
-    sreg = flags_nzs(sreg, res);
+    sreg = flags_nzs16(sreg, res);
     cpu.sreg() = (uint8_t)sreg;
 
     cpu.pc += 2;
     return 2;
+}
+
+uint32_t instr_merged_delay(atmega32u4_t& cpu, avr_instr_t i)
+{
+    cpu.pc += i.src;
+    return i.word;
 }
 
 }
