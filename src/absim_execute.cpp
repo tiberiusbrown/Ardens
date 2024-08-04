@@ -36,7 +36,10 @@ instr_func_t const INSTR_MAP[] =
     instr_brbc,
     instr_lds,
     instr_sts,
-    instr_ldd_std,
+    instr_ldd_y,
+    instr_ldd_z,
+    instr_std_y,
+    instr_std_z,
     instr_ld_st,
     instr_ld_x,
     instr_ld_y,
@@ -303,8 +306,15 @@ uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_movw(atmega32u4_t& cpu, avr_instr_t i)
 {
+#if 1
+    // endianness doesn't matter here
+    uint16_t* dst = reinterpret_cast<uint16_t*>(&cpu.data[0]) + i.dst;
+    uint16_t* src = reinterpret_cast<uint16_t*>(&cpu.data[0]) + i.src;
+    *dst = *src;
+#else
     cpu.gpr(i.dst * 2 + 0) = cpu.gpr(i.src * 2 + 0);
     cpu.gpr(i.dst * 2 + 1) = cpu.gpr(i.src * 2 + 1);
+#endif
     cpu.pc += 1;
     return 1;
 }
@@ -604,16 +614,46 @@ uint32_t instr_sts(atmega32u4_t& cpu, avr_instr_t i)
     return 2;
 }
 
-uint32_t instr_ldd_std(atmega32u4_t& cpu, avr_instr_t i)
+uint32_t instr_ldd_y(atmega32u4_t& cpu, avr_instr_t i)
 {
-    uint16_t ptr = (i.word & 0x8) ? cpu.y_word() : cpu.z_word();
+    uint16_t ptr = cpu.y_word();
     if(ptr == 0)
         cpu.autobreak(AB_NULL_REL_DEREF);
     ptr += i.dst;
-    if(!(i.word & 0x200))
-        cpu.gpr(i.src) = cpu.ld(ptr);
-    else
-        cpu.st(ptr, cpu.gpr(i.src));
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_ldd_z(atmega32u4_t& cpu, avr_instr_t i)
+{
+    uint16_t ptr = cpu.z_word();
+    if(ptr == 0)
+        cpu.autobreak(AB_NULL_REL_DEREF);
+    ptr += i.dst;
+    cpu.gpr(i.src) = cpu.ld(ptr);
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_std_y(atmega32u4_t& cpu, avr_instr_t i)
+{
+    uint16_t ptr = cpu.y_word();
+    if(ptr == 0)
+        cpu.autobreak(AB_NULL_REL_DEREF);
+    ptr += i.dst;
+    cpu.st(ptr, cpu.gpr(i.src));
+    cpu.pc += 1;
+    return 2;
+}
+
+uint32_t instr_std_z(atmega32u4_t& cpu, avr_instr_t i)
+{
+    uint16_t ptr = cpu.z_word();
+    if(ptr == 0)
+        cpu.autobreak(AB_NULL_REL_DEREF);
+    ptr += i.dst;
+    cpu.st(ptr, cpu.gpr(i.src));
     cpu.pc += 1;
     return 2;
 }

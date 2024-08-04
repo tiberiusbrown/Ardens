@@ -430,6 +430,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 }
             } while(cycle_count < tcycles_max);
             cycles = uint32_t(cycle_count - tcycles);
+            if(!single_instr_only)
+                goto skip_peripheral_updates;
         }
     }
     else if(wakeup_cycles > 0)
@@ -464,7 +466,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         cycle_count += cycles;
     }
 
-    if(single_instr_only)
+    //if(single_instr_only)
     {
 
         // peripheral updates
@@ -494,6 +496,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         }
 
     }
+
+skip_peripheral_updates:
 
     // if interrupts were just enabled, schedule interrupt check for next cycle
     if(~prev_sreg & sreg() & SREG_I)

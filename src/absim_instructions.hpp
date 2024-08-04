@@ -76,7 +76,10 @@ enum instr_id_t
     INSTR_BRBC,
     INSTR_LDS,
     INSTR_STS,
-    INSTR_LDD_STD,
+    INSTR_LDD_Y,
+    INSTR_LDD_Z,
+    INSTR_STD_Y,
+    INSTR_STD_Z,
     INSTR_LD_ST,
     INSTR_LD_X,
     INSTR_LD_Y,
@@ -177,7 +180,10 @@ uint32_t instr_brbs    (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_brbc    (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_lds     (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_sts     (atmega32u4_t& cpu, avr_instr_t const i);
-uint32_t instr_ldd_std (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_ldd_y   (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_ldd_z   (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_std_y   (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_std_z   (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_ld_st   (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_ld_x    (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_ld_y    (atmega32u4_t& cpu, avr_instr_t const i);

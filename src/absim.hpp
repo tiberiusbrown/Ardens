@@ -284,9 +284,14 @@ struct atmega32u4_t
 
     ARDENS_FORCEINLINE uint16_t gpr_word(uint8_t n)
     {
+#if defined(ARDENS_LE)
+        assert(n % 2 == 0);
+        return *reinterpret_cast<uint16_t const*>(&data[n]);
+#else
         uint16_t lo = gpr(n + 0);
         uint16_t hi = gpr(n + 1);
-        return lo | (hi << 8);
+        return lo + hi * 256;
+#endif
     }
 
     ARDENS_FORCEINLINE uint16_t w_word() { return gpr_word(24); }
