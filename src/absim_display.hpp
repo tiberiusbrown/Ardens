@@ -401,6 +401,34 @@ ARDENS_FORCEINLINE void display_t::update_pixels_row()
 
     if(inverse_display) std::swap(p0, p1);
 
+#if defined(ARDENS_SSE2)
+    {
+        uint8_t* src = &ram[rindex];
+        uint8_t* dst = &parray[pindex];
+        __m128i vp0 = _mm_set1_epi8((char)p0);
+        __m128i vp1 = _mm_set1_epi8((char)p1);
+        __m128i vm = _mm_set1_epi8((char)mask);
+
+        for(int i = 0; i < 8; ++i)
+        {
+            dst -= 16;
+
+            __m128i vs = _mm_loadu_si128((__m128i const*)src);
+            vs = _mm_and_si128(vs, vm);
+            vs = _mm_cmpeq_epi8(vs, _mm_setzero_si128());
+            __m128i vt0 = _mm_and_si128(vs, vp0);
+            __m128i vt1 = _mm_andnot_si128(vs, vp1);
+            __m128i vp = _mm_or_si128(vt0, vt1);
+            vp = _mm_shuffle_epi32(vp, _MM_SHUFFLE(0, 1, 2, 3));
+            vp = _mm_shufflelo_epi16(vp, _MM_SHUFFLE(2, 3, 0, 1));
+            vp = _mm_shufflehi_epi16(vp, _MM_SHUFFLE(2, 3, 0, 1));
+            vp = _mm_or_si128(_mm_slli_epi16(vp, 8), _mm_srli_epi16(vp, 8));
+            _mm_storeu_si128((__m128i*)dst, vp);
+
+            src += 16;
+        }
+    }
+#else
     for(int i = 0; i < 128; ++i)
     {
         uint8_t p = p0;
@@ -409,6 +437,7 @@ ARDENS_FORCEINLINE void display_t::update_pixels_row()
         // decrement because the Arduboy's display is upside-down
         parray[--pindex] = p;
     }
+#endif
     if(vsync && enable_filter)
         filter_pixels();
 }

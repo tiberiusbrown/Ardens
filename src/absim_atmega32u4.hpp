@@ -460,7 +460,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         uint64_t t = std::max(cycle_count + 1, peripheral_queue.next_cycle());
         t -= cycle_count;
         t = std::min<uint64_t>(t, MAX_MERGED_CYCLES);
-        if(t > 1) --t;
         cycles = (uint32_t)t;
         single_instr_only = true;
         cycle_count += cycles;
