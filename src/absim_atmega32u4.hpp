@@ -367,7 +367,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     just_read = 0xffffffff;
     just_written = 0xffffffff;
     just_interrupted = false;
-    bool single_instr_only = true;
 
     constexpr uint64_t MAX_MERGED_CYCLES = 1024;
 
@@ -375,21 +374,18 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     {
         // not sleeping: execute instruction(s)
 
-        uint64_t next_cycle = peripheral_queue.next_cycle();
-
-        single_instr_only = (
-            next_cycle < cycle_count + MAX_INSTR_CYCLES ||
-            //spi_busy ||
-#ifndef ARDENS_NO_DEBUGGER
-            no_merged ||
-#endif
-            false);
+        int64_t max_merged_cycles = int64_t(
+            peripheral_queue.next_cycle() - cycle_count - MAX_INSTR_CYCLES);
 
 #ifndef ARDENS_NO_DEBUGGER
         executing_instr_pc = pc;
         constexpr uint16_t last_pc = 0x4000;
 #endif
-        if(single_instr_only)
+        if(max_merged_cycles < 0 ||
+#ifndef ARDENS_NO_DEBUGGER
+            no_merged ||
+#endif
+            false)
         {
 #ifndef ARDENS_NO_DEBUGGER
             if(pc >= last_pc)
@@ -405,10 +401,9 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         }
         else
         {
-            uint64_t max_merged_cycles = std::min<uint64_t>(
-                next_cycle - cycle_count - MAX_INSTR_CYCLES, MAX_MERGED_CYCLES);
             uint64_t tcycles = cycle_count;
-            uint64_t tcycles_max = tcycles + max_merged_cycles;
+            uint64_t tcycles_max = tcycles + std::min<uint64_t>(
+                max_merged_cycles, MAX_MERGED_CYCLES);;
             do
             {
 #ifndef ARDENS_NO_DEBUGGER
@@ -423,14 +418,10 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
                 cycle_count += instr_cycles;
                 if(should_autobreak() || just_written < 0x100 || just_read < 0x100)
-                {
-                    // need to check peripherals below
-                    single_instr_only = true;
                     break;
-                }
             } while(cycle_count < tcycles_max);
             cycles = uint32_t(cycle_count - tcycles);
-            if(!single_instr_only)
+            if(!(should_autobreak() || just_written < 0x100 || just_read < 0x100))
                 goto skip_peripheral_updates;
         }
     }
@@ -461,7 +452,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         t -= cycle_count;
         t = std::min<uint64_t>(t, MAX_MERGED_CYCLES);
         cycles = (uint32_t)t;
-        single_instr_only = true;
         cycle_count += cycles;
     }
 

@@ -412,6 +412,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     bool vsync = false;
     uint8_t displayport = cpu.data[0x2b];
     uint8_t fxport = cpu.data[fxport_reg];
+
     uint32_t cycles = cpu.advance_cycle();
 
     // TODO: model SPI connection more precisely?
@@ -479,7 +480,6 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     }
 
 #ifndef ARDENS_NO_DEBUGGER
-
     if(vsync)
     {
         // vsync occurred and we are profiling: store frame cpu usage
