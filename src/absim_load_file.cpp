@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cctype>
 
-#include "absim_istrstream.hpp"
+#include "absim_strstream.hpp"
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
 #include <yyjson/yyjson.h>

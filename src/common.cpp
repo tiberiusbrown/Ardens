@@ -8,7 +8,7 @@
 
 #include "common.hpp"
 
-#include "absim_istrstream.hpp"
+#include "absim_strstream.hpp"
 
 #include <fstream>
 #include <algorithm>

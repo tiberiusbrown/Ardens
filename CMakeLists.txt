@@ -292,7 +292,7 @@ set(ARDENS_SOURCES
     src/absim_instructions.hpp
     src/absim_cpu_data.cpp
     src/absim_pqueue.hpp
-    src/absim_istrstream.hpp
+    src/absim_strstream.hpp
 
     src/absim_arduboy.cpp
     src/absim_display.hpp
