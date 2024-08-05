@@ -11,6 +11,9 @@ macro(disable_all_warnings)
         if(MSVC)
             target_compile_options(${tgt} PRIVATE /w)
         endif()
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+            target_compile_options(${tgt} PRIVATE -w)
+        endif()
     endforeach()
 endmacro()
 
@@ -56,6 +59,9 @@ endif()
 
 if(MSYS)
     add_link_options(-static-libgcc -static-libstdc++)
+endif()
+if(MINGW)
+    add_link_options(-s)
 endif()
 
 option(ARDENS_LLVM      "Build and link LLVM (enables loading ELF and debug info)" ON)
@@ -198,6 +204,13 @@ if(ARDENS_LLVM)
 		FetchContent_Populate(llvm-project)
 		add_subdirectory(${llvm-project_SOURCE_DIR}/llvm ${llvm-project_BINARY_DIR} EXCLUDE_FROM_ALL)
 	endif()
+
+    disable_all_warnings(LLVMCore)
+    disable_all_warnings(LLVMDebugInfoDWARF)
+    disable_all_warnings(LLVMDemangle)
+    disable_all_warnings(LLVMMCParser)
+    disable_all_warnings(LLVMObject)
+    disable_all_warnings(LLVMSupport)
 
 endif()
 
