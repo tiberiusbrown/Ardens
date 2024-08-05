@@ -8,8 +8,9 @@
 
 #include "common.hpp"
 
+#include "absim_istrstream.hpp"
+
 #include <fstream>
-#include <strstream>
 #include <algorithm>
 
 #include <string.h>
@@ -172,7 +173,7 @@ void platform_open_url(char const *url)
 extern "C" int load_file(
     char const* param, char const* filename, uint8_t const* data, size_t size)
 {
-    std::istrstream f((char const*)data, size);
+    absim::istrstream f((char const*)data, size);
     bool save = !strcmp(param, "save");
     dropfile_err = arduboy->load_file(filename, f, save);
     autoset_from_device_type();

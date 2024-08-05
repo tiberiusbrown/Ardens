@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <cctype>
 
-#include <strstream>
+#include "absim_istrstream.hpp"
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
 #include <yyjson/yyjson.h>
@@ -1115,7 +1115,7 @@ std::string arduboy_t::load_bootloader_hex(std::istream& f)
 
 std::string arduboy_t::load_bootloader_hex(uint8_t const* data, size_t size)
 {
-    std::istrstream f((char const*)data, (int)size);
+    istrstream f((char const*)data, (int)size);
     return load_bootloader_hex(f);
 }
 
@@ -1152,7 +1152,7 @@ std::string arduboy_t::load_flashcart_zip(uint8_t const* data, size_t size)
     if(MZ_FALSE == mz_zip_reader_extract_to_mem(z, 0, fdata.data(), fdata.size(), 0))
         return "FLASHCART: could not extract data file";
 
-    std::istrstream f((char const*)fdata.data(), (int)fdata.size());
+    istrstream f((char const*)fdata.data(), (int)fdata.size());
     auto r = load_bin(*this, f, false);
     if(!r.empty()) return r;
 

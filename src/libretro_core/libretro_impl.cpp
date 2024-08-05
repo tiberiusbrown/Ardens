@@ -7,7 +7,6 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <strstream>
 #include <vector>
 
 #include <inttypes.h>
@@ -261,7 +260,7 @@ bool retro_serialize(void* data, size_t size)
 
 bool retro_unserialize(const void* data, size_t size)
 {
-    std::istrstream s((char const*)data, (std::streamsize)size);
+    absim::istrstream s((char const*)data, (std::streamsize)size);
     std::string err = arduboy->load_savestate(s);
     if(err.empty()) return true;
     func_log(RETRO_LOG_ERROR, "%s\n", err.c_str());
@@ -289,7 +288,7 @@ bool retro_load_game(const struct retro_game_info* game)
         func_log(RETRO_LOG_ERROR, "Game format issue\n");
         return false;
     }
-    std::istrstream f((char const*)game->data, game->size);
+    absim::istrstream f((char const*)game->data, game->size);
     std::string err = arduboy->load_file(game->path, f);
     if(!err.empty())
     {
