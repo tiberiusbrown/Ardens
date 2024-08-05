@@ -1,12 +1,12 @@
 #include "libretro.h"
 
 #include "../absim.hpp"
+#include "../absim_strstream.hpp"
 
 #include <algorithm>
 #include <fstream>
 #include <memory>
 #include <sstream>
-#include <strstream>
 #include <string>
 #include <vector>
 
@@ -247,13 +247,13 @@ size_t retro_serialize_size()
         size = ss.str().size();
         func_log(RETRO_LOG_INFO, "Calculated serialize size: %u\n", (unsigned)size);
     }
-    func_log(RETRO_LOG_INFO, "Save size: %u\n", (unsigned)size);
+    //func_log(RETRO_LOG_INFO, "Save size: %u\n", (unsigned)size);
     return size;
 }
 
 bool retro_serialize(void* data, size_t size)
 {
-    std::ostrstream s((char*)data, (std::streamsize)size, std::ios::out | std::ios::binary);
+    absim::ostrstream s((char*)data, (std::streamsize)size);
     bool err = arduboy->save_savestate(s);
     if(err) func_log(RETRO_LOG_ERROR, "Error during serialize\n");
     return !err;

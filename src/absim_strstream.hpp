@@ -87,24 +87,24 @@ public:
 };
 
 template<class CharT, class Traits = std::char_traits<CharT>>
-class istrstream : public std::basic_istream<CharT, Traits>
+class basic_istrstream : public std::basic_istream<CharT, Traits>
 {
 public:
 
-    istrstream(CharT const* s, std::streamsize n)
+    basic_istrstream(CharT const* s, std::streamsize n)
         : std::basic_istream<CharT, Traits>(nullptr)
     {
         rdbuf_ = new strstream_streambuf<false, CharT, Traits>(const_cast<CharT*>(s), n);
         this->init(rdbuf_);
     }
 
-    istrstream(istrstream&& other) = delete;
-    istrstream(istrstream const& other) = delete;
+    basic_istrstream(basic_istrstream&& other) = delete;
+    basic_istrstream(basic_istrstream const& other) = delete;
 
-    istrstream& operator=(istrstream&& other) = delete;
-    istrstream& operator=(istrstream const& other) = delete;
+    basic_istrstream& operator=(basic_istrstream&& other) = delete;
+    basic_istrstream& operator=(basic_istrstream const& other) = delete;
 
-    virtual ~istrstream() override
+    virtual ~basic_istrstream() override
     {
         delete rdbuf_;
     }
@@ -116,24 +116,24 @@ private:
 };
 
 template<class CharT, class Traits = std::char_traits<CharT>>
-class ostrstream : public std::basic_ostream<CharT, Traits>
+class basic_ostrstream : public std::basic_ostream<char>
 {
 public:
 
-    ostrstream(CharT const* s, std::streamsize n)
+    basic_ostrstream(CharT const* s, std::streamsize n)
         : std::basic_ostream<CharT, Traits>(nullptr)
     {
         rdbuf_ = new strstream_streambuf<true, CharT, Traits>(const_cast<CharT*>(s), n);
         this->init(rdbuf_);
     }
 
-    ostrstream(ostrstream&& other) = delete;
-    ostrstream(ostrstream const& other) = delete;
+    basic_ostrstream(basic_ostrstream&& other) = delete;
+    basic_ostrstream(basic_ostrstream const& other) = delete;
 
-    ostrstream& operator=(ostrstream&& other) = delete;
-    ostrstream& operator=(ostrstream const& other) = delete;
+    basic_ostrstream& operator=(basic_ostrstream&& other) = delete;
+    basic_ostrstream& operator=(basic_ostrstream const& other) = delete;
 
-    virtual ~ostrstream() override
+    virtual ~basic_ostrstream() override
     {
         delete rdbuf_;
     }
@@ -143,5 +143,8 @@ private:
     strstream_streambuf<true, CharT, Traits>* rdbuf_;
 
 };
+
+using istrstream = basic_istrstream<char>;
+using ostrstream = basic_ostrstream<char>;
 
 }
