@@ -415,13 +415,14 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 if(pc >= last_pc)
                 {
                     autobreak(AB_OOB_PC);
+                    cycles = uint32_t(cycle_count - tcycles);
                     return cycles + 1;
                 }
 #endif
                 auto const& i = merged_prog[pc];
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
                 cycle_count += instr_cycles;
-                if(should_autobreak() || just_written < 0x100 || just_read < 0x100)
+                if(std::min(just_written, just_read) < 0x100 || should_autobreak())
                     break;
                 cycles_max -= instr_cycles;
             } while((int64_t)cycles_max > 0);
