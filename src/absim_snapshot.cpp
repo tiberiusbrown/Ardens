@@ -51,12 +51,57 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
+struct CustomUniquePtrExt
+{
+    template<class Ser, class T, class F>
+    void serialize(Ser& ser, T const& obj, F&& f) const
+    {
+        ser.boolValue(static_cast<bool>(obj));
+        if(obj) f(ser, *obj);
+    }
+    template<class Des, class T, class F>
+    void deserialize(Des& des, T& obj, F&& f) const
+    {
+        bool exists = false;
+        des.boolValue(exists);
+        if(exists)
+        {
+            obj = std::make_unique<typename T::element_type>();
+            f(des, *obj);
+        }
+        else
+        {
+            obj.reset();
+        }
+    }
+};
+
+namespace bitsery
+{
+namespace traits
+{
+template<class T>
+struct ExtensionTraits<CustomUniquePtrExt, T>
+{
+    using TValue = typename T::element_type;
+    static constexpr bool SupportValueOverload = true;
+    static constexpr bool SupportObjectOverload = true;
+    static constexpr bool SupportLambdaOverload = true;
+};
+}
+}
+
 namespace bitsery
 {
 template<typename S, size_t N>
 void serialize(S& s, std::bitset<N>& obj)
 {
     s.ext(obj, bitsery::ext::StdBitset{});
+}
+template<typename S, class T>
+void serialize(S& s, std::unique_ptr<T>& obj)
+{
+    s.ext(obj, CustomUniquePtrExt{});
 }
 }
 
@@ -225,7 +270,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.display.data_col);
     ar(a.display.vsync);
 
-    ar(a.fx.data);
+    ar(a.fx.sectors);
     ar(a.fx.sectors_modified);
     ar(a.fx.sectors_dirty);
     ar(a.fx.enabled);
@@ -438,7 +483,7 @@ bool arduboy_t::load_savedata(std::istream& f)
         uint32_t sector = kv.first;
         auto const& sdata = kv.second;
         if(sector >= fx.NUM_SECTORS) continue;
-        memcpy(&fx.data[sector * 4096], sdata.data(), 4096);
+        fx.write_bytes(sector * 4096, sdata.data(), 4096);
     }
 
     return true;

@@ -901,10 +901,16 @@ struct display_t
 
 struct w25q128_t
 {
-    static constexpr size_t DATA_BYTES = 16 * 1024 * 1024;
-    std::array<uint8_t, DATA_BYTES> data;
+    static constexpr size_t NUM_SECTORS = 4096;
+    static constexpr size_t SECTOR_BYTES = 4096;
+    static constexpr size_t DATA_BYTES = NUM_SECTORS * SECTOR_BYTES;
 
-    static constexpr size_t NUM_SECTORS = DATA_BYTES / 4096;
+    using sector_t = std::array<uint8_t, SECTOR_BYTES>;
+    std::array<std::unique_ptr<sector_t>, NUM_SECTORS> sectors;
+
+    //static constexpr size_t DATA_BYTES = NUM_SECTORS * SECTOR_BYTES;
+    //std::array<uint8_t, DATA_BYTES> data;
+
     std::bitset<NUM_SECTORS> sectors_modified;
     bool sectors_dirty;
 
@@ -945,6 +951,11 @@ struct w25q128_t
 
     void reset();
     void erase_all_data();
+
+    uint8_t read_byte(size_t addr);
+    void write_byte(size_t addr, uint8_t data);
+    void program_byte(size_t addr, uint8_t data);
+    void write_bytes(size_t addr, uint8_t const* data, size_t bytes);
 
     void advance(uint64_t ps);
 

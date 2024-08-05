@@ -27,11 +27,7 @@ void arduboy_t::reload_fx()
     {
         fx.min_page = 0;
         fx.max_page = uint32_t((fxdata.size() + 255) / 256 - 1);
-
-        std::copy(
-            fxdata.begin(),
-            fxdata.end(),
-            fx.data.begin());
+        fx.write_bytes(0, fxdata.data(), fxdata.size());
         fxsave.clear();
         update_game_hash();
     }
@@ -45,15 +41,9 @@ void arduboy_t::reload_fx()
         fx.min_page = uint32_t(fxdata_offset / 256);
         fx.max_page = 0xffff;
 
-        std::copy(
-            fxdata.begin(),
-            fxdata.end(),
-            fx.data.begin() + fxdata_offset);
+        fx.write_bytes(fxdata_offset, fxdata.data(), fxdata.size());
         update_game_hash();
-        std::copy(
-            fxsave.begin(),
-            fxsave.end(),
-            fx.data.begin() + fxsave_offset);
+        fx.write_bytes(fxsave_offset, fxsave.data(), fxsave.size());
     }
 }
 
@@ -83,9 +73,9 @@ void arduboy_t::update_game_hash()
         h ^= 0xff;
         h *= PRIME;
     }
-    for(size_t i = sizeof(ARDENS_BOOT_FLASHCART); i < fx.data.size(); ++i)
+    for(size_t i = sizeof(ARDENS_BOOT_FLASHCART); i < fx.DATA_BYTES; ++i)
     {
-        h ^= fx.data[i];
+        h ^= fx.read_byte(i); // TODO: optimize?
         h *= PRIME;
     }
 
@@ -635,7 +625,11 @@ void arduboy_t::advance(uint64_t ps)
         {
             if(!fx.sectors_modified.test(i)) continue;
             auto& s = savedata.fx_sectors[(uint32_t)i];
-            memcpy(s.data(), &fx.data[i * 4096], 4096);
+            auto const& fxs = fx.sectors[i];
+            if(!fxs)
+                memset(s.data(), 0xff, 4096);
+            else
+                memcpy(s.data(), fxs->data(), 4096);
         }
         fx.sectors_dirty = false;
         savedata_dirty = true;

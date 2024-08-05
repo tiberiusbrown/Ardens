@@ -107,8 +107,16 @@ void window_fx_data(bool& open)
             memed_fx.GotoAddr = (size_t)(fx_data_scroll_addr - minpage * 256);
         fx_data_scroll_addr = -1;
         memed_fx.HighlightFn = highlight_func;
+        memed_fx.ReadFn = [](ImU8 const* data, size_t off) {
+            (void)data;
+            return arduboy.fx.read_byte(off + minpage * 256);
+        };
+        memed_fx.WriteFn = [](ImU8* data, size_t off, ImU8 d) {
+            (void)data;
+            arduboy.fx.write_byte(off + minpage * 256, d);
+        };
         memed_fx.DrawContents(
-            arduboy.fx.data.data() + minpage * 256,
+            nullptr,
             size_t((maxpage - minpage + 1) * 256),
             minpage * 256);
     }

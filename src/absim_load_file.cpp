@@ -849,7 +849,7 @@ static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
     d = std::vector<uint8_t>(
         (std::istreambuf_iterator<char>(f)),
         std::istreambuf_iterator<char>());
-    if(a.fxdata.size() + a.fxsave.size() >= a.fx.data.size())
+    if(a.fxdata.size() + a.fxsave.size() >= a.fx.DATA_BYTES)
         return "BIN: FX data too large";
 
     // analyze data to determine if the binfile was a flashcart
@@ -1013,7 +1013,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
             }
         }
 
-        if(a.fxdata.size() + a.fxsave.size() >= a.fx.data.size())
+        if(a.fxdata.size() + a.fxsave.size() >= a.fx.DATA_BYTES)
             return "BIN: FX data too large";
     }
     else
