@@ -131,25 +131,4 @@ uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t const& i)
     return 2;
 }
 
-uint32_t instr_merged_subi_sbci(atmega32u4_t& cpu, avr_instr_t const& i)
-{
-    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.src) * 256;
-    unsigned src = i.word;
-    unsigned res = (dst - src) & 0xffff;
-    cpu.gpr(i.dst) = (uint8_t)(res >> 0);
-    cpu.gpr(i.src) = (uint8_t)(res >> 8);
-
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
-    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
-    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
-    sreg |= (hc & 0x0800) >> 6;  // H flag
-    sreg |= hc >> 15;            // C flag
-    sreg |= (v & 0x8000) >> 12;  // V flag
-    sreg = flags_nzs(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
-
-    cpu.pc += 2;
-    return 2;
-}
-
 }
