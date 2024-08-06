@@ -62,7 +62,7 @@ struct pqueue
     ARDENS_FORCEINLINE void pop()
     {
         cycles[least_index] = UINT64_MAX;
-        update_next();
+        update_least();
     }
 
     void clear()
@@ -85,7 +85,7 @@ private:
     pqueue_type least_index;
     uint64_t least_cycle;
 
-    void update_next()
+    ARDENS_FORCEINLINE void update_least()
     {
         least_cycle = UINT64_MAX;
         least_index = PQ_DUMMY;
