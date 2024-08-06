@@ -145,14 +145,19 @@ static void app_event(sapp_event const* e)
             auto& tp = touch_points[e->touches[i].identifier];
             tp = { e->touches[i].pos_x * ipr, e->touches[i].pos_y * ipr };
         }
+        sapp_consume_event();
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_ENDED)
     {
         for(int i = 0; i < e->num_touches; ++i)
             touch_points.erase(e->touches[i].identifier);
+        sapp_consume_event();
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
+    {
         touch_points.clear();
+        sapp_consume_event();
+    }
 
 #if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
