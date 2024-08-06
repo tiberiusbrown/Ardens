@@ -460,8 +460,9 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t i)
 ARDENS_FORCEINLINE static void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst, unsigned src)
 {
     unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
-    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
-    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned res_xor_src = res ^ src;
+    unsigned hc = (res | src) ^ (dst & res_xor_src);
+    unsigned v = ~res_xor_src & (res ^ dst);
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
