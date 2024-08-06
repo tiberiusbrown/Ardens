@@ -104,6 +104,7 @@ instr_func_t const INSTR_MAP[] =
     instr_merged_ldi_n,
     instr_merged_dec_brne,
     instr_merged_add_adc,
+    instr_merged_subi_sbci,
 };
 
 bool instr_is_two_words(avr_instr_t const& i)
@@ -317,10 +318,9 @@ uint32_t instr_and(atmega32u4_t& cpu, avr_instr_t const& i)
     uint32_t res = dst & cpu.gpr(i.src);
     cpu.gpr(i.dst) = res;
     uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    sreg = flags_nzs(sreg, res);
+    if(res == 0) sreg |= SREG_Z;
+    if(res & 0x80) sreg |= (SREG_N | SREG_S);
     cpu.sreg() = sreg;
-    //cpu.sreg() &= ~SREG_V;
-    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
@@ -333,8 +333,6 @@ uint32_t instr_or(atmega32u4_t& cpu, avr_instr_t const& i)
     uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
     sreg = flags_nzs(sreg, res);
     cpu.sreg() = sreg;
-    //cpu.sreg() &= ~SREG_V;
-    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
@@ -345,7 +343,8 @@ uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t const& i)
     uint32_t res = dst ^ cpu.gpr(i.src);
     cpu.gpr(i.dst) = res;
     uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    sreg = flags_nzs(sreg, res);
+    if(res == 0) sreg |= SREG_Z;
+    if(res & 0x80) sreg |= (SREG_N | SREG_S);
     cpu.sreg() = sreg;
     cpu.pc += 1;
     return 1;
@@ -902,10 +901,9 @@ uint32_t instr_ori(atmega32u4_t& cpu, avr_instr_t const& i)
     uint32_t res = dst | i.src;
     cpu.gpr(i.dst) = res;
     uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    sreg = flags_nzs(sreg, res);
+    if(res == 0) sreg |= SREG_Z;
+    if(res & 0x80) sreg |= (SREG_N | SREG_S);
     cpu.sreg() = sreg;
-    //cpu.sreg() &= ~SREG_V;
-    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
@@ -916,10 +914,9 @@ uint32_t instr_andi(atmega32u4_t& cpu, avr_instr_t const& i)
     uint32_t res = dst & i.src;
     cpu.gpr(i.dst) = res;
     uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    sreg = flags_nzs(sreg, res);
+    if(res == 0) sreg |= SREG_Z;
+    if(res & 0x80) sreg |= (SREG_N | SREG_S);
     cpu.sreg() = sreg;
-    //cpu.sreg() &= ~SREG_V;
-    //set_flags_nzs(cpu, cpu.gpr(i.dst));
     cpu.pc += 1;
     return 1;
 }
