@@ -227,15 +227,6 @@ void view_player()
         draw_button(d, TOUCH_B, pressed);
     }
 
-    for(auto const& [k, v] : touch_points)
-    {
-        constexpr float H = 20.f;
-        d->AddRectFilled(
-            { v.x - H, v.y - H },
-            { v.x + H, v.y + H },
-            IM_COL32(255, 0, 0, 255));
-    }
-
     if(gif_recording)
     {
         float const F1 = 10.f * pixel_ratio;
