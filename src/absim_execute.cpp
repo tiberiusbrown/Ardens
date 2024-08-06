@@ -494,8 +494,9 @@ uint32_t instr_sbc(atmega32u4_t& cpu, avr_instr_t i)
     unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
-    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
-    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned res_xor_src = res ^ src;
+    unsigned hc = (res | src) ^ (dst & res_xor_src);
+    unsigned v = ~res_xor_src & (res ^ dst);
     unsigned z = ~sreg & SREG_Z;
     sreg &= ~SREG_HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
@@ -536,8 +537,9 @@ uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t i)
     unsigned src = cpu.gpr(i.src);
     unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
 
-    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
-    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned res_xor_src = res ^ src;
+    unsigned hc = (res | src) ^ (dst & res_xor_src);
+    unsigned v = ~res_xor_src & (res ^ dst);
     unsigned z = ~sreg & SREG_Z;
     sreg &= ~SREG_HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
@@ -903,8 +905,9 @@ uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t i)
     unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
-    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
-    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    unsigned res_xor_src = res ^ src;
+    unsigned hc = (res | src) ^ (dst & res_xor_src);
+    unsigned v = ~res_xor_src & (res ^ dst);
     unsigned z = ~sreg & SREG_Z;
     sreg &= ~SREG_HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
