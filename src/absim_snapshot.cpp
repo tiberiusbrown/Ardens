@@ -131,8 +131,6 @@ template<class Archive>
 static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 {
     ar(a.cpu.data);
-    ar(a.cpu.just_read);
-    ar(a.cpu.just_written);
     ar(a.cpu.active);
     ar(a.cpu.wakeup_cycles);
     ar(a.cpu.just_interrupted);

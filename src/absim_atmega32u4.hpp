@@ -364,8 +364,6 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
 ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 {
     uint32_t cycles = 1;
-    just_read = 0xffffffff;
-    just_written = 0xffffffff;
     just_interrupted = false;
 
     constexpr uint64_t MAX_MERGED_CYCLES = 1024;
@@ -387,6 +385,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 #endif
             false)
         {
+            just_read = 0xffffffff;
+            just_written = 0xffffffff;
             if(pc >= last_pc)
             {
                 autobreak(AB_OOB_PC);
