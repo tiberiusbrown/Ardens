@@ -403,8 +403,8 @@ ARDENS_FORCEINLINE void display_t::update_pixels_row()
 
 #if defined(ARDENS_SSE2)
     {
-        uint8_t* src = &ram[rindex];
-        uint8_t* dst = &parray[pindex];
+        uint8_t* src = ram.data() + rindex;
+        uint8_t* dst = parray.data() + pindex;
         __m128i vp0 = _mm_set1_epi8((char)p0);
         __m128i vp1 = _mm_set1_epi8((char)p1);
         __m128i vm = _mm_set1_epi8((char)mask);
