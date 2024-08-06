@@ -301,7 +301,6 @@ set(ARDENS_SOURCES
     src/absim_decode.cpp
     src/absim_merge_instrs.cpp
     src/absim_execute.cpp
-    src/absim_execute_merged.cpp
     src/absim_disassemble.cpp
     src/absim_load_file.cpp
     src/absim_reset.cpp

@@ -7,7 +7,7 @@
 namespace absim
 {
 
-instr_func_t const INSTR_MAP[] =
+instr_func_t const INSTR_MAP[NUM_INSTR] =
 {
     instr_unknown,
     instr_rcall,
@@ -102,8 +102,39 @@ instr_func_t const INSTR_MAP[] =
     instr_break,
 
     // merged instrs
-    instr_merged_push4,
-    instr_merged_pop4,
+
+    instr_merged_out,
+    instr_merged_in,
+    instr_merged_lds,
+    instr_merged_sts,
+    instr_merged_ldd_y,
+    instr_merged_ldd_z,
+    instr_merged_std_y,
+    instr_merged_std_z,
+    instr_merged_ld_st,
+    instr_merged_ld_x,
+    instr_merged_ld_y,
+    instr_merged_ld_z,
+    instr_merged_ld_x_inc,
+    instr_merged_ld_y_inc,
+    instr_merged_ld_z_inc,
+    instr_merged_ld_x_dec,
+    instr_merged_ld_y_dec,
+    instr_merged_ld_z_dec,
+    instr_merged_st_x,
+    instr_merged_st_y,
+    instr_merged_st_z,
+    instr_merged_st_x_inc,
+    instr_merged_st_y_inc,
+    instr_merged_st_z_inc,
+    instr_merged_st_x_dec,
+    instr_merged_st_y_dec,
+    instr_merged_st_z_dec,
+    instr_merged_sbi,
+    instr_merged_cbi,
+    instr_merged_sbis,
+    instr_merged_sbic,
+
     instr_merged_ldi2,
     instr_merged_dec_brne,
     instr_merged_add_adc,
@@ -212,6 +243,14 @@ ARDENS_FORCEINLINE static void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8
 ARDENS_FORCEINLINE static uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 {
     sreg |= ((x & 0x80) >> 5); // N
+    if(x == 0) sreg |= SREG_Z; // Z
+    sreg = flag_s(sreg);       // S
+    return sreg;
+}
+
+ARDENS_FORCEINLINE static uint8_t flags_nzs16(uint8_t sreg, uint32_t x)
+{
+    sreg |= ((x & 0x8000) >> 13); // N
     if(x == 0) sreg |= SREG_Z; // Z
     sreg = flag_s(sreg);       // S
     return sreg;
@@ -510,19 +549,25 @@ uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t i)
 
 }
 
-uint32_t instr_out(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_out(atmega32u4_t& cpu, avr_instr_t i)
 {
-    cpu.st_ior(i.dst, cpu.gpr(i.src));
+    cpu.st_ior<merged>(i.dst, cpu.gpr(i.src));
     cpu.pc += 1;
     return 1;
 }
+uint32_t instr_out(atmega32u4_t& cpu, avr_instr_t i) { return instr_out<false>(cpu, i); }
+uint32_t instr_merged_out(atmega32u4_t& cpu, avr_instr_t i) { return instr_out<true>(cpu, i); }
 
-uint32_t instr_in(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_in(atmega32u4_t& cpu, avr_instr_t i)
 {
-    cpu.gpr(i.dst) = cpu.ld_ior(i.src);
+    cpu.gpr(i.dst) = cpu.ld_ior<merged>(i.src);
     cpu.pc += 1;
     return 1;
 }
+uint32_t instr_in(atmega32u4_t& cpu, avr_instr_t i) { return instr_in<false>(cpu, i); }
+uint32_t instr_merged_in(atmega32u4_t& cpu, avr_instr_t i) { return instr_in<true>(cpu, i); }
 
 uint32_t instr_ldi(atmega32u4_t& cpu, avr_instr_t i)
 {
@@ -600,65 +645,84 @@ uint32_t instr_brbc(atmega32u4_t& cpu, avr_instr_t i)
     return 1;
 }
 
-uint32_t instr_lds(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_lds(atmega32u4_t& cpu, avr_instr_t i)
 {
-    cpu.gpr(i.dst) = cpu.ld(i.word);
+    cpu.gpr(i.dst) = cpu.ld<merged>(i.word);
     cpu.pc += 2;
     return 2;
 }
+uint32_t instr_lds(atmega32u4_t& cpu, avr_instr_t i) { return instr_lds<false>(cpu, i); }
+uint32_t instr_merged_lds(atmega32u4_t& cpu, avr_instr_t i) { return instr_lds<true>(cpu, i); }
 
-uint32_t instr_sts(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_sts(atmega32u4_t& cpu, avr_instr_t i)
 {
-    cpu.st(i.word, cpu.gpr(i.src));
+    cpu.st<merged>(i.word, cpu.gpr(i.src));
     cpu.pc += 2;
     return 2;
 }
+uint32_t instr_sts(atmega32u4_t& cpu, avr_instr_t i) { return instr_sts<false>(cpu, i); }
+uint32_t instr_merged_sts(atmega32u4_t& cpu, avr_instr_t i) { return instr_sts<true>(cpu, i); }
 
-uint32_t instr_ldd_y(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_ldd_y(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.y_word();
     if(ptr == 0)
         cpu.autobreak(AB_NULL_REL_DEREF);
     ptr += i.dst;
-    cpu.gpr(i.src) = cpu.ld(ptr);
+    cpu.gpr(i.src) = cpu.ld<merged>(ptr);
     cpu.pc += 1;
     return 2;
 }
+uint32_t instr_ldd_y(atmega32u4_t& cpu, avr_instr_t i) { return instr_ldd_y<false>(cpu, i); }
+uint32_t instr_merged_ldd_y(atmega32u4_t& cpu, avr_instr_t i) { return instr_ldd_y<true>(cpu, i); }
 
-uint32_t instr_ldd_z(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_ldd_z(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.z_word();
     if(ptr == 0)
         cpu.autobreak(AB_NULL_REL_DEREF);
     ptr += i.dst;
-    cpu.gpr(i.src) = cpu.ld(ptr);
+    cpu.gpr(i.src) = cpu.ld<merged>(ptr);
     cpu.pc += 1;
     return 2;
 }
+uint32_t instr_ldd_z(atmega32u4_t& cpu, avr_instr_t i) { return instr_ldd_z<false>(cpu, i); }
+uint32_t instr_merged_ldd_z(atmega32u4_t& cpu, avr_instr_t i) { return instr_ldd_z<true>(cpu, i); }
 
-uint32_t instr_std_y(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_std_y(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.y_word();
     if(ptr == 0)
         cpu.autobreak(AB_NULL_REL_DEREF);
     ptr += i.dst;
-    cpu.st(ptr, cpu.gpr(i.src));
+    cpu.st<merged>(ptr, cpu.gpr(i.src));
     cpu.pc += 1;
     return 2;
 }
+uint32_t instr_std_y(atmega32u4_t& cpu, avr_instr_t i) { return instr_std_y<false>(cpu, i); }
+uint32_t instr_merged_std_y(atmega32u4_t& cpu, avr_instr_t i) { return instr_std_y<true>(cpu, i); }
 
-uint32_t instr_std_z(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_std_z(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr = cpu.z_word();
     if(ptr == 0)
         cpu.autobreak(AB_NULL_REL_DEREF);
     ptr += i.dst;
-    cpu.st(ptr, cpu.gpr(i.src));
+    cpu.st<merged>(ptr, cpu.gpr(i.src));
     cpu.pc += 1;
     return 2;
 }
+uint32_t instr_std_z(atmega32u4_t& cpu, avr_instr_t i) { return instr_std_z<false>(cpu, i); }
+uint32_t instr_merged_std_z(atmega32u4_t& cpu, avr_instr_t i) { return instr_std_z<true>(cpu, i); }
 
-uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint16_t ptr;
 
@@ -671,9 +735,9 @@ uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t i)
         --ptr;
 
     if(!i.word)
-        cpu.gpr(i.src) = cpu.ld(ptr);
+        cpu.gpr(i.src) = cpu.ld<merged>(ptr);
     else
-        cpu.st(ptr, cpu.gpr(i.src));
+        cpu.st<merged>(ptr, cpu.gpr(i.src));
 
     // post-increment
     if(i.dst & 0x1)
@@ -702,180 +766,92 @@ uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t i)
     cpu.pc += 1;
     return 2;
 }
+uint32_t instr_ld_st(atmega32u4_t& cpu, avr_instr_t i) { return instr_ld_st<false>(cpu, i); }
+uint32_t instr_merged_ld_st(atmega32u4_t& cpu, avr_instr_t i) { return instr_ld_st<true>(cpu, i); }
 
-uint32_t instr_ld_x(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged, bool ld, int reg, bool inc, bool dec>
+ARDENS_FORCEINLINE static uint32_t instr_super_ld_st(atmega32u4_t& cpu, avr_instr_t i)
 {
-    cpu.gpr(i.src) = cpu.ld(cpu.x_word());
+    uint16_t ptr;
+
+    if(reg == 2) ptr = cpu.z_word();
+    else if(reg == 1) ptr = cpu.y_word();
+    else ptr = cpu.x_word();
+
+    // pre-decrement
+    if(dec)
+        --ptr;
+
+    if(ld)
+        cpu.gpr(i.src) = cpu.ld<merged>(ptr);
+    else
+        cpu.st<merged>(ptr, cpu.gpr(i.src));
+
+    // post-increment
+    if(inc)
+        ++ptr;
+
+    if(inc || dec)
+    {
+        // store back
+        if(reg == 2)
+        {
+            cpu.gpr(30) = uint8_t(ptr >> 0);
+            cpu.gpr(31) = uint8_t(ptr >> 8);
+        }
+        else if(reg == 1)
+        {
+            cpu.gpr(28) = uint8_t(ptr >> 0);
+            cpu.gpr(29) = uint8_t(ptr >> 8);
+        }
+        else
+        {
+            cpu.gpr(26) = uint8_t(ptr >> 0);
+            cpu.gpr(27) = uint8_t(ptr >> 8);
+        }
+    }
+
     cpu.pc += 1;
     return 2;
 }
 
-uint32_t instr_ld_y(atmega32u4_t& cpu, avr_instr_t i)
-{
-    cpu.gpr(i.src) = cpu.ld(cpu.y_word());
-    cpu.pc += 1;
-    return 2;
-}
+uint32_t instr_ld_x    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 0, 0, 0>(cpu, i); }
+uint32_t instr_ld_y    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 1, 0, 0>(cpu, i); }
+uint32_t instr_ld_z    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 2, 0, 0>(cpu, i); }
+uint32_t instr_ld_x_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 0, 1, 0>(cpu, i); }
+uint32_t instr_ld_y_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 1, 1, 0>(cpu, i); }
+uint32_t instr_ld_z_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 2, 1, 0>(cpu, i); }
+uint32_t instr_ld_x_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 0, 0, 1>(cpu, i); }
+uint32_t instr_ld_y_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 1, 0, 1>(cpu, i); }
+uint32_t instr_ld_z_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 1, 2, 0, 1>(cpu, i); }
+uint32_t instr_st_x    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 0, 0, 0>(cpu, i); }
+uint32_t instr_st_y    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 1, 0, 0>(cpu, i); }
+uint32_t instr_st_z    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 2, 0, 0>(cpu, i); }
+uint32_t instr_st_x_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 0, 1, 0>(cpu, i); }
+uint32_t instr_st_y_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 1, 1, 0>(cpu, i); }
+uint32_t instr_st_z_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 2, 1, 0>(cpu, i); }
+uint32_t instr_st_x_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 0, 0, 1>(cpu, i); }
+uint32_t instr_st_y_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 1, 0, 1>(cpu, i); }
+uint32_t instr_st_z_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<0, 0, 2, 0, 1>(cpu, i); }
 
-uint32_t instr_ld_z(atmega32u4_t& cpu, avr_instr_t i)
-{
-    cpu.gpr(i.src) = cpu.ld(cpu.z_word());
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_ld_x_inc(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.x_word();
-    cpu.gpr(i.src) = cpu.ld(ptr);
-    ++ptr;
-    cpu.gpr(26) = uint8_t(ptr >> 0);
-    cpu.gpr(27) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_ld_y_inc(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.y_word();
-    cpu.gpr(i.src) = cpu.ld(ptr);
-    ++ptr;
-    cpu.gpr(28) = uint8_t(ptr >> 0);
-    cpu.gpr(29) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_ld_z_inc(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.z_word();
-    cpu.gpr(i.src) = cpu.ld(ptr);
-    ++ptr;
-    cpu.gpr(30) = uint8_t(ptr >> 0);
-    cpu.gpr(31) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_ld_x_dec(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.x_word();
-    --ptr;
-    cpu.gpr(i.src) = cpu.ld(ptr);
-    cpu.gpr(26) = uint8_t(ptr >> 0);
-    cpu.gpr(27) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_ld_y_dec(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.y_word();
-    --ptr;
-    cpu.gpr(i.src) = cpu.ld(ptr);
-    cpu.gpr(28) = uint8_t(ptr >> 0);
-    cpu.gpr(29) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_ld_z_dec(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.z_word();
-    --ptr;
-    cpu.gpr(i.src) = cpu.ld(ptr);
-    cpu.gpr(30) = uint8_t(ptr >> 0);
-    cpu.gpr(31) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_x(atmega32u4_t& cpu, avr_instr_t i)
-{
-    cpu.st(cpu.x_word(), cpu.gpr(i.src));
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_y(atmega32u4_t& cpu, avr_instr_t i)
-{
-    cpu.st(cpu.y_word(), cpu.gpr(i.src));
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_z(atmega32u4_t& cpu, avr_instr_t i)
-{
-    cpu.st(cpu.z_word(), cpu.gpr(i.src));
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_x_inc(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.x_word();
-    cpu.st(ptr, cpu.gpr(i.src));
-    ++ptr;
-    cpu.gpr(26) = uint8_t(ptr >> 0);
-    cpu.gpr(27) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_y_inc(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.y_word();
-    cpu.st(ptr, cpu.gpr(i.src));
-    ++ptr;
-    cpu.gpr(28) = uint8_t(ptr >> 0);
-    cpu.gpr(29) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_z_inc(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.z_word();
-    cpu.st(ptr, cpu.gpr(i.src));
-    ++ptr;
-    cpu.gpr(30) = uint8_t(ptr >> 0);
-    cpu.gpr(31) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_x_dec(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.x_word();
-    --ptr;
-    cpu.st(ptr, cpu.gpr(i.src));
-    cpu.gpr(26) = uint8_t(ptr >> 0);
-    cpu.gpr(27) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_y_dec(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.y_word();
-    --ptr;
-    cpu.st(ptr, cpu.gpr(i.src));
-    cpu.gpr(28) = uint8_t(ptr >> 0);
-    cpu.gpr(29) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
-
-uint32_t instr_st_z_dec(atmega32u4_t& cpu, avr_instr_t i)
-{
-    uint16_t ptr = cpu.z_word();
-    --ptr;
-    cpu.st(ptr, cpu.gpr(i.src));
-    cpu.gpr(30) = uint8_t(ptr >> 0);
-    cpu.gpr(31) = uint8_t(ptr >> 8);
-    cpu.pc += 1;
-    return 2;
-}
+uint32_t instr_merged_ld_x    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 0, 0, 0>(cpu, i); }
+uint32_t instr_merged_ld_y    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 1, 0, 0>(cpu, i); }
+uint32_t instr_merged_ld_z    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 2, 0, 0>(cpu, i); }
+uint32_t instr_merged_ld_x_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 0, 1, 0>(cpu, i); }
+uint32_t instr_merged_ld_y_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 1, 1, 0>(cpu, i); }
+uint32_t instr_merged_ld_z_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 2, 1, 0>(cpu, i); }
+uint32_t instr_merged_ld_x_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 0, 0, 1>(cpu, i); }
+uint32_t instr_merged_ld_y_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 1, 0, 1>(cpu, i); }
+uint32_t instr_merged_ld_z_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 1, 2, 0, 1>(cpu, i); }
+uint32_t instr_merged_st_x    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 0, 0, 0>(cpu, i); }
+uint32_t instr_merged_st_y    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 1, 0, 0>(cpu, i); }
+uint32_t instr_merged_st_z    (atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 2, 0, 0>(cpu, i); }
+uint32_t instr_merged_st_x_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 0, 1, 0>(cpu, i); }
+uint32_t instr_merged_st_y_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 1, 1, 0>(cpu, i); }
+uint32_t instr_merged_st_z_inc(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 2, 1, 0>(cpu, i); }
+uint32_t instr_merged_st_x_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 0, 0, 1>(cpu, i); }
+uint32_t instr_merged_st_y_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 1, 0, 1>(cpu, i); }
+uint32_t instr_merged_st_z_dec(atmega32u4_t& cpu, avr_instr_t i) { return instr_super_ld_st<1, 0, 2, 0, 1>(cpu, i); }
 
 uint32_t instr_push(atmega32u4_t& cpu, avr_instr_t i)
 {
@@ -1040,23 +1016,30 @@ uint32_t instr_bclr(atmega32u4_t& cpu, avr_instr_t i)
     return 1;
 }
 
-uint32_t instr_sbi(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_sbi(atmega32u4_t& cpu, avr_instr_t i)
 {
-    cpu.st_ior(i.dst, cpu.ld_ior(i.dst) | i.src);
+    cpu.st_ior<merged>(i.dst, cpu.ld_ior<merged>(i.dst) | i.src);
     cpu.pc += 1;
     return 2;
 }
+uint32_t instr_sbi(atmega32u4_t& cpu, avr_instr_t i) { return instr_sbi<false>(cpu, i); }
+uint32_t instr_merged_sbi(atmega32u4_t& cpu, avr_instr_t i) { return instr_sbi<true>(cpu, i); }
 
-uint32_t instr_cbi(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_cbi(atmega32u4_t& cpu, avr_instr_t i)
 {
-    cpu.st_ior(i.dst, cpu.ld_ior(i.dst) & ~i.src);
+    cpu.st_ior<merged>(i.dst, cpu.ld_ior<merged>(i.dst) & ~i.src);
     cpu.pc += 1;
     return 2;
 }
+uint32_t instr_cbi(atmega32u4_t& cpu, avr_instr_t i) { return instr_cbi<false>(cpu, i); }
+uint32_t instr_merged_cbi(atmega32u4_t& cpu, avr_instr_t i) { return instr_cbi<true>(cpu, i); }
 
-uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t i)
 {
-    if(cpu.ld_ior(i.dst) & i.src)
+    if(cpu.ld_ior<merged>(i.dst) & i.src)
     {
         if(next_instr_is_two_words(cpu))
         {
@@ -1069,10 +1052,13 @@ uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t i)
     cpu.pc += 1;
     return 1;
 }
+uint32_t instr_sbis(atmega32u4_t& cpu, avr_instr_t i) { return instr_sbis<false>(cpu, i); }
+uint32_t instr_merged_sbis(atmega32u4_t& cpu, avr_instr_t i) { return instr_sbis<true>(cpu, i); }
 
-uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t i)
+template<bool merged>
+ARDENS_FORCEINLINE static uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t i)
 {
-    if(!(cpu.ld_ior(i.dst) & i.src))
+    if(!(cpu.ld_ior<merged>(i.dst) & i.src))
     {
         if(next_instr_is_two_words(cpu))
         {
@@ -1085,6 +1071,8 @@ uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t i)
     cpu.pc += 1;
     return 1;
 }
+uint32_t instr_sbic(atmega32u4_t& cpu, avr_instr_t i) { return instr_sbic<false>(cpu, i); }
+uint32_t instr_merged_sbic(atmega32u4_t& cpu, avr_instr_t i) { return instr_sbic<true>(cpu, i); }
 
 uint32_t instr_sbrs(atmega32u4_t& cpu, avr_instr_t i)
 {
@@ -1317,6 +1305,122 @@ uint32_t instr_fmulsu(atmega32u4_t& cpu, avr_instr_t i)
     set_flag(cpu, SREG_C, res & 0x8000);
     cpu.pc += 1;
     return 2;
+}
+
+uint32_t instr_merged_ldi2(atmega32u4_t& cpu, avr_instr_t i)
+{
+    cpu.gpr(i.dst) = i.src;
+    cpu.gpr(i.m0) = i.m1;
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t i)
+{
+    uint8_t dst = cpu.gpr(i.dst);
+    uint8_t res = dst - 1;
+    cpu.gpr(i.dst) = res;
+    unsigned sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    if(dst == 0x80) sreg |= SREG_V;
+    sreg = flags_nzs(sreg, res);
+    cpu.sreg() = sreg;
+
+    if(res != 0)
+    {
+        cpu.pc += (int16_t)i.word + 2;
+        return 3;
+    }
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t i)
+{
+    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.dst + 1) * 256;
+    unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
+    unsigned res = (dst + src) & 0xffff;
+    cpu.gpr(i.dst + 0) = (uint8_t)(res >> 0);
+    cpu.gpr(i.dst + 1) = (uint8_t)(res >> 8);
+
+    unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
+    unsigned v = (dst & src & ~res) | (~dst & ~src & res);
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    sreg |= (hc & 0x0800) >> 6;  // H flag
+    sreg |= hc >> 15;            // C flag
+    sreg |= (v & 0x8000) >> 12;  // V flag
+    sreg = flags_nzs16(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_sub_sbc(atmega32u4_t& cpu, avr_instr_t i)
+{
+    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.dst + 1) * 256;
+    unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
+    unsigned res = (dst - src) & 0xffff;
+    cpu.gpr(i.dst + 0) = (uint8_t)(res >> 0);
+    cpu.gpr(i.dst + 1) = (uint8_t)(res >> 8);
+
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    sreg |= (hc & 0x0800) >> 6;  // H flag
+    sreg |= hc >> 15;            // C flag
+    sreg |= (v & 0x8000) >> 12;  // V flag
+    sreg = flags_nzs16(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_cp_cpc(atmega32u4_t& cpu, avr_instr_t i)
+{
+    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.dst + 1) * 256;
+    unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
+    unsigned res = (dst - src) & 0xffff;
+
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    sreg |= (hc & 0x0800) >> 6;  // H flag
+    sreg |= hc >> 15;            // C flag
+    sreg |= (v & 0x8000) >> 12;  // V flag
+    sreg = flags_nzs16(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_subi_sbci(atmega32u4_t& cpu, avr_instr_t i)
+{
+    unsigned dst = cpu.gpr(i.dst) + cpu.gpr(i.src) * 256;
+    unsigned src = i.word;
+    unsigned res = (dst - src) & 0xffff;
+    cpu.gpr(i.dst) = (uint8_t)(res >> 0);
+    cpu.gpr(i.src) = (uint8_t)(res >> 8);
+
+    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
+    unsigned v = (dst & ~src & ~res) | (~dst & src & res);
+    sreg |= (hc & 0x0800) >> 6;  // H flag
+    sreg |= hc >> 15;            // C flag
+    sreg |= (v & 0x8000) >> 12;  // V flag
+    sreg = flags_nzs16(sreg, res);
+    cpu.sreg() = (uint8_t)sreg;
+
+    cpu.pc += 2;
+    return 2;
+}
+
+uint32_t instr_merged_delay(atmega32u4_t& cpu, avr_instr_t i)
+{
+    cpu.pc += i.src;
+    return i.word;
 }
 
 }

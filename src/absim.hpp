@@ -250,37 +250,58 @@ struct atmega32u4_t
 
     uint32_t just_read;
     uint32_t just_written;
+    bool io_reg_accessed;
 
     using ld_handler_t = uint8_t(*)(atmega32u4_t& cpu, uint16_t ptr);
     using st_handler_t = void(*)(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     std::array<ld_handler_t, 256> ld_handlers;
     std::array<st_handler_t, 256> st_handlers;
 
+    template<bool merged>
     ARDENS_FORCEINLINE uint8_t ld(uint16_t ptr)
     {
         check_deref(ptr);
-        just_read = ptr;
-        if(ptr < ld_handlers.size() && ld_handlers[ptr])
-            return ld_handlers[ptr](*this, ptr);
+        if(!merged)
+            just_read = ptr;
+        if(ptr < ld_handlers.size())
+        {
+            if(merged)
+                io_reg_accessed = true;
+            if(ld_handlers[ptr])
+                return ld_handlers[ptr](*this, ptr);
+        }
         return ptr < data.size() ? data[ptr] : 0x00;
     }
+    ARDENS_FORCEINLINE uint8_t ld(uint16_t ptr) { return ld<false>(ptr); }
+    template<bool merged>
     ARDENS_FORCEINLINE void st(uint16_t ptr, uint8_t x)
     {
         check_deref(ptr);
-        just_written = ptr;
-        if(ptr < st_handlers.size() && st_handlers[ptr])
-            return st_handlers[ptr](*this, ptr, x);
+        if(!merged)
+            just_written = ptr;
+        if(ptr < st_handlers.size())
+        {
+            if(merged)
+                io_reg_accessed = true;
+            if(st_handlers[ptr])
+                return st_handlers[ptr](*this, ptr, x);
+        }
         if(ptr < data.size()) data[ptr] = x;
     }
+    ARDENS_FORCEINLINE void st(uint16_t ptr, uint8_t x) { st<false>(ptr, x); }
 
+    template<bool merged>
     ARDENS_FORCEINLINE uint8_t ld_ior(uint8_t n)
     {
-        return ld(n + 32);
+        return ld<merged>(n + 32);
     }
+    ARDENS_FORCEINLINE uint8_t ld_ior(uint8_t n) { return ld_ior<false>(n); }
+    template<bool merged>
     ARDENS_FORCEINLINE void st_ior(uint8_t n, uint8_t x)
     {
-        st(n + 32, x);
+        st<merged>(n + 32, x);
     }
+    ARDENS_FORCEINLINE void st_ior(uint8_t n, uint8_t x) { st_ior<false>(n, x); }
 
     ARDENS_FORCEINLINE uint16_t gpr_word(uint8_t n)
     {
@@ -459,7 +480,7 @@ struct atmega32u4_t
 #endif
     }
 
-    static constexpr int MAX_INSTR_CYCLES = 8;
+    static constexpr int MAX_INSTR_CYCLES = 4;
 
     uint16_t last_addr;
     uint16_t num_instrs;

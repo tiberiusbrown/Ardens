@@ -142,8 +142,39 @@ enum instr_id_t
     INSTR_BREAK,
 
     // merged instrs
-    INSTR_MERGED_PUSH4,
-    INSTR_MERGED_POP4,
+
+    INSTR_MERGED_OUT,
+    INSTR_MERGED_IN,
+    INSTR_MERGED_LDS,
+    INSTR_MERGED_STS,
+    INSTR_MERGED_LDD_Y,
+    INSTR_MERGED_LDD_Z,
+    INSTR_MERGED_STD_Y,
+    INSTR_MERGED_STD_Z,
+    INSTR_MERGED_LD_ST,
+    INSTR_MERGED_LD_X,
+    INSTR_MERGED_LD_Y,
+    INSTR_MERGED_LD_Z,
+    INSTR_MERGED_LD_X_INC,
+    INSTR_MERGED_LD_Y_INC,
+    INSTR_MERGED_LD_Z_INC,
+    INSTR_MERGED_LD_X_DEC,
+    INSTR_MERGED_LD_Y_DEC,
+    INSTR_MERGED_LD_Z_DEC,
+    INSTR_MERGED_ST_X,
+    INSTR_MERGED_ST_Y,
+    INSTR_MERGED_ST_Z,
+    INSTR_MERGED_ST_X_INC,
+    INSTR_MERGED_ST_Y_INC,
+    INSTR_MERGED_ST_Z_INC,
+    INSTR_MERGED_ST_X_DEC,
+    INSTR_MERGED_ST_Y_DEC,
+    INSTR_MERGED_ST_Z_DEC,
+    INSTR_MERGED_SBI,
+    INSTR_MERGED_CBI,
+    INSTR_MERGED_SBIS,
+    INSTR_MERGED_SBIC,
+
     INSTR_MERGED_LDI2,
     INSTR_MERGED_DEC_BRNE,
     INSTR_MERGED_ADD_ADC,
@@ -151,6 +182,8 @@ enum instr_id_t
     INSTR_MERGED_CP_CPC,
     INSTR_MERGED_SUBI_SBCI,
     INSTR_MERGED_DELAY,
+
+    NUM_INSTR
 };
 
 uint32_t instr_unknown (atmega32u4_t& cpu, avr_instr_t const i);
@@ -246,8 +279,40 @@ uint32_t instr_spm     (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_break   (atmega32u4_t& cpu, avr_instr_t const i);
 
 // merged instrs
-uint32_t instr_merged_push4    (atmega32u4_t& cpu, avr_instr_t const i);
-uint32_t instr_merged_pop4     (atmega32u4_t& cpu, avr_instr_t const i);
+
+uint32_t instr_merged_out      (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_in       (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_lds      (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_sts      (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ldd_y    (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ldd_z    (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_std_y    (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_std_z    (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_st    (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_x     (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_y     (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_z     (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_x_inc (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_y_inc (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_z_inc (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_x_dec (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_y_dec (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_ld_z_dec (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_x     (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_y     (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_z     (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_x_inc (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_y_inc (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_z_inc (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_x_dec (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_y_dec (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_st_z_dec (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_sbi      (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_cbi      (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_sbis     (atmega32u4_t& cpu, avr_instr_t const i);
+uint32_t instr_merged_sbic     (atmega32u4_t& cpu, avr_instr_t const i);
+
+
 uint32_t instr_merged_ldi2     (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_merged_dec_brne (atmega32u4_t& cpu, avr_instr_t const i);
 uint32_t instr_merged_add_adc  (atmega32u4_t& cpu, avr_instr_t const i);

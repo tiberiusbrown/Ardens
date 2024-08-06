@@ -408,6 +408,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             // it'll break out of the loop anyway
             prev_sreg = sreg();
             
+            io_reg_accessed = false;
             do
             {
                 if(pc >= last_pc)
@@ -420,12 +421,12 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
                 assert(instr_cycles <= MAX_INSTR_CYCLES);
                 cycle_count += instr_cycles;
-                if(std::min(just_written, just_read) < 0x100 || should_autobreak())
+                if(io_reg_accessed || should_autobreak())
                     break;
                 cycles_max -= instr_cycles;
             } while((int64_t)cycles_max > 0);
             cycles = uint32_t(cycle_count - tcycles);
-            if(!(should_autobreak() || just_written < 0x100 || just_read < 0x100))
+            if(!(should_autobreak() || io_reg_accessed))
                 goto skip_peripheral_updates;
         }
     }

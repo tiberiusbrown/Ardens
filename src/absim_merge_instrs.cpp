@@ -51,46 +51,49 @@ void atmega32u4_t::merge_instrs()
 {
     memcpy(merged_prog.data(), &decoded_prog, array_bytes(merged_prog));
 
+    for(auto& i : merged_prog)
+    {
+        switch(i.func)
+        {
+        case INSTR_OUT     : i.func = INSTR_MERGED_OUT     ; break;
+        case INSTR_IN      : i.func = INSTR_MERGED_IN      ; break;
+        case INSTR_LDS     : i.func = INSTR_MERGED_LDS     ; break;
+        case INSTR_STS     : i.func = INSTR_MERGED_STS     ; break;
+        case INSTR_LDD_Y   : i.func = INSTR_MERGED_LDD_Y   ; break;
+        case INSTR_LDD_Z   : i.func = INSTR_MERGED_LDD_Z   ; break;
+        case INSTR_STD_Y   : i.func = INSTR_MERGED_STD_Y   ; break;
+        case INSTR_STD_Z   : i.func = INSTR_MERGED_STD_Z   ; break;
+        case INSTR_LD_ST   : i.func = INSTR_MERGED_LD_ST   ; break;
+        case INSTR_LD_X    : i.func = INSTR_MERGED_LD_X    ; break;
+        case INSTR_LD_Y    : i.func = INSTR_MERGED_LD_Y    ; break;
+        case INSTR_LD_Z    : i.func = INSTR_MERGED_LD_Z    ; break;
+        case INSTR_LD_X_INC: i.func = INSTR_MERGED_LD_X_INC; break;
+        case INSTR_LD_Y_INC: i.func = INSTR_MERGED_LD_Y_INC; break;
+        case INSTR_LD_Z_INC: i.func = INSTR_MERGED_LD_Z_INC; break;
+        case INSTR_LD_X_DEC: i.func = INSTR_MERGED_LD_X_DEC; break;
+        case INSTR_LD_Y_DEC: i.func = INSTR_MERGED_LD_Y_DEC; break;
+        case INSTR_LD_Z_DEC: i.func = INSTR_MERGED_LD_Z_DEC; break;
+        case INSTR_ST_X    : i.func = INSTR_MERGED_ST_X    ; break;
+        case INSTR_ST_Y    : i.func = INSTR_MERGED_ST_Y    ; break;
+        case INSTR_ST_Z    : i.func = INSTR_MERGED_ST_Z    ; break;
+        case INSTR_ST_X_INC: i.func = INSTR_MERGED_ST_X_INC; break;
+        case INSTR_ST_Y_INC: i.func = INSTR_MERGED_ST_Y_INC; break;
+        case INSTR_ST_Z_INC: i.func = INSTR_MERGED_ST_Z_INC; break;
+        case INSTR_ST_X_DEC: i.func = INSTR_MERGED_ST_X_DEC; break;
+        case INSTR_ST_Y_DEC: i.func = INSTR_MERGED_ST_Y_DEC; break;
+        case INSTR_ST_Z_DEC: i.func = INSTR_MERGED_ST_Z_DEC; break;
+        case INSTR_SBI     : i.func = INSTR_MERGED_SBI     ; break;
+        case INSTR_CBI     : i.func = INSTR_MERGED_CBI     ; break;
+        case INSTR_SBIS    : i.func = INSTR_MERGED_SBIS    ; break;
+        case INSTR_SBIC    : i.func = INSTR_MERGED_SBIC    ; break;
+        default: break;
+        }
+    }
+
     for(size_t n = 0; n + 1 < merged_prog.size(); ++n)
     {
         auto& i0 = merged_prog[n + 0];
         auto  i1 = decoded_prog[n + 1];
-
-        if(i0.func == INSTR_PUSH)
-        {
-            uint32_t t;
-            for(t = 1; t < 4; ++t)
-            {
-                if(n + t >= decoded_prog.size()) break;
-                if(decoded_prog[n + t].func != INSTR_PUSH) break;
-            }
-            if(t >= 4)
-            {
-                i0.func = INSTR_MERGED_PUSH4;
-                i0.m0 = i1.src;
-                i0.m1 = decoded_prog[n + 2].src;
-                i0.m2 = decoded_prog[n + 3].src;
-            }
-            continue;
-        }
-
-        if(i0.func == INSTR_POP)
-        {
-            uint32_t t;
-            for(t = 1; t < 4; ++t)
-            {
-                if(n + t >= decoded_prog.size()) break;
-                if(decoded_prog[n + t].func != INSTR_POP) break;
-            }
-            if(t >= 4)
-            {
-                i0.func = INSTR_MERGED_POP4;
-                i0.m0 = i1.src;
-                i0.m1 = decoded_prog[n + 2].src;
-                i0.m2 = decoded_prog[n + 3].src;
-            }
-            continue;
-        }
 
         if(i0.func == INSTR_LDI && i1.func == INSTR_LDI)
         {
