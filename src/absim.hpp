@@ -1062,7 +1062,7 @@ struct savedata_t
 struct arduboy_config_t
 {
     display_t::type_t display_type = display_t::type_t::SSD1306;
-    uint8_t fxport_reg = 0x2d;    // PORTD
+    uint8_t fxport_reg = 0x2b;    // PORTD
     uint8_t fxport_mask = 1 << 1; // PORTD1
     bool bootloader = true;
     bool boot_to_menu = false;
