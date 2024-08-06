@@ -421,8 +421,9 @@ uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t i)
     unsigned res = (dst + src) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
-    unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
-    unsigned v = (dst & src & ~res) | (~dst & ~src & res);
+    unsigned dst_xor_src = dst ^ src;
+    unsigned hc = (dst | src) ^ (res & dst_xor_src);
+    unsigned v = ~dst_xor_src & (dst ^ res);
     unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
@@ -442,8 +443,9 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t i)
     unsigned res = (dst + src + c) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
-    unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
-    unsigned v = (dst & src & ~res) | (~dst & ~src & res);
+    unsigned dst_xor_src = dst ^ src;
+    unsigned hc = (dst | src) ^ (res & dst_xor_src);
+    unsigned v = ~dst_xor_src & (dst ^ res);
     unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
@@ -1343,8 +1345,9 @@ uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t i)
     cpu.gpr(i.dst + 0) = (uint8_t)(res >> 0);
     cpu.gpr(i.dst + 1) = (uint8_t)(res >> 8);
 
-    unsigned hc = (dst & src) | (src & ~res) | (~res & dst);
-    unsigned v = (dst & src & ~res) | (~dst & ~src & res);
+    unsigned dst_xor_src = dst ^ src;
+    unsigned hc = (dst | src) ^ (res & dst_xor_src);
+    unsigned v = ~dst_xor_src & (dst ^ res);
     unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
