@@ -379,21 +379,19 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
 #ifndef ARDENS_NO_DEBUGGER
         executing_instr_pc = pc;
-        constexpr uint16_t last_pc = 0x4000;
 #endif
+        constexpr uint16_t last_pc = 0x4000;
         if(max_merged_cycles < 0 ||
 #ifndef ARDENS_NO_DEBUGGER
             no_merged ||
 #endif
             false)
         {
-#ifndef ARDENS_NO_DEBUGGER
             if(pc >= last_pc)
             {
                 autobreak(AB_OOB_PC);
-                return cycles + 1;
+                return cycles;
             }
-#endif
             auto const& i = decoded_prog[pc];
             prev_sreg = sreg();
             cycles = INSTR_MAP[i.func](*this, i);
@@ -411,14 +409,12 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             
             do
             {
-#ifndef ARDENS_NO_DEBUGGER
                 if(pc >= last_pc)
                 {
                     autobreak(AB_OOB_PC);
                     cycles = uint32_t(cycle_count - tcycles);
-                    return cycles + 1;
+                    return cycles;
                 }
-#endif
                 auto const& i = merged_prog[pc];
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
                 cycle_count += instr_cycles;
