@@ -459,7 +459,7 @@ struct atmega32u4_t
 #endif
     }
 
-    static constexpr int MAX_INSTR_CYCLES = 32;
+    static constexpr int MAX_INSTR_CYCLES = 8;
 
     uint16_t last_addr;
     uint16_t num_instrs;

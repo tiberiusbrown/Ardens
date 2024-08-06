@@ -395,6 +395,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             auto const& i = decoded_prog[pc];
             prev_sreg = sreg();
             cycles = INSTR_MAP[i.func](*this, i);
+            assert(cycles <= MAX_INSTR_CYCLES);
             cycle_count += cycles;
         }
         else
@@ -417,6 +418,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 }
                 auto const& i = merged_prog[pc];
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
+                assert(instr_cycles <= MAX_INSTR_CYCLES);
                 cycle_count += instr_cycles;
                 if(std::min(just_written, just_read) < 0x100 || should_autobreak())
                     break;

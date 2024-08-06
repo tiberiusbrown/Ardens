@@ -150,6 +150,8 @@ void atmega32u4_t::merge_instrs()
             {
                 uint32_t t = instr_is_delay(*this, m);
                 if(t == 0) break;
+                if(d + t > MAX_INSTR_CYCLES)
+                    break;
                 d += t;
                 n += instr_is_two_words(decoded_prog[m]) ? 2 : 1;
             }
