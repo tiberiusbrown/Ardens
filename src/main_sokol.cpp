@@ -150,7 +150,8 @@ static void app_event(sapp_event const* e)
     if(e->type == SAPP_EVENTTYPE_TOUCHES_ENDED)
     {
         for(int i = 0; i < e->num_touches; ++i)
-            touch_points.erase(e->touches[i].identifier);
+            if(e->touches[i].changed)
+                touch_points.erase(e->touches[i].identifier);
         sapp_consume_event();
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
