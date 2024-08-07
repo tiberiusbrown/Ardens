@@ -58,44 +58,37 @@ static void bench(benchmark::State& state, std::string const& fname, bool prof =
         arduboy.cpu.data[0x23] = pinb;
         arduboy.cpu.data[0x2c] = pine;
         arduboy.cpu.data[0x2f] = pinf;
-        arduboy.profiler_enabled = prof;
         state.ResumeTiming();
+        arduboy.profiler_enabled = prof;
         arduboy.advance(100 * MS);
     }
 
     save_screenshot(arduboy, fname + ".post.png");
 }
 
+#define BENCH_OPTIONS ->Unit(benchmark::kMillisecond)->MinTime(3.0)
+//#define BENCH_OPTIONS ->Unit(benchmark::kMicrosecond)
+
 BENCHMARK_CAPTURE(bench, ReturnOfTheArdu, "ReturnOfTheArdu.arduboy")
-->Unit(benchmark::kMillisecond)
-->MinTime(3.0)
-;
+BENCH_OPTIONS;
 
 BENCHMARK_CAPTURE(bench, racing_game, "racing_game.hex")
-->Unit(benchmark::kMillisecond)
-->MinTime(3.0)
-;
+BENCH_OPTIONS;
 
 BENCHMARK_CAPTURE(bench, ardugolf, "ardugolf.hex")
-->Unit(benchmark::kMillisecond)
-->MinTime(3.0)
-;
+BENCH_OPTIONS;
 
 #ifndef ARDENS_NO_DEBUGGER
+
 BENCHMARK_CAPTURE(bench, ReturnOfTheArdu_nomerged, "ReturnOfTheArdu.arduboy", true)
-->Unit(benchmark::kMillisecond)
-->MinTime(3.0)
-;
+BENCH_OPTIONS;
 
 BENCHMARK_CAPTURE(bench, racing_game_nomerged, "racing_game.hex", true)
-->Unit(benchmark::kMillisecond)
-->MinTime(3.0)
-;
+BENCH_OPTIONS;
 
 BENCHMARK_CAPTURE(bench, ardugolf_nomerged, "ardugolf.hex", true)
-->Unit(benchmark::kMillisecond)
-->MinTime(3.0)
-;
+BENCH_OPTIONS;
+
 #endif
 
 BENCHMARK_MAIN();
