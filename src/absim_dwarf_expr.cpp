@@ -1,10 +1,13 @@
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #ifdef ARDENS_LLVM
 
 #include "common.hpp"
 
 #include <assert.h>
+
+namespace absim
+{
 
 struct stack_item
 {
@@ -190,7 +193,7 @@ dwarf_var_data dwarf_evaluate_location(
         {
             CHECK(!stack.empty());
             auto a = stack.pop();
-            stack.push({ uint16_t(~a.data), a.is_addr});
+            stack.push({ uint16_t(~a.data), a.is_addr });
         }
         else if(code == DW_OP_and)
         {
@@ -393,6 +396,8 @@ dwarf_var_data dwarf_evaluate_location(
     }
 
     return vd;
+}
+
 }
 
 #endif

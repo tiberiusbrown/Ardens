@@ -4,7 +4,7 @@
 
 #ifdef ARDENS_LLVM
 
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #include <fmt/format.h>
 
@@ -39,7 +39,7 @@ static llvm::DWARFDie remove_cv_typedefs_die(llvm::DWARFDie die)
             tag == llvm::dwarf::DW_TAG_volatile_type ||
             tag == llvm::dwarf::DW_TAG_typedef)
         {
-            die = dwarf_type(die);
+            die = absim::dwarf_type(die);
         }
         else
             break;
@@ -50,7 +50,7 @@ static llvm::DWARFDie remove_cv_typedefs_die(llvm::DWARFDie die)
 static bool do_var_row(
     int id,
     char const* name, bool root, bool local,
-    dwarf_span mem, bool text, llvm::DWARFDie die,
+    absim::dwarf_span mem, bool text, llvm::DWARFDie die,
     uint32_t bit_offset = 0, uint32_t bit_size = 0)
 {
     using namespace ImGui;
@@ -124,9 +124,9 @@ static bool do_var_row(
             TextUnformatted(t.c_str());
             if(IsItemHovered() && BeginTooltip())
             {
-                t = dwarf_value_string(die, mem, bit_offset, bit_size, dwarf_value_base::hex);
+                t = dwarf_value_string(die, mem, bit_offset, bit_size, absim::dwarf_value_base::hex);
                 Text("Hex: %s", t.c_str());
-                t = dwarf_value_string(die, mem, bit_offset, bit_size, dwarf_value_base::bin);
+                t = dwarf_value_string(die, mem, bit_offset, bit_size, absim::dwarf_value_base::bin);
                 Text("Bin: %s", t.c_str());
                 EndTooltip();
             }
@@ -135,7 +135,7 @@ static bool do_var_row(
 
     if(TableSetColumnIndex(2))
     {
-        t = dwarf_type_string(die);
+        t = absim::dwarf_type_string(die);
         if(t.empty())
             TextDisabled("???");
         else
@@ -152,19 +152,19 @@ static bool do_var_row(
         {
             int child_id = 0;
 			Indent(GetTreeNodeToLabelSpacing());
-            for(auto const& child : dwarf_members(resolved_die))
+            for(auto const& child : absim::dwarf_members(resolved_die))
             {
                 do_var_row(
-                    child_id++, dwarf_name(child.die).c_str(), false, local,
-                    mem.offset(child.offset), text, dwarf_type(child.die),
+                    child_id++, absim::dwarf_name(child.die).c_str(), false, local,
+                    mem.offset(child.offset), text, absim::dwarf_type(child.die),
                     child.bit_offset, child.bit_size);
             }
 			Unindent(GetTreeNodeToLabelSpacing());
         }
         if(tree_type == T_ARRAY)
         {
-            auto type = dwarf_type(resolved_die);
-            auto size = dwarf_size(type);
+            auto type = absim::dwarf_type(resolved_die);
+            auto size = absim::dwarf_size(type);
             std::string name;
 
             //n = std::min<uint32_t>(n, 8);
@@ -172,7 +172,7 @@ static bool do_var_row(
             for(uint32_t i = 0; i < n; ++i)
             {
                 auto child_mem = mem.offset(i * size);
-                auto v = dwarf_array_index(resolved_die, i);
+                auto v = absim::dwarf_array_index(resolved_die, i);
                 if(v.empty()) continue;
                 name.clear();
                 for(auto n : v)
@@ -203,11 +203,11 @@ static bool do_global(
 
     auto type = cu->getDIEForOffset(g.type);
 
-    dwarf_span mem;
+    absim::dwarf_span mem;
     if(g.text)
-        mem = to_dwarf_span(arduboy.cpu.prog);
+        mem = absim::to_dwarf_span(arduboy.cpu.prog);
     else
-        mem = to_dwarf_span(arduboy.cpu.data);
+        mem = absim::to_dwarf_span(arduboy.cpu.data);
 
     return do_var_row(id, name.c_str(), true, false, mem.offset(g.addr), g.text, type);
 }
@@ -217,7 +217,7 @@ struct local_var_t
     std::string name;
     uint32_t id;
     llvm::DWARFDie type;
-    dwarf_var_data var_data;
+    absim::dwarf_var_data var_data;
 };
 
 static void gather_locals(
@@ -244,7 +244,7 @@ static void gather_locals(
             child.getTag() == llvm::dwarf::DW_TAG_formal_parameter)
         {
             if(ranges.empty()) continue;
-            auto name = dwarf_name(child);
+            auto name = absim::dwarf_name(child);
             auto tag = child.getTag();
             if(auto elocs = child.getLocations(llvm::dwarf::DW_AT_location))
             {
@@ -257,13 +257,13 @@ static void gather_locals(
                     if(!valid) continue;
                     if(loc.Range && (pc < loc.Range->LowPC || pc >= loc.Range->HighPC))
                         continue;
-                    auto type = dwarf_type(child);
-                    auto vd = dwarf_evaluate_location(type, llvm::toStringRef(loc.Expr));
+                    auto type = absim::dwarf_type(child);
+                    auto vd = absim::dwarf_evaluate_location(type, llvm::toStringRef(loc.Expr));
                     if(!vd.data.empty())
                     {
                         locals.resize(locals.size() + 1);
                         auto& local = locals.back();
-                        local.name = dwarf_name(child);
+                        local.name = absim::dwarf_name(child);
                         local.id = (uint32_t)child.getOffset();
                         local.type = type;
                         local.var_data = std::move(vd);
@@ -312,7 +312,7 @@ void window_locals(bool& open)
             {
                 do_var_row(
                     (int)local.id, local.name.c_str(), true, true,
-                    to_dwarf_span(local.var_data.data), false, local.type);
+                    absim::to_dwarf_span(local.var_data.data), false, local.type);
             }
 
             EndTable();

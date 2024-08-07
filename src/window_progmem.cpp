@@ -2,7 +2,7 @@
 #include "imgui_memory_editor.h"
 
 #include "common.hpp"
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #include <fmt/format.h>
 

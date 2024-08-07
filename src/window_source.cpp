@@ -2,7 +2,7 @@
 #include "common.hpp"
 
 #include "ImGuiColorTextEdit/TextEditor.h"
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #include <fstream>
 #include <streambuf>

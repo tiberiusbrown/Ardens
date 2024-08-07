@@ -2,7 +2,7 @@
 #include "imgui_memory_editor.h"
 
 #include "common.hpp"
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #include <fmt/format.h>
 
@@ -48,6 +48,17 @@ static void globals_usage()
     EndTooltip();
 }
 
+static std::string dwarf_value_string_addr(
+    llvm::DWARFDie die, uint32_t addr, bool prog,
+    uint32_t bit_offset, uint32_t bit_size,
+    absim::dwarf_value_base base = absim::dwarf_value_base::dec)
+{
+    absim::dwarf_span mem;
+    if(prog) mem = absim::to_dwarf_span(arduboy.cpu.prog);
+    else     mem = absim::to_dwarf_span(arduboy.cpu.data);
+    return absim::dwarf_value_string(die, mem.offset(addr), bit_offset, bit_size, base);
+}
+
 static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog)
 {
 #ifdef ARDENS_LLVM
@@ -69,33 +80,33 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
         auto* cu = dwarf->getCompileUnitForOffset(g.cu_offset);
         if(!cu) continue;
         type = cu->getDIEForOffset(g.type);
-        if(!(addr >= g.addr && addr < g.addr + dwarf_size(type)))
+        if(!(addr >= g.addr && addr < g.addr + absim::dwarf_size(type)))
             continue;
         name = kv.first.c_str();
         break;
     }
     if(!name) return false;
 
-    dwarf_primitive_t prim;
+    absim::dwarf_primitive_t prim;
     prim.bit_offset = 0;
     prim.bit_size = 0;
     prim.expr = name;
-    if(dwarf_find_primitive(type, offset, prim))
+    if(absim::dwarf_find_primitive(type, offset, prim))
     {
         ImGui::Text("0x%04x: %s", addr, prim.expr.c_str());
-        if(dwarf_size(prim.die) > 1)
+        if(absim::dwarf_size(prim.die) > 1)
         {
             ImGui::SameLine(0.f, 0.f);
             ImGui::Text(" [offset %d]", (int)prim.offset);
         }
         ImGui::Separator();
-        auto type_str = dwarf_type_string(prim.die);
+        auto type_str = absim::dwarf_type_string(prim.die);
         if(prim.bit_size != 0)
             type_str += fmt::format(" : {}", prim.bit_size);
         ImGui::Text("Type:   %s", type_str.c_str());
-        ImGui::Text("Value:  %s", dwarf_value_string(
+        ImGui::Text("Value:  %s", dwarf_value_string_addr(
             prim.die, addr - prim.offset, prog, prim.bit_offset, prim.bit_size).c_str());
-        auto size = dwarf_size(prim.die);
+        auto size = absim::dwarf_size(prim.die);
         if(size <= 4)
         {
             ImGui::Text("Raw:    0x");
@@ -121,7 +132,7 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
             }
         }
     }
-    else if(dwarf_size(type) <= 1)
+    else if(absim::dwarf_size(type) <= 1)
         ImGui::Text("0x%04x: %s", addr, sym.name.c_str());
     else
         ImGui::Text("0x%04x: %s [offset %d]", addr, sym.name.c_str(), (int)offset);

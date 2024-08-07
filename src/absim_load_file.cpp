@@ -32,7 +32,7 @@
 #include <llvm/DebugInfo/DWARF/DWARFDebugAbbrev.h>
 #include <llvm/Demangle/Demangle.h>
 #include <llvm/Object/ELFObjectFile.h>
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif

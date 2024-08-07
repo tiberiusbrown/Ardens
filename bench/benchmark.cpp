@@ -17,7 +17,7 @@ void save_screenshot(absim::arduboy_t const& a, std::string const& fname)
     stbi_write_png(fname.c_str(), 128, 64, 1, a.display.filtered_pixels.data(), 128 * 1);
 }
 
-static void bench(benchmark::State& state, std::string const& fname)
+static void bench(benchmark::State& state, std::string const& fname, bool prof = false)
 {
     constexpr uint64_t MS = 1'000'000'000ull;
 
@@ -58,6 +58,7 @@ static void bench(benchmark::State& state, std::string const& fname)
         arduboy.cpu.data[0x23] = pinb;
         arduboy.cpu.data[0x2c] = pine;
         arduboy.cpu.data[0x2f] = pinf;
+        arduboy.profiler_enabled = prof;
         state.ResumeTiming();
         arduboy.advance(100 * MS);
     }
@@ -79,5 +80,22 @@ BENCHMARK_CAPTURE(bench, ardugolf, "ardugolf.hex")
 ->Unit(benchmark::kMillisecond)
 ->MinTime(3.0)
 ;
+
+#ifndef ARDENS_NO_DEBUGGER
+BENCHMARK_CAPTURE(bench, ReturnOfTheArdu_nomerged, "ReturnOfTheArdu.arduboy", true)
+->Unit(benchmark::kMillisecond)
+->MinTime(3.0)
+;
+
+BENCHMARK_CAPTURE(bench, racing_game_nomerged, "racing_game.hex", true)
+->Unit(benchmark::kMillisecond)
+->MinTime(3.0)
+;
+
+BENCHMARK_CAPTURE(bench, ardugolf_nomerged, "ardugolf.hex", true)
+->Unit(benchmark::kMillisecond)
+->MinTime(3.0)
+;
+#endif
 
 BENCHMARK_MAIN();
