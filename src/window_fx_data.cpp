@@ -30,9 +30,9 @@ static int hex_value(char const* c)
 static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
 {
     bool r = false;
-    if(off + arduboy->fx.min_page * 256 == arduboy->fx.current_addr)
+    if(off + arduboy.fx.min_page * 256 == arduboy.fx.current_addr)
     {
-        if(arduboy->fx.reading || arduboy->fx.programming)
+        if(arduboy.fx.reading || arduboy.fx.programming)
         {
             color = IM_COL32(40, 160, 40, 255);
             r = true;
@@ -47,12 +47,12 @@ void window_fx_data(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("FX Data", &open) && arduboy)
+    if(Begin("FX Data", &open))
     {
         if(autopage || !*minpagebuf)
-            snprintf(minpagebuf, sizeof(minpagebuf), "%04x", arduboy->fx.min_page);
+            snprintf(minpagebuf, sizeof(minpagebuf), "%04x", arduboy.fx.min_page);
         if(autopage || !*maxpagebuf)
-            snprintf(maxpagebuf, sizeof(maxpagebuf), "%04x", arduboy->fx.max_page);
+            snprintf(maxpagebuf, sizeof(maxpagebuf), "%04x", arduboy.fx.max_page);
 
         float tw = CalcTextSize("FFFF").x + GetStyle().FramePadding.x * 2;
         AlignTextToFramePadding();
@@ -85,18 +85,18 @@ void window_fx_data(bool& open)
         Checkbox("Auto", &autopage);
         if(autopage)
         {
-            minpage = arduboy->fx.min_page;
-            maxpage = arduboy->fx.max_page;
+            minpage = arduboy.fx.min_page;
+            maxpage = arduboy.fx.max_page;
         }
 
         SameLine();
         if(Button("Reset all data"))
         {
-            arduboy->fx.erase_all_data();
-            arduboy->fxdata.clear();
-            arduboy->fxsave.clear();
-            arduboy->update_game_hash();
-            arduboy->reset();
+            arduboy.fx.erase_all_data();
+            arduboy.fxdata.clear();
+            arduboy.fxsave.clear();
+            arduboy.update_game_hash();
+            arduboy.reset();
             load_savedata();
         }
 
@@ -107,8 +107,16 @@ void window_fx_data(bool& open)
             memed_fx.GotoAddr = (size_t)(fx_data_scroll_addr - minpage * 256);
         fx_data_scroll_addr = -1;
         memed_fx.HighlightFn = highlight_func;
+        memed_fx.ReadFn = [](ImU8 const* data, size_t off) {
+            (void)data;
+            return arduboy.fx.read_byte(off + minpage * 256);
+        };
+        memed_fx.WriteFn = [](ImU8* data, size_t off, ImU8 d) {
+            (void)data;
+            arduboy.fx.write_byte(off + minpage * 256, d);
+        };
         memed_fx.DrawContents(
-            arduboy->fx.data.data() + minpage * 256,
+            nullptr,
             size_t((maxpage - minpage + 1) * 256),
             minpage * 256);
     }

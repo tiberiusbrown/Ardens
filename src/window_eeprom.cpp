@@ -11,11 +11,11 @@ void window_eeprom(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("EEPROM", &open) && arduboy->cpu.decoded)
+    if(Begin("EEPROM", &open) && arduboy.cpu.decoded)
     {
         memed_eeprom.DrawContents(
-            arduboy->cpu.eeprom.data(),
-            arduboy->cpu.eeprom.size());
+            arduboy.cpu.eeprom.data(),
+            arduboy.cpu.eeprom.size());
     }
     End();
 }

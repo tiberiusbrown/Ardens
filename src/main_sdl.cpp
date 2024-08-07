@@ -118,7 +118,7 @@ uint64_t platform_get_ms_dt()
 void platform_send_sound()
 {
     std::vector<int16_t> buf;
-    buf.swap(arduboy->cpu.sound_buffer);
+    buf.swap(arduboy.cpu.sound_buffer);
     constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
     size_t num_bytes = buf.size() * SAMPLE_SIZE;
     uint32_t queued_bytes = SDL_GetAudioStreamQueued(audio_stream);
@@ -369,7 +369,7 @@ int main(int argc, char** argv)
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy->load_file(value, f, save);
+                dropfile_err = arduboy.load_file(value, f, save);
                 autoset_from_device_type();
                 if(dropfile_err.empty())
                 {

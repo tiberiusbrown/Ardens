@@ -10,11 +10,56 @@ namespace absim
 
 void w25q128_t::erase_all_data()
 {
-    memset(&data, 0xff, sizeof(data));
-    memcpy(
-        &data, ARDENS_BOOT_FLASHCART,
-        std::min(sizeof(data), sizeof(ARDENS_BOOT_FLASHCART)));
+    for(auto& s : sectors) s.reset();
+    write_bytes(0, ARDENS_BOOT_FLASHCART, sizeof(ARDENS_BOOT_FLASHCART));
     sectors_modified.reset();
+}
+
+uint8_t w25q128_t::read_byte(size_t addr)
+{
+    size_t sector_index = addr / SECTOR_BYTES;
+    size_t byte_index = addr % SECTOR_BYTES;
+    auto& sector = sectors[sector_index];
+    return sector ? (*sector)[byte_index] : 0xff;
+}
+
+void w25q128_t::write_byte(size_t addr, uint8_t data)
+{
+    size_t sector_index = addr / SECTOR_BYTES;
+    size_t byte_index = addr % SECTOR_BYTES;
+    auto& sector = sectors[sector_index];
+    if(!sector)
+    {
+        sector = std::make_unique<sector_t>();
+        memset(sector->data(), 0xff, SECTOR_BYTES);
+    }
+    (*sector)[byte_index] = data;
+}
+
+void w25q128_t::program_byte(size_t addr, uint8_t data)
+{
+    write_byte(addr, read_byte(addr) & data);
+}
+
+void w25q128_t::write_bytes(size_t addr, uint8_t const* data, size_t bytes)
+{
+    while(bytes > 0)
+    {
+        size_t sector_index = addr / SECTOR_BYTES;
+        size_t byte_index = addr % SECTOR_BYTES;
+        size_t num_bytes = std::min<size_t>(SECTOR_BYTES - byte_index, bytes);
+        auto& sector = sectors[sector_index];
+        if(!sector)
+        {
+            sector = std::make_unique<sector_t>();
+            if(num_bytes < SECTOR_BYTES)
+                memset(sector->data(), 0xff, SECTOR_BYTES);
+        }
+        memcpy(sector->data() + byte_index, data, num_bytes);
+        bytes -= num_bytes;
+        addr += num_bytes;
+        data += num_bytes;
+    }
 }
 
 void w25q128_t::reset()
@@ -97,7 +142,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
         if(reading >= 4)
         {
             //track_page();
-            data_to_send = data[current_addr];
+            data_to_send = read_byte(current_addr);
             ++current_addr;
             current_addr &= 0xffffff;
         }
@@ -110,7 +155,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
             uint32_t page = current_addr & 0xffff00;
             sectors_modified.set(current_addr >> 12);
             sectors_dirty = true;
-            data[current_addr] &= byte;
+            program_byte(current_addr, byte);
             ++current_addr;
             current_addr = page | (current_addr & 0xff);
             data_to_send = 0;
@@ -138,7 +183,8 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
         {
             current_addr &= 0xfff000;
             track_page();
-            memset(&data[current_addr], 0xff, 0x1000);
+            auto& sector = sectors[current_addr / SECTOR_BYTES];
+            memset(sector->data(), 0xff, SECTOR_BYTES);
             sectors_modified.set(current_addr >> 12);
             sectors_dirty = true;
             busy_ps_rem = 100ull * 1000 * 1000 * 1000; // 100 ms

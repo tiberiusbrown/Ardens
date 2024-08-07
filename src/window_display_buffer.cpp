@@ -17,7 +17,7 @@ static int hex_value(char c)
 static void update_display_buffer_texture()
 {
     if(display_buffer_addr < 0) return;
-    if(display_buffer_addr >= arduboy->cpu.data.size()) return;
+    if(display_buffer_addr >= arduboy.cpu.data.size()) return;
 
     static uint8_t pixels[128 * 64 * 4];
     uint8_t* bpixels = (uint8_t*)pixels;
@@ -30,9 +30,9 @@ static void update_display_buffer_texture()
         {
             size_t n = (size_t)display_buffer_addr + (i / 8) * display_buffer_w + j;
             uint8_t pi = 128;
-            if(n < arduboy->cpu.data.size())
+            if(n < arduboy.cpu.data.size())
             {
-                uint8_t d = arduboy->cpu.data[n];
+                uint8_t d = arduboy.cpu.data[n];
                 pi = (d & (1 << (i % 8))) ? 255 : 0;
             }
             *bpixels++ = pi;
@@ -51,7 +51,7 @@ void window_display_buffer(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Display Buffer (RAM)", &open) && arduboy->cpu.decoded)
+    if(Begin("Display Buffer (RAM)", &open) && arduboy.cpu.decoded)
     {
         AlignTextToFramePadding();
         TextUnformatted("Address: 0x");
@@ -70,14 +70,14 @@ void window_display_buffer(bool& open)
             char* b = addr_buf;
             while(*b != 0)
                 a = (a << 4) + hex_value(*b++);
-            if(a >= 0 && a < arduboy->cpu.prog.size())
+            if(a >= 0 && a < arduboy.cpu.prog.size())
                 display_buffer_addr = a;
         }
-        if(arduboy->elf)
+        if(arduboy.elf)
         {
             if(display_buffer_addr < 0)
             {
-                for(auto const& kv : arduboy->elf->data_symbols)
+                for(auto const& kv : arduboy.elf->data_symbols)
                 {
                     if(kv.second.name != "Arduboy2Base::sBuffer") continue;
                     display_buffer_addr = kv.first;
@@ -88,9 +88,9 @@ void window_display_buffer(bool& open)
             SetNextItemWidth(GetContentRegionAvail().x);
             if(BeginCombo("##symbol", "Symbol...", ImGuiComboFlags_HeightLarge))
             {
-                for(uint16_t addr : arduboy->elf->data_symbols_sorted)
+                for(uint16_t addr : arduboy.elf->data_symbols_sorted)
                 {
-                    auto const& sym = arduboy->elf->data_symbols[addr];
+                    auto const& sym = arduboy.elf->data_symbols[addr];
                     if(sym.weak || sym.notype) continue;
                     if(Selectable(sym.name.c_str()))
                     {

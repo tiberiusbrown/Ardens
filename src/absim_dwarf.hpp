@@ -21,6 +21,9 @@
 #pragma warning(pop) 
 #endif
 
+namespace absim
+{
+
 struct dwarf_span
 {
     uint8_t const* begin;
@@ -76,11 +79,6 @@ std::string dwarf_type_string(llvm::DWARFDie die);
 enum class dwarf_value_base { dec, bin, hex };
 
 std::string dwarf_value_string(
-    llvm::DWARFDie die, uint32_t addr, bool prog,
-    uint32_t bit_offset = 0, uint32_t bit_size = 0,
-    dwarf_value_base base = dwarf_value_base::dec);
-
-std::string dwarf_value_string(
     llvm::DWARFDie die, dwarf_span mem,
     uint32_t bit_offset = 0, uint32_t bit_size = 0,
     dwarf_value_base base = dwarf_value_base::dec);
@@ -113,5 +111,7 @@ bool dwarf_find_primitive(llvm::DWARFDie die, uint32_t offset, dwarf_primitive_t
 std::string dwarf_function_args_string(llvm::DWARFDie die);
 
 int recurse_varname(std::string& expr, uint16_t offset, llvm::DWARFDie die);
+
+}
 
 #endif

@@ -237,17 +237,29 @@ void retro_run()
     }
 }
 
+static size_t compute_serialize_size()
+{
+    std::ostringstream ss;
+    arduboy->save_savestate(ss);
+    size_t size = ss.str().size();
+
+    // calculate the theoretical maximum serialize size:
+    // if all fx sectors are present (each sector is 4097 bytes serialized)
+    size_t num_sectors = 0;
+    for(auto const& s : arduboy->fx.sectors)
+        if(s) ++num_sectors;
+    num_sectors = std::min<size_t>(num_sectors, 4096);
+    size += (4096 - num_sectors) * 4097;
+
+    func_log(RETRO_LOG_INFO, "Calculated serialize size: %u\n", (unsigned)size);
+    return size;
+}
+
 size_t retro_serialize_size()
 {
     static size_t size = size_t(-1);
     if(size == size_t(-1))
-    {
-        std::ostringstream ss;
-        arduboy->save_savestate(ss);
-        size = ss.str().size();
-        func_log(RETRO_LOG_INFO, "Calculated serialize size: %u\n", (unsigned)size);
-    }
-    func_log(RETRO_LOG_INFO, "Save size: %u\n", (unsigned)size);
+        size = compute_serialize_size();
     return size;
 }
 

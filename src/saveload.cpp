@@ -16,7 +16,7 @@ static uint64_t need_save_time;
 std::string savedata_filename()
 {
     char buf[128];
-    snprintf(buf, sizeof(buf), "absim_%" PRIx64 ".save", arduboy->game_hash);
+    snprintf(buf, sizeof(buf), "absim_%" PRIx64 ".save", arduboy.game_hash);
     return (userpath / buf).generic_string();
 }
 
@@ -27,17 +27,17 @@ void load_savedata()
     if(!f.fail())
     {
         printf("Loaded %s\n", fname.c_str());
-        arduboy->load_savedata(f);
+        arduboy.load_savedata(f);
     }
 }
 
 void check_save_savedata()
 {
-    if(arduboy->savedata_dirty)
+    if(arduboy.savedata_dirty)
     {
         need_save = true;
         need_save_time = ms_since_start + SAVE_INTERVAL_MS;
-        arduboy->savedata_dirty = false;
+        arduboy.savedata_dirty = false;
     }
 
     if(need_save && ms_since_start >= need_save_time)
@@ -47,7 +47,7 @@ void check_save_savedata()
         std::ofstream f(fname, std::ios::out | std::ios::binary);
         if(!f.fail())
         {
-            arduboy->save_savedata(f);
+            arduboy.save_savedata(f);
             f.close();
 #ifdef __EMSCRIPTEN__
             EM_ASM(

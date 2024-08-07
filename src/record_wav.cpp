@@ -16,8 +16,8 @@ void send_wav_audio()
     if(!wav_recording) return;
     af.samples[0].insert(
         af.samples[0].end(),
-        arduboy->cpu.sound_buffer.begin(),
-        arduboy->cpu.sound_buffer.end());
+        arduboy.cpu.sound_buffer.begin(),
+        arduboy.cpu.sound_buffer.end());
 }
 
 void wav_recording_toggle()

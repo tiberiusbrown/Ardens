@@ -53,7 +53,7 @@ constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 
 using texture_t = void*;
 
-extern std::unique_ptr<absim::arduboy_t> arduboy;
+extern absim::arduboy_t arduboy;
 extern int display_texture_zoom;
 extern texture_t display_texture;
 extern texture_t display_buffer_texture;

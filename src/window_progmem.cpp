@@ -2,7 +2,7 @@
 #include "imgui_memory_editor.h"
 
 #include "common.hpp"
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #include <fmt/format.h>
 
@@ -10,7 +10,7 @@ static MemoryEditor memed;
 
 static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
 {
-    if(auto const* sym = arduboy->symbol_for_prog_addr((uint16_t)off))
+    if(auto const* sym = arduboy.symbol_for_prog_addr((uint16_t)off))
     {
         if(sym->object)
         {
@@ -25,7 +25,7 @@ static void hover_func(ImU8 const* data, size_t off)
 {
     (void)data;
     using namespace ImGui;
-    auto const* sym = arduboy->symbol_for_prog_addr((uint16_t)off);
+    auto const* sym = arduboy.symbol_for_prog_addr((uint16_t)off);
     BeginTooltip();
     if(sym)
         symbol_tooltip((uint16_t)off, *sym, true);
@@ -53,11 +53,11 @@ void window_progmem(bool& open)
     if(open)
     {
         SetNextWindowSize({ 200 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-        if(Begin("PROGMEM Space", &open) && arduboy->cpu.decoded)
+        if(Begin("PROGMEM Space", &open) && arduboy.cpu.decoded)
         {
             memed.DrawContents(
-                arduboy->cpu.prog.data(),
-                arduboy->cpu.prog.size());
+                arduboy.cpu.prog.data(),
+                arduboy.cpu.prog.size());
         }
         End();
     }

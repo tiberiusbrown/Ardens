@@ -91,8 +91,12 @@ static char const* get_instr_name(avr_instr_t const& i)
             };
             return NAMES[i.src & 0x7];
         }
-        case INSTR_LDD_STD:
-            return (i.word & 0x200) ? "std" : "ldd";
+        case INSTR_LDD_Y:
+        case INSTR_LDD_Z:
+            return "ldd";
+        case INSTR_STD_Y:
+        case INSTR_STD_Z:
+            return "std";
         case INSTR_LD_ST:
         case INSTR_LD_X:
         case INSTR_LD_Y:
@@ -229,7 +233,10 @@ void disassemble_instr(avr_instr_t const& i, disassembled_instr_t& d)
         d.arg0.val = i.word;
         break;
 
-    case INSTR_LDD_STD:
+    case INSTR_LDD_Y:
+    case INSTR_LDD_Z:
+    case INSTR_STD_Y:
+    case INSTR_STD_Z:
     {
         auto reg_type = disassembled_instr_arg_t::type::PTR_REG_OFFSET;
         if(i.dst == 0)
