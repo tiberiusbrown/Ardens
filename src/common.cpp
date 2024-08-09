@@ -70,7 +70,7 @@ std::filesystem::path userpath;
 
 texture_t display_texture{};
 texture_t display_buffer_texture{};
-std::unique_ptr<absim::arduboy_t> arduboy;
+absim::arduboy_t arduboy;
 
 int profiler_selected_hotspot = -1;
 int disassembly_scroll_addr = -1;
@@ -108,9 +108,9 @@ static std::string flashcart_error;
 
 static void flashcart_fetch_callback(sfetch_response_t const* r)
 {
-    if(r->fetched && arduboy)
+    if(r->fetched)
     {
-        flashcart_error = arduboy->load_flashcart_zip(
+        flashcart_error = arduboy.load_flashcart_zip(
             (uint8_t const*)r->data.ptr, r->data.size);
     }
     else if(r->finished)
@@ -174,7 +174,7 @@ extern "C" int load_file(
 {
     std::istrstream f((char const*)data, size);
     bool save = !strcmp(param, "save");
-    dropfile_err = arduboy->load_file(filename, f, save);
+    dropfile_err = arduboy.load_file(filename, f, save);
     autoset_from_device_type();
     if(dropfile_err.empty())
     {
@@ -448,8 +448,7 @@ void init()
 
     printf("Data path: %s\n", userpath.generic_string().c_str());
 
-    arduboy = std::make_unique<absim::arduboy_t>();
-    arduboy->display.type = absim::display_t::SSD1306;
+    arduboy.display.type = absim::display_t::SSD1306;
 
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::CreateContext();
@@ -479,11 +478,11 @@ void init()
 
     default_style = style;
 
-    arduboy->fx.erase_all_data();
-    arduboy->cpu.adc_nondeterminism = settings.nondeterminism;
-    arduboy->reset();
-    arduboy->fx.min_page = 0xffff;
-    arduboy->fx.max_page = 0xffff;
+    arduboy.fx.erase_all_data();
+    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
+    arduboy.reset();
+    arduboy.fx.min_page = 0xffff;
+    arduboy.fx.max_page = 0xffff;
 
     ms_since_start = 0;
     ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
@@ -554,14 +553,14 @@ void take_snapshot()
         ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
 #ifdef __EMSCRIPTEN__
     std::ofstream f("ardens.snapshot", std::ios::binary);
-    if(arduboy->save_snapshot(f))
+    if(arduboy.save_snapshot(f))
     {
         f.close();
         file_download("ardens.snapshot", fname, "application/octet-stream");
     }
 #else
     std::ofstream f(fname, std::ios::binary);
-    arduboy->save_snapshot(f);
+    arduboy.save_snapshot(f);
 #endif
 #endif
 }
@@ -569,8 +568,8 @@ void take_snapshot()
 std::string preferred_title()
 {
 #ifdef ARDENS_DIST
-    if(arduboy && !arduboy->title.empty())
-        return arduboy->title;
+    if(arduboy && !arduboy.title.empty())
+        return arduboy.title;
 #endif
     return ARDENS_TITLE;
 }
@@ -581,7 +580,7 @@ void frame_logic()
 
     ImGuiIO& io = ImGui::GetIO();
 
-    arduboy->cpu.adc_nondeterminism = settings.nondeterminism;
+    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
     if(!touch_points.empty())
         ms_since_touch = 0;
 
@@ -598,7 +597,7 @@ void frame_logic()
     ms_since_start += dt;
     ms_since_touch += dt;
     if(dt > 100) dt = 100;
-    if(!arduboy->paused)
+    if(!arduboy.paused)
     {
         // PINF: 4,5,6,7=D,L,R,U
         // PINE: 6=A
@@ -640,50 +639,50 @@ void frame_logic()
                 touch.btns[TOUCH_B])
                 pinb &= ~0x10;
 
-            arduboy->cpu.data[0x23] = pinb;
-            arduboy->cpu.data[0x2c] = pine;
-            arduboy->cpu.data[0x2f] = pinf;
+            arduboy.cpu.data[0x23] = pinb;
+            arduboy.cpu.data[0x2c] = pine;
+            arduboy.cpu.data[0x2f] = pinf;
         }
 
-        bool prev_paused = arduboy->paused;
-        arduboy->frame_bytes_total = 1024;
+        bool prev_paused = arduboy.paused;
+        arduboy.frame_bytes_total = 1024;
 
-        arduboy->cpu.enabled_autobreaks.reset();
+        arduboy.cpu.enabled_autobreaks.reset();
 #ifndef ARDENS_NO_GUI
-        arduboy->cpu.enabled_autobreaks.set(absim::AB_BREAK);
+        arduboy.cpu.enabled_autobreaks.set(absim::AB_BREAK);
         for(int i = 1; i < absim::AB_NUM; ++i)
             if(settings.ab.index(i))
-                arduboy->cpu.enabled_autobreaks.set(i);
+                arduboy.cpu.enabled_autobreaks.set(i);
 #endif
 
-        arduboy->allow_nonstep_breakpoints =
-            arduboy->break_step == 0xffffffff || settings.enable_step_breaks;
-        arduboy->display.enable_filter = settings.display_auto_filter;
+        arduboy.allow_nonstep_breakpoints =
+            arduboy.break_step == 0xffffffff || settings.enable_step_breaks;
+        arduboy.display.enable_filter = settings.display_auto_filter;
 
-        arduboy->display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy->display.ref_segment_current = 0.195f;
+        arduboy.display.enable_current_limiting = (settings.display_current_modeling != 0);
+        arduboy.display.ref_segment_current = 0.195f;
         switch(settings.display_current_modeling)
         {
-        case 0:  arduboy->display.current_limit_slope = 0.f;   break;
-        case 1:  arduboy->display.current_limit_slope = 0.75f; break;
-        case 2:  arduboy->display.current_limit_slope = 0.45f; break;
-        case 3:  arduboy->display.current_limit_slope = 0.f;   break;
-        default: arduboy->display.current_limit_slope = 0.f;   break;
+        case 0:  arduboy.display.current_limit_slope = 0.f;   break;
+        case 1:  arduboy.display.current_limit_slope = 0.75f; break;
+        case 2:  arduboy.display.current_limit_slope = 0.45f; break;
+        case 3:  arduboy.display.current_limit_slope = 0.f;   break;
+        default: arduboy.display.current_limit_slope = 0.f;   break;
         }
 
         switch(settings.fxport)
         {
         case FXPORT_D1:
-            arduboy->fxport_reg = 0x2b;
-            arduboy->fxport_mask = 1 << 1;
+            arduboy.fxport_reg = 0x2b;
+            arduboy.fxport_mask = 1 << 1;
             break;
         case FXPORT_D2:
-            arduboy->fxport_reg = 0x2b;
-            arduboy->fxport_mask = 1 << 2;
+            arduboy.fxport_reg = 0x2b;
+            arduboy.fxport_mask = 1 << 2;
             break;
         case FXPORT_E2:
-            arduboy->fxport_reg = 0x2e;
-            arduboy->fxport_mask = 1 << 2;
+            arduboy.fxport_reg = 0x2e;
+            arduboy.fxport_mask = 1 << 2;
             break;
         default:
             break;
@@ -692,13 +691,13 @@ void frame_logic()
         switch(settings.display)
         {
         case DISPLAY_SSD1306:
-            arduboy->display.type = absim::display_t::SSD1306;
+            arduboy.display.type = absim::display_t::SSD1306;
             break;
         case DISPLAY_SSD1309:
-            arduboy->display.type = absim::display_t::SSD1309;
+            arduboy.display.type = absim::display_t::SSD1309;
             break;
         case DISPLAY_SH1106:
-            arduboy->display.type = absim::display_t::SH1106;
+            arduboy.display.type = absim::display_t::SH1106;
             break;
         default:
             break;
@@ -712,7 +711,7 @@ void frame_logic()
             uint64_t ps = DT_20_MS - gif_ps_rem;
             while(dtps >= ps)
             {
-                arduboy->advance(ps);
+                arduboy.advance(ps);
                 send_gif_frame(2, recording_pixels(false));
                 dtps -= ps;
                 ps = DT_20_MS;
@@ -721,45 +720,45 @@ void frame_logic()
             gif_ps_rem += dtps;
         }
         if(dtps > 0)
-            arduboy->advance(dtps * SPEEDUP);
+            arduboy.advance(dtps * SPEEDUP);
 
         check_save_savedata();
 
-        if(arduboy->paused && !prev_paused)
-            disassembly_scroll_addr = arduboy->cpu.pc * 2;
+        if(arduboy.paused && !prev_paused)
+            disassembly_scroll_addr = arduboy.cpu.pc * 2;
         //if(!settings.enable_stack_breaks)
-        //    arduboy->cpu.stack_overflow = false;
+        //    arduboy.cpu.stack_overflow = false;
 
         // consume sound buffer
         send_wav_audio();
         process_sound_samples();
 #if !PROFILING
-        if(!arduboy->cpu.sound_buffer.empty() && simulation_slowdown == 1000)
+        if(!arduboy.cpu.sound_buffer.empty() && simulation_slowdown == 1000)
             platform_send_sound();
 #endif
-        arduboy->cpu.sound_buffer.clear();
+        arduboy.cpu.sound_buffer.clear();
     }
     else
     {
-        arduboy->break_step = 0xffffffff;
+        arduboy.break_step = 0xffffffff;
     }
 
     // update framebuffer texture
-    if(arduboy->cpu.decoded)
+    if(arduboy.cpu.decoded)
     {
         recreate_display_texture();
         int z = display_texture_zoom;
         std::vector<uint8_t> pixels;
         pixels.resize(128 * 64 * 4 * z * z);
-        scalenx(pixels.data(), arduboy->display.filtered_pixels.data(), true);
+        scalenx(pixels.data(), arduboy.display.filtered_pixels.data(), true);
         platform_update_texture(display_texture, pixels.data(), pixels.size());
 
 #if ALLOW_SCREENSHOTS
-        if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
+        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
             take_snapshot();
-        if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
             save_screenshot();
-        if(arduboy->cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
+        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
             toggle_recording();
 #endif
     }
@@ -777,11 +776,11 @@ void frame_logic()
 
 #ifndef ARDENS_NO_DEBUGGER
     if(ImGui::IsKeyPressed(ImGuiKey_F5, false))
-        arduboy->paused = !arduboy->paused;
+        arduboy.paused = !arduboy.paused;
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
     {
-        arduboy->reset();
+        arduboy.reset();
         load_savedata();
     }
 
@@ -810,7 +809,7 @@ void imgui_content()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    if(!arduboy->cpu.decoded)
+    if(!arduboy.cpu.decoded)
     {
         auto* d = ImGui::GetBackgroundDrawList();
         auto size = ImGui::GetMainViewport()->Size;
@@ -921,7 +920,7 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-    if(arduboy->cpu.should_autobreak_gui())
+    if(arduboy.cpu.should_autobreak_gui())
         ImGui::OpenPopup("Auto-Break");
 
     static std::array<char const*, absim::AB_NUM> const AB_REASONS =
@@ -945,7 +944,7 @@ void imgui_content()
         ImGuiWindowFlags_NoSavedSettings))
     {
         size_t ab = 0;
-        auto mask = arduboy->cpu.autobreaks & arduboy->cpu.enabled_autobreaks;
+        auto mask = arduboy.cpu.autobreaks & arduboy.cpu.enabled_autobreaks;
         for(size_t i = 1; i < mask.size(); ++i)
         {
             if(mask.test(i))
@@ -962,7 +961,7 @@ void imgui_content()
         ImGui::PopTextWrapPos();
         if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         {
-            arduboy->cpu.autobreaks = 0;
+            arduboy.cpu.autobreaks = 0;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

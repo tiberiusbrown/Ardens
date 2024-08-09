@@ -172,7 +172,10 @@ static void decode_instr(avr_instr_t& i, uint16_t w0, uint16_t w1)
         i.src = reg;
         i.dst = q;
         i.word = w0 & 0x0208;
-        i.func = INSTR_LDD_STD;
+        if(w0 & 0x200)
+            i.func = (w0 & 0x8) ? INSTR_STD_Y : INSTR_STD_Z;
+        else
+            i.func = (w0 & 0x8) ? INSTR_LDD_Y : INSTR_LDD_Z;
         return;
     }
 

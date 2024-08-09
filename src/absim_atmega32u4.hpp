@@ -364,10 +364,7 @@ size_t atmega32u4_t::addr_to_disassembled_index(uint16_t addr)
 ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 {
     uint32_t cycles = 1;
-    just_read = 0xffffffff;
-    just_written = 0xffffffff;
     just_interrupted = false;
-    bool single_instr_only = true;
 
     constexpr uint64_t MAX_MERGED_CYCLES = 1024;
 
@@ -375,61 +372,62 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     {
         // not sleeping: execute instruction(s)
 
-        uint64_t next_cycle = peripheral_queue.next_cycle();
-
-        single_instr_only = (
-            next_cycle < cycle_count + MAX_INSTR_CYCLES ||
-            //spi_busy ||
-#ifndef ARDENS_NO_DEBUGGER
-            no_merged ||
-#endif
-            false);
+        int64_t max_merged_cycles = int64_t(
+            peripheral_queue.next_cycle() - cycle_count - MAX_INSTR_CYCLES);
 
 #ifndef ARDENS_NO_DEBUGGER
         executing_instr_pc = pc;
-        constexpr uint16_t last_pc = 0x4000;
 #endif
-        if(single_instr_only)
-        {
+        constexpr uint16_t last_pc = 0x4000;
+        if(max_merged_cycles < 0 ||
 #ifndef ARDENS_NO_DEBUGGER
+            no_merged ||
+#endif
+            false)
+        {
+            just_read = 0xffffffff;
+            just_written = 0xffffffff;
             if(pc >= last_pc)
             {
                 autobreak(AB_OOB_PC);
-                return cycles + 1;
+                return cycles;
             }
-#endif
             auto const& i = decoded_prog[pc];
             prev_sreg = sreg();
             cycles = INSTR_MAP[i.func](*this, i);
+            assert(cycles <= MAX_INSTR_CYCLES);
             cycle_count += cycles;
         }
         else
         {
-            uint64_t max_merged_cycles = std::min<uint64_t>(
-                next_cycle - cycle_count - MAX_INSTR_CYCLES, MAX_MERGED_CYCLES);
             uint64_t tcycles = cycle_count;
-            uint64_t tcycles_max = tcycles + max_merged_cycles;
+            int64_t cycles_max = std::min<uint64_t>(
+                max_merged_cycles, MAX_MERGED_CYCLES);
+
+            // this can happen here because if SREG I-bit is ever changed
+            // it'll break out of the loop anyway
+            prev_sreg = sreg();
+            
+            io_reg_accessed = false;
             do
             {
-#ifndef ARDENS_NO_DEBUGGER
                 if(pc >= last_pc)
                 {
                     autobreak(AB_OOB_PC);
-                    return cycles + 1;
+                    cycles = uint32_t(cycle_count - tcycles);
+                    return cycles;
                 }
-#endif
                 auto const& i = merged_prog[pc];
-                prev_sreg = sreg();
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
+                assert(instr_cycles <= MAX_INSTR_CYCLES);
                 cycle_count += instr_cycles;
-                if(should_autobreak() || just_written < 0x100 || just_read < 0x100)
-                {
-                    // need to check peripherals below
-                    single_instr_only = true;
+                if(io_reg_accessed || should_autobreak())
                     break;
-                }
-            } while(cycle_count < tcycles_max);
+                cycles_max -= instr_cycles;
+            } while((int64_t)cycles_max > 0);
             cycles = uint32_t(cycle_count - tcycles);
+            if(!(should_autobreak() || io_reg_accessed))
+                goto skip_peripheral_updates;
         }
     }
     else if(wakeup_cycles > 0)
@@ -458,13 +456,11 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         uint64_t t = std::max(cycle_count + 1, peripheral_queue.next_cycle());
         t -= cycle_count;
         t = std::min<uint64_t>(t, MAX_MERGED_CYCLES);
-        if(t > 1) --t;
         cycles = (uint32_t)t;
-        single_instr_only = true;
         cycle_count += cycles;
     }
 
-    if(single_instr_only)
+    //if(single_instr_only)
     {
 
         // peripheral updates
@@ -494,6 +490,8 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         }
 
     }
+
+skip_peripheral_updates:
 
     // if interrupts were just enabled, schedule interrupt check for next cycle
     if(~prev_sreg & sreg() & SREG_I)

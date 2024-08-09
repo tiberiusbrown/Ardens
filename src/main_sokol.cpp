@@ -115,7 +115,7 @@ static void app_init()
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy->load_file(value, f, save);
+                dropfile_err = arduboy.load_file(value, f, save);
                 autoset_from_device_type();
                 if(dropfile_err.empty())
                 {
@@ -250,7 +250,7 @@ void platform_set_clipboard_text(char const* str)
 void platform_send_sound()
 {
     std::vector<int16_t> buf;
-    buf.swap(arduboy->cpu.sound_buffer);
+    buf.swap(arduboy.cpu.sound_buffer);
 
     if(saudio_expect() <= 0)
         return;
@@ -288,7 +288,7 @@ void platform_send_sound()
     if(ns < buf.size())
     {
         buf.erase(buf.begin(), buf.begin() + ns);
-        buf.swap(arduboy->cpu.sound_buffer);
+        buf.swap(arduboy.cpu.sound_buffer);
     }
 }
 
