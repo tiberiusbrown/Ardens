@@ -88,22 +88,19 @@ static int image_test(char const* dir, char const* game)
     arduboy->cpu.data[0x2f] = 0xf0;
     advance(1000);
     r |= compare_image(dir, n++);
-    for(int i = 0; i < 2; ++i)
+    for(int i = 0; i < 9; ++i)
     {
         advance(1000);
         arduboy->cpu.data[0x2c] = 0x00;
+        if(i != 0)
+            arduboy->cpu.data[0x2f] = 0xa0;
         advance(100);
         arduboy->cpu.data[0x2c] = 0x40;
-        advance(1000);
-        r |= compare_image(dir, n++);
-    }
-    for(int i = 0; i < 4; ++i)
-    {
+        arduboy->cpu.data[0x2f] = 0xf0;
         advance(1000);
         r |= compare_image(dir, n++);
     }
 
-end:
     printf("   %-30s : %s\n", dir, r ? "FAIL" : "PASS");
 
     return r;
