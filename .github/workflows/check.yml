@@ -164,7 +164,7 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-linux-x64
         path: "build/Ardens_linux_x64.zip"
 
   check_windows_x86:
@@ -203,7 +203,7 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-windows-x86
         path: "Ardens_windows_x86.zip"
   
   check_windows_x64:
@@ -242,7 +242,7 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-windows-x64
         path: "Ardens_windows_x64.zip"
   
   check_macos_x64:
@@ -283,7 +283,7 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-macos-x64
         path: "Ardens_macos_x64.dmg"
   
   check_macos_arm64:
@@ -341,5 +341,5 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-macos-arm64
         path: "Ardens_macos_arm64.dmg"
