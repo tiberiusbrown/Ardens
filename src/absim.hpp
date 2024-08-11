@@ -684,13 +684,14 @@ struct atmega32u4_t
     // sound
     static constexpr int SOUND_CYCLES = 320;
     static constexpr int16_t SOUND_GAIN = 2000;
+    uint64_t sound_prev_cycle;
     uint32_t sound_cycle;
     uint32_t sound_enabled; // bitmask of pins 1 and 2
     bool sound_pwm;
     int16_t sound_pwm_val;
     std::vector<int16_t> sound_buffer;
     static void sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
-    void cycle_sound(uint32_t cycles);
+    void update_sound();
 
     // serial / USB
     std::vector<uint8_t> serial_bytes;
