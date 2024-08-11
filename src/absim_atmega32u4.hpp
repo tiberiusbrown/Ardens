@@ -497,8 +497,6 @@ skip_peripheral_updates:
     if(~prev_sreg & sreg() & SREG_I)
         schedule_interrupt_check();
 
-    cycle_sound(cycles);
-
     return cycles;
 }
 
@@ -509,6 +507,7 @@ void atmega32u4_t::update_all()
     update_timer3();
     update_timer4();
     update_usb();
+    update_sound();
 }
 
 }

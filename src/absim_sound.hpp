@@ -18,8 +18,11 @@ void atmega32u4_t::sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_
     cpu.data[ptr] = x;
 }
     
-ARDENS_FORCEINLINE void atmega32u4_t::cycle_sound(uint32_t cycles)
+ARDENS_FORCEINLINE void atmega32u4_t::update_sound()
 {
+    uint32_t cycles = uint32_t(cycle_count - sound_prev_cycle);
+    sound_prev_cycle = cycle_count;
+
     uint32_t c = sound_cycle + cycles;
     if(c < SOUND_CYCLES)
     {

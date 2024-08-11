@@ -188,6 +188,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.adc_busy);
     ar(a.cpu.adc_nondeterminism);
 
+    ar(a.cpu.sound_prev_cycle);
     ar(a.cpu.sound_cycle);
     ar(a.cpu.sound_enabled);
     ar(a.cpu.sound_pwm);
