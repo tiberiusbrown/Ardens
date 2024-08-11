@@ -78,7 +78,7 @@ static int image_test(char const* dir, char const* game)
     std::ifstream f(std::string(TESTS_DIR "/") + dir + "/" + game, std::ios::binary);
     auto err = arduboy->load_file(game, f);
     int r = 0;
-    if(!err.empty()) { r = 1; goto end; }
+    if(!err.empty()) r = 1;
     arduboy->reset();
 
     int n = 0;
