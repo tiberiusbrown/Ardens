@@ -37,6 +37,7 @@ int main()
     int r = 0;
     arduboy = std::make_unique<absim::arduboy_t>();
 
+    r |= test("float");
     r |= test("instructions");
     r |= test("signature");
     r |= test("timer_tcnt_write");
