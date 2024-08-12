@@ -91,6 +91,7 @@ uint64_t ms_since_start;
 
 uint64_t ms_since_touch;
 bool first_touch = false;
+bool always_touch = false;
 std::unordered_map<uintptr_t, touch_point_t> touch_points;
 
 bool done = false;
@@ -343,6 +344,11 @@ extern "C" int setparam(char const* name, char const* value)
         else
             settings.display = std::clamp<int>(nvalue, 0, DISPLAY_NUM - 1);
         update_settings();
+        r = 1;
+    }
+    else if(!strcmp(name, "touch"))
+    {
+        always_touch = bvalue;
         r = 1;
     }
     else if(!strcmp(name, "loading"))

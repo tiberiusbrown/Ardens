@@ -68,6 +68,7 @@ constexpr float CLEAR_B = 0.10f;
 
 constexpr uint64_t MS_SHOW_TOUCH_CONTROLS = 10000;
 extern bool first_touch;
+extern bool always_touch;
 extern uint64_t ms_since_touch;
 struct touch_point_t { float x, y; };
 extern std::unordered_map<uintptr_t, touch_point_t> touch_points;
