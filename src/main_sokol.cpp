@@ -15,7 +15,7 @@
 #elif defined(_WIN32)
 #define SOKOL_D3D11
 #else
-#define SOKOL_GLCORE33
+#define SOKOL_GLCORE
 #endif
 
 #define SOKOL_IMPL
@@ -45,10 +45,9 @@ static void app_frame()
     frame_logic();
 
     {
-        static uint64_t pt = 0;
         simgui_frame_desc_t desc{};
         desc.delta_time = sapp_frame_duration();
-        desc.dpi_scale = pixel_ratio;
+        desc.dpi_scale = sapp_dpi_scale();
         desc.width = sapp_width();
         desc.height = sapp_height();
         simgui_new_frame(&desc);
@@ -56,10 +55,11 @@ static void app_frame()
 
     imgui_content();
 
-    sg_pass_action action{};
-    action.colors[0].load_action = SG_LOADACTION_CLEAR;
-    action.colors[0].clear_value = { CLEAR_R, CLEAR_G, CLEAR_B, 1.f };
-    sg_begin_default_pass(&action, sapp_width(), sapp_height());
+    sg_pass pass{};
+    pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
+    pass.action.colors[0].clear_value = { CLEAR_R, CLEAR_G, CLEAR_B, 1.f };
+    pass.swapchain = sglue_swapchain();
+    sg_begin_pass(&pass);
 
     simgui_render();
 
@@ -73,7 +73,6 @@ static void app_init()
 
     {
         sg_desc desc{};
-        desc.context = sapp_sgcontext();
         sg_setup(&desc);
     }
 
