@@ -124,6 +124,7 @@ if(EMSCRIPTEN AND NOT ARDENS_LIBRETRO)
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -flto")
     add_link_options("--closure 1")
     add_link_options("-s MODULARIZE=1")
+    add_link_options("-sUSE_WEBGL2=1")
     add_link_options("-flto")
     
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -fno-rtti -fno-exceptions")
