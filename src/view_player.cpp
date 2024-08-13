@@ -235,4 +235,9 @@ void view_player()
             { F1, F1 }, { F2, F2 },
             IM_COL32(255, 0, 0, 128));
     }
+
+#if 0
+    // debug viewport border
+    d->AddRect({ 0, 0 }, size, IM_COL32(255, 0, 0, 255), 0, 0, 4);
+#endif
 }

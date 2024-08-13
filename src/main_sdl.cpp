@@ -184,13 +184,25 @@ static void main_loop()
         if(event.type == SDL_EVENT_DROP_FILE)
         {
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
-            std::ifstream f(event.drop.file, std::ios::binary);
+            std::ifstream f(event.drop.data, std::ios::binary);
             std::vector<uint8_t> fdata(
                 (std::istreambuf_iterator<char>(f)),
                 std::istreambuf_iterator<char>());
-            load_file("", event.drop.file, fdata.data(), fdata.size());
+            load_file("", event.drop.data, fdata.data(), fdata.size());
 #endif
-            SDL_free(event.drop.file);
+            //SDL_free(event.drop.file);
+        }
+        if(event.type == SDL_EVENT_FINGER_DOWN || event.type == SDL_EVENT_FINGER_MOTION)
+        {
+            int w = 0, h = 0;
+            SDL_GetWindowSize(window, &w, &h);
+            first_touch = true;
+            auto& tp = touch_points[event.tfinger.fingerID];
+            tp = { event.tfinger.x * w, event.tfinger.y * h };
+        }
+        if(event.type == SDL_EVENT_FINGER_UP)
+        {
+            touch_points.erase(event.tfinger.fingerID);
         }
     }
 
@@ -210,8 +222,8 @@ static void main_loop()
             if(!SDL_IsGamepad(j[i])) continue;
             auto* g = SDL_OpenGamepad(j[i]);
             if(!g) continue;
-            io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_A         ) != 0);
-            io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_B         ) != 0);
+            io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_SOUTH     ) != 0);
+            io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_EAST      ) != 0);
             io.AddKeyEvent(ImGuiKey_UpArrow   , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_UP   ) != 0);
             io.AddKeyEvent(ImGuiKey_DownArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_DOWN ) != 0);
             io.AddKeyEvent(ImGuiKey_LeftArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_LEFT ) != 0);
@@ -228,31 +240,35 @@ static void main_loop()
 
     SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
     SDL_RenderClear(renderer);
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData());
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
 
 #if ALLOW_SCREENSHOTS && !defined(ARDENS_PLAYER)
     if(ImGui::IsKeyPressed(ImGuiKey_F1, false))
     {
         int w = 0, h = 0;
-        Uint32 format = SDL_PIXELFORMAT_RGB24;
+        SDL_PixelFormat format = SDL_PIXELFORMAT_RGB24;
         SDL_GetWindowSizeInPixels(window, &w, &h);
-        SDL_Surface* ss = SDL_CreateSurface(w, h, format);
-        SDL_RenderReadPixels(renderer, NULL, format, ss->pixels, ss->pitch);
-        char fname[256];
-        time_t rawtime;
-        struct tm* ti;
-        time(&rawtime);
-        ti = localtime(&rawtime);
-        (void)snprintf(fname, sizeof(fname),
-            "window_%04d%02d%02d%02d%02d%02d.png",
-            ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-            ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+        SDL_Surface* rs = SDL_RenderReadPixels(renderer, NULL);
+        SDL_Surface* ss = SDL_ConvertSurface(rs, format);
+        if(ss)
+        {
+            char fname[256];
+            time_t rawtime;
+            struct tm* ti;
+            time(&rawtime);
+            ti = localtime(&rawtime);
+            (void)snprintf(fname, sizeof(fname),
+                "window_%04d%02d%02d%02d%02d%02d.png",
+                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
 #ifdef __EMSCRIPTEN__
-        stbi_write_png("screenshot.png", w, h, 3, ss->pixels, ss->pitch);
-        file_download("screenshot.png", fname, "image/x-png");
+            stbi_write_png("screenshot.png", w, h, 3, ss->pixels, ss->pitch);
+            file_download("screenshot.png", fname, "image/x-png");
 #else
-        stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
+            stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
 #endif
+        }
+        SDL_DestroySurface(rs);
         SDL_DestroySurface(ss);
     }
 #endif
@@ -308,6 +324,8 @@ int main(int argc, char** argv)
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
 
+    SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
@@ -319,7 +337,7 @@ int main(int argc, char** argv)
             SDL_AUDIO_S16, 1, AUDIO_FREQ
         };
         audio_stream = SDL_OpenAudioDeviceStream(
-            SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &spec, nullptr, nullptr);
+            SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
         SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
     }
 
@@ -333,7 +351,7 @@ int main(int argc, char** argv)
         0);
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
 
-    renderer = SDL_CreateRenderer(window, nullptr, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+    renderer = SDL_CreateRenderer(window, nullptr);
     if (renderer == NULL)
     {
         SDL_Log("Error creating SDL_Renderer!");

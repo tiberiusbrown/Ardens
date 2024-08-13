@@ -108,7 +108,7 @@ void serialize(S& s, std::unique_ptr<T>& obj)
 namespace absim
 {
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+template<typename CharT>
 class vectorwrapbuf : public std::basic_streambuf<char, std::char_traits<char>>
 {
     std::vector<CharT>& vec;

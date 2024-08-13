@@ -77,8 +77,8 @@ jobs:
     - name: Set up emsdk
       run: |
         git clone https://github.com/emscripten-core/emsdk.git ${{github.workspace}}/emsdk
-        ${{github.workspace}}/emsdk/emsdk install 3.1.31
-        ${{github.workspace}}/emsdk/emsdk activate 3.1.31
+        ${{github.workspace}}/emsdk/emsdk install 3.1.45
+        ${{github.workspace}}/emsdk/emsdk activate 3.1.45
   
     - name: Cache FetchContent
       id: cache-fetchcontent
