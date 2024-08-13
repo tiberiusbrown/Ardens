@@ -497,6 +497,8 @@ skip_peripheral_updates:
     if(~prev_sreg & sreg() & SREG_I)
         schedule_interrupt_check();
 
+    update_sound();
+
     return cycles;
 }
 

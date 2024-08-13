@@ -73,6 +73,7 @@ static void app_init()
 
     {
         sg_desc desc{};
+        desc.environment = sglue_environment();
         sg_setup(&desc);
     }
 

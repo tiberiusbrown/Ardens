@@ -132,7 +132,7 @@ if(EMSCRIPTEN AND NOT ARDENS_LIBRETRO)
     add_link_options("-sALLOW_MEMORY_GROWTH")
     add_link_options("-sINITIAL_MEMORY=24MB")
     add_link_options("-sEXPORTED_FUNCTIONS=_main,_load_file,_malloc,_free,_postsyncfs,_setparam")
-    add_link_options("-sEXPORTED_RUNTIME_METHODS=ccall,FS,UTF8ToString,stringToUTF8 ")
+    add_link_options("-sEXPORTED_RUNTIME_METHODS=ccall,FS")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['$autoResumeAudioContext','$dynCall']")
 endif()
 
