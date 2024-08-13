@@ -48,6 +48,7 @@ static void globals_usage()
     EndTooltip();
 }
 
+#ifdef ARDENS_LLVM
 static std::string dwarf_value_string_addr(
     llvm::DWARFDie die, uint32_t addr, bool prog,
     uint32_t bit_offset, uint32_t bit_size,
@@ -58,6 +59,7 @@ static std::string dwarf_value_string_addr(
     else     mem = absim::to_dwarf_span(arduboy.cpu.data);
     return absim::dwarf_value_string(die, mem.offset(addr), bit_offset, bit_size, base);
 }
+#endif
 
 static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog)
 {
