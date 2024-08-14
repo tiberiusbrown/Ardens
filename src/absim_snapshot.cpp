@@ -17,7 +17,7 @@
 
 #include <miniz.h>
 
-static constexpr std::array<char, 8> SNAPSHOT_ID =
+constexpr std::array<char, 8> SNAPSHOT_ID =
 {
     '_', 'A', 'B', 'S', 'I', 'M', '_', '\0',
 };
@@ -37,19 +37,21 @@ struct version_t
     }
 };
 
-static std::string version_str(version_t const& v)
-{
-    char buf[32];
-    snprintf(buf, sizeof(buf), "v%u.%u.%u", v.major, v.minor, v.patch);
-    return buf;
-}
-
 constexpr version_t VERSION_INFO =
 {
     ARDENS_VERSION_MAJOR,
     ARDENS_VERSION_MINOR,
     ARDENS_VERSION_PATCH
 };
+
+constexpr version_t SNAPSHOT_VERSION = { 0, 23, 11 };
+
+static std::string version_str(version_t const& v)
+{
+    char buf[32];
+    snprintf(buf, sizeof(buf), "v%u.%u.%u", v.major, v.minor, v.patch);
+    return buf;
+}
 
 struct CustomUniquePtrExt
 {
@@ -350,7 +352,7 @@ bool arduboy_t::save_savestate(std::ostream& f)
 {
     bitsery::Serializer<bitsery::OutputStreamAdapter> ar(f);
     ar(SNAPSHOT_ID);
-    ar(VERSION_INFO);
+    ar(SNAPSHOT_VERSION);
     auto r = serdes_savestate(ar, *this);
     return !r.empty();
 }
@@ -366,8 +368,8 @@ std::string arduboy_t::load_savestate(std::istream& f)
 
     version_t version;
     ar(version);
-    if(version != VERSION_INFO)
-        return "Snapshot: requires " + version_str(version);
+    if(version != SNAPSHOT_VERSION)
+        return "Snapshot: incompatible version (created with " + version_str(version) + ")";
 
     auto r = serdes_savestate(ar, *this);
     return r;
@@ -402,7 +404,7 @@ bool arduboy_t::save_snapshot(std::ostream& f)
     {
         bitsery::Serializer<StreamAdapter> ar(f);
         ar(SNAPSHOT_ID);
-        ar(VERSION_INFO);
+        ar(SNAPSHOT_VERSION);
         uint32_t tsize = (uint32_t)data.size();
         ar(tsize);
     }
@@ -431,8 +433,8 @@ std::string arduboy_t::load_snapshot(std::istream& f)
 
         version_t version;
         ar(version);
-        if(version != VERSION_INFO)
-            return "Snapshot: requires " + version_str(version);
+        if(version != SNAPSHOT_VERSION)
+            return "Snapshot: incompatible version (created with " + version_str(version) + ")";
 
         ar(dst_size);
 
