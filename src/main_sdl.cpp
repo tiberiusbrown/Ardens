@@ -146,8 +146,7 @@ void platform_send_sound()
 
 float platform_pixel_ratio()
 {
-    return ImGui::GetIO().DisplayFramebufferScale.x;
-    //return 2.f;//SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
+    return SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
 }
 
 void platform_destroy_fonts_texture()
@@ -174,30 +173,11 @@ void platform_toggle_fullscreen()
 
 static void main_loop()
 {
+    auto& io = ImGui::GetIO();
+    
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
-#if 0
-        // why is this necessary SDL3???
-        switch(event.type)
-        {
-        case SDL_EVENT_MOUSE_MOTION:
-            event.motion.x /= pixel_ratio;
-            event.motion.y /= pixel_ratio;
-            break;
-        case SDL_EVENT_MOUSE_WHEEL:
-            event.wheel.mouse_x /= pixel_ratio;
-            event.wheel.mouse_y /= pixel_ratio;
-            break;
-        case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        case SDL_EVENT_MOUSE_BUTTON_UP:
-            event.button.x /= pixel_ratio;
-            event.button.y /= pixel_ratio;
-            break;
-        default:
-            break;
-        }
-#endif
         ImGui_ImplSDL3_ProcessEvent(&event);
         if(event.type == SDL_EVENT_QUIT)
             done = true;
@@ -232,15 +212,6 @@ static void main_loop()
 
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
-    
-#if defined(__APPLE__)
-    {
-        auto& io = ImGui::GetIO();
-        io.DisplaySize.x *= io.DisplayFramebufferScale.x;
-        io.DisplaySize.y *= io.DisplayFramebufferScale.y;
-        //io.DisplayFramebufferScale = { 1.f, 1.f };
-    }
-#endif
 
     do
     {
@@ -269,6 +240,13 @@ static void main_loop()
 
     ImGui::Render();
 
+#ifdef __APPLE__
+    // why?
+    SDL_SetRenderScale(
+        renderer,
+        io.DisplayFramebufferScale.x,
+        io.DisplayFramebufferScale.y);
+#endif
     SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
     SDL_RenderClear(renderer);
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
