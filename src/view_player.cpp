@@ -56,21 +56,63 @@ static void draw_button(ImDrawList* d, int btn, touched_buttons_t const& pressed
     constexpr ImU32 pcol = IM_COL32(150, 150, 150, 150);
     constexpr ImU32 col = IM_COL32(100, 100, 100, 70);
     constexpr ImU32 outline_col = IM_COL32(50, 50, 50, 150);
+    constexpr float ROT[4] = { 270, 90, 180, 0 };
     auto r = touch_rect(btn);
-    float s = 0.1f * (r.x1 - r.x0);
-    r.x0 += s;
-    r.y0 += s;
-    r.x1 -= s;
-    r.y1 -= s;
-    float rounding = pixel_ratio * s;
-    d->AddRectFilled(
-        { r.x0, r.y0 }, { r.x1, r.y1 },
-        pressed.btns[btn] ? pcol : col,
-        rounding, 0);
-    d->AddRect(
-        { r.x0, r.y0 }, { r.x1, r.y1 },
-        outline_col,
-        rounding, 0, 5.f * pixel_ratio);
+
+    switch(btn)
+    {
+    case TOUCH_U:
+    case TOUCH_D:
+    case TOUCH_L:
+    case TOUCH_R:
+    {
+        constexpr ImVec2 DPAD[6] =
+        {
+            { -1.f, +0.f },
+            { +0.f, -1.f },
+            { +1.f, -1.f },
+            { +1.f, +1.f },
+            { +0.f, +1.f },
+            { -1.f, +0.f },
+        };
+        float rot = ROT[btn] * (3.1415926535f / 180);
+        float tc = cosf(rot);
+        float ts = sinf(rot);
+        float scale = (r.x1 - r.x0) * 0.75f;
+        r.x0 = (r.x0 + r.x1) * 0.5f;
+        r.y0 = (r.y0 + r.y1) * 0.5f;
+        ImVec2 dp[6];
+        for(int i = 0; i < 6; ++i)
+        {
+            dp[i].x = (tc * DPAD[i].x - ts * DPAD[i].y) * scale + r.x0;
+            dp[i].y = (ts * DPAD[i].x + tc * DPAD[i].y) * scale + r.y0;
+        }
+        d->AddConvexPolyFilled(dp, 5, pressed.btns[btn] ? pcol : col);
+        d->AddPolyline(dp, 6, outline_col, 0, 5.f * pixel_ratio);
+        break;
+    }
+    case TOUCH_A:
+    case TOUCH_B:
+    {
+        float s = 0.1f * (r.x1 - r.x0);
+        float rounding = pixel_ratio * s;
+        r.x0 += s;
+        r.y0 += s;
+        r.x1 -= s;
+        r.y1 -= s;
+        d->AddRectFilled(
+            { r.x0, r.y0 }, { r.x1, r.y1 },
+            pressed.btns[btn] ? pcol : col,
+            rounding, 0);
+        d->AddRect(
+            { r.x0, r.y0 }, { r.x1, r.y1 },
+            outline_col,
+            rounding, 0, 5.f * pixel_ratio);
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 touched_buttons_t touched_buttons()
@@ -92,6 +134,8 @@ touched_buttons_t touched_buttons()
 
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 {
+    platform_texture_scale_nearest(display_texture);
+
     {
         std::array<ImVec2, 4> vs;
         vs[0] = {a.x, a.y};
