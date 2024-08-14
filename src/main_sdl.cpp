@@ -176,6 +176,27 @@ static void main_loop()
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
+#ifdef __APPLE__
+        // why is this necessary SDL3???
+        switch(event.type)
+        {
+        case SDL_EVENT_MOUSE_MOTION:
+            event.motion.x /= pixel_ratio;
+            event.motion.y /= pixel_ratio;
+            break;
+        case SDL_EVENT_MOUSE_WHEEL:
+            event.wheel.mouse_x /= pixel_ratio;
+            event.wheel.mouse_y /= pixel_ratio;
+            break;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            event.button.x /= pixel_ratio;
+            event.button.y /= pixel_ratio;
+            break;
+        default:
+            break;
+        }
+#endif
         ImGui_ImplSDL3_ProcessEvent(&event);
         if(event.type == SDL_EVENT_QUIT)
             done = true;
