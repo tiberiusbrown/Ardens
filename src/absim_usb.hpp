@@ -97,14 +97,17 @@ uint8_t atmega32u4_t::usb_endpoint_t::read(atmega32u4_t& cpu)
 
 void atmega32u4_t::usb_endpoint_t::write(atmega32u4_t& cpu, uint8_t x)
 {
-    if(length >= buffer.size())
+    if(length >= buffer_size)
     {
         cpu.UESTA0X() = 1 << 6;
         return;
     }
-    uint32_t i = (start + length) % buffer_size;
-    buffer[i] = x;
-    ++length;
+    if(buffer_size != 0)
+    {
+        uint32_t i = (start + length) % buffer_size;
+        buffer[i] = x;
+        ++length;
+    }
     uebclx = ((length >> 0) & 0xff);
     uebchx = ((length >> 8) & 0xff);
     copy_regs(cpu);
