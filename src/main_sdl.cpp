@@ -208,10 +208,10 @@ static void main_loop()
 
     frame_logic();
     
-#ifDEF __APPLE__
+#if 1 || defined(__APPLE__)
     {
-        auto& io = ImGui::GetIO();
-        io.
+        //auto& io = ImGui::GetIO();
+        //io.DisplaySize.
     }
 #endif
 
@@ -327,10 +327,6 @@ int main(int argc, char** argv)
 
     init();
 
-#ifdef _WIN32
-    SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
-#endif
-
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
@@ -355,9 +351,7 @@ int main(int argc, char** argv)
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
-#ifdef __APPLE__
-    SDL_WINDOW_HIGH_PIXEL_DENSITY |
-#endif
+        SDL_WINDOW_HIGH_PIXEL_DENSITY |
         0);
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
 
