@@ -708,7 +708,8 @@ struct atmega32u4_t
         uint8_t ueienx;
         uint8_t uebclx;
         uint8_t uebchx;
-        std::vector<uint8_t> buffer; // TODO: DPRAM modeling
+        std::array<uint8_t, 512> buffer; // TODO: DPRAM modeling
+        uint32_t buffer_size;
         uint32_t start;
         uint32_t length;
         void configure();
@@ -721,7 +722,7 @@ struct atmega32u4_t
             a(uesta0x, uesta1x);
             a(uecfg0x, uecfg1x);
             a(ueienx, uebclx, uebchx);
-            a(buffer, start, length);
+            a(buffer, buffer_size, start, length);
         }
     };
     std::array<usb_endpoint_t, 8> usb_ep;

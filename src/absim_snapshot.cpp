@@ -193,9 +193,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.sound_enabled);
     ar(a.cpu.sound_pwm);
     ar(a.cpu.sound_pwm_val);
-    ar(a.cpu.sound_buffer);
 
-    ar(a.cpu.serial_bytes);
     ar(a.cpu.usb_ep);
     ar(a.cpu.usb_next_sofi_cycle);
     ar(a.cpu.usb_next_eorsti_cycle);
@@ -312,6 +310,9 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
         if(!r.empty())
             return r;
     }
+
+    ar(a.cpu.serial_bytes);
+    ar(a.cpu.sound_buffer);
 
     ar(a.profiler_hotspots_symbol);
     ar(a.profiler_total);

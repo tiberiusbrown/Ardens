@@ -51,19 +51,26 @@ void atmega32u4_t::reset_usb()
 
 void atmega32u4_t::usb_endpoint_t::configure()
 {
-    uint32_t size = 8 << ((uecfg1x >> 4) & 0x7);
+    uint32_t size = 0;
+    switch((uecfg1x >> 4) & 0x7)
+    {
+    case 0: size = 128; break;
+    case 1: size = 256; break;
+    case 2: size = 512; break;
+    default: size = 512; break;
+    }
     bool alloc = ((uecfg1x & 0x2) != 0);
     if(alloc)
     {
         start = length = 0;
-        buffer.resize(size);
+        buffer_size = size;
     }
 }
 
 static void update_rwal(atmega32u4_t& cpu)
 {
     auto& ep = cpu.usb_ep[cpu.UENUM() & 7];
-    bool rwal = (ep.length < ep.buffer.size());
+    bool rwal = (ep.length < ep.buffer_size);
     uint8_t ueintx = cpu.UEINTX();
     if(rwal)
         ueintx |= (1 << 5);
@@ -80,7 +87,7 @@ uint8_t atmega32u4_t::usb_endpoint_t::read(atmega32u4_t& cpu)
         return 0;
     }
     uint8_t r = buffer[start];
-    start = (start + 1) % buffer.size();
+    start = (start + 1) % buffer_size;
     --length;
     uebclx = ((length >> 0) & 0xff);
     uebchx = ((length >> 8) & 0xff);
@@ -90,14 +97,17 @@ uint8_t atmega32u4_t::usb_endpoint_t::read(atmega32u4_t& cpu)
 
 void atmega32u4_t::usb_endpoint_t::write(atmega32u4_t& cpu, uint8_t x)
 {
-    if(length >= buffer.size())
+    if(length >= buffer_size)
     {
         cpu.UESTA0X() = 1 << 6;
         return;
     }
-    uint32_t i = (start + length) % buffer.size();
-    buffer[i] = x;
-    ++length;
+    if(buffer_size != 0)
+    {
+        uint32_t i = (start + length) % buffer_size;
+        buffer[i] = x;
+        ++length;
+    }
     uebclx = ((length >> 0) & 0xff);
     uebchx = ((length >> 8) & 0xff);
     copy_regs(cpu);

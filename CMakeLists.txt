@@ -29,6 +29,9 @@ if(MSVC)
         CMAKE_CXX_FLAGS_RELWITHDEBINFO
     )
     foreach(msvc_flag ${msvc_flags})
+        if(${msvc_flag} MATCHES "/W[3|4]")
+            string(REGEX REPLACE "/W[3|4]" "" ${msvc_flag} "${${msvc_flag}}")
+        endif()
         if(${msvc_flag} MATCHES "/MD")
             string(REGEX REPLACE "/MD" "/MT" ${msvc_flag} "${${msvc_flag}}")
         endif()
@@ -293,6 +296,7 @@ set(ARDENS_SOURCES
     src/absim_instructions.hpp
     src/absim_cpu_data.cpp
     src/absim_pqueue.hpp
+    src/absim_strstream.hpp
 
     src/absim_dwarf.hpp
     src/absim_dwarf.cpp

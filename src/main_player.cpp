@@ -48,7 +48,7 @@ extern "C" int setparam(char const* name, char const* value)
 
 extern "C" int load_file(char const* filename, uint8_t const* data, size_t size)
 {
-    std::istrstream f((char const*)data, size);
+    absim::istrstream f((char const*)data, size);
     auto err = arduboy->load_file(filename, f);
     if(!err.empty())
     {
