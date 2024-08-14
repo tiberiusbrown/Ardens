@@ -146,7 +146,8 @@ void platform_send_sound()
 
 float platform_pixel_ratio()
 {
-    return SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
+    return ImGui::GetIO().DisplayFramebufferScale.x;
+    //return 2.f;//SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
 }
 
 void platform_destroy_fonts_texture()
@@ -176,7 +177,7 @@ static void main_loop()
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
-#ifdef __APPLE__
+#if 0
         // why is this necessary SDL3???
         switch(event.type)
         {
@@ -228,16 +229,18 @@ static void main_loop()
     }
 
     frame_logic();
-    
-#if 1 || defined(__APPLE__)
-    {
-        //auto& io = ImGui::GetIO();
-        //io.DisplaySize.
-    }
-#endif
 
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
+    
+#if defined(__APPLE__)
+    {
+        auto& io = ImGui::GetIO();
+        io.DisplaySize.x *= io.DisplayFramebufferScale.x;
+        io.DisplaySize.y *= io.DisplayFramebufferScale.y;
+        //io.DisplayFramebufferScale = { 1.f, 1.f };
+    }
+#endif
 
     do
     {
