@@ -207,6 +207,13 @@ static void main_loop()
     }
 
     frame_logic();
+    
+#ifDEF __APPLE__
+    {
+        auto& io = ImGui::GetIO();
+        io.
+    }
+#endif
 
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
@@ -348,6 +355,9 @@ int main(int argc, char** argv)
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
+#ifdef __APPLE__
+    SDL_WINDOW_HIGH_PIXEL_DENSITY |
+#endif
         0);
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
 

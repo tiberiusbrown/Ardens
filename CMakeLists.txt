@@ -83,7 +83,7 @@ if(ARDENS_LIBRETRO)
 endif()
 
 set(SDL_DEFAULT OFF)
-if(NOT EMSCRIPTEN AND NOT APPLE)
+if(NOT EMSCRIPTEN)
     set(ARDENS_SDL_DEFAULT ON)
 endif()
 option(ARDENS_SDL      "Build Ardens with SDL backend" ${ARDENS_SDL_DEFAULT})
