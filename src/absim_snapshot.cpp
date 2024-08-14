@@ -349,6 +349,8 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
 bool arduboy_t::save_savestate(std::ostream& f)
 {
     bitsery::Serializer<bitsery::OutputStreamAdapter> ar(f);
+    ar(SNAPSHOT_ID);
+    ar(VERSION_INFO);
     auto r = serdes_savestate(ar, *this);
     return !r.empty();
 }
@@ -356,6 +358,17 @@ bool arduboy_t::save_savestate(std::ostream& f)
 std::string arduboy_t::load_savestate(std::istream& f)
 {
     bitsery::Deserializer<bitsery::InputStreamAdapter> ar(f);
+
+    std::array<char, 8> id;
+    ar(id);
+    if(id != SNAPSHOT_ID)
+        return "Snapshot: invalid identifier";
+
+    version_t version;
+    ar(version);
+    if(version != VERSION_INFO)
+        return "Snapshot: requires " + version_str(version);
+
     auto r = serdes_savestate(ar, *this);
     return r;
 }
