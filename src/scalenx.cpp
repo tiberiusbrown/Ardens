@@ -331,7 +331,7 @@ uint8_t* recording_pixels(bool rgba)
 {
     static std::vector<uint8_t> pixels;
     static uint8_t tmp[128 * 64 * 4 * 4];
-    uint8_t const* src = arduboy->display.filtered_pixels.data();
+    uint8_t const* src = arduboy.display.filtered_pixels.data();
 
     int z = filter_zoom(settings.recording_filtering);
     int w = 128 * z;

@@ -160,7 +160,7 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 
 void view_player()
 {
-    if(!arduboy->cpu.decoded)
+    if(!arduboy.cpu.decoded)
         return;
 
     auto* d = ImGui::GetBackgroundDrawList();
@@ -207,7 +207,7 @@ void view_player()
         std::round((size.x - dsize.x) * 0.5f),
         std::round((size.y - dsize.y) * 0.5f)
     };
-    if(first_touch)
+    if(first_touch || always_touch)
         dstart.y = std::max(0.f, dstart.y - dsize.y * 0.5f);
     dstart.x = std::round(dstart.x);
     dstart.y = std::round(dstart.y);
@@ -215,7 +215,7 @@ void view_player()
         { dstart.x + dsize.x, dstart.y + dsize.y });
 
     // draw touch icons
-    if(first_touch && (
+    if(always_touch || first_touch && (
         ms_since_touch < MS_SHOW_TOUCH_CONTROLS || rect_offset().y >= dstart.y + dsize.y))
     {
         auto pressed = touched_buttons();
@@ -235,4 +235,9 @@ void view_player()
             { F1, F1 }, { F2, F2 },
             IM_COL32(255, 0, 0, 128));
     }
+
+#if 0
+    // debug viewport border
+    d->AddRect({ 0, 0 }, size, IM_COL32(255, 0, 0, 255), 0, 0, 4);
+#endif
 }

@@ -53,7 +53,7 @@ constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 
 using texture_t = void*;
 
-extern std::unique_ptr<absim::arduboy_t> arduboy;
+extern absim::arduboy_t arduboy;
 extern int display_texture_zoom;
 extern texture_t display_texture;
 extern texture_t display_buffer_texture;
@@ -68,6 +68,7 @@ constexpr float CLEAR_B = 0.10f;
 
 constexpr uint64_t MS_SHOW_TOUCH_CONTROLS = 10000;
 extern bool first_touch;
+extern bool always_touch;
 extern uint64_t ms_since_touch;
 struct touch_point_t { float x, y; };
 extern std::unordered_map<uintptr_t, touch_point_t> touch_points;

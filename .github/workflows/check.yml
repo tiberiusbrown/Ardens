@@ -21,7 +21,7 @@ jobs:
     steps:
     
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
         
@@ -43,7 +43,7 @@ jobs:
     steps:
         
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
@@ -59,7 +59,7 @@ jobs:
   
     - name: Cache LLVM host
       id: cache-llvm-host
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
         key: web-cache-llvm-host
@@ -77,12 +77,12 @@ jobs:
     - name: Set up emsdk
       run: |
         git clone https://github.com/emscripten-core/emsdk.git ${{github.workspace}}/emsdk
-        ${{github.workspace}}/emsdk/emsdk install 3.1.31
-        ${{github.workspace}}/emsdk/emsdk activate 3.1.31
+        ${{github.workspace}}/emsdk/emsdk install 3.1.45
+        ${{github.workspace}}/emsdk/emsdk activate 3.1.45
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: web-cache-fetchcontent
@@ -112,7 +112,7 @@ jobs:
         zip -r ${{github.workspace}}/Ardens_web.zip *
 
     - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-artifact
         path: ${{github.workspace}}/Ardens_web.zip
@@ -142,7 +142,7 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
         
@@ -153,7 +153,7 @@ jobs:
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: _deps
         key: windows_x86-cache-fetchcontent
@@ -162,9 +162,9 @@ jobs:
       run: bash cmake/build_hbb.sh
 
     - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-linux-x64
         path: "build/Ardens_linux_x64.zip"
 
   check_windows_x86:
@@ -175,13 +175,13 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: windows_x86-cache-fetchcontent
@@ -201,9 +201,9 @@ jobs:
         cmake -E tar "cfv" "Ardens_windows_x86.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
 
     - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-windows-x86
         path: "Ardens_windows_x86.zip"
   
   check_windows_x64:
@@ -214,13 +214,13 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: windows_x64-cache-fetchcontent
@@ -240,9 +240,9 @@ jobs:
         cmake -E tar "cfv" "Ardens_windows_x64.zip" --format=zip "Ardens.exe" "ArdensPlayer.exe" "ardens_libretro.dll"
 
     - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-windows-x64
         path: "Ardens_windows_x64.zip"
   
   check_macos_x64:
@@ -253,13 +253,13 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: macos_x64-cache-fetchcontent
@@ -281,9 +281,9 @@ jobs:
         hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_x64.dmg" -srcfolder Ardens_macos
 
     - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-macos-x64
         path: "Ardens_macos_x64.dmg"
   
   check_macos_arm64:
@@ -294,13 +294,13 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
     - name: Cache LLVM host
       id: cache-llvm-host
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
         key: macos-arm64-cache-llvm-host
@@ -317,7 +317,7 @@ jobs:
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: macos_arm64-cache-fetchcontent
@@ -339,7 +339,7 @@ jobs:
         hdiutil create -fs JHFS+ -format UDZO "Ardens_macos_arm64.dmg" -srcfolder Ardens_macos
 
     - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
+        name: build-artifact-macos-arm64
         path: "Ardens_macos_arm64.dmg"

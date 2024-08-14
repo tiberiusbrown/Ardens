@@ -18,7 +18,7 @@ void window_simulation(bool& open)
     if(!open) return;
     
     SetNextWindowSize({ 200 * pixel_ratio, 100 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Simulation", &open) && arduboy->cpu.decoded)
+    if(Begin("Simulation", &open) && arduboy.cpu.decoded)
     {
         SliderInt("Speed:", &slider_val, 0, sizeof(SLIDERS) / sizeof(int) - 1, "");
         simulation_slowdown = SLIDERS[slider_val];
@@ -31,20 +31,20 @@ void window_simulation(bool& open)
             Text("%dx slower", simulation_slowdown / 1000);
         if(Button("Reset"))
         {
-            arduboy->paused = false;
-            arduboy->reset();
+            arduboy.paused = false;
+            arduboy.reset();
             load_savedata();
         }
         SameLine();
-        if(arduboy->paused)
+        if(arduboy.paused)
         {
             if(Button("Continue"))
-                arduboy->paused = false;
+                arduboy.paused = false;
             SameLine();
             if(Button("Step Into"))
             {
-                arduboy->advance_instr();
-                disassembly_scroll_addr = arduboy->cpu.pc * 2;
+                arduboy.advance_instr();
+                disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
             if(IsItemHovered())
             {
@@ -53,23 +53,23 @@ void window_simulation(bool& open)
                 EndTooltip();
             }
             SameLine();
-            if(Button("Step Over") && arduboy->cpu.pc < arduboy->cpu.decoded_prog.size())
+            if(Button("Step Over") && arduboy.cpu.pc < arduboy.cpu.decoded_prog.size())
             {
-                auto const& i = arduboy->cpu.decoded_prog[arduboy->cpu.pc];
+                auto const& i = arduboy.cpu.decoded_prog[arduboy.cpu.pc];
 
                 if(absim::instr_is_call(i))
                 {
-                    arduboy->paused = false;
+                    arduboy.paused = false;
 
                     if(absim::instr_is_two_words(i))
-                        arduboy->break_step = arduboy->cpu.pc + 2;
+                        arduboy.break_step = arduboy.cpu.pc + 2;
                     else
-                        arduboy->break_step = arduboy->cpu.pc + 1;
+                        arduboy.break_step = arduboy.cpu.pc + 1;
                 }
                 else
                 {
-                    arduboy->advance_instr();
-                    disassembly_scroll_addr = arduboy->cpu.pc * 2;
+                    arduboy.advance_instr();
+                    disassembly_scroll_addr = arduboy.cpu.pc * 2;
                 }
             }
             if(IsItemHovered())
@@ -79,14 +79,14 @@ void window_simulation(bool& open)
                 EndTooltip();
             }
             SameLine();
-            if(arduboy->cpu.num_stack_frames == 0)
+            if(arduboy.cpu.num_stack_frames == 0)
                 BeginDisabled();
-            if(Button("Step Out") && arduboy->cpu.num_stack_frames > 0)
+            if(Button("Step Out") && arduboy.cpu.num_stack_frames > 0)
             {
-                arduboy->break_step = arduboy->cpu.stack_frames[arduboy->cpu.num_stack_frames - 1].pc;
-                arduboy->paused = false;
+                arduboy.break_step = arduboy.cpu.stack_frames[arduboy.cpu.num_stack_frames - 1].pc;
+                arduboy.paused = false;
             }
-            if(arduboy->cpu.num_stack_frames == 0)
+            if(arduboy.cpu.num_stack_frames == 0)
                 EndDisabled();
             if(IsItemHovered())
             {
@@ -103,9 +103,9 @@ void window_simulation(bool& open)
         {
             if(Button("Pause"))
             {
-                arduboy->paused = true;
-                arduboy->ps_rem = 0;
-                disassembly_scroll_addr = arduboy->cpu.pc * 2;
+                arduboy.paused = true;
+                arduboy.ps_rem = 0;
+                disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
         }
 #if 0

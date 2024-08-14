@@ -1,9 +1,11 @@
 #ifdef ARDENS_LLVM
 
-#include "common.hpp"
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #include <fmt/format.h>
+
+namespace absim
+{
 
 std::vector<dwarf_member_t> dwarf_members(llvm::DWARFDie die)
 {
@@ -513,17 +515,6 @@ static std::string recurse_value(
 }
 
 std::string dwarf_value_string(
-    llvm::DWARFDie die, uint32_t addr, bool prog,
-    uint32_t bit_offset, uint32_t bit_size,
-	dwarf_value_base base)
-{
-    dwarf_span mem;
-    if(prog) mem = to_dwarf_span(arduboy->cpu.prog);
-    else     mem = to_dwarf_span(arduboy->cpu.data);
-    return recurse_value(die, mem.offset(addr), base, bit_offset, bit_size);
-}
-
-std::string dwarf_value_string(
     llvm::DWARFDie die, dwarf_span mem,
     uint32_t bit_offset, uint32_t bit_size,
     dwarf_value_base base)
@@ -620,6 +611,8 @@ int recurse_varname(std::string& expr, uint16_t offset, llvm::DWARFDie die)
         break;
     }
     return offset;
+}
+
 }
 
 #endif

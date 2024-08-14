@@ -17,7 +17,7 @@ jobs:
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
       if: github.event_name != 'push'
@@ -36,7 +36,7 @@ jobs:
     steps:
         
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
         
@@ -47,7 +47,7 @@ jobs:
   
     - name: Cache LLVM host
       id: cache-llvm-host
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
         key: web-cache-llvm-host
@@ -65,12 +65,12 @@ jobs:
     - name: Set up emsdk
       run: |
         git clone https://github.com/emscripten-core/emsdk.git ${{github.workspace}}/emsdk
-        ${{github.workspace}}/emsdk/emsdk install 3.1.31
-        ${{github.workspace}}/emsdk/emsdk activate 3.1.31
+        ${{github.workspace}}/emsdk/emsdk install 3.1.45
+        ${{github.workspace}}/emsdk/emsdk activate 3.1.45
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: web-cache-fetchcontent
@@ -137,7 +137,7 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
         
@@ -148,7 +148,7 @@ jobs:
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: _deps
         key: windows_x86-cache-fetchcontent
@@ -170,7 +170,7 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
@@ -179,7 +179,7 @@ jobs:
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: windows_x86-cache-fetchcontent
@@ -209,7 +209,7 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
@@ -218,7 +218,7 @@ jobs:
   
     - name: Cache FetchContent
       id: cache-fetchcontent
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: windows_x64-cache-fetchcontent
@@ -248,7 +248,7 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
@@ -282,13 +282,13 @@ jobs:
   
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
   
     - name: Cache LLVM host
       id: cache-llvm-host
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
         key: macos-arm64-cache-llvm-host

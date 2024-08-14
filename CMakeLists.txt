@@ -126,6 +126,7 @@ if(EMSCRIPTEN AND NOT ARDENS_LIBRETRO)
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -flto")
     add_link_options("--closure 1")
     add_link_options("-s MODULARIZE=1")
+    add_link_options("-sUSE_WEBGL2=1")
     add_link_options("-flto")
     
     set(EXTRA_FLAGS "${EXTRA_FLAGS} -fno-rtti -fno-exceptions")
@@ -297,6 +298,10 @@ set(ARDENS_SOURCES
     src/absim_pqueue.hpp
     src/absim_strstream.hpp
 
+    src/absim_dwarf.hpp
+    src/absim_dwarf.cpp
+    src/absim_dwarf_expr.cpp
+
     src/absim_arduboy.cpp
     src/absim_display.hpp
     src/absim_atmega32u4.hpp
@@ -305,7 +310,6 @@ set(ARDENS_SOURCES
     src/absim_decode.cpp
     src/absim_merge_instrs.cpp
     src/absim_execute.cpp
-    src/absim_execute_merged.cpp
     src/absim_disassemble.cpp
     src/absim_load_file.cpp
     src/absim_reset.cpp
@@ -439,9 +443,6 @@ if(ARDENS_DEBUGGER)
         src/record_wav.cpp
         src/scalenx.cpp
         src/saveload.cpp
-        src/dwarf.hpp
-        src/dwarf.cpp
-        src/dwarf_expr.cpp
         src/file_watch.cpp
 
         src/window_disassembly.cpp
@@ -517,8 +518,6 @@ if(ARDENS_PLAYER)
         src/record_wav.cpp
         src/scalenx.cpp
         src/saveload.cpp
-        src/dwarf.hpp
-        src/dwarf.cpp
         src/file_watch.cpp
 
         deps/stb_image_write.h
@@ -560,8 +559,6 @@ if(ARDENS_FLASHCART)
         src/record_wav.cpp
         src/scalenx.cpp
         src/saveload.cpp
-        src/dwarf.hpp
-        src/dwarf.cpp
         src/file_watch.cpp
 
         deps/stb_image_write.h
@@ -592,6 +589,12 @@ if(ARDENS_BENCHMARK)
     add_executable(Ardens_benchmark bench/benchmark.cpp)
     target_link_libraries(Ardens_benchmark PRIVATE benchmark ardenslib)
     target_compile_definitions(Ardens_benchmark PRIVATE
+        -DARDENS_BENCHMARK_DIR="${CMAKE_CURRENT_SOURCE_DIR}/bench")
+
+    add_executable(Ardens_benchmark_debugger bench/benchmark.cpp)
+    target_link_libraries(Ardens_benchmark_debugger PRIVATE
+        benchmark ardensdebuggerlib)
+    target_compile_definitions(Ardens_benchmark_debugger PRIVATE
         -DARDENS_BENCHMARK_DIR="${CMAKE_CURRENT_SOURCE_DIR}/bench")
 
 endif()
@@ -647,8 +650,6 @@ if(ARDENS_DIST)
             src/record_wav.cpp
             src/scalenx.cpp
             src/saveload.cpp
-            src/dwarf.hpp
-            src/dwarf.cpp
             src/file_watch.cpp
 
             deps/stb_image_write.h

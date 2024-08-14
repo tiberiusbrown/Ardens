@@ -318,18 +318,21 @@ ARDENS_FORCEINLINE static uint32_t timer16_period(
 ARDENS_FORCEINLINE static void toggle_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
+    cpu.update_sound();
     cpu.data[0x28] ^= (1 << 6);
 }
 
 ARDENS_FORCEINLINE static void clear_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
+    cpu.update_sound();
     cpu.data[0x28] &= ~(1 << 6);
 }
 
 ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
+    cpu.update_sound();
     cpu.data[0x28] |= (1 << 6);
 }
 
@@ -546,6 +549,7 @@ ARDENS_FORCEINLINE static void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
     uint8_t t = cpu.data[0x28];
     t &= ~m;
     t |= c;
+    cpu.update_sound();
     cpu.data[0x28] = t;
 }
 
@@ -558,6 +562,7 @@ ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu, bool c6)
     uint8_t t = cpu.data[0x28];
     t &= ~0x40;
     t |= c;
+    cpu.update_sound();
     cpu.data[0x28] = t;
 }
 
@@ -570,6 +575,7 @@ ARDENS_FORCEINLINE static void set_portc7(atmega32u4_t& cpu, bool c7)
     uint8_t t = cpu.data[0x28];
     t &= ~0x80;
     t |= c;
+    cpu.update_sound();
     cpu.data[0x28] = t;
 }
 
@@ -753,6 +759,7 @@ void atmega32u4_t::update_timer4()
 
     // determine whether we are pwm-ing to sound pins
     // (pins connected and freq at least 20 kHz)
+    update_sound();
     sound_pwm = false;
     uint32_t com = timer4.com4a = tccr4a >> 6;
     if((tccr4a & 0xc0) != 0 && (tccr4a & 0x2) != 0)

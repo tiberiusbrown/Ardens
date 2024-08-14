@@ -51,6 +51,46 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
+struct CustomUniquePtrExt
+{
+    template<class Ser, class T, class F>
+    void serialize(Ser& ser, T const& obj, F&& f) const
+    {
+        ser.boolValue(static_cast<bool>(obj));
+        if(obj) f(ser, *obj);
+    }
+    template<class Des, class T, class F>
+    void deserialize(Des& des, T& obj, F&& f) const
+    {
+        bool exists = false;
+        des.boolValue(exists);
+        if(exists)
+        {
+            obj = std::make_unique<typename T::element_type>();
+            f(des, *obj);
+        }
+        else
+        {
+            obj.reset();
+        }
+    }
+};
+
+namespace bitsery
+{
+namespace traits
+{
+template<class T>
+struct ExtensionTraits<CustomUniquePtrExt, T>
+{
+    using TValue = typename T::element_type;
+    static constexpr bool SupportValueOverload = true;
+    static constexpr bool SupportObjectOverload = true;
+    static constexpr bool SupportLambdaOverload = true;
+};
+}
+}
+
 namespace bitsery
 {
 template<typename S, size_t N>
@@ -58,12 +98,17 @@ void serialize(S& s, std::bitset<N>& obj)
 {
     s.ext(obj, bitsery::ext::StdBitset{});
 }
+template<typename S, class T>
+void serialize(S& s, std::unique_ptr<T>& obj)
+{
+    s.ext(obj, CustomUniquePtrExt{});
+}
 }
 
 namespace absim
 {
 
-template<typename CharT, typename TraitsT = std::char_traits<CharT> >
+template<typename CharT>
 class vectorwrapbuf : public std::basic_streambuf<char, std::char_traits<char>>
 {
     std::vector<CharT>& vec;
@@ -86,8 +131,6 @@ template<class Archive>
 static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 {
     ar(a.cpu.data);
-    ar(a.cpu.just_read);
-    ar(a.cpu.just_written);
     ar(a.cpu.active);
     ar(a.cpu.wakeup_cycles);
     ar(a.cpu.just_interrupted);
@@ -145,6 +188,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.adc_busy);
     ar(a.cpu.adc_nondeterminism);
 
+    ar(a.cpu.sound_prev_cycle);
     ar(a.cpu.sound_cycle);
     ar(a.cpu.sound_enabled);
     ar(a.cpu.sound_pwm);
@@ -223,7 +267,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.display.data_col);
     ar(a.display.vsync);
 
-    ar(a.fx.data);
+    ar(a.fx.sectors);
     ar(a.fx.sectors_modified);
     ar(a.fx.sectors_dirty);
     ar(a.fx.enabled);
@@ -439,7 +483,7 @@ bool arduboy_t::load_savedata(std::istream& f)
         uint32_t sector = kv.first;
         auto const& sdata = kv.second;
         if(sector >= fx.NUM_SECTORS) continue;
-        memcpy(&fx.data[sector * 4096], sdata.data(), 4096);
+        fx.write_bytes(sector * 4096, sdata.data(), 4096);
     }
 
     return true;

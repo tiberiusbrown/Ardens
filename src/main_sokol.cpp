@@ -9,13 +9,13 @@
 #include <fmt/format.h>
 
 #if defined(__EMSCRIPTEN__)
-#define SOKOL_GLES2
+#define SOKOL_GLES3
 #elif defined(__APPLE__)
 #define SOKOL_METAL
 #elif defined(_WIN32)
 #define SOKOL_D3D11
 #else
-#define SOKOL_GLCORE33
+#define SOKOL_GLCORE
 #endif
 
 #define SOKOL_IMPL
@@ -31,15 +31,23 @@
 
 #include "ardens_icon.hpp"
 
+static simgui_desc_t const SIMGUI_DESC = []() {
+    simgui_desc_t desc{};
+    desc.ini_filename = "imgui.ini";
+    desc.no_default_font = true;
+    return desc;
+}();
+
+static sg_sampler DEFAULT_SAMPLER;
+
 static void app_frame()
 {
     frame_logic();
 
     {
-        static uint64_t pt = 0;
         simgui_frame_desc_t desc{};
         desc.delta_time = sapp_frame_duration();
-        desc.dpi_scale = pixel_ratio;
+        desc.dpi_scale = sapp_dpi_scale();
         desc.width = sapp_width();
         desc.height = sapp_height();
         simgui_new_frame(&desc);
@@ -47,10 +55,11 @@ static void app_frame()
 
     imgui_content();
 
-    sg_pass_action action{};
-    action.colors[0].action = SG_ACTION_CLEAR;
-    action.colors[0].value = { CLEAR_R, CLEAR_G, CLEAR_B, 1.f };
-    sg_begin_default_pass(&action, sapp_width(), sapp_height());
+    sg_pass pass{};
+    pass.action.colors[0].load_action = SG_LOADACTION_CLEAR;
+    pass.action.colors[0].clear_value = { CLEAR_R, CLEAR_G, CLEAR_B, 1.f };
+    pass.swapchain = sglue_swapchain();
+    sg_begin_pass(&pass);
 
     simgui_render();
 
@@ -64,16 +73,20 @@ static void app_init()
 
     {
         sg_desc desc{};
-        desc.context = sapp_sgcontext();
+        desc.environment = sglue_environment();
         sg_setup(&desc);
     }
 
     {
-        simgui_desc_t desc{};
-        desc.ini_filename = "imgui.ini";
-        desc.no_default_font = true;
-        simgui_setup(&desc);
+        sg_sampler_desc desc{};
+        desc.min_filter = SG_FILTER_LINEAR;
+        desc.mag_filter = SG_FILTER_NEAREST;
+        desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
+        desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
+        DEFAULT_SAMPLER = sg_make_sampler(&desc);
     }
+
+    simgui_setup(&SIMGUI_DESC);
 
     {
         saudio_desc desc{};
@@ -93,15 +106,23 @@ static void app_init()
         desc.width = 128;
         desc.height = 64;
         desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-        desc.min_filter = SG_FILTER_LINEAR;
-        desc.mag_filter = SG_FILTER_NEAREST;
-        desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
-        desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
         desc.usage = SG_USAGE_STREAM;
-        auto img = sg_make_image(&desc);
-        display_texture = (texture_t)(uintptr_t)img.id;
-        img = sg_make_image(&desc);
-        display_buffer_texture = (texture_t)(uintptr_t)img.id;
+
+        {
+            simgui_image_desc_t idesc{};
+            idesc.image = sg_make_image(&desc);
+            idesc.sampler = DEFAULT_SAMPLER;
+            auto iimg = simgui_make_image(&idesc);
+            display_texture = simgui_imtextureid(iimg);
+        }
+
+        {
+            simgui_image_desc_t idesc{};
+            idesc.image = sg_make_image(&desc);
+            idesc.sampler = DEFAULT_SAMPLER;
+            auto iimg = simgui_make_image(&idesc);
+            display_buffer_texture = simgui_imtextureid(iimg);
+        }
     }
 
 #ifndef __EMSCRIPTEN__
@@ -115,7 +136,7 @@ static void app_init()
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy->load_file(value, f, save);
+                dropfile_err = arduboy.load_file(value, f, save);
                 autoset_from_device_type();
                 if(dropfile_err.empty())
                 {
@@ -145,14 +166,20 @@ static void app_event(sapp_event const* e)
             auto& tp = touch_points[e->touches[i].identifier];
             tp = { e->touches[i].pos_x * ipr, e->touches[i].pos_y * ipr };
         }
+        sapp_consume_event();
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_ENDED)
     {
         for(int i = 0; i < e->num_touches; ++i)
-            touch_points.erase(e->touches[i].identifier);
+            if(e->touches[i].changed)
+                touch_points.erase(e->touches[i].identifier);
+        sapp_consume_event();
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
+    {
         touch_points.clear();
+        sapp_consume_event();
+    }
 
 #if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
@@ -191,16 +218,12 @@ static void app_cleanup()
 #endif
     saudio_shutdown();
     simgui_shutdown();
-    platform_destroy_texture(display_texture);
-#ifndef ARDENS_NO_DEBUGGER
-    platform_destroy_texture(display_buffer_texture);
-#endif
     sg_shutdown();
 }
 
 void platform_destroy_texture(texture_t t)
 {
-    sg_destroy_image({ (uint32_t)(uintptr_t)t });
+    simgui_destroy_image({ (uint32_t)(uintptr_t)t });
 }
 
 texture_t platform_create_texture(int w, int h)
@@ -209,12 +232,12 @@ texture_t platform_create_texture(int w, int h)
     desc.width = w;
     desc.height = h;
     desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    desc.min_filter = SG_FILTER_LINEAR;
-    desc.mag_filter = SG_FILTER_NEAREST;
-    desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
-    desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
     desc.usage = SG_USAGE_STREAM;
-    auto t = sg_make_image(&desc);
+
+    simgui_image_desc_t idesc{};
+    idesc.image = sg_make_image(&desc);
+    idesc.sampler = DEFAULT_SAMPLER;
+    auto t = simgui_make_image(&idesc);
 
     return (texture_t)(uintptr_t)t.id;
 }
@@ -223,7 +246,10 @@ void platform_update_texture(texture_t t, void const* data, size_t n)
 {
     sg_image_data idata{};
     idata.subimage[0][0] = { data, n };
-    sg_update_image({ (uint32_t)(uintptr_t)t }, &idata);
+
+    auto img = simgui_image_from_imtextureid(t);
+    auto desc = simgui_query_image_desc(img);
+    sg_update_image(desc.image, &idata);
 }
 
 void platform_texture_scale_linear(texture_t t)
@@ -244,7 +270,7 @@ void platform_set_clipboard_text(char const* str)
 void platform_send_sound()
 {
     std::vector<int16_t> buf;
-    buf.swap(arduboy->cpu.sound_buffer);
+    buf.swap(arduboy.cpu.sound_buffer);
 
     if(saudio_expect() <= 0)
         return;
@@ -282,7 +308,7 @@ void platform_send_sound()
     if(ns < buf.size())
     {
         buf.erase(buf.begin(), buf.begin() + ns);
-        buf.swap(arduboy->cpu.sound_buffer);
+        buf.swap(arduboy.cpu.sound_buffer);
     }
 }
 
@@ -304,8 +330,9 @@ float platform_pixel_ratio()
 
 void platform_destroy_fonts_texture()
 {
-    sg_destroy_image(_simgui.img);
-    _simgui.img = { SG_INVALID_ID };
+    simgui_destroy_image(_simgui.default_font);
+    _simgui.font_img = {};
+    _simgui.default_font = {};
 }
 
 void platform_create_fonts_texture()
@@ -313,20 +340,23 @@ void platform_create_fonts_texture()
     unsigned char* font_pixels;
     int font_width, font_height;
     auto& io = ImGui::GetIO();
+
     io.Fonts->GetTexDataAsRGBA32(&font_pixels, &font_width, &font_height);
     sg_image_desc img_desc{};
     img_desc.width = font_width;
     img_desc.height = font_height;
     img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    img_desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
-    img_desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
-    img_desc.min_filter = SG_FILTER_LINEAR;
-    img_desc.mag_filter = SG_FILTER_LINEAR;
     img_desc.data.subimage[0][0].ptr = font_pixels;
     img_desc.data.subimage[0][0].size = (size_t)(font_width * font_height) * sizeof(uint32_t);
-    img_desc.label = "sokol-imgui-font";
-    _simgui.img = sg_make_image(&img_desc);
-    io.Fonts->TexID = (ImTextureID)(uintptr_t)_simgui.img.id;
+    img_desc.label = "sokol-imgui-font-image";
+    _simgui.font_img = sg_make_image(&img_desc);
+
+    simgui_image_desc_t idesc{};
+    idesc.image = _simgui.font_img;
+    idesc.sampler = _simgui.font_smp;
+    _simgui.default_font = simgui_make_image(&idesc);
+
+    io.Fonts->TexID = simgui_imtextureid(_simgui.default_font);
 }
 
 void platform_toggle_fullscreen()

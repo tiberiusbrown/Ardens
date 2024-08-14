@@ -1,10 +1,13 @@
-#include "dwarf.hpp"
+#include "absim_dwarf.hpp"
 
 #ifdef ARDENS_LLVM
 
 #include "common.hpp"
 
 #include <assert.h>
+
+namespace absim
+{
 
 struct stack_item
 {
@@ -31,14 +34,14 @@ static uint64_t regval(uint64_t i)
 {
     if(i < 31)
     {
-        uint64_t x = arduboy->cpu.data[i + 1];
-        x = (x << 8) + arduboy->cpu.data[i];
+        uint64_t x = arduboy.cpu.data[i + 1];
+        x = (x << 8) + arduboy.cpu.data[i];
         return x;
     }
     else if(i == 31)
-        return arduboy->cpu.data[i];
+        return arduboy.cpu.data[i];
     else if(i == 32)
-        return arduboy->cpu.sp();
+        return arduboy.cpu.sp();
     else
         return -1;
 }
@@ -65,7 +68,7 @@ dwarf_var_data dwarf_evaluate_location(
 
     expr_stack stack;
 
-    auto const& cpu = arduboy->cpu;
+    auto const& cpu = arduboy.cpu;
 
     auto extractor = llvm::DataExtractor(loc,
         type.getDwarfUnit()->getContext().isLittleEndian(), 0);
@@ -190,7 +193,7 @@ dwarf_var_data dwarf_evaluate_location(
         {
             CHECK(!stack.empty());
             auto a = stack.pop();
-            stack.push({ uint16_t(~a.data), a.is_addr});
+            stack.push({ uint16_t(~a.data), a.is_addr });
         }
         else if(code == DW_OP_and)
         {
@@ -393,6 +396,8 @@ dwarf_var_data dwarf_evaluate_location(
     }
 
     return vd;
+}
+
 }
 
 #endif
