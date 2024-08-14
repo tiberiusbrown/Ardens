@@ -173,6 +173,8 @@ void platform_toggle_fullscreen()
 
 static void main_loop()
 {
+    auto& io = ImGui::GetIO();
+    
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
@@ -238,6 +240,13 @@ static void main_loop()
 
     ImGui::Render();
 
+#ifdef __APPLE__
+    // why?
+    SDL_SetRenderScale(
+        renderer,
+        io.DisplayFramebufferScale.x,
+        io.DisplayFramebufferScale.y);
+#endif
     SDL_SetRenderDrawColor(renderer, (Uint8)(clear_color.x * 255), (Uint8)(clear_color.y * 255), (Uint8)(clear_color.z * 255), (Uint8)(clear_color.w * 255));
     SDL_RenderClear(renderer);
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
@@ -320,10 +329,6 @@ int main(int argc, char** argv)
 
     init();
 
-#ifdef _WIN32
-    SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
-#endif
-
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
@@ -348,6 +353,7 @@ int main(int argc, char** argv)
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
+        SDL_WINDOW_HIGH_PIXEL_DENSITY |
         0);
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
 
