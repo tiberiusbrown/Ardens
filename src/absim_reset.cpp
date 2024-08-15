@@ -195,6 +195,7 @@ void atmega32u4_t::soft_reset()
     adc_result = 0;
     adc_busy = false;
 
+    sound_prev_cycle = cycle_count;
     sound_cycle = 0;
     sound_enabled = 0;
     sound_pwm = false;
