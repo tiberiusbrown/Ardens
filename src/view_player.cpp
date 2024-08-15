@@ -57,6 +57,7 @@ static void draw_button(ImDrawList* d, int btn, touched_buttons_t const& pressed
     constexpr ImU32 col = IM_COL32(100, 100, 100, 70);
     constexpr ImU32 outline_col = IM_COL32(50, 50, 50, 150);
     constexpr float ROT[4] = { 270, 90, 180, 0 };
+    float thickness = pixel_ratio * 3.f;
     auto r = touch_rect(btn);
 
     switch(btn)
@@ -66,48 +67,54 @@ static void draw_button(ImDrawList* d, int btn, touched_buttons_t const& pressed
     case TOUCH_L:
     case TOUCH_R:
     {
-        constexpr ImVec2 DPAD[6] =
+        // bevel
+        constexpr float B = 0.075f;
+        constexpr ImVec2 DPAD[] =
         {
-            { -1.f, +0.f },
-            { +0.f, -1.f },
-            { +1.f, -1.f },
-            { +1.f, +1.f },
-            { +0.f, +1.f },
-            { -1.f, +0.f },
+            { -1.f, +0.f + B },
+            { -1.f, +0.f - B },
+            { +0.f - B, -1.f },
+            { +1.f - B, -1.f },
+            { +1.f, -1.f + B },
+            { +1.f, +1.f - B },
+            { +1.f - B, +1.f },
+            { +0.f - B, +1.f },
         };
+        constexpr int N_DPAD = sizeof(DPAD) / sizeof(DPAD[0]);
         float rot = ROT[btn] * (3.1415926535f / 180);
         float tc = cosf(rot);
         float ts = sinf(rot);
-        float scale = (r.x1 - r.x0) * 0.75f;
+        float scale = (r.x1 - r.x0) * 0.72f;
         r.x0 = (r.x0 + r.x1) * 0.5f;
         r.y0 = (r.y0 + r.y1) * 0.5f;
-        ImVec2 dp[6];
-        for(int i = 0; i < 6; ++i)
+        ImVec2 dp[N_DPAD + 2];
+        for(int i = 0; i < N_DPAD; ++i)
         {
             dp[i].x = (tc * DPAD[i].x - ts * DPAD[i].y) * scale + r.x0;
             dp[i].y = (ts * DPAD[i].x + tc * DPAD[i].y) * scale + r.y0;
         }
-        d->AddConvexPolyFilled(dp, 5, pressed.btns[btn] ? pcol : col);
-        d->AddPolyline(dp, 6, outline_col, 0, 5.f * pixel_ratio);
+        dp[N_DPAD + 0] = dp[0];
+        dp[N_DPAD + 1] = dp[1];
+        d->AddConvexPolyFilled(dp, N_DPAD, pressed.btns[btn] ? pcol : col);
+        d->AddPolyline(dp, N_DPAD, outline_col, ImDrawFlags_Closed, thickness);
         break;
     }
     case TOUCH_A:
     case TOUCH_B:
     {
-        float s = 0.1f * (r.x1 - r.x0);
-        float rounding = pixel_ratio * s;
-        r.x0 += s;
-        r.y0 += s;
-        r.x1 -= s;
-        r.y1 -= s;
-        d->AddRectFilled(
-            { r.x0, r.y0 }, { r.x1, r.y1 },
+        constexpr int SEGMENTS = 32;
+        float radius = (r.x1 - r.x0) * 0.65f;
+        r.x0 = (r.x0 + r.x1) * 0.5f;
+        r.y0 = (r.y0 + r.y1) * 0.5f;
+        d->AddCircleFilled(
+            { r.x0, r.y0 }, radius,
             pressed.btns[btn] ? pcol : col,
-            rounding, 0);
-        d->AddRect(
-            { r.x0, r.y0 }, { r.x1, r.y1 },
+            SEGMENTS);
+        d->AddCircle(
+            { r.x0, r.y0 }, radius,
             outline_col,
-            rounding, 0, 5.f * pixel_ratio);
+            SEGMENTS,
+            thickness);
         break;
     }
     default:
