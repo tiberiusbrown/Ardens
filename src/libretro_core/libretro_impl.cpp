@@ -101,7 +101,10 @@ void retro_init()
             func_log = data.log;
     }
     if(!func_env(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &save_path))
+    {
         save_path = nullptr;
+        func_log(RETRO_LOG_WARN, "Unable to get save directory\n");
+    }
     else
         func_log(RETRO_LOG_INFO, "Save path: %s\n", save_path);
 
@@ -212,6 +215,7 @@ void retro_run()
     func_audio_batch(
         audio_buf.data(),
         audio_buf.size() / 2);
+    arduboy->cpu.serial_bytes.clear();
 
     // Do we need to save?
     if(arduboy->savedata_dirty)
