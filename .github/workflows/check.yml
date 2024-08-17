@@ -77,8 +77,8 @@ jobs:
     - name: Set up emsdk
       run: |
         git clone https://github.com/emscripten-core/emsdk.git ${{github.workspace}}/emsdk
-        ${{github.workspace}}/emsdk/emsdk install 3.1.45
-        ${{github.workspace}}/emsdk/emsdk activate 3.1.45
+        ${{github.workspace}}/emsdk/emsdk install 3.1.64
+        ${{github.workspace}}/emsdk/emsdk activate 3.1.64
   
     - name: Cache FetchContent
       id: cache-fetchcontent
@@ -87,35 +87,63 @@ jobs:
         path: ${{github.workspace}}/build/_deps
         key: web-cache-fetchcontent
   
-    - name: Configure
+    - name: Configure (JS)
       run: |
         source ${{github.workspace}}/emsdk/emsdk_env.sh
-        emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
+        emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}  -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen -DARDENS_WEB_JS=1
     
-    - name: Build
+    - name: Build (JS)
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensFlashcart
-        mkdir ${{github.workspace}}/Ardens_web
+        mkdir ${{github.workspace}}/Ardens_web_js
         
-    - name: Create zip file
+    - name: Create zip file (JS)
       run: |
-        cp ${{github.workspace}}/build/Ardens.js ${{github.workspace}}/Ardens_web
-        cp ${{github.workspace}}/build/Ardens.wasm ${{github.workspace}}/Ardens_web
-        cp ${{github.workspace}}/build/ArdensPlayer.js ${{github.workspace}}/Ardens_web
-        cp ${{github.workspace}}/build/ArdensPlayer.wasm ${{github.workspace}}/Ardens_web
-        cp ${{github.workspace}}/src/Ardens.html ${{github.workspace}}/Ardens_web/index.html
-        cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web/player.html
-        cd ${{github.workspace}}/Ardens_web
-        zip -r ${{github.workspace}}/Ardens_web.zip *
+        cp ${{github.workspace}}/build/Ardens.js ${{github.workspace}}/Ardens_web_js
+        cp ${{github.workspace}}/build/ArdensPlayer.js ${{github.workspace}}/Ardens_web_js
+        cp ${{github.workspace}}/src/Ardens.html ${{github.workspace}}/Ardens_web_js/index.html
+        cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web_js/player.html
+        cd ${{github.workspace}}/Ardens_web_js
+        zip -r ${{github.workspace}}/Ardens_web_js.zip *
 
-    - name: Upload Build Artifact
+    - name: Upload Build Artifact (JS)
       uses: actions/upload-artifact@v4
       with:
-        name: build-artifact
-        path: ${{github.workspace}}/Ardens_web.zip
+        name: build-artifact-web-js
+        path: ${{github.workspace}}/Ardens_web_js.zip
+  
+    - name: Configure (WASM)
+      run: |
+        source ${{github.workspace}}/emsdk/emsdk_env.sh
+        emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen -DARDENS_WEB_JS=0
+    
+    - name: Build (WASM)
+      run: |
+        export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target Ardens
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
+        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensFlashcart
+        mkdir ${{github.workspace}}/Ardens_web_wasm
+        
+    - name: Create zip file (WASM)
+      run: |
+        cp ${{github.workspace}}/build/Ardens.js ${{github.workspace}}/Ardens_web_wasm
+        cp ${{github.workspace}}/build/Ardens.wasm ${{github.workspace}}/Ardens_web_wasm
+        cp ${{github.workspace}}/build/ArdensPlayer.js ${{github.workspace}}/Ardens_web_wasm
+        cp ${{github.workspace}}/build/ArdensPlayer.wasm ${{github.workspace}}/Ardens_web_wasm
+        cp ${{github.workspace}}/src/Ardens.html ${{github.workspace}}/Ardens_web_wasm/index.html
+        cp ${{github.workspace}}/src/ArdensPlayer.html ${{github.workspace}}/Ardens_web_wasm/player.html
+        cd ${{github.workspace}}/Ardens_web_wasm
+        zip -r ${{github.workspace}}/Ardens_web_wasm.zip *
+
+    - name: Upload Build Artifact (WASM)
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifact-web-wasm
+        path: ${{github.workspace}}/Ardens_web_wasm.zip
         
     - name: Pre-Deploy
       run: |
