@@ -482,6 +482,9 @@ void init()
     style.WindowRounding = 0.0f;
     style.Colors[ImGuiCol_WindowBg].w = 1.0f;
     style.Colors[ImGuiCol_PopupBg].w = 1.0f;
+    style.AntiAliasedFill = true;
+    style.AntiAliasedLines = true;
+    style.AntiAliasedLinesUseTex = true;
 
     default_style = style;
 
