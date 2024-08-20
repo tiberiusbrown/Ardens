@@ -82,6 +82,33 @@ void arduboy_t::update_game_hash()
     game_hash = h;
 }
 
+static uint8_t hexchar(char c)
+{
+    if(c >= '0' && c <= '9') return uint8_t(c - '0');
+    if(c >= 'a' && c <= 'f') return uint8_t(c - 'a' + 10);
+    if(c >= 'A' && c <= 'F') return uint8_t(c - 'A' + 10);
+    return 255;
+}
+
+void arduboy_t::load_eeprom_hexdata(char const* eeprom)
+{
+    for(size_t i = 0; i < 1024; ++i)
+    {
+        if(eeprom[i * 2 + 0] == '\0') break;
+        if(eeprom[i * 2 + 1] == '\0') break;
+        char h0 = eeprom[i * 2 + 0];
+        char h1 = eeprom[i * 2 + 1];
+        uint8_t x0 = hexchar(h0);
+        uint8_t x1 = hexchar(h1);
+        if((x0 | x1) >= 16) break;
+        uint8_t x = x0 + (x1 << 4);
+        savedata.eeprom[i] = x;
+        savedata.eeprom_modified_bytes.set(i);
+    }
+    savedata_dirty = true;
+    reset();
+}
+
 void arduboy_t::reset()
 {
     profiler_reset();

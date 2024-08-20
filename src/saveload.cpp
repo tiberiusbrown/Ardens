@@ -31,6 +31,25 @@ void load_savedata()
     }
 }
 
+void save_savedata()
+{
+    arduboy.savedata_dirty = false;
+    need_save = false;
+    auto fname = savedata_filename();
+    std::ofstream f(fname, std::ios::out | std::ios::binary);
+    if(!f.fail())
+    {
+        arduboy.save_savedata(f);
+        f.close();
+#ifdef __EMSCRIPTEN__
+        EM_ASM(
+            FS.syncfs(function(err) {});
+        );
+#endif
+        printf("Saved %s\n", fname.c_str());
+    }
+}
+
 void check_save_savedata()
 {
     if(arduboy.savedata_dirty)
@@ -42,19 +61,6 @@ void check_save_savedata()
 
     if(need_save && ms_since_start >= need_save_time)
     {
-        need_save = false;
-        auto fname = savedata_filename();
-        std::ofstream f(fname, std::ios::out | std::ios::binary);
-        if(!f.fail())
-        {
-            arduboy.save_savedata(f);
-            f.close();
-#ifdef __EMSCRIPTEN__
-            EM_ASM(
-                FS.syncfs(function(err) {});
-            );
-#endif
-            printf("Saved %s\n", fname.c_str());
-        }
+        save_savedata();
     }
 }

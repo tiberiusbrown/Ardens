@@ -1224,6 +1224,8 @@ struct arduboy_t
     // savestates only contain device state and are not compressed (e.g., for RetroArch)
     bool save_savestate(std::ostream& f);
     std::string load_savestate(std::istream& f);
+    
+    void load_eeprom_hexdata(char const* eeprom);
 };
 
 
