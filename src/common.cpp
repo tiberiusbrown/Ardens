@@ -354,7 +354,7 @@ extern "C" int setparam(char const* name, char const* value)
     }
     else if(!strcmp(name, "eeprom"))
     {
-        arduboy.load_eeprom_hexdata(value);
+        arduboy.load_eeprom_override_hexdata(value);
         save_savedata();
         load_savedata();
         r = 1;

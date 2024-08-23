@@ -90,7 +90,7 @@ static uint8_t hexchar(char c)
     return 255;
 }
 
-void arduboy_t::load_eeprom_hexdata(char const* eeprom)
+void arduboy_t::load_eeprom_override_hexdata(char const* eeprom)
 {
     for(size_t i = 0; i < 1024; ++i)
     {
@@ -101,11 +101,10 @@ void arduboy_t::load_eeprom_hexdata(char const* eeprom)
         uint8_t x0 = hexchar(h0);
         uint8_t x1 = hexchar(h1);
         if((x0 | x1) >= 16) break;
-        uint8_t x = x0 + (x1 << 4);
-        savedata.eeprom[i] = x;
-        savedata.eeprom_modified_bytes.set(i);
+        uint8_t x = (x0 << 4) + x1;
+        eeprom_override_data[i] = x;
+        eeprom_override.set(i);
     }
-    savedata_dirty = true;
     reset();
 }
 
@@ -153,6 +152,20 @@ void arduboy_t::reset()
 
     if(cpu.program_loaded)
         cpu.decode();
+
+    if(eeprom_override.any())
+    {
+        for(size_t i = 0; i < 1024; ++i)
+        {
+            if(eeprom_override.test(i))
+            {
+                cpu.eeprom[i] = savedata.eeprom[i] = eeprom_override_data[i];
+                cpu.eeprom_modified_bytes.set(i);
+                savedata.eeprom_modified_bytes.set(i);
+            }
+        }
+        savedata_dirty = true;
+    }
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(
