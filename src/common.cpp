@@ -352,6 +352,13 @@ extern "C" int setparam(char const* name, char const* value)
         always_touch = bvalue;
         r = 1;
     }
+    else if(!strcmp(name, "eeprom"))
+    {
+        arduboy.load_eeprom_override_hexdata(value);
+        save_savedata();
+        load_savedata();
+        r = 1;
+    }
     else if(!strcmp(name, "loading"))
     {
         loading_indicator = bvalue;

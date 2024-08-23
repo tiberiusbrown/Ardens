@@ -82,6 +82,32 @@ void arduboy_t::update_game_hash()
     game_hash = h;
 }
 
+static uint8_t hexchar(char c)
+{
+    if(c >= '0' && c <= '9') return uint8_t(c - '0');
+    if(c >= 'a' && c <= 'f') return uint8_t(c - 'a' + 10);
+    if(c >= 'A' && c <= 'F') return uint8_t(c - 'A' + 10);
+    return 255;
+}
+
+void arduboy_t::load_eeprom_override_hexdata(char const* eeprom)
+{
+    for(size_t i = 0; i < 1024; ++i)
+    {
+        if(eeprom[i * 2 + 0] == '\0') break;
+        if(eeprom[i * 2 + 1] == '\0') break;
+        char h0 = eeprom[i * 2 + 0];
+        char h1 = eeprom[i * 2 + 1];
+        uint8_t x0 = hexchar(h0);
+        uint8_t x1 = hexchar(h1);
+        if((x0 | x1) >= 16) break;
+        uint8_t x = (x0 << 4) + x1;
+        eeprom_override_data[i] = x;
+        eeprom_override.set(i);
+    }
+    reset();
+}
+
 void arduboy_t::reset()
 {
     profiler_reset();
@@ -126,6 +152,20 @@ void arduboy_t::reset()
 
     if(cpu.program_loaded)
         cpu.decode();
+
+    if(eeprom_override.any())
+    {
+        for(size_t i = 0; i < 1024; ++i)
+        {
+            if(eeprom_override.test(i))
+            {
+                cpu.eeprom[i] = savedata.eeprom[i] = eeprom_override_data[i];
+                cpu.eeprom_modified_bytes.set(i);
+                savedata.eeprom_modified_bytes.set(i);
+            }
+        }
+        savedata_dirty = true;
+    }
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(

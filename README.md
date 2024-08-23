@@ -145,23 +145,30 @@ Sets the type of emulated display. Values:
 - `1` or `ssd1309`
 - `2` or `sh1106`
 
+#### `eeprom`
+Pre-initializes the EEPROM save data starting at index 0. Value should contain up to 2048 hex characters (up to 1024 bytes of data).
+
 ## Libraries Used
 
-- [SDL](https://github.com/libsdl-org/SDL) (zlib)
-- [sokol](https://github.com/floooh/sokol) (zlib)
-- [LLVM Project](https://github.com/llvm/llvm-project) (Apache v2.0 with LLVM Exceptions) 
-- [Dear ImGui](https://github.com/ocornut/imgui) (MIT)
-- [ImPlot](https://github.com/epezent/implot) (MIT)
-- [imgui_markdown](https://github.com/juliettef/imgui_markdown) (zlib)
-- [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) (MIT)
-- [Simple-FFT](https://github.com/d1vanov/Simple-FFT) (MIT)
-- [brunexgeek/hqx](https://github.com/brunexgeek/hqx) (Apache v2.0)
-- [{fmt}](https://github.com/fmtlib/fmt) (MIT)
-- [rapidjson](https://github.com/Tencent/rapidjson) (MIT)
-- [Miniz](https://github.com/richgel999/miniz) (MIT)
-- [Bitsery](https://github.com/fraillt/bitsery) (MIT)
-- [stb_image_write](https://github.com/nothings/stb/blob/master/stb_image_write.h) (Public Domain)
-- [GIF encoder](https://github.com/lecram/gifenc) (Public Domain)
+Ardens embeds the [cathy3k](https://github.com/MrBlinky/cathy3k) bootloader (MIT) by Mr.Blinky.
+
 - [AudioFile](https://github.com/adamstark/AudioFile) (MIT)
+- [Bitsery](https://github.com/fraillt/bitsery) (MIT)
+- [cfgpath.h](https://github.com/Malvineous/cfgpath) - (Unlicense)
+- [Dear ImGui](https://github.com/ocornut/imgui) (MIT)
 - [Emscripten Browser File Library](https://github.com/Armchair-Software/emscripten-browser-file) (MIT)
 - [Filewatch](https://github.com/ThomasMonkman/filewatch) (MIT)
+- [{fmt}](https://github.com/fmtlib/fmt) (MIT)
+- [GIF encoder](https://github.com/lecram/gifenc) (Public Domain)
+- [hqx](https://github.com/brunexgeek/hqx) (Apache v2.0)
+- [imgui_markdown](https://github.com/juliettef/imgui_markdown) (zlib)
+- [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) (MIT)
+- [ImPlot](https://github.com/epezent/implot) (MIT)
+- [LLVM Project](https://github.com/llvm/llvm-project) (Apache v2.0 with LLVM Exceptions) 
+- [Miniz](https://github.com/richgel999/miniz) (MIT)
+- [rapidjson](https://github.com/Tencent/rapidjson) (MIT)
+- [SDL](https://github.com/libsdl-org/SDL) (zlib)
+- [Simple-FFT](https://github.com/d1vanov/Simple-FFT) (MIT)
+- [sokol](https://github.com/floooh/sokol) (zlib)
+- [stb_image_write](https://github.com/nothings/stb/blob/master/stb_image_write.h) (Public Domain)
+- [yyjson](https://github.com/ibireme/yyjson) (MIT)

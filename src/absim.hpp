@@ -1192,6 +1192,10 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
+    std::array<uint8_t, 1024> eeprom_override_data;
+    std::bitset<1024> eeprom_override;
+    void load_eeprom_override_hexdata(char const* eeprom);
+
     arduboy_config_t cfg;
     bool flashcart_loaded;
     void reset();

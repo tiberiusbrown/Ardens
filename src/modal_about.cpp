@@ -8,35 +8,42 @@
 static char const MARKDOWN[] = R"(*Ardens*
 ***
 
-[Arduboy](https://www.arduboy.com/) simulator for profiling and debugging ([source Code](https://github.com/tiberiusbrown/Ardens)).
+[Arduboy FX](https://www.arduboy.com/) simulator for profiling and debugging ([source Code](https://github.com/tiberiusbrown/Ardens)).
+"Arduboy" is copyright (c) Arduboy, Inc.
 
-Drap and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (hex/elf/arduboy) and any FX data (bin) onto this window.
+Drag and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (hex/elf/arduboy) and any FX data (bin) onto this window.
+
+Embedded bootloader: [cathy3k](https://github.com/MrBlinky/cathy3k) (MIT) by Mr.Blinky.
 
 *Libraries Used*
 ***
-  * [sokol](https://github.com/floooh/sokol) (zlib)
-  * [LLVM Project](https://github.com/llvm/llvm-project) (Apache v2.0 with LLVM Exceptions) 
+  * [AudioFile](https://github.com/adamstark/AudioFile) (MIT)
+  * [Bitsery](https://github.com/fraillt/bitsery) (MIT)
+  * [cfgpath.h](https://github.com/Malvineous/cfgpath) - (Unlicense)
   * [Dear ImGui](https://github.com/ocornut/imgui) (MIT)
-  * [ImPlot](https://github.com/epezent/implot) (MIT)
+  * [Emscripten Browser File Library](https://github.com/Armchair-Software/emscripten-browser-file) (MIT)
+  * [Filewatch](https://github.com/ThomasMonkman/filewatch) (MIT)
+  * [{fmt}](https://github.com/fmtlib/fmt) (MIT)
+  * [GIF encoder](https://github.com/lecram/gifenc) (Public Domain)
+  * [hqx](https://github.com/brunexgeek/hqx) (Apache v2.0)
   * [imgui_markdown](https://github.com/juliettef/imgui_markdown) (zlib)
   * [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) (MIT)
-  * [Simple-FFT](https://github.com/d1vanov/Simple-FFT) (MIT)
-  * [brunexgeek/hqx](https://github.com/brunexgeek/hqx) (Apache v2.0)
-  * [{fmt}](https://github.com/fmtlib/fmt) (MIT)
-  * [rapidjson](https://github.com/Tencent/rapidjson) (MIT)
+  * [ImPlot](https://github.com/epezent/implot) (MIT)
+  * [LLVM Project](https://github.com/llvm/llvm-project) (Apache v2.0 with LLVM Exceptions) 
   * [Miniz](https://github.com/richgel999/miniz) (MIT)
-  * [Bitsery](https://github.com/fraillt/bitsery) (MIT)
+  * [rapidjson](https://github.com/Tencent/rapidjson) (MIT)
+  * [SDL](https://github.com/libsdl-org/SDL) (zlib)
+  * [Simple-FFT](https://github.com/d1vanov/Simple-FFT) (MIT)
+  * [sokol](https://github.com/floooh/sokol) (zlib)
   * [stb_image_write](https://github.com/nothings/stb/blob/master/stb_image_write.h) (Public Domain)
-  * [GIF encoder](https://github.com/lecram/gifenc) (Public Domain)
-  * [AudioFile](https://github.com/adamstark/AudioFile) (MIT)
-  * [Emscripten Browser File Library](https://github.com/Armchair-Software/emscripten-browser-file) (MIT)
+  * [yyjson](https://github.com/ibireme/yyjson) (MIT)
 
 *License*
 ***
 
 MIT License
 
-Copyright (c) 2023 Peter Brown
+Copyright (c) 2024 Peter Brown
 
 )"
 "Permission is hereby granted, free of charge, to any person obtaining a copy "
