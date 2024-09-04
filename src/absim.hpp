@@ -456,7 +456,12 @@ struct atmega32u4_t
     uint16_t executing_instr_pc;
 
     static constexpr size_t MAX_STACK_FRAMES = 1280;
-    struct stack_frame_t { uint16_t pc; uint16_t sp; };
+    struct stack_frame_t 
+    {
+        uint64_t cycle;
+        uint16_t pc;
+        uint16_t sp;
+    };
     std::array<stack_frame_t, MAX_STACK_FRAMES> stack_frames;
     uint32_t num_stack_frames;
     ARDENS_FORCEINLINE void push_stack_frame(uint16_t ret_addr)
@@ -464,7 +469,7 @@ struct atmega32u4_t
         (void)ret_addr;
 #ifndef ARDENS_NO_DEBUGGER
         if(num_stack_frames < stack_frames.size())
-            stack_frames[num_stack_frames++] = { ret_addr, sp() };
+            stack_frames[num_stack_frames++] = { cycle_count, ret_addr, sp() };
 #endif
     }
     ARDENS_FORCEINLINE void pop_stack_frame()
@@ -1210,16 +1215,17 @@ struct arduboy_t
     std::vector<uint8_t> present_state;
     uint64_t present_cycle;
     static constexpr uint64_t STATE_HISTORY_CYCLES = 0x100000;
-    static constexpr uint64_t STATE_HISTORY_TOTAL_SECONDS = 10;
+    static constexpr uint64_t STATE_HISTORY_TOTAL_MS = 10000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_CYCLES =
-        STATE_HISTORY_TOTAL_SECONDS * 16000000;
+        STATE_HISTORY_TOTAL_MS * 16000;
 
     // time-travel debugging
     void save_state_to_vector(std::vector<uint8_t>& v);
     void load_state_from_vector(std::vector<uint8_t> const& v);
     void update_history();
-    bool travel_to_cycle(uint64_t cycle);
     void travel_back_single_instr();
+    void travel_back_single_instr_over();
+    void travel_back_single_instr_out();
     void travel_to_present();
     bool is_present_state();
 

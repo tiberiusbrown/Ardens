@@ -598,68 +598,134 @@ void arduboy_t::update_history()
 #endif
 }
 
-bool arduboy_t::travel_to_cycle(uint64_t cycle)
+struct pc_hist_t
 {
-    size_t ii, si;
-    for(ii = 0; ii + 1 < input_history.size(); ++ii)
-        if(input_history[ii].cycle <= cycle && input_history[ii + 1].cycle > cycle)
-            break;
-    if(ii >= input_history.size() || input_history[ii].cycle > cycle)
-        return false;
-    for(si = 0; si + 1 < state_history.size(); ++si)
-        if(state_history[si].cycle <= cycle && state_history[si + 1].cycle > cycle)
-            break;
-    if(si >= state_history.size() || state_history[si].cycle > cycle)
-        return false;
+    uint64_t cycle;
+    uint16_t pc;
+    uint16_t stack_depth;
+    uint8_t pinb;
+    uint8_t pine;
+    uint8_t pinf;
+};
 
-    auto const& state = state_history[si];
-    if(present_state.empty())
+static void travel_back_advance_instr(arduboy_t& a)
+{
+    int n = 0;
+    auto oldpc = a.cpu.pc;
+    a.cpu.no_merged = true;
+    a.ps_rem = 0;
+    do
     {
-        present_cycle = cpu.cycle_count;
-        save_state_to_vector(present_state);
-    }
-    load_state_from_vector(state.state);
-    cpu.no_merged = true;
-    ps_rem = 0;
-    paused = false;
-    while(cycle > cpu.cycle_count)
+        a.paused = false;
+        a.cycle();
+        a.cpu.update_all();
+        a.paused = true;
+    } while(++n < 65536 && a.cpu.pc == oldpc);
+}
+
+template<class F>
+static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MAX)
+{
+    if(a.state_history.empty()) return;
+    if(a.input_history.empty()) return;
+    if(a.present_state.empty())
     {
-        auto const& input = input_history[ii];
-        cpu.PINB() = input.pinb;
-        cpu.PINE() = input.pine;
-        cpu.PINF() = input.pinf;
-        advance_instr();
+        a.save_state_to_vector(a.present_state);
+        a.present_cycle = a.cpu.cycle_count;
     }
-    paused = true;
-    return true;
+    size_t si = a.state_history.size();
+    std::vector<pc_hist_t> pcs;
+    std::vector<uint8_t> temp_state;
+    a.save_state_to_vector(temp_state);
+    uint64_t curr_cycle = a.cpu.cycle_count;
+    max_cycle = std::min(max_cycle, curr_cycle);
+    while(si >= 2 && a.state_history[si - 1].cycle >= max_cycle)
+        si -= 1;
+    while(si-- > 0)
+    {
+        auto const& state = a.state_history[si];
+        uint64_t end_cycle = (si + 1 < a.state_history.size() ?
+            a.state_history[si + 1].cycle : a.present_cycle);
+        end_cycle = std::min(end_cycle, curr_cycle);
+        size_t ii = a.input_history.size();
+        while(ii-- > 0)
+        {
+            if(a.input_history[ii].cycle <= state.cycle)
+                break;
+        }
+        if(ii >= a.input_history.size())
+            break;
+        a.load_state_from_vector(state.state);
+        pcs.clear();
+        while(a.cpu.cycle_count < end_cycle)
+        {
+            while(ii + 1 < a.input_history.size() && a.input_history[ii].cycle <= a.cpu.cycle_count)
+                ++ii;
+            auto const& input = a.input_history[ii];
+            pc_hist_t p{};
+            p.cycle = a.cpu.cycle_count;
+            p.pc = a.cpu.pc;
+            p.stack_depth = (uint16_t)a.cpu.num_stack_frames;
+            a.cpu.PINB() = p.pinb = input.pinb;
+            a.cpu.PINE() = p.pine = input.pine;
+            a.cpu.PINF() = p.pinf = input.pinf;
+            pcs.push_back(p);
+            travel_back_advance_instr(a);
+        }
+        size_t pi = pcs.size();
+        while(pi-- > 0)
+        {
+            if(f(pcs[pi]))
+            {
+                // success
+                a.load_state_from_vector(state.state);
+                for(size_t i = 0; i < pi; ++i)
+                {
+                    a.cpu.PINB() = pcs[i].pinb;
+                    a.cpu.PINE() = pcs[i].pine;
+                    a.cpu.PINF() = pcs[i].pinf;
+                    travel_back_advance_instr(a);
+                }
+                return;
+            }
+        }
+    }
+    // failed to travel back: reload previous state
+    a.load_state_from_vector(temp_state);
+    if(a.cpu.cycle_count >= a.present_cycle)
+    {
+        a.load_state_from_vector(a.present_state);
+        a.present_state.clear();
+    }
 }
 
 void arduboy_t::travel_back_single_instr()
 {
-    uint64_t base_cycle = cpu.cycle_count;
-    uint64_t d = 1;
-    uint16_t pc = cpu.pc;
-    for(int tries = 0; tries < 200; ++tries)
-    {
-        if(base_cycle < d) break;
-        uint64_t cycle = base_cycle - d;
-        if(!travel_to_cycle(cycle))
-            return;
-        if(cpu.pc != pc)
-        {
-            uint64_t t = d / 2u + 1;
-            if(t == d) return;
-            while(t <= d)
-            {
-                travel_to_cycle(base_cycle - t);
-                if(cpu.pc != pc)
-                    return;
-                ++t;
-            }
-            return;
-        }
-        d *= 2;
-    }
+    uint16_t tpc = cpu.pc;
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.pc != tpc;
+    });
+}
+
+void arduboy_t::travel_back_single_instr_over()
+{
+    uint16_t tpc = cpu.pc;
+    uint16_t tsd = cpu.num_stack_frames;
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.pc != tpc && p.stack_depth == tsd;
+    });
+}
+
+void arduboy_t::travel_back_single_instr_out()
+{
+    uint16_t tsd = cpu.num_stack_frames;
+    if(tsd == 0) return;
+    uint64_t cycle = cpu.stack_frames[tsd - 1].cycle;
+    assert(cycle < cpu.cycle_count);
+    if(cycle >= cpu.cycle_count) return;
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.stack_depth < tsd;
+    }, cycle);
 }
 
 void arduboy_t::travel_to_present()
@@ -785,6 +851,14 @@ void arduboy_t::advance(uint64_t ps)
             savedata_dirty = true;
         }
     }
+
+#ifndef ARDENS_NO_DEBUGGER
+    if(cpu.cycle_count >= present_cycle)
+    {
+        load_state_from_vector(present_state);
+        present_state.clear();
+    }
+#endif
 }
 
 }

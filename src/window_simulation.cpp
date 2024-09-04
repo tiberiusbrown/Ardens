@@ -35,11 +35,13 @@ void window_simulation(bool& open)
             arduboy.reset();
             load_savedata();
         }
-        SameLine();
         if(arduboy.paused)
         {
+            SameLine();
             if(Button("Continue"))
                 arduboy.paused = false;
+            AlignTextToFramePadding();
+            TextUnformatted("Forward: ");
             SameLine();
             if(Button("Step Into"))
             {
@@ -101,6 +103,7 @@ void window_simulation(bool& open)
         }
         else
         {
+            SameLine();
             if(Button("Pause"))
             {
                 arduboy.paused = true;
@@ -115,17 +118,37 @@ void window_simulation(bool& open)
         if(arduboy.paused)
         {
             AlignTextToFramePadding();
-            TextUnformatted("Travel Back:");
-            if(Button("Single Instr"))
+            TextUnformatted("Backward:");
+            SameLine();
+            if(Button("Step Into###backinto"))
             {
                 arduboy.travel_back_single_instr();
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
             SameLine();
-            if(Button("Present"))
+            if(Button("Step Over###backover"))
             {
-                arduboy.travel_to_present();
+                arduboy.travel_back_single_instr_over();
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
+            }
+            SameLine();
+            if(Button("Step Out###backout"))
+            {
+                arduboy.travel_back_single_instr_out();
+                disassembly_scroll_addr = arduboy.cpu.pc * 2;
+            }
+            if(!arduboy.is_present_state())
+            {
+                uint32_t dc = uint32_t(arduboy.present_cycle - arduboy.cpu.cycle_count);
+                if(Button("Return to Present"))
+                {
+                    arduboy.travel_to_present();
+                    disassembly_scroll_addr = arduboy.cpu.pc * 2;
+                }
+                SameLine();
+                AlignTextToFramePadding();
+                TextDisabled("-%u cycles, -%.4f ms",
+                    dc, double((1.0 / 16e3) * (dc)));
             }
         }
     }

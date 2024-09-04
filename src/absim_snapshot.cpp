@@ -150,6 +150,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.executing_instr_pc);
     for(auto& f : a.cpu.stack_frames)
     {
+        ar(f.cycle);
         ar(f.pc);
         ar(f.sp);
     }
@@ -216,6 +217,8 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 
     ar(a.cpu.watchdog_divider);
     ar(a.cpu.watchdog_divider_cycle);
+    ar(a.cpu.watchdog_prev_cycle);
+    ar(a.cpu.watchdog_next_cycle);
 
     ar(a.cpu.peripheral_queue);
 
