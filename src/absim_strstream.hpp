@@ -27,6 +27,16 @@ public:
             this->setp(s, s + n);
     }
 
+    virtual pos_type seekpos(pos_type pos,
+        std::ios_base::openmode which = std::ios_base::in | std::ios_base::out) override
+    {
+        if(!is_output && (which & std::ios_base::in))
+            this->setg(this->eback(), this->eback(), this->egptr());
+        if(is_output && (which & std::ios_base::out))
+            this->setp(this->pbase(), this->epptr());
+        return pos;
+    }
+
     virtual std::streamsize xsgetn(char_type* s, std::streamsize n) override
     {
         if(0 == n)

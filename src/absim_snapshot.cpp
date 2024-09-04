@@ -17,6 +17,8 @@
 
 #include <miniz.h>
 
+#include "absim_strstream.hpp"
+
 constexpr std::array<char, 8> SNAPSHOT_ID =
 {
     '_', 'A', 'B', 'S', 'I', 'M', '_', '\0',
@@ -354,7 +356,7 @@ bool arduboy_t::save_savestate(std::ostream& f)
     ar(SNAPSHOT_ID);
     ar(SNAPSHOT_VERSION);
     auto r = serdes_savestate(ar, *this);
-    return !r.empty();
+    return r.empty();
 }
 
 std::string arduboy_t::load_savestate(std::istream& f)

@@ -112,6 +112,22 @@ void window_simulation(bool& open)
         if(Checkbox("Enable auto-break on stack overflow", &settings.enable_stack_breaks))
             update_settings();
 #endif
+        if(arduboy.paused)
+        {
+            AlignTextToFramePadding();
+            TextUnformatted("Travel Back:");
+            if(Button("Single Instr"))
+            {
+                arduboy.travel_back_single_instr();
+                disassembly_scroll_addr = arduboy.cpu.pc * 2;
+            }
+            SameLine();
+            if(Button("Present"))
+            {
+                arduboy.travel_to_present();
+                disassembly_scroll_addr = arduboy.cpu.pc * 2;
+            }
+        }
     }
     End();
 }

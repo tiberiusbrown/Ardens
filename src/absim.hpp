@@ -1192,6 +1192,37 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
+    // time-travel debugging info
+    struct inputs_t
+    {
+        uint64_t cycle;
+        uint8_t pinb, pine, pinf;
+        bool operator<(inputs_t const& other) { return cycle < other.cycle; }
+    };
+    std::vector<inputs_t> input_history;
+    struct tt_state_t
+    {
+        uint64_t cycle;
+        std::vector<uint8_t> state;
+    };
+    std::vector<tt_state_t> state_history;
+    uint64_t history_size;
+    std::vector<uint8_t> present_state;
+    uint64_t present_cycle;
+    static constexpr uint64_t STATE_HISTORY_CYCLES = 0x100000;
+    static constexpr uint64_t STATE_HISTORY_TOTAL_SECONDS = 10;
+    static constexpr uint64_t STATE_HISTORY_TOTAL_CYCLES =
+        STATE_HISTORY_TOTAL_SECONDS * 16000000;
+
+    // time-travel debugging
+    void save_state_to_vector(std::vector<uint8_t>& v);
+    void load_state_from_vector(std::vector<uint8_t> const& v);
+    void update_history();
+    bool travel_to_cycle(uint64_t cycle);
+    void travel_back_single_instr();
+    void travel_to_present();
+    bool is_present_state();
+
     arduboy_config_t cfg;
     bool flashcart_loaded;
     void reset();
