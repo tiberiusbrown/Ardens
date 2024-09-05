@@ -18,7 +18,8 @@ void window_simulation(bool& open)
 {
 	using namespace ImGui;
     if(!open) return;
-    
+    static float ttslider = 1.f;
+
     SetNextWindowSize({ 200 * pixel_ratio, 100 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Simulation", &open) && arduboy.cpu.decoded)
     {
@@ -43,6 +44,7 @@ void window_simulation(bool& open)
             if(Button("Continue"))
             {
                 arduboy.travel_continue();
+                ttslider = 1.f;
                 arduboy.paused = false;
             }
 
@@ -52,6 +54,7 @@ void window_simulation(bool& open)
             if(Button("Step Into"))
             {
                 arduboy.travel_continue();
+                ttslider = 1.f;
                 arduboy.advance_instr();
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
@@ -67,6 +70,7 @@ void window_simulation(bool& open)
                 auto const& i = arduboy.cpu.decoded_prog[arduboy.cpu.pc];
 
                 arduboy.travel_continue();
+                ttslider = 1.f;
                 if(absim::instr_is_call(i))
                 {
                     arduboy.paused = false;
@@ -94,6 +98,7 @@ void window_simulation(bool& open)
             if(Button("Step Out") && arduboy.cpu.num_stack_frames > 0)
             {
                 arduboy.travel_continue();
+                ttslider = 1.f;
                 arduboy.break_step = arduboy.cpu.stack_frames[arduboy.cpu.num_stack_frames - 1].pc;
                 arduboy.paused = false;
             }
@@ -126,7 +131,6 @@ void window_simulation(bool& open)
 #endif
         if(arduboy.paused)
         {
-            static float ttslider = 1.f;
             float old_ttslider = ttslider;
             char buf[64];
             buf[0] = '\0';
