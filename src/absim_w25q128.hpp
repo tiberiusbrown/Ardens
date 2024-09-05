@@ -82,6 +82,8 @@ void w25q128_t::reset()
     sectors_dirty = false;
 
     busy_error = false;
+    for(auto& s : sectors_modified_data)
+        s.reset();
 }
 
 ARDENS_FORCEINLINE void w25q128_t::set_enabled(bool e)

@@ -2,6 +2,8 @@
 
 #include "common.hpp"
 
+#include <cmath>
+
 static int slider_val = 12;
 static int const SLIDERS[] = {
     10000000, 5000000, 2000000,
@@ -39,12 +41,17 @@ void window_simulation(bool& open)
         {
             SameLine();
             if(Button("Continue"))
+            {
+                arduboy.travel_continue();
                 arduboy.paused = false;
+            }
+
             AlignTextToFramePadding();
             TextUnformatted("Forward: ");
             SameLine();
             if(Button("Step Into"))
             {
+                arduboy.travel_continue();
                 arduboy.advance_instr();
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
@@ -59,6 +66,7 @@ void window_simulation(bool& open)
             {
                 auto const& i = arduboy.cpu.decoded_prog[arduboy.cpu.pc];
 
+                arduboy.travel_continue();
                 if(absim::instr_is_call(i))
                 {
                     arduboy.paused = false;
@@ -85,6 +93,7 @@ void window_simulation(bool& open)
                 BeginDisabled();
             if(Button("Step Out") && arduboy.cpu.num_stack_frames > 0)
             {
+                arduboy.travel_continue();
                 arduboy.break_step = arduboy.cpu.stack_frames[arduboy.cpu.num_stack_frames - 1].pc;
                 arduboy.paused = false;
             }
@@ -117,6 +126,37 @@ void window_simulation(bool& open)
 #endif
         if(arduboy.paused)
         {
+            static float ttslider = 1.f;
+            float old_ttslider = ttslider;
+            char buf[64];
+            buf[0] = '\0';
+            if(!arduboy.is_present_state())
+            {
+                uint32_t dc = uint32_t(arduboy.present_cycle - arduboy.cpu.cycle_count);
+                snprintf(buf, sizeof(buf),
+                    "-%u cycles, -%.4f ms",
+                    dc, double((1.0 / 16e3) * (dc)));
+            }
+            SliderFloat("###ttslider", &ttslider, 0.f, 1.f, buf);
+            if(old_ttslider != ttslider && !arduboy.state_history.empty())
+            {
+                uint64_t cycles = arduboy.present_cycle - arduboy.state_history[0].cycle;
+                uint64_t c = uint64_t(std::round(double(ttslider) * cycles));
+                c += arduboy.state_history[0].cycle;
+                arduboy.travel_to_present();
+                arduboy.travel_back_to_cycle(c);
+                disassembly_scroll_addr = arduboy.cpu.pc * 2;
+            }
+            if(!arduboy.is_present_state())
+            {
+                SameLine();
+                if(Button("Return to Present"))
+                {
+                    ttslider = 1.f;
+                    arduboy.travel_to_present();
+                    disassembly_scroll_addr = arduboy.cpu.pc * 2;
+                }
+            }
             AlignTextToFramePadding();
             TextUnformatted("Backward:");
             SameLine();
@@ -136,19 +176,6 @@ void window_simulation(bool& open)
             {
                 arduboy.travel_back_single_instr_out();
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
-            }
-            if(!arduboy.is_present_state())
-            {
-                uint32_t dc = uint32_t(arduboy.present_cycle - arduboy.cpu.cycle_count);
-                if(Button("Return to Present"))
-                {
-                    arduboy.travel_to_present();
-                    disassembly_scroll_addr = arduboy.cpu.pc * 2;
-                }
-                SameLine();
-                AlignTextToFramePadding();
-                TextDisabled("-%u cycles, -%.4f ms",
-                    dc, double((1.0 / 16e3) * (dc)));
             }
         }
     }

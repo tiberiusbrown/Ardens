@@ -17,6 +17,8 @@ extern "C"
 #include "boot/boot_flashcart.h"
 }
 
+#define COMPRESS_TIME_TRAVEL_STATES 1
+
 namespace absim
 {
 
@@ -45,6 +47,13 @@ void arduboy_t::reload_fx()
         fx.write_bytes(fxdata_offset, fxdata.data(), fxdata.size());
         update_game_hash();
         fx.write_bytes(fxsave_offset, fxsave.data(), fxsave.size());
+    }
+
+    for(size_t i = 0; i < fx.NUM_SECTORS; ++i)
+    {
+        auto const& s = fx.sectors_modified_data[i];
+        if(!s) continue;
+        fx.write_bytes(i * 4096, s->data(), s->size());
     }
 }
 
@@ -544,13 +553,27 @@ void arduboy_t::save_state_to_vector(std::vector<uint8_t>& v)
     std::ostringstream ss;
     save_savestate(ss);
     auto s = ss.str();
+#if COMPRESS_TIME_TRAVEL_STATES
+    if(!compress_zlib(v, s.data(), s.size()))
+        v.clear();
+#else
     v.resize(s.size());
     memcpy(v.data(), s.data(), v.size());
+#endif
 }
 
 void arduboy_t::load_state_from_vector(std::vector<uint8_t> const& v)
 {
+    if(v.empty())
+        return;
+#if COMPRESS_TIME_TRAVEL_STATES
+    std::vector<uint8_t> v_uncomp;
+    if(!uncompress_zlib(v_uncomp, v.data(), v.size()))
+        return;
+    absim::istrstream ss((char const*)v_uncomp.data(), v_uncomp.size());
+#else
     absim::istrstream ss((char const*)v.data(), v.size());
+#endif
     load_savestate(ss);
 }
 
@@ -618,7 +641,6 @@ static void travel_back_advance_instr(arduboy_t& a)
     {
         a.paused = false;
         a.cycle();
-        a.cpu.update_all();
         a.paused = true;
     } while(++n < 65536 && a.cpu.pc == oldpc);
 }
@@ -659,7 +681,7 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
         pcs.clear();
         while(a.cpu.cycle_count < end_cycle)
         {
-            while(ii + 1 < a.input_history.size() && a.input_history[ii].cycle <= a.cpu.cycle_count)
+            while(ii + 1 < a.input_history.size() && a.input_history[ii + 1].cycle <= a.cpu.cycle_count)
                 ++ii;
             auto const& input = a.input_history[ii];
             pc_hist_t p{};
@@ -686,6 +708,7 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
                     a.cpu.PINF() = pcs[i].pinf;
                     travel_back_advance_instr(a);
                 }
+                a.cpu.update_all();
                 return;
             }
         }
@@ -697,6 +720,13 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
         a.load_state_from_vector(a.present_state);
         a.present_state.clear();
     }
+}
+
+void arduboy_t::travel_back_to_cycle(uint64_t cycle)
+{
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.cycle <= cycle;
+    }, cycle);
 }
 
 void arduboy_t::travel_back_single_instr()
@@ -733,6 +763,23 @@ void arduboy_t::travel_to_present()
     if(present_state.empty()) return;
     load_state_from_vector(present_state);
     present_state.clear();
+}
+
+void arduboy_t::travel_continue()
+{
+    if(present_state.empty()) return;
+    present_state.clear();
+    size_t i;
+    i = 0;
+    while(i < state_history.size() && state_history[i].cycle < cpu.cycle_count)
+        ++i;
+    if(i < state_history.size())
+        state_history.resize(i);
+    i = 0;
+    while(i < input_history.size() && input_history[i].cycle < cpu.cycle_count)
+        ++i;
+    if(i < input_history.size())
+        input_history.resize(i);
 }
 
 bool arduboy_t::is_present_state()
@@ -825,31 +872,37 @@ void arduboy_t::advance(uint64_t ps)
     }
 
     // update savedata
-    if(is_present_state())
+    if(cpu.eeprom_dirty)
     {
-        if(cpu.eeprom_dirty)
-        {
-            savedata.eeprom.resize(cpu.eeprom.size());
-            savedata.eeprom_modified_bytes = cpu.eeprom_modified_bytes;
-            memcpy(savedata.eeprom.data(), cpu.eeprom.data(), array_bytes(savedata.eeprom));
-            cpu.eeprom_dirty = false;
+        savedata.eeprom.resize(cpu.eeprom.size());
+        savedata.eeprom_modified_bytes = cpu.eeprom_modified_bytes;
+        memcpy(savedata.eeprom.data(), cpu.eeprom.data(), array_bytes(savedata.eeprom));
+        cpu.eeprom_dirty = false;
+        if(is_present_state())
             savedata_dirty = true;
-        }
-        if(fx.sectors_dirty)
+    }
+    if(fx.sectors_dirty)
+    {
+        for(size_t i = 0; i < fx.sectors_modified.size(); ++i)
         {
-            for(size_t i = 0; i < fx.sectors_modified.size(); ++i)
-            {
-                if(!fx.sectors_modified.test(i)) continue;
-                auto& s = savedata.fx_sectors[(uint32_t)i];
-                auto const& fxs = fx.sectors[i];
-                if(!fxs)
-                    memset(s.data(), 0xff, 4096);
-                else
-                    memcpy(s.data(), fxs->data(), 4096);
-            }
-            fx.sectors_dirty = false;
-            savedata_dirty = true;
+            if(!fx.sectors_modified.test(i)) continue;
+            auto& s = savedata.fx_sectors[(uint32_t)i];
+            auto const& fxs = fx.sectors[i];
+            if(!fxs)
+                memset(s.data(), 0xff, 4096);
+            else
+                memcpy(s.data(), fxs->data(), 4096);
+            auto& fxsm = fx.sectors_modified_data[i];
+            if(!fxsm)
+                fxsm = std::make_unique<w25q128_t::sector_t>();
+            if(!fxs)
+                memset(fxsm->data(), 0xff, 4096);
+            else
+                memcpy(fxsm->data(), fxs->data(), 4096);
         }
+        fx.sectors_dirty = false;
+        if(is_present_state())
+            savedata_dirty = true;
     }
 
 #ifndef ARDENS_NO_DEBUGGER
