@@ -703,6 +703,7 @@ if(ARDENS_LIBRETRO)
         src/libretro_core/libretro_impl.cpp
         ${MINIZ_SOURCES}
         )
+    target_compile_definitions(ardens_libretro PRIVATE -DMINIZ_NO_STDIO=1 -DMINIZ_NO_TIME=1)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
     target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_GUI)
