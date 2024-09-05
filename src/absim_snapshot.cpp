@@ -3,6 +3,8 @@
 #include <sstream>
 #include <tuple>
 
+#include <cstdio>
+
 #include <bitsery/bitsery.h>
 #include <bitsery/brief_syntax.h>
 #include <bitsery/brief_syntax/array.h>
