@@ -79,7 +79,7 @@ void window_sound(bool& open)
         0;
 
     SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Sound", &open) && arduboy.cpu.decoded)
+    if(Begin("Sound", &open) && arduboy.cpu.decoded && arduboy.is_present_state())
     {
         float plot_height = (GetContentRegionAvail().y - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
 

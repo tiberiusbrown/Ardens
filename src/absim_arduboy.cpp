@@ -787,10 +787,35 @@ bool arduboy_t::is_present_state()
     return present_state.empty();
 }
 
+static void set_button_pins_from_history(arduboy_t& a)
+{
+    uint64_t cycle = a.cpu.cycle_count;
+    auto const& inputs = a.input_history;
+    size_t n = inputs.size();
+    uint8_t pinb = 0x10;
+    uint8_t pine = 0x40;
+    uint8_t pinf = 0xf0;
+    while(n-- > 0)
+    {
+        auto const& i = inputs[n];
+        if(i.cycle <= cycle)
+        {
+            pinb = i.pinb;
+            pine = i.pine;
+            pinf = i.pinf;
+            break;
+        }
+    }
+    a.cpu.PINB() = pinb;
+    a.cpu.PINE() = pine;
+    a.cpu.PINF() = pinf;
+}
+
 void arduboy_t::advance_instr()
 {
     if(!cpu.decoded) return;
     update_history();
+    set_button_pins_from_history(*this);
     int n = 0;
     auto oldpc = cpu.pc;
     cpu.no_merged = true;
@@ -827,8 +852,14 @@ void arduboy_t::advance(uint64_t ps)
     cpu.no_merged = profiler_enabled || any_breakpoints;
 #endif
 
+    if(!is_present_state())
+        cpu.no_merged = true;
+
     while(ps >= PS_BUFFER)
     {
+        if(!is_present_state())
+            set_button_pins_from_history(*this);
+
         uint32_t cycles = cycle();
 
         ps -= cycles * CYCLE_PS;

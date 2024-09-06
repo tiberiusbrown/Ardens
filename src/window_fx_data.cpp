@@ -115,6 +115,7 @@ void window_fx_data(bool& open)
             (void)data;
             arduboy.fx.write_byte(off + minpage * 256, d);
         };
+        memed_fx.ReadOnly = !arduboy.is_present_state();
         memed_fx.DrawContents(
             nullptr,
             size_t((maxpage - minpage + 1) * 256),
