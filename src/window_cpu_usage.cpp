@@ -28,6 +28,11 @@ static void window_contents()
         frame_based && arduboy.frame_cpu_usage.empty())
         return;
 
+    if(!arduboy.is_present_state())
+    {
+        return;
+    }
+
     {
         float usage = 0.f;
         size_t i;

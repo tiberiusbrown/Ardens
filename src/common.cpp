@@ -607,7 +607,7 @@ void frame_logic()
     ms_since_start += dt;
     ms_since_touch += dt;
     if(dt > 100) dt = 100;
-    if(!arduboy.paused)
+    if(arduboy.cpu.decoded && !arduboy.paused)
     {
         // PINF: 4,5,6,7=D,L,R,U
         // PINE: 6=A

@@ -8,6 +8,7 @@
 
 #include "absim_atmega32u4.hpp"
 #include "absim_display.hpp"
+#include "absim_strstream.hpp"
 
 extern "C"
 {
@@ -15,6 +16,8 @@ extern "C"
 #include "boot/boot_menu.h"
 #include "boot/boot_flashcart.h"
 }
+
+#define COMPRESS_TIME_TRAVEL_STATES 1
 
 namespace absim
 {
@@ -44,6 +47,13 @@ void arduboy_t::reload_fx()
         fx.write_bytes(fxdata_offset, fxdata.data(), fxdata.size());
         update_game_hash();
         fx.write_bytes(fxsave_offset, fxsave.data(), fxsave.size());
+    }
+
+    for(size_t i = 0; i < fx.NUM_SECTORS; ++i)
+    {
+        auto const& s = fx.sectors_modified_data[i];
+        if(!s) continue;
+        fx.write_bytes(i * 4096, s->data(), s->size());
     }
 }
 
@@ -84,6 +94,12 @@ void arduboy_t::update_game_hash()
 
 void arduboy_t::reset()
 {
+    input_history.clear();
+    state_history.clear();
+    history_size = 0;
+    present_state.clear();
+    present_cycle = 0;
+
     profiler_reset();
     frame_cpu_usage.clear();
     total_frames = 0;
@@ -437,13 +453,16 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     }
 
 #ifndef ARDENS_NO_DEBUGGER
-    profiler_total_with_sleep += cycles;
-    if(cpu.active || cpu.wakeup_cycles != 0)
+    if(is_present_state())
     {
-        profiler_total += cycles;
-        if(profiler_enabled && cpu.executing_instr_pc < profiler_counts.size())
+        profiler_total_with_sleep += cycles;
+        if(cpu.active || cpu.wakeup_cycles != 0)
         {
-            profiler_counts[cpu.executing_instr_pc] += cycles;
+            profiler_total += cycles;
+            if(profiler_enabled && cpu.executing_instr_pc < profiler_counts.size())
+            {
+                profiler_counts[cpu.executing_instr_pc] += cycles;
+            }
         }
     }
 #endif
@@ -470,7 +489,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     }
 
 #ifndef ARDENS_NO_DEBUGGER
-    if(vsync)
+    if(vsync && is_present_state())
     {
         // vsync occurred and we are profiling: store frame cpu usage
         uint64_t frame_total = profiler_total - prev_profiler_total;
@@ -494,7 +513,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
 
 #ifndef ARDENS_NO_DEBUGGER
     // time-based cpu usage
-    if(cpu.cycle_count >= prev_ms_cycles)
+    if(cpu.cycle_count >= prev_ms_cycles && is_present_state())
     {
         constexpr size_t MS_PROF_FILT_NUM = 5;
         constexpr uint64_t PROF_MS = 1000000000ull * 20 / CYCLE_PS;
@@ -529,9 +548,274 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     return cycles;
 }
 
+void arduboy_t::save_state_to_vector(std::vector<uint8_t>& v)
+{
+    std::ostringstream ss;
+    save_savestate(ss);
+    auto s = ss.str();
+#if COMPRESS_TIME_TRAVEL_STATES
+    if(!compress_zlib(v, s.data(), s.size()))
+        v.clear();
+#else
+    v.resize(s.size());
+    memcpy(v.data(), s.data(), v.size());
+#endif
+}
+
+void arduboy_t::load_state_from_vector(std::vector<uint8_t> const& v)
+{
+    if(v.empty())
+        return;
+#if COMPRESS_TIME_TRAVEL_STATES
+    std::vector<uint8_t> v_uncomp;
+    if(!uncompress_zlib(v_uncomp, v.data(), v.size()))
+        return;
+    absim::istrstream ss((char const*)v_uncomp.data(), v_uncomp.size());
+#else
+    absim::istrstream ss((char const*)v.data(), v.size());
+#endif
+    load_savestate(ss);
+}
+
+void arduboy_t::update_history()
+{
+#ifndef ARDENS_NO_DEBUGGER
+    if(cpu.cycle_count >= present_cycle)
+        present_state.clear();
+    if(!is_present_state())
+        return;
+
+    {
+        inputs_t state;
+        state.cycle = cpu.cycle_count;
+        state.pinb = cpu.PINB();
+        state.pine = cpu.PINE();
+        state.pinf = cpu.PINF();
+        if(input_history.empty() ||
+            input_history.back().pinb != state.pinb ||
+            input_history.back().pine != state.pine ||
+            input_history.back().pinf != state.pinf)
+        {
+            input_history.push_back(state);
+        }
+    }
+    if(state_history.empty() ||
+        cpu.cycle_count >= state_history.back().cycle + STATE_HISTORY_CYCLES)
+    {
+        tt_state_t state;
+        state.cycle = cpu.cycle_count;
+        save_state_to_vector(state.state);
+        history_size += state.state.size();
+        state_history.emplace_back(std::move(state));
+    }
+    while(input_history.size() >= 2 &&
+        input_history[1].cycle + STATE_HISTORY_TOTAL_CYCLES < cpu.cycle_count)
+    {
+        input_history.erase(input_history.begin());
+    }
+    while(state_history.size() >= 2 &&
+        state_history[1].cycle + STATE_HISTORY_TOTAL_CYCLES < cpu.cycle_count)
+    {
+        state_history.erase(state_history.begin());
+    }
+#endif
+}
+
+struct pc_hist_t
+{
+    uint64_t cycle;
+    uint16_t pc;
+    uint16_t stack_depth;
+    uint8_t pinb;
+    uint8_t pine;
+    uint8_t pinf;
+};
+
+static void travel_back_advance_instr(arduboy_t& a)
+{
+    int n = 0;
+    auto oldpc = a.cpu.pc;
+    a.cpu.no_merged = true;
+    a.ps_rem = 0;
+    do
+    {
+        a.paused = false;
+        a.cycle();
+        a.paused = true;
+    } while(++n < 65536 && a.cpu.pc == oldpc);
+}
+
+template<class F>
+static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MAX)
+{
+    if(a.state_history.empty()) return;
+    if(a.input_history.empty()) return;
+    if(a.present_state.empty())
+    {
+        a.save_state_to_vector(a.present_state);
+        a.present_cycle = a.cpu.cycle_count;
+    }
+    size_t si = a.state_history.size();
+    std::vector<pc_hist_t> pcs;
+    std::vector<uint8_t> temp_state;
+    a.save_state_to_vector(temp_state);
+    uint64_t curr_cycle = a.cpu.cycle_count;
+    max_cycle = std::min(max_cycle, curr_cycle);
+    while(si >= 2 && a.state_history[si - 1].cycle >= max_cycle)
+        si -= 1;
+    while(si-- > 0)
+    {
+        auto const& state = a.state_history[si];
+        uint64_t end_cycle = (si + 1 < a.state_history.size() ?
+            a.state_history[si + 1].cycle : a.present_cycle);
+        end_cycle = std::min(end_cycle, curr_cycle);
+        size_t ii = a.input_history.size();
+        while(ii-- > 0)
+        {
+            if(a.input_history[ii].cycle <= state.cycle)
+                break;
+        }
+        if(ii >= a.input_history.size())
+            break;
+        a.load_state_from_vector(state.state);
+        pcs.clear();
+        while(a.cpu.cycle_count < end_cycle)
+        {
+            while(ii + 1 < a.input_history.size() && a.input_history[ii + 1].cycle <= a.cpu.cycle_count)
+                ++ii;
+            auto const& input = a.input_history[ii];
+            pc_hist_t p{};
+            p.cycle = a.cpu.cycle_count;
+            p.pc = a.cpu.pc;
+            p.stack_depth = (uint16_t)a.cpu.num_stack_frames;
+            a.cpu.PINB() = p.pinb = input.pinb;
+            a.cpu.PINE() = p.pine = input.pine;
+            a.cpu.PINF() = p.pinf = input.pinf;
+            pcs.push_back(p);
+            travel_back_advance_instr(a);
+        }
+        size_t pi = pcs.size();
+        while(pi-- > 0)
+        {
+            if(f(pcs[pi]))
+            {
+                // success
+                a.load_state_from_vector(state.state);
+                for(size_t i = 0; i < pi; ++i)
+                {
+                    a.cpu.PINB() = pcs[i].pinb;
+                    a.cpu.PINE() = pcs[i].pine;
+                    a.cpu.PINF() = pcs[i].pinf;
+                    travel_back_advance_instr(a);
+                }
+                a.cpu.update_all();
+                return;
+            }
+        }
+    }
+    // failed to travel back: reload previous state
+    a.load_state_from_vector(temp_state);
+    if(a.cpu.cycle_count >= a.present_cycle)
+    {
+        a.load_state_from_vector(a.present_state);
+        a.present_state.clear();
+    }
+}
+
+void arduboy_t::travel_back_to_cycle(uint64_t cycle)
+{
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.cycle <= cycle;
+    }, cycle);
+}
+
+void arduboy_t::travel_back_single_instr()
+{
+    uint16_t tpc = cpu.pc;
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.pc != tpc;
+    });
+}
+
+void arduboy_t::travel_back_single_instr_over()
+{
+    uint16_t tpc = cpu.pc;
+    uint16_t tsd = cpu.num_stack_frames;
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.pc != tpc && p.stack_depth == tsd;
+    });
+}
+
+void arduboy_t::travel_back_single_instr_out()
+{
+    uint16_t tsd = cpu.num_stack_frames;
+    if(tsd == 0) return;
+    uint64_t cycle = cpu.stack_frames[tsd - 1].cycle;
+    assert(cycle < cpu.cycle_count);
+    if(cycle >= cpu.cycle_count) return;
+    travel_back_cond(*this, [=](pc_hist_t const& p) {
+        return p.stack_depth < tsd;
+    }, cycle);
+}
+
+void arduboy_t::travel_to_present()
+{
+    if(present_state.empty()) return;
+    load_state_from_vector(present_state);
+    present_state.clear();
+}
+
+void arduboy_t::travel_continue()
+{
+    if(present_state.empty()) return;
+    present_state.clear();
+    size_t i;
+    i = 0;
+    while(i < state_history.size() && state_history[i].cycle < cpu.cycle_count)
+        ++i;
+    if(i < state_history.size())
+        state_history.resize(i);
+    i = 0;
+    while(i < input_history.size() && input_history[i].cycle < cpu.cycle_count)
+        ++i;
+    if(i < input_history.size())
+        input_history.resize(i);
+}
+
+bool arduboy_t::is_present_state()
+{
+    return present_state.empty();
+}
+
+static void set_button_pins_from_history(arduboy_t& a)
+{
+    uint64_t cycle = a.cpu.cycle_count;
+    auto const& inputs = a.input_history;
+    size_t n = inputs.size();
+    uint8_t pinb = 0x10;
+    uint8_t pine = 0x40;
+    uint8_t pinf = 0xf0;
+    while(n-- > 0)
+    {
+        auto const& i = inputs[n];
+        if(i.cycle <= cycle)
+        {
+            pinb = i.pinb;
+            pine = i.pine;
+            pinf = i.pinf;
+            break;
+        }
+    }
+    a.cpu.PINB() = pinb;
+    a.cpu.PINE() = pine;
+    a.cpu.PINF() = pinf;
+}
+
 void arduboy_t::advance_instr()
 {
     if(!cpu.decoded) return;
+    update_history();
+    set_button_pins_from_history(*this);
     int n = 0;
     auto oldpc = cpu.pc;
     cpu.no_merged = true;
@@ -547,13 +831,15 @@ void arduboy_t::advance_instr()
 
 void arduboy_t::advance(uint64_t ps)
 {
-    cpu.autobreaks = 0;
+    update_history();
 
     ps += ps_rem;
     ps_rem = 0;
 
     if(!cpu.decoded) return;
     if(paused) return;
+
+    cpu.autobreaks = 0;
 
 #ifndef ARDENS_NO_DEBUGGER
     bool any_breakpoints =
@@ -566,8 +852,14 @@ void arduboy_t::advance(uint64_t ps)
     cpu.no_merged = profiler_enabled || any_breakpoints;
 #endif
 
+    if(!is_present_state())
+        cpu.no_merged = true;
+
     while(ps >= PS_BUFFER)
     {
+        if(!is_present_state())
+            set_button_pins_from_history(*this);
+
         uint32_t cycles = cycle();
 
         ps -= cycles * CYCLE_PS;
@@ -617,7 +909,8 @@ void arduboy_t::advance(uint64_t ps)
         savedata.eeprom_modified_bytes = cpu.eeprom_modified_bytes;
         memcpy(savedata.eeprom.data(), cpu.eeprom.data(), array_bytes(savedata.eeprom));
         cpu.eeprom_dirty = false;
-        savedata_dirty = true;
+        if(is_present_state())
+            savedata_dirty = true;
     }
     if(fx.sectors_dirty)
     {
@@ -630,10 +923,26 @@ void arduboy_t::advance(uint64_t ps)
                 memset(s.data(), 0xff, 4096);
             else
                 memcpy(s.data(), fxs->data(), 4096);
+            auto& fxsm = fx.sectors_modified_data[i];
+            if(!fxsm)
+                fxsm = std::make_unique<w25q128_t::sector_t>();
+            if(!fxs)
+                memset(fxsm->data(), 0xff, 4096);
+            else
+                memcpy(fxsm->data(), fxs->data(), 4096);
         }
         fx.sectors_dirty = false;
-        savedata_dirty = true;
+        if(is_present_state())
+            savedata_dirty = true;
     }
+
+#ifndef ARDENS_NO_DEBUGGER
+    if(cpu.cycle_count >= present_cycle)
+    {
+        load_state_from_vector(present_state);
+        present_state.clear();
+    }
+#endif
 }
 
 }

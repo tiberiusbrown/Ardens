@@ -13,6 +13,7 @@ void window_eeprom(bool& open)
     SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("EEPROM", &open) && arduboy.cpu.decoded)
     {
+        memed_eeprom.ReadOnly = !arduboy.is_present_state();
         memed_eeprom.DrawContents(
             arduboy.cpu.eeprom.data(),
             arduboy.cpu.eeprom.size());

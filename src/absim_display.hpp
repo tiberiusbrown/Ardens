@@ -343,7 +343,7 @@ ARDENS_FORCEINLINE void display_t::update_pixels_row()
 
     if((mux_ratio >= 16 && row == mux_ratio) || row >= 63)
     {
-        if(enable_filter && ++pixel_history_index >= 4)
+        if(enable_filter && ++pixel_history_index >= MAX_PIXEL_HISTORY)
             pixel_history_index = 0;
         vsync = true;
     }
@@ -445,10 +445,10 @@ ARDENS_FORCEINLINE void display_t::update_pixels_row()
 void display_t::filter_pixels()
 {
     memset(&filtered_pixel_counts, 0, sizeof(filtered_pixel_counts));
-    static constexpr uint8_t C[4] = { 42, 84, 84, 42 };
-    for(int n = 0; n < 4; ++n)
+    static constexpr uint8_t C[MAX_PIXEL_HISTORY] = { 42, 84, 84, 42 };
+    for(int n = 0; n < MAX_PIXEL_HISTORY; ++n)
     {
-        uint8_t c = C[(7 - n + pixel_history_index) % 4];
+        auto c = C[(MAX_PIXEL_HISTORY - 1 - n + pixel_history_index) % MAX_PIXEL_HISTORY];
         uint8_t const* src = &pixels[n][0];
         uint16_t* dst = &filtered_pixel_counts[0];
         uint16_t* dst_end = dst + 8192;

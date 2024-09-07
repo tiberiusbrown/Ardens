@@ -19,6 +19,8 @@
 
 #include <miniz.h>
 
+#include "absim_strstream.hpp"
+
 constexpr std::array<char, 8> SNAPSHOT_ID =
 {
     '_', 'A', 'B', 'S', 'I', 'M', '_', '\0',
@@ -112,6 +114,60 @@ void serialize(S& s, std::unique_ptr<T>& obj)
 namespace absim
 {
 
+bool compress_zlib(std::vector<uint8_t>& dst, void const* src, size_t src_bytes)
+{
+    dst.resize(mz_compressBound((mz_ulong)src_bytes));
+    mz_ulong dst_size = (mz_ulong)dst.size();
+    if(MZ_OK != mz_compress2(
+        dst.data(), &dst_size,
+        (uint8_t const*)src, (mz_ulong)src_bytes,
+        MZ_BEST_COMPRESSION))
+    {
+        dst.clear();
+        return false;
+    }
+    dst.resize((size_t)dst_size);
+    return true;
+}
+
+bool uncompress_zlib(std::vector<uint8_t>& dst, void const* src, size_t src_bytes)
+{
+    constexpr size_t BLOCK_SIZE = 1 << 16;
+    dst.resize(BLOCK_SIZE);
+    size_t block = 0;
+
+    mz_stream stream{};
+    stream.next_in = (unsigned char const*)src;
+    stream.avail_in = (mz_uint32)src_bytes;
+    stream.next_out = dst.data();
+    stream.avail_out = (mz_uint32)BLOCK_SIZE;
+
+    if(MZ_OK != mz_inflateInit(&stream))
+        return false;
+
+    for(;;)
+    {
+        int status = mz_inflate(&stream, MZ_NO_FLUSH);
+        if(status == MZ_STREAM_END)
+        {
+            dst.resize(dst.size() - stream.avail_out);
+            break;
+        }
+        if(status != MZ_OK)
+        {
+            mz_inflateEnd(&stream);
+            dst.clear();
+            return false;
+        }
+        size_t n = dst.size();
+        dst.resize(n * 2);
+        stream.next_out = dst.data() + n;
+        stream.avail_out = (mz_uint32)n;
+    }
+
+    return MZ_OK == mz_inflateEnd(&stream);
+}
+
 template<typename CharT>
 class vectorwrapbuf : public std::basic_streambuf<char, std::char_traits<char>>
 {
@@ -150,6 +206,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.cpu.executing_instr_pc);
     for(auto& f : a.cpu.stack_frames)
     {
+        ar(f.cycle);
         ar(f.pc);
         ar(f.sp);
     }
@@ -216,6 +273,8 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 
     ar(a.cpu.watchdog_divider);
     ar(a.cpu.watchdog_divider_cycle);
+    ar(a.cpu.watchdog_prev_cycle);
+    ar(a.cpu.watchdog_next_cycle);
 
     ar(a.cpu.peripheral_queue);
 
@@ -271,7 +330,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.display.data_col);
     ar(a.display.vsync);
 
-    ar(a.fx.sectors);
+    ar(a.fx.sectors_modified_data);
     ar(a.fx.sectors_modified);
     ar(a.fx.sectors_dirty);
     ar(a.fx.enabled);
@@ -317,6 +376,7 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
 
     ar(a.cpu.serial_bytes);
     ar(a.cpu.sound_buffer);
+    ar(a.fx.sectors);
 
     ar(a.profiler_hotspots_symbol);
     ar(a.profiler_total);
@@ -356,7 +416,7 @@ bool arduboy_t::save_savestate(std::ostream& f)
     ar(SNAPSHOT_ID);
     ar(SNAPSHOT_VERSION);
     auto r = serdes_savestate(ar, *this);
-    return !r.empty();
+    return r.empty();
 }
 
 std::string arduboy_t::load_savestate(std::istream& f)
@@ -395,12 +455,7 @@ bool arduboy_t::save_snapshot(std::ostream& f)
 
     // compress
     std::vector<uint8_t> dst;
-    dst.resize(mz_compressBound((mz_ulong)data.size()));
-    mz_ulong dst_size = (mz_ulong)dst.size();
-    if(MZ_OK != mz_compress2(
-        dst.data(), &dst_size,
-        (uint8_t const*)data.data(), (mz_ulong)data.size(),
-        MZ_BEST_COMPRESSION))
+    if(!compress_zlib(dst, data.data(), data.size()))
         return false;
 
     {
@@ -410,13 +465,13 @@ bool arduboy_t::save_snapshot(std::ostream& f)
         uint32_t tsize = (uint32_t)data.size();
         ar(tsize);
     }
-    f.write((char const*)dst.data(), dst_size);
+    f.write((char const*)dst.data(), dst.size());
     return true;
 }
 
 std::string arduboy_t::load_snapshot(std::istream& f)
 {
-    using Buffer = std::vector<char>;
+    using Buffer = std::vector<uint8_t>;
     using BufferAdapter = bitsery::InputBufferAdapter<Buffer>;
     using StreamAdapter = bitsery::InputStreamAdapter;
 
@@ -444,20 +499,12 @@ std::string arduboy_t::load_snapshot(std::istream& f)
             return "Snapshot: data too large";
     }
 
-    std::vector<char> data(
+    std::vector<uint8_t> data(
         (std::istreambuf_iterator<char>(f)),
         std::istreambuf_iterator<char>());
 
-    std::vector<char> dst;
-    dst.resize(dst_size);
-
-    mz_ulong dst_size2 = (mz_ulong)dst_size;
-    mz_ulong src_size2 = (mz_ulong)data.size();
-
-    if(MZ_OK != mz_uncompress2(
-        (uint8_t*)dst.data(), &dst_size2,
-        (uint8_t const*)data.data(), &src_size2))
-        return "Unable to uncompress snapshot";
+    std::vector<uint8_t> dst;
+    uncompress_zlib(dst, data.data(), data.size());
 
     // deserialize
     {

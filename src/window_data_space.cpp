@@ -359,6 +359,8 @@ void window_data_space(bool& open)
                 Separator();
             }
 
+            memed_data_space.ReadOnly = !arduboy.is_present_state();
+
             memed_data_space.DrawContents(
                 arduboy.cpu.data.data(),
                 arduboy.cpu.data.size());

@@ -456,7 +456,12 @@ struct atmega32u4_t
     uint16_t executing_instr_pc;
 
     static constexpr size_t MAX_STACK_FRAMES = 1280;
-    struct stack_frame_t { uint16_t pc; uint16_t sp; };
+    struct stack_frame_t 
+    {
+        uint64_t cycle;
+        uint16_t pc;
+        uint16_t sp;
+    };
     std::array<stack_frame_t, MAX_STACK_FRAMES> stack_frames;
     uint32_t num_stack_frames;
     ARDENS_FORCEINLINE void push_stack_frame(uint16_t ret_addr)
@@ -464,7 +469,7 @@ struct atmega32u4_t
         (void)ret_addr;
 #ifndef ARDENS_NO_DEBUGGER
         if(num_stack_frames < stack_frames.size())
-            stack_frames[num_stack_frames++] = { ret_addr, sp() };
+            stack_frames[num_stack_frames++] = { cycle_count, ret_addr, sp() };
 #endif
     }
     ARDENS_FORCEINLINE void pop_stack_frame()
@@ -930,9 +935,7 @@ struct w25q128_t
 
     using sector_t = std::array<uint8_t, SECTOR_BYTES>;
     std::array<std::unique_ptr<sector_t>, NUM_SECTORS> sectors;
-
-    //static constexpr size_t DATA_BYTES = NUM_SECTORS * SECTOR_BYTES;
-    //std::array<uint8_t, DATA_BYTES> data;
+    std::array<std::unique_ptr<sector_t>, NUM_SECTORS> sectors_modified_data;
 
     std::bitset<NUM_SECTORS> sectors_modified;
     bool sectors_dirty;
@@ -1192,6 +1195,40 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
+    // time-travel debugging info
+    struct inputs_t
+    {
+        uint64_t cycle;
+        uint8_t pinb, pine, pinf;
+        bool operator<(inputs_t const& other) { return cycle < other.cycle; }
+    };
+    std::vector<inputs_t> input_history;
+    struct tt_state_t
+    {
+        uint64_t cycle;
+        std::vector<uint8_t> state;
+    };
+    std::vector<tt_state_t> state_history;
+    uint64_t history_size;
+    std::vector<uint8_t> present_state;
+    uint64_t present_cycle;
+    static constexpr uint64_t STATE_HISTORY_CYCLES = 0x100000;
+    static constexpr uint64_t STATE_HISTORY_TOTAL_MS = 60000;
+    static constexpr uint64_t STATE_HISTORY_TOTAL_CYCLES =
+        STATE_HISTORY_TOTAL_MS * 16000;
+
+    // time-travel debugging
+    void save_state_to_vector(std::vector<uint8_t>& v);
+    void load_state_from_vector(std::vector<uint8_t> const& v);
+    void update_history();
+    void travel_back_to_cycle(uint64_t cycle);
+    void travel_back_single_instr();
+    void travel_back_single_instr_over();
+    void travel_back_single_instr_out();
+    void travel_to_present();
+    void travel_continue();
+    bool is_present_state();
+
     arduboy_config_t cfg;
     bool flashcart_loaded;
     void reset();
@@ -1250,5 +1287,8 @@ template<class T> size_t array_bytes(T const& a)
 {
     return a.size() * sizeof(*a.data());
 }
+
+bool compress_zlib(std::vector<uint8_t>& dst, void const* src, size_t src_bytes);
+bool uncompress_zlib(std::vector<uint8_t>& dst, void const* src, size_t src_bytes);
 
 }
