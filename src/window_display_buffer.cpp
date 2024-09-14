@@ -43,6 +43,7 @@ static void update_display_buffer_texture()
     }
 
     platform_update_texture(display_buffer_texture, pixels, sizeof(pixels));
+    platform_texture_scale_nearest(display_buffer_texture);
 }
 
 void window_display_buffer(bool& open)
