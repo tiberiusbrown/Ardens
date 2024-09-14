@@ -13,16 +13,14 @@ static char const* const MODES[] =
     "INVALID"
 };
 
-static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
+static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
-    bool r = false;
-
+    (void)user;
     if(off == arduboy.display.data_page * 128 + arduboy.display.data_col)
     {
-        color = IM_COL32(40, 160, 40, 255);
-        r = true;
+        return IM_COL32(40, 160, 40, 255);
     }
-    return r;
+    return 0;
 }
 
 void window_display_internals(bool& open)
@@ -69,7 +67,7 @@ void window_display_internals(bool& open)
             Text("Segment Remap          %s", d.segment_remap ? "ON" : "OFF");
         }
         Separator();
-        memed_display_ram.HighlightFn = highlight_func;
+        memed_display_ram.BgColorFn = bgcolor_func;
         memed_display_ram.DrawContents(
             arduboy.display.ram.data(),
             arduboy.display.ram.size());

@@ -211,42 +211,37 @@ uint32_t darker_color_for_index(size_t index)
     return c;
 }
 
-static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
+static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
-    bool r = false;
+    (void)user;
+    ImU32 r = 0;
     if(off < 0x20)
     {
-        color = IM_COL32(20, 20, 50, 255);
-        r = true;
+        r = IM_COL32(20, 20, 50, 255);
     }
     else if(off < 0x100)
     {
-        color = absim::REG_INFO[off].name ?
+        r = absim::REG_INFO[off].name ?
             IM_COL32(50, 50, 20, 255) :
             IM_COL32(0, 0, 0, 255);
-        r = true;
     }
     else if(off >= arduboy.cpu.min_stack)
     {
-        color = IM_COL32(70, 0, 90, 255);
-        r = true;
+        r = IM_COL32(70, 0, 90, 255);
     }
     else if(arduboy.cpu.stack_check > 0x100 && off >= arduboy.cpu.stack_check)
     {
-        color = IM_COL32(45, 45, 45, 255);
-        r = true;
+        r = IM_COL32(45, 45, 45, 255);
     }
     else if(auto const* sym = arduboy.symbol_for_data_addr((uint16_t)off))
     {
-        color = darker_color_for_index(sym->color_index);
-        r = true;
+        r = darker_color_for_index(sym->color_index);
     }
     if(off < arduboy.cpu.data.size() && (
         arduboy.breakpoints_rd.test(off) ||
         arduboy.breakpoints_wr.test(off)))
     {
-        color = IM_COL32(150, 50, 50, 255);
-        r = true;
+        r = IM_COL32(150, 50, 50, 255);
     }
     return r;
 }
@@ -305,12 +300,6 @@ void hover_data_space(uint16_t addr)
     EndTooltip();
 }
 
-static void hover_func(ImU8 const* data, size_t off)
-{
-    (void)data;
-    hover_data_space((uint16_t)off);
-}
-
 void window_data_space(bool& open)
 {
     using namespace ImGui;
@@ -322,8 +311,7 @@ void window_data_space(bool& open)
             memed_data_space.OptShowDataPreview = true;
             memed_data_space.PreviewDataType = ImGuiDataType_U8;
             memed_data_space.OptFooterExtraHeight = GetFrameHeightWithSpacing();
-            memed_data_space.HighlightFn = highlight_func;
-            memed_data_space.HoverFn = hover_func;
+            memed_data_space.BgColorFn = bgcolor_func;
             first = false;
         }
     }
@@ -367,6 +355,9 @@ void window_data_space(bool& open)
 
             auto addr = memed_data_space.DataPreviewAddr;
             draw_memory_breakpoints(addr);
+
+            if(memed_data_space.MouseHovered)
+                hover_data_space((uint16_t)memed_data_space.MouseHoveredAddr);
         }
         End();
     }
