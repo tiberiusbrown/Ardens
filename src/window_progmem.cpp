@@ -8,17 +8,17 @@
 
 static MemoryEditor memed;
 
-static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
+static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
+    (void)user;
     if(auto const* sym = arduboy.symbol_for_prog_addr((uint16_t)off))
     {
         if(sym->object)
         {
-            color = darker_color_for_index(sym->color_index);
-            return true;
+            return darker_color_for_index(sym->color_index);
         }
     }
-    return false;
+    return 0;
 }
 
 static void hover_func(ImU8 const* data, size_t off)
@@ -44,8 +44,8 @@ void window_progmem(bool& open)
         {
             memed.OptShowDataPreview = true;
             memed.PreviewDataType = ImGuiDataType_U8;
-            memed.HighlightFn = highlight_func;
-            memed.HoverFn = hover_func;
+            memed.BgColorFn = bgcolor_func;
+            //memed.HoverFn = hover_func;
             first = false;
         }
     }

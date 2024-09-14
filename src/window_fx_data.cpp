@@ -27,18 +27,17 @@ static int hex_value(char const* c)
     return r;
 }
 
-static bool highlight_func(ImU8 const* data, size_t off, ImU32& color)
+static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
-    bool r = false;
+    (void)user;
     if(off + arduboy.fx.min_page * 256 == arduboy.fx.current_addr)
     {
         if(arduboy.fx.reading || arduboy.fx.programming)
         {
-            color = IM_COL32(40, 160, 40, 255);
-            r = true;
+            return IM_COL32(40, 160, 40, 255);
         }
     }
-    return r;
+    return 0;
 }
 
 void window_fx_data(bool& open)
@@ -106,13 +105,15 @@ void window_fx_data(bool& open)
         if(fx_data_scroll_addr >= 0)
             memed_fx.GotoAddr = (size_t)(fx_data_scroll_addr - minpage * 256);
         fx_data_scroll_addr = -1;
-        memed_fx.HighlightFn = highlight_func;
-        memed_fx.ReadFn = [](ImU8 const* data, size_t off) {
+        memed_fx.BgColorFn = bgcolor_func;
+        memed_fx.ReadFn = [](ImU8 const* data, size_t off, void* user) {
             (void)data;
+            (void)user;
             return arduboy.fx.read_byte(off + minpage * 256);
         };
-        memed_fx.WriteFn = [](ImU8* data, size_t off, ImU8 d) {
+        memed_fx.WriteFn = [](ImU8* data, size_t off, ImU8 d, void* user) {
             (void)data;
+            (void)user;
             arduboy.fx.write_byte(off + minpage * 256, d);
         };
         memed_fx.ReadOnly = !arduboy.is_present_state();
