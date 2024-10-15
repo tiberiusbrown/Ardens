@@ -410,13 +410,12 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     return serdes_savestate(ar, a);
 }
 
-bool arduboy_t::save_savestate(std::ostream& f)
+std::string arduboy_t::save_savestate(std::ostream& f)
 {
     bitsery::Serializer<bitsery::OutputStreamAdapter> ar(f);
     ar(SNAPSHOT_ID);
     ar(SNAPSHOT_VERSION);
-    auto r = serdes_savestate(ar, *this);
-    return r.empty();
+    return serdes_savestate(ar, *this);
 }
 
 std::string arduboy_t::load_savestate(std::istream& f)

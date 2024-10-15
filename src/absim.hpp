@@ -1259,7 +1259,7 @@ struct arduboy_t
     std::string load_snapshot(std::istream& f);
 
     // savestates only contain device state and are not compressed (e.g., for RetroArch)
-    bool save_savestate(std::ostream& f);
+    std::string save_savestate(std::ostream& f);
     std::string load_savestate(std::istream& f);
 };
 
