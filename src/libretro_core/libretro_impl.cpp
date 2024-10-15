@@ -280,7 +280,7 @@ bool retro_unserialize(const void* data, size_t size)
     absim::istrstream s((char const*)data, (std::streamsize)size);
     std::string err = arduboy->load_savestate(s);
     if(err.empty()) return true;
-    func_log(RETRO_LOG_ERROR, "%s\n", err.c_str());
+    func_log(RETRO_LOG_ERROR, "Error during unserialize: %s\n", err.c_str());
     return false;
 }
 
