@@ -271,8 +271,9 @@ bool retro_serialize(void* data, size_t size)
 {
     absim::ostrstream s((char*)data, (std::streamsize)size);
     std::string err = arduboy->save_savestate(s);
-    if(!err.empty()) func_log(RETRO_LOG_ERROR, "Error during serialize: %s\n", err.c_str());
-    return err.empty();
+    if(err.empty()) return true;
+    func_log(RETRO_LOG_ERROR, "Error during serialize: %s\n", err.c_str());
+    return false;
 }
 
 bool retro_unserialize(const void* data, size_t size)
