@@ -901,3 +901,230 @@ void SpritesABC::drawBasic(
                            
         );
 }
+
+// from Mr. Blinky's ArduboyFX library
+[[gnu::always_inline]]
+static uint8_t SpritesABC_bitShiftLeftMaskUInt8(uint8_t bit)
+{
+    uint8_t result;
+    asm volatile(
+        "ldi    %[result], 1    \n" // 0 = 000 => 1111 1111 = -1
+        "sbrc   %[bit], 1       \n" // 1 = 001 => 1111 1110 = -2
+        "ldi    %[result], 4    \n" // 2 = 010 => 1111 1100 = -4
+        "sbrc   %[bit], 0       \n" // 3 = 011 => 1111 1000 = -8
+        "lsl    %[result]       \n"
+        "sbrc   %[bit], 2       \n" // 4 = 100 => 1111 0000 = -16
+        "swap   %[result]       \n" // 5 = 101 => 1110 0000 = -32
+        "neg    %[result]       \n" // 6 = 110 => 1100 0000 = -64
+        :[result] "=&d" (result)    // 7 = 111 => 1000 0000 = -128
+        :[bit]    "r"   (bit)
+        :
+    );
+    return result;
+}
+
+void SpritesABC::fillRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t color)
+{
+    if(x >= 128) return;
+    if(y >= 64)  return;
+    if(x + w <= 0) return;
+    if(y + h <= 0) return;
+    if(w == 0 || h == 0) return;
+    
+    if(color & 1) color = 0xff;
+
+    // clip coords
+    uint8_t xc = x;
+    uint8_t yc = y;
+
+    // clip
+    if(y < 0)
+        h += (int8_t)y, yc = 0;
+    if(x < 0)
+        w += (int8_t)x, xc = 0;
+    if(h >= uint8_t(64 - yc))
+        h = 64 - yc;
+    if(w >= uint8_t(128 - xc))
+        w = 128 - xc;
+    uint8_t y1 = yc + h;
+
+    uint8_t c0 = SpritesABC_bitShiftLeftMaskUInt8(yc); // 11100000
+    uint8_t m1 = SpritesABC_bitShiftLeftMaskUInt8(y1); // 11000000
+    uint8_t m0 = ~c0; // 00011111
+    uint8_t c1 = ~m1; // 00111111
+
+    uint8_t r0 = yc;
+    uint8_t r1 = y1 - 1;
+    asm volatile(
+        "lsr %[r0]\n"
+        "lsr %[r0]\n"
+        "lsr %[r0]\n"
+        "lsr %[r1]\n"
+        "lsr %[r1]\n"
+        "lsr %[r1]\n"
+        : [r0] "+&r" (r0),
+          [r1] "+&r" (r1));
+
+    uint8_t* buf = Arduboy2Base::sBuffer;
+    asm volatile(
+        "mul %[r0], %[c128]\n"
+        "add %A[buf], r0\n"
+        "adc %B[buf], r1\n"
+        "clr __zero_reg__\n"
+        "add %A[buf], %[x]\n"
+        "adc %B[buf], __zero_reg__\n"
+        :
+        [buf]  "+&e" (buf)
+        :
+        [r0]   "r"   (r0),
+        [x]    "r"   (xc),
+        [c128] "r"   ((uint8_t)128)
+        );
+
+    uint8_t rows = r1 - r0; // middle rows + 1
+    uint8_t bot = c1;
+    if(c0 & 1) ++rows; // no top fragment
+    if(m1 & 1) ++rows; // no bottom fragment
+    c0 &= color;
+    c1 &= color;
+
+    uint8_t col;
+    uint8_t buf_adv = 128 - w;
+
+#ifdef ARDUINO_ARCH_AVR
+    asm volatile(R"ASM(
+            tst  %[rows]
+            brne L%=_top
+            or   %[m1], %[m0]
+            and  %[c1], %[c0]
+            rjmp L%=_bottom_loop
+
+        L%=_top:
+            tst  %[m0]
+            breq L%=_middle
+            mov  %[col], %[w]
+
+        L%=_top_loop:
+            ld   __tmp_reg__, %a[buf]
+            and  __tmp_reg__, %[m0]
+            or   __tmp_reg__, %[c0]
+            st   %a[buf]+, __tmp_reg__
+            dec  %[col]
+            brne L%=_top_loop
+            add  %A[buf], %[buf_adv]
+            adc  %B[buf], __zero_reg__
+
+        L%=_middle:
+            dec  %[rows]
+            breq L%=_bottom
+
+        L%=_middle_loop:
+            mov  %[col], %[w]
+            andi %[col], 7
+            brne 3f
+            mov  %[col], %[w]
+            
+        1:  st   %a[buf]+, %[color]
+            st   %a[buf]+, %[color]
+            st   %a[buf]+, %[color]
+            st   %a[buf]+, %[color]
+            st   %a[buf]+, %[color]
+            st   %a[buf]+, %[color]
+            st   %a[buf]+, %[color]
+            st   %a[buf]+, %[color]
+            subi %[col], 8
+            brne 1b
+            
+        2:  add  %A[buf], %[buf_adv]
+            adc  %B[buf], __zero_reg__
+            dec  %[rows]
+            brne L%=_middle_loop
+            rjmp L%=_bottom
+
+        3:  st   %a[buf]+, %[color]
+            dec  %[col]
+            brne 3b
+            mov  %[col], %[w]
+            andi %[col], 0xf8
+            brne 1b
+            add  %A[buf], %[buf_adv]
+            adc  %B[buf], __zero_reg__
+            dec  %[rows]
+            brne L%=_middle_loop
+
+        L%=_bottom:
+            tst  %[bot]
+            breq L%=_finish
+
+        L%=_bottom_loop:
+            ld   __tmp_reg__, %a[buf]
+            and  __tmp_reg__, %[m1]
+            or   __tmp_reg__, %[c1]
+            st   %a[buf]+, __tmp_reg__
+            dec  %[w]
+            brne L%=_bottom_loop
+
+        L%=_finish:
+        )ASM"
+        :
+        [buf]     "+&e" (buf),
+        [w]       "+&d" (w),
+        [rows]    "+&r" (rows),
+        [col]     "=&d" (col)
+        :
+        [buf_adv] "r"   (buf_adv),
+        [color]   "r"   (color),
+        [m0]      "r"   (m0),
+        [m1]      "r"   (m1),
+        [c0]      "r"   (c0),
+        [c1]      "r"   (c1),
+        [bot]     "r"   (bot)
+        );
+#else
+    if(rows == 0)
+    {
+        m1 |= m0;
+        c1 &= c0;
+    }
+    else
+    {
+        if(m0 != 0)
+        {
+            col = w;
+            do
+            {
+                uint8_t t = *buf;
+                t &= m0;
+                t |= c0;
+                *buf++ = t;
+            } while(--col != 0);
+            buf += buf_adv;
+        }
+        
+        if(--rows != 0)
+        {
+            do
+            {
+                col = w;
+                do
+                {
+                    *buf++ = color;
+                } while(--col != 0);
+                buf += buf_adv;
+            } while(--rows != 0);
+        }
+    }
+    
+    if(bot)
+    {
+        do
+        {
+            uint8_t t = *buf;
+            t &= m1;
+            t |= c1;
+            *buf++ = t;
+        } while(--w != 0);
+    }
+    
+#endif
+}
