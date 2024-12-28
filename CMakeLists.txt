@@ -75,6 +75,7 @@ option(ARDENS_FLASHCART "Build flashcart player target" ON)
 option(ARDENS_LIBRETRO  "Build libretro core target" OFF)
 option(ARDENS_DIST      "Build distributable game from dist/game.arduboy" OFF)
 option(ARDENS_BENCHMARK "Build benchmark executable" OFF)
+option(ARDENS_CYCLES    "Build cycle counting executable" OFF)
 
 if(EMSCRIPTEN)
     option(ARDENS_WEB_JS "Build JS-only (not WASM)" OFF)
@@ -602,6 +603,13 @@ if(ARDENS_BENCHMARK)
         benchmark ardensdebuggerlib)
     target_compile_definitions(Ardens_benchmark_debugger PRIVATE
         -DARDENS_BENCHMARK_DIR="${CMAKE_CURRENT_SOURCE_DIR}/bench")
+
+endif()
+
+if(ARDENS_CYCLES)
+
+    add_executable(Ardens_cycles bench/cycles/cycles.cpp)
+    target_link_libraries(Ardens_cycles PRIVATE ardensdebuggerlib)
 
 endif()
 
