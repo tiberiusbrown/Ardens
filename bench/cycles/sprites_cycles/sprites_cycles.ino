@@ -26,7 +26,7 @@ void debug_cycles(F&& f)
     asm volatile("break\n");
     f();
     asm volatile("break\n");
-    SREG = sreg;    
+    SREG = sreg;
 }
 
 int debug_putc(char c, FILE* f) 
@@ -37,26 +37,18 @@ int debug_putc(char c, FILE* f)
 
 void setup() {
     a.boot();
+    FX::begin(FX_ADDR);
 
     Serial.begin(9600);
     fdevopen(&debug_putc, 0);
 
-    FX::begin(FX_ADDR);
-    
-    cli();
-
 #if 1
+    
     Serial.println(F("\nSprites::drawOverwrite"));
     debug_cycles([](){ Sprites::drawOverwrite(0, 0, IMG_SPRITESU, 0); });
     debug_cycles([](){ Sprites::drawOverwrite(0, 0, IMG_SPRITESU, 1); });
     debug_cycles([](){ Sprites::drawOverwrite(0, 4, IMG_SPRITESU, 0); });
     debug_cycles([](){ Sprites::drawOverwrite(-8, 0, IMG_SPRITESU, 0); });
-    
-    Serial.println(F("\nSprites::drawPlusMask"));
-    debug_cycles([](){ Sprites::drawPlusMask(0, 0, IMG_SPRITESU, 0); });
-    debug_cycles([](){ Sprites::drawPlusMask(0, 0, IMG_SPRITESU, 1); });
-    debug_cycles([](){ Sprites::drawPlusMask(0, 4, IMG_SPRITESU, 0); });
-    debug_cycles([](){ Sprites::drawPlusMask(-8, 0, IMG_SPRITESU, 0); });
     
     Serial.println(F("\nSpritesB::drawOverwrite"));
     debug_cycles([](){ SpritesB::drawOverwrite(0, 0, IMG_SPRITESU, 0); });
@@ -64,58 +56,28 @@ void setup() {
     debug_cycles([](){ SpritesB::drawOverwrite(0, 4, IMG_SPRITESU, 0); });
     debug_cycles([](){ SpritesB::drawOverwrite(-8, 0, IMG_SPRITESU, 0); });
     
-    Serial.println(F("\nSpritesB::drawPlusMask"));
-    debug_cycles([](){ SpritesB::drawPlusMask(0, 0, IMG_SPRITESU, 0); });
-    debug_cycles([](){ SpritesB::drawPlusMask(0, 0, IMG_SPRITESU, 1); });
-    debug_cycles([](){ SpritesB::drawPlusMask(0, 4, IMG_SPRITESU, 0); });
-    debug_cycles([](){ SpritesB::drawPlusMask(-8, 0, IMG_SPRITESU, 0); });
-    
     Serial.println(F("\nSpritesU::drawOverwrite"));
     debug_cycles([](){ SpritesU::drawOverwrite(0, 0, IMG_SPRITESU, 0); });
     debug_cycles([](){ SpritesU::drawOverwrite(0, 0, IMG_SPRITESU, 1); });
     debug_cycles([](){ SpritesU::drawOverwrite(0, 4, IMG_SPRITESU, 0); });
     debug_cycles([](){ SpritesU::drawOverwrite(-8, 0, IMG_SPRITESU, 0); });
-    
-    Serial.println(F("\nSpritesU::drawPlusMask"));
-    debug_cycles([](){ SpritesU::drawPlusMask(0, 0, IMG_SPRITESU, 0); });
-    debug_cycles([](){ SpritesU::drawPlusMask(0, 0, IMG_SPRITESU, 1); });
-    debug_cycles([](){ SpritesU::drawPlusMask(0, 4, IMG_SPRITESU, 0); });
-    debug_cycles([](){ SpritesU::drawPlusMask(-8, 0, IMG_SPRITESU, 0); });
 
     Serial.println(F("\nFX::drawBitmap (dbmOverwrite)"));
     debug_cycles([](){ FX::drawBitmap(0, 0, IMG_FX, 0, dbmOverwrite); });
     debug_cycles([](){ FX::drawBitmap(0, 0, IMG_FX, 1, dbmOverwrite); });
     debug_cycles([](){ FX::drawBitmap(0, 4, IMG_FX, 0, dbmOverwrite); });
     debug_cycles([](){ FX::drawBitmap(-8, 0, IMG_FX, 0, dbmOverwrite); });
-
-    Serial.println(F("\nFX::drawBitmap (dbmMasked)"));
-    debug_cycles([](){ FX::drawBitmap(0, 0, IMG_FX, 0, dbmMasked); });
-    debug_cycles([](){ FX::drawBitmap(0, 0, IMG_FX, 1, dbmMasked); });
-    debug_cycles([](){ FX::drawBitmap(0, 4, IMG_FX, 0, dbmMasked); });
-    debug_cycles([](){ FX::drawBitmap(-8, 0, IMG_FX, 0, dbmMasked); });    
     
     Serial.println(F("\nSpritesU::drawOverwriteFX"));
     debug_cycles([](){ SpritesU::drawOverwriteFX(0, 0, IMG_FX_SPRITESU, 0); });
     debug_cycles([](){ SpritesU::drawOverwriteFX(0, 0, IMG_FX_SPRITESU, 1); });
     debug_cycles([](){ SpritesU::drawOverwriteFX(0, 4, IMG_FX_SPRITESU, 0); });
     debug_cycles([](){ SpritesU::drawOverwriteFX(-8, 0, IMG_FX_SPRITESU, 0); });
-    
-    Serial.println(F("\nSpritesU::drawPlusMaskFX"));
-    debug_cycles([](){ SpritesU::drawPlusMaskFX(0, 0, IMG_FX_SPRITESU, 0); });
-    debug_cycles([](){ SpritesU::drawPlusMaskFX(0, 0, IMG_FX_SPRITESU, 1); });
-    debug_cycles([](){ SpritesU::drawPlusMaskFX(0, 4, IMG_FX_SPRITESU, 0); });
-    debug_cycles([](){ SpritesU::drawPlusMaskFX(-8, 0, IMG_FX_SPRITESU, 0); });
 
     Serial.println(F("\nSpritesABC::drawBasic (MODE_OVERWRITE)"));
     debug_cycles([](){ SpritesABC::drawBasic(0, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_OVERWRITE); });
     debug_cycles([](){ SpritesABC::drawBasic(0, 4, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_OVERWRITE); });
     debug_cycles([](){ SpritesABC::drawBasic(-8, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_OVERWRITE); });
-
-    Serial.println(F("\nSpritesABC::drawBasic (MODE_PLUSMASK)"));
-    debug_cycles([](){ SpritesABC::drawBasic(0, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
-    debug_cycles([](){ SpritesABC::drawBasic(0, 4, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
-    debug_cycles([](){ SpritesABC::drawBasic(-8, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
-#endif
 
     Serial.println(F("\nSpritesABC::drawSized (MODE_OVERWRITE)"));
     debug_cycles([](){ SpritesABC::drawSized(0, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_OVERWRITE, 0); });
@@ -123,31 +85,69 @@ void setup() {
     debug_cycles([](){ SpritesABC::drawSized(0, 4, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_OVERWRITE, 0); });
     debug_cycles([](){ SpritesABC::drawSized(-8, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_OVERWRITE, 0); });
 
+    Serial.println(F("\nSpritesABC::draw (MODE_OVERWRITE)"));
+    debug_cycles([](){ SpritesABC::draw(0, 0, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 0); });
+    debug_cycles([](){ SpritesABC::draw(0, 0, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 1); });
+    debug_cycles([](){ SpritesABC::draw(0, 4, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 0); });
+    debug_cycles([](){ SpritesABC::draw(-8, 0, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 0); });
+    
+    Serial.println(F("\nSprites::drawPlusMask"));
+    debug_cycles([](){ Sprites::drawPlusMask(0, 0, IMG_SPRITESU, 0); });
+    debug_cycles([](){ Sprites::drawPlusMask(0, 0, IMG_SPRITESU, 1); });
+    debug_cycles([](){ Sprites::drawPlusMask(0, 4, IMG_SPRITESU, 0); });
+    debug_cycles([](){ Sprites::drawPlusMask(-8, 0, IMG_SPRITESU, 0); });
+    
+    Serial.println(F("\nSpritesB::drawPlusMask"));
+    debug_cycles([](){ SpritesB::drawPlusMask(0, 0, IMG_SPRITESU, 0); });
+    debug_cycles([](){ SpritesB::drawPlusMask(0, 0, IMG_SPRITESU, 1); });
+    debug_cycles([](){ SpritesB::drawPlusMask(0, 4, IMG_SPRITESU, 0); });
+    debug_cycles([](){ SpritesB::drawPlusMask(-8, 0, IMG_SPRITESU, 0); });
+    
+    Serial.println(F("\nSpritesU::drawPlusMask"));
+    debug_cycles([](){ SpritesU::drawPlusMask(0, 0, IMG_SPRITESU, 0); });
+    debug_cycles([](){ SpritesU::drawPlusMask(0, 0, IMG_SPRITESU, 1); });
+    debug_cycles([](){ SpritesU::drawPlusMask(0, 4, IMG_SPRITESU, 0); });
+    debug_cycles([](){ SpritesU::drawPlusMask(-8, 0, IMG_SPRITESU, 0); });
+
+    Serial.println(F("\nFX::drawBitmap (dbmMasked)"));
+    debug_cycles([](){ FX::drawBitmap(0, 0, IMG_FX, 0, dbmMasked); });
+    debug_cycles([](){ FX::drawBitmap(0, 0, IMG_FX, 1, dbmMasked); });
+    debug_cycles([](){ FX::drawBitmap(0, 4, IMG_FX, 0, dbmMasked); });
+    debug_cycles([](){ FX::drawBitmap(-8, 0, IMG_FX, 0, dbmMasked); });    
+    
+    Serial.println(F("\nSpritesU::drawPlusMaskFX"));
+    debug_cycles([](){ SpritesU::drawPlusMaskFX(0, 0, IMG_FX_SPRITESU, 0); });
+    debug_cycles([](){ SpritesU::drawPlusMaskFX(0, 0, IMG_FX_SPRITESU, 1); });
+    debug_cycles([](){ SpritesU::drawPlusMaskFX(0, 4, IMG_FX_SPRITESU, 0); });
+    debug_cycles([](){ SpritesU::drawPlusMaskFX(-8, 0, IMG_FX_SPRITESU, 0); });
+
+    Serial.println(F("\nSpritesABC::drawBasic (MODE_PLUSMASK)"));
+    debug_cycles([](){ SpritesABC::drawBasic(0, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
+    debug_cycles([](){ SpritesABC::drawBasic(0, 4, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
+    debug_cycles([](){ SpritesABC::drawBasic(-8, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
+
     Serial.println(F("\nSpritesABC::drawSized (MODE_PLUSMASK)"));
     debug_cycles([](){ SpritesABC::drawSized(0, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK, 0); });
     debug_cycles([](){ SpritesABC::drawSized(0, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK, 1); });
     debug_cycles([](){ SpritesABC::drawSized(0, 4, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK, 0); });
     debug_cycles([](){ SpritesABC::drawSized(-8, 0, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK, 0); });
 
-    Serial.println(F("\nSpritesABC::draw (MODE_OVERWRITE)"));
-    debug_cycles([](){ SpritesABC::draw(0, 0, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 0); });
-    debug_cycles([](){ SpritesABC::draw(0, 0, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 1); });
-    debug_cycles([](){ SpritesABC::draw(0, 4, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 0); });
-    debug_cycles([](){ SpritesABC::draw(-8, 0, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 0); });
-
     Serial.println(F("\nSpritesABC::draw (MODE_PLUSMASK)"));
     debug_cycles([](){ SpritesABC::draw(0, 0, IMG_FX_SPRITESU, SpritesABC::MODE_PLUSMASK, 0); });
     debug_cycles([](){ SpritesABC::draw(0, 0, IMG_FX_SPRITESU, SpritesABC::MODE_PLUSMASK, 1); });
     debug_cycles([](){ SpritesABC::draw(0, 4, IMG_FX_SPRITESU, SpritesABC::MODE_PLUSMASK, 0); });
     debug_cycles([](){ SpritesABC::draw(-8, 0, IMG_FX_SPRITESU, SpritesABC::MODE_PLUSMASK, 0); });
-    
-    a.display();
 
-    cli();
-    a.idle();
+#endif
 }
 
 void loop() {
-    // put your main code here, to run repeatedly:
+    if(!a.nextFrame())
+        return;
 
+    SpritesABC::draw(0, 0, IMG_FX_SPRITESU, SpritesABC::MODE_OVERWRITE, 0);
+    SpritesABC::draw(32, 4, IMG_FX_SPRITESU, SpritesABC::MODE_PLUSMASK, 0);
+    SpritesABC::drawSized(64, 2, 16, 16, IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK, 0);
+    
+    FX::display(CLEAR_BUFFER);
 }
