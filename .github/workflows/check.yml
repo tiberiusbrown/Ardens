@@ -215,7 +215,7 @@ jobs:
         key: windows_x86-cache-fetchcontent
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -G Ninja -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
         
     - name: Build
       run: |
@@ -254,7 +254,7 @@ jobs:
         key: windows_x64-cache-fetchcontent
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -G Ninja -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Build
       run: |

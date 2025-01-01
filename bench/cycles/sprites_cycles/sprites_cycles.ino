@@ -18,7 +18,6 @@
 Arduboy2Base a;
 
 template<class F>
-[[ gnu::noipa, gnu::noinline ]]
 void debug_cycles(F&& f)
 {
     uint8_t sreg = SREG;

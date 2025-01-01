@@ -203,7 +203,7 @@ jobs:
         submodules: 'recursive'
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -G Ninja -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Cache FetchContent
       id: cache-fetchcontent
@@ -242,7 +242,7 @@ jobs:
         submodules: 'recursive'
   
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -G Ninja -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
   
     - name: Cache FetchContent
       id: cache-fetchcontent
