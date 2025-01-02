@@ -41,7 +41,7 @@ static void hotspot_row(int i)
     auto const* sym = arduboy.symbol_for_prog_addr(addr_begin);
     if(!sym) return;
     SameLine();
-    TextUnformatted(sym->name.c_str()); 
+    TextUnformatted(sym->name.c_str());
 }
 
 static void show_hotspots()
