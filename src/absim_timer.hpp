@@ -208,9 +208,15 @@ void atmega32u4_t::update_timer0()
             update_tcycles *= 2;
     }
 
-    uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.prescaler_cycle;
+    if(update_tcycles == 0)
+        timer0.next_update_cycle = UINT64_MAX;
+    else
+    {
+        update_tcycles = std::max<uint32_t>(1, update_tcycles);
+        uint64_t update_cycles = (uint64_t)update_tcycles * timer0.divider - timer0.prescaler_cycle;
+        timer0.next_update_cycle = cycle_count + update_cycles;
+    }
 
-    timer0.next_update_cycle = cycle_count + update_cycles;
     peripheral_queue.schedule(timer0.next_update_cycle, PQ_TIMER0);
 }
 

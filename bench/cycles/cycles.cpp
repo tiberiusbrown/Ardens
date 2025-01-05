@@ -56,7 +56,7 @@ int main(int argc, char** argv)
             else
             {
                 prev_cycle = arduboy.cpu.cycle_count - prev_cycle - 1;
-                printf("%" PRIu64 "\n", prev_cycle);
+                printf(" %" PRIu64 " |", prev_cycle);
                 prev_cycle = 0;
             }
         }
