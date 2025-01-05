@@ -16,15 +16,15 @@ struct SpritesABC
     static constexpr uint8_t MODE_SELFMASK       = 4;
     static constexpr uint8_t MODE_SELFMASK_ERASE = 6; // like selfmask but erases pixels
 
-    static void drawBasic(
+    static void drawBasicFX(
         int16_t x, int16_t y, uint8_t w, uint8_t h,
         uint24_t image, uint8_t mode);
     
-    static void drawSized(
+    static void drawSizedFX(
         int16_t x, int16_t y, uint8_t w, uint8_t h,
         uint24_t image, uint8_t mode, uint16_t frame);
     
-    static void draw(
+    static void drawFX(
         int16_t x, int16_t y,
         uint24_t image, uint8_t mode, uint16_t frame);
 };

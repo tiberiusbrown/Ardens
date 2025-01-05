@@ -1,7 +1,7 @@
 #include "SpritesABC.hpp"
 
 [[ gnu::naked, gnu::noinline ]]
-static void SpritesABC::draw(
+static void SpritesABC::drawFX(
     int16_t x, int16_t y,
     uint24_t image, uint8_t mode, uint16_t frame)
 {
@@ -73,12 +73,12 @@ static void SpritesABC::draw(
         , [spsr]       "I"   (_SFR_IO_ADDR(SPSR))
         , [sreg]       "I"   (_SFR_IO_ADDR(SREG))
         , [page]       "i"   (&FX::programDataPage)
-        , [drawf]      ""    (SpritesABC::drawSized)
+        , [drawf]      ""    (SpritesABC::drawSizedFX)
         );
 }
 
 [[ gnu::naked, gnu::noinline ]]
-static void SpritesABC::drawSized(
+static void SpritesABC::drawSizedFX(
     int16_t x, int16_t y, uint8_t w, uint8_t h,
     uint24_t image, uint8_t mode, uint16_t frame)
 {
@@ -86,58 +86,50 @@ static void SpritesABC::drawSized(
     
         SpritesABC_drawSized:
         
-            push r4
-            push r5
-            push r6
+            push r14
+            push r15
+            push r16
             
-            ; w * (h >> 3)
+            ; w * (h >> 3) * (plusmask ? 2 : 1)
             mov  r0, r18
             lsr  r0
             lsr  r0
             lsr  r0
+            sbrc r12, 0
+            lsl  r0
             mul  r0, r20
             movw r30, r0
             
-            ; t = frame * w * (h >> 3)
+            ; image += frame * w * (h >> 3)
             mul  r30, r10
-            movw r4, r0
+            add  r14, r0
+            adc  r15, r1
             mul  r31, r10
-            add  r5, r0
-            adc  r6, r1
-            mul  r30, r15
-            add  r5, r0
-            adc  r6, r1
-            mul  r31, r15
-            add  r6, r0
+            add  r15, r0
+            adc  r16, r1
+            mul  r30, r11
+            add  r15, r0
+            adc  r16, r1
+            mul  r31, r11
+            add  r16, r0
             clr  r1
+
+        1:            
             
-            ; image += t
-            add  r14, r4
-            adc  r15, r5
-            adc  r16, r6
+            call %x[drawf]
             
-            ; if(mode & MODE_PLUSMASK) image += t
-            sbrs r12, 0
-            rjmp 1f
-            add  r14, r4
-            adc  r15, r5
-            adc  r16, r6
-        1:
-            
-            pop  r6
-            pop  r5
-            pop  r4
-            
-            jmp  %x[drawf]
+            pop  r16
+            pop  r15
+            pop  r14
     
         )ASM"
         :
-        : [drawf] "" (SpritesABC::drawBasic)
+        : [drawf] "" (SpritesABC::drawBasicFX)
         );
 }
 
 [[ gnu::naked, gnu::noinline ]]
-void SpritesABC::drawBasic(
+void SpritesABC::drawBasicFX(
     int16_t x, int16_t y, uint8_t w, uint8_t h,
     uint24_t image, uint8_t mode)
 {
