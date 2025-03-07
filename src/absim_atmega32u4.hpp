@@ -390,7 +390,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
             if(pc >= last_pc)
             {
                 autobreak(AB_OOB_PC);
-                return cycles;
+                return 1;
             }
             auto const& i = decoded_prog[pc];
             prev_sreg = sreg();
@@ -414,8 +414,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 if(pc >= last_pc)
                 {
                     autobreak(AB_OOB_PC);
-                    cycles = uint32_t(cycle_count - tcycles);
-                    return cycles;
+                    return 1;
                 }
                 auto const& i = merged_prog[pc];
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
