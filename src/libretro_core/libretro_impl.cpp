@@ -115,7 +115,10 @@ void retro_init()
 void retro_deinit()
 {
     arduboy.reset();
-    save_buf.swap(std::vector<uint8_t>());
+    {
+        std::vector<uint8_t> empty;
+        save_buf.swap(empty);
+    }
 }
 
 unsigned retro_api_version()
