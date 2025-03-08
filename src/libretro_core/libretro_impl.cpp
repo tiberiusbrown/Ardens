@@ -109,11 +109,16 @@ void retro_init()
         func_log(RETRO_LOG_INFO, "Save path: %s\n", save_path);
 
     arduboy = std::make_unique<absim::arduboy_t>();
+    save_buf.resize(SAVE_RAM_BYTES);
 }
 
 void retro_deinit()
 {
     arduboy.reset();
+    {
+        std::vector<uint8_t> empty;
+        save_buf.swap(empty);
+    }
 }
 
 unsigned retro_api_version()
@@ -338,8 +343,25 @@ void* retro_get_memory_data(unsigned id)
     case RETRO_MEMORY_SYSTEM_RAM:
         return arduboy->cpu.data.data();
     case RETRO_MEMORY_SAVE_RAM:
-        // We need to use the save directory, to save both EEPROM and FX saves.
-        return nullptr;
+        memcpy(save_buf.data() + 0, arduboy->cpu.eeprom.data(), 1024);
+        for(size_t i = 0; i < arduboy->fx.NUM_SECTORS; ++i)
+        {
+            if(arduboy->fx.sectors[i])
+            {
+                memcpy(
+                    save_buf.data() + 1024 + i * arduboy->fx.SECTOR_BYTES,
+                    arduboy->fx.sectors[i]->data(),
+                    arduboy->fx.SECTOR_BYTES);
+            }
+            else
+            {
+                memset(
+                    save_buf.data() + 1024 + i * arduboy->fx.SECTOR_BYTES,
+                    0,
+                    arduboy->fx.SECTOR_BYTES);
+            }
+        }
+        return save_buf.data();
     case RETRO_MEMORY_VIDEO_RAM:
         return arduboy->display.ram.data();
     default:
@@ -354,7 +376,7 @@ size_t retro_get_memory_size(unsigned id)
     case RETRO_MEMORY_SYSTEM_RAM:
         return sizeof(arduboy->cpu.data);
     case RETRO_MEMORY_SAVE_RAM:
-        return 0;
+        return SAVE_RAM_BYTES;
     case RETRO_MEMORY_VIDEO_RAM:
         return sizeof(arduboy->display.ram);
     default:
