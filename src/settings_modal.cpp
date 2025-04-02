@@ -395,7 +395,26 @@ void modal_settings()
     }
 
     if(Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
+    {
+        switch(settings.fxport)
+        {
+        case FXPORT_D1:
+            arduboy.cfg.fxport_reg = 0x2b;
+            arduboy.cfg.fxport_mask = 1 << 1;
+            break;
+        case FXPORT_D2:
+            arduboy.cfg.fxport_reg = 0x2b;
+            arduboy.cfg.fxport_mask = 1 << 2;
+            break;
+        case FXPORT_E2:
+            arduboy.cfg.fxport_reg = 0x2e;
+            arduboy.cfg.fxport_mask = 1 << 2;
+            break;
+        default:
+            break;
+        }
         CloseCurrentPopup();
+    }
 
     EndPopup();
 }

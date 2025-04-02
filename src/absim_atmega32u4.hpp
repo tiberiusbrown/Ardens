@@ -171,6 +171,7 @@ void atmega32u4_t::execute_spm()
             prog[i] = 0xff;
         SPMCSR() |= (1 << 6); // RWWSB
         decode();
+        last_addr = 0x7fff;
         spm_cycles = SPM_CYCLES;
         break;
     }
@@ -187,6 +188,7 @@ void atmega32u4_t::execute_spm()
         erase_spm_buffer();
         SPMCSR() |= (1 << 6); // RWWSB
         decode();
+        last_addr = 0x7fff;
         spm_cycles = SPM_CYCLES;
         break;
     }

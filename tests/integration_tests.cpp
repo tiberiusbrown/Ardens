@@ -79,6 +79,11 @@ static int image_test(char const* dir, char const* game)
     auto err = arduboy->load_file(game, f);
     int r = 0;
     if(!err.empty()) r = 1;
+    arduboy->cfg.display_type = absim::display_t::type_t::SSD1306;
+    arduboy->cfg.fxport_reg = 0x2b;
+    arduboy->cfg.fxport_mask = 1 << 1;
+    arduboy->cfg.bootloader = true;
+    arduboy->cfg.boot_to_menu = false;
     arduboy->reset();
 
     int n = 0;
