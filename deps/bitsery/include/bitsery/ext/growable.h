@@ -24,7 +24,6 @@
 #define BITSERY_EXT_GROWABLE_H
 
 #include "../traits/core/traits.h"
-#include <cstdint>
 
 namespace bitsery {
 

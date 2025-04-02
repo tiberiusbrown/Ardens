@@ -23,7 +23,6 @@
 #ifndef BITSERY_TRAITS_CORE_STD_DEFAULTS_H
 #define BITSERY_TRAITS_CORE_STD_DEFAULTS_H
 
-#include "../../bitsery.h"
 #include "../../details/serialization_common.h"
 #include "traits.h"
 
@@ -104,11 +103,8 @@ struct StdContainerForBufferAdapter<T, true>
       static_cast<size_t>(static_cast<double>(container.size()) * 1.5) + 128;
     // make data cache friendly
     newSize -= newSize % 64; // 64 is cache line size
-    auto resize =
-      (std::max)(newSize > minSize ? newSize : minSize, container.capacity());
-    BITSERY_ASSUME(resize >= container.size());
-    BITSERY_ASSUME(resize >= container.capacity());
-    container.resize(resize);
+    container.resize(
+      (std::max)(newSize > minSize ? newSize : minSize, container.capacity()));
   }
 };
 
