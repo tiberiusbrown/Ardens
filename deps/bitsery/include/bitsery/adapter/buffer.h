@@ -23,6 +23,7 @@
 #ifndef BITSERY_ADAPTER_BUFFER_H
 #define BITSERY_ADAPTER_BUFFER_H
 
+#include "../bitsery.h"
 #include "../details/adapter_bit_packing.h"
 #include "../traits/core/traits.h"
 #include <algorithm>
@@ -268,16 +269,16 @@ private:
 
   void maybeResize(size_t newOffset, std::true_type)
   {
-    if (newOffset > _bufferSize) {
-      traits::BufferAdapterTraits<Buffer>::increaseBufferSize(
-        *_buffer, _currOffset, newOffset);
-      _beginIt = std::begin(*_buffer);
-      _bufferSize = traits::ContainerTraits<Buffer>::size(*_buffer);
-    }
+    if (newOffset > _bufferSize)
+      BITSERY_UNLIKELY
+      {
+        doResize(newOffset);
+      }
   }
 
   void maybeResize(size_t newOffset, std::false_type)
   {
+    static_cast<void>(newOffset);
     assert(newOffset <= _bufferSize);
   }
 
@@ -287,6 +288,14 @@ private:
     maybeResize(newOffset, TResizable{});
     std::copy_n(data, size, _beginIt + static_cast<diff_t>(_currOffset));
     _currOffset = newOffset;
+  }
+
+  BITSERY_NOINLINE void doResize(size_t newOffset)
+  {
+    traits::BufferAdapterTraits<Buffer>::increaseBufferSize(
+      *_buffer, _currOffset, newOffset);
+    _beginIt = std::begin(*_buffer);
+    _bufferSize = traits::ContainerTraits<Buffer>::size(*_buffer);
   }
 };
 

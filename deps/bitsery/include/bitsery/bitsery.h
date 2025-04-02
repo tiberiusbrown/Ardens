@@ -25,7 +25,7 @@
 
 #define BITSERY_MAJOR_VERSION 5
 #define BITSERY_MINOR_VERSION 2
-#define BITSERY_PATCH_VERSION 2
+#define BITSERY_PATCH_VERSION 4
 
 #define BITSERY_QUOTE_MACRO(name) #name
 #define BITSERY_BUILD_VERSION_STR(major, minor, patch)                         \
@@ -35,6 +35,67 @@
 #define BITSERY_VERSION                                                        \
   BITSERY_BUILD_VERSION_STR(                                                   \
     BITSERY_MAJOR_VERSION, BITSERY_MINOR_VERSION, BITSERY_PATCH_VERSION)
+
+#define BITSERY_DO_PRAGMA(x) _Pragma(#x)
+#ifdef __GNUC__
+#define BITSERY_DISABLE_WARNINGS(...)                                          \
+  BITSERY_DO_PRAGMA(GCC diagnostic push)                                       \
+  BITSERY_DO_PRAGMA(GCC diagnostic ignored __VA_ARGS__)
+#define BITSERY_ENABLE_WARNINGS() BITSERY_DO_PRAGMA(GCC diagnostic pop)
+#elif defined(_MSC_VER)
+#define BITSERY_DISABLE_WARNINGS(...)                                          \
+  BITSERY_DO_PRAGMA(GCC diagnostic push)                                       \
+  BITSERY_DO_PRAGMA(GCC diagnostic ignored __VA_ARGS__)                        \
+  BITSERY_DO_PRAGMA(GCC diagnostic pop)
+#define BITSERY_ENABLE_WARNINGS() BITSERY_DO_PRAGMA(GCC diagnostic pop)
+#else
+#define BITSERY_DISABLE_WARNINGS(...)
+#define BITSERY_ENABLE_WARNINGS()
+#endif
+
+#ifdef __clang__
+#define BITSERY_ATTRIBUTE(...)                                                 \
+  BITSERY_DISABLE_WARNINGS("-Wfuture-attribute-extensions")                    \
+  [[__VA_ARGS__]] BITSERY_ENABLE_WARNINGS()
+#elif defined(__GNUC__)
+#define BITSERY_ATTRIBUTE(...) [[__VA_ARGS__]]
+#elif defined(_MSC_VER)
+#define BITSERY_ATTRIBUTE(...) [[__VA_ARGS__]]
+#else
+#define BITSERY_ATTRIBUTE(...) [[__VA_ARGS__]]
+#endif
+
+#if __has_cpp_attribute(likely)
+#define BITSERY_LIKELY BITSERY_ATTRIBUTE(likey)
+#else
+#define BITSERY_LIKELY
+#endif
+
+#if __has_cpp_attribute(unlikely)
+#define BITSERY_UNLIKELY BITSERY_ATTRIBUTE(unlikely)
+#else
+#define BITSERY_UNLIKELY
+#endif
+
+#if __GNUC__
+#define BITSERY_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define BITSERY_NOINLINE __declspec(noinline)
+#else
+#define BITSERY_NOINLINE
+#endif
+
+#if __GNUC__
+#define BITSERY_ASSUME(cond)                                                   \
+  do {                                                                         \
+    if (!(cond))                                                               \
+      __builtin_unreachable();                                                 \
+  } while (0)
+#elif defined(_MSC_VER)
+#define BITSERY_ASSUME(cond) __assume(cond)
+#else
+#define BITSERY_ASSUME(cond)
+#endif
 
 #include "deserializer.h"
 #include "serializer.h"
