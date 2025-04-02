@@ -12,8 +12,12 @@
 
 extern "C"
 {
-#include "boot/boot_game.h"
-#include "boot/boot_menu.h"
+#include "boot/boot_game_d1.h"
+#include "boot/boot_menu_d1.h"
+#include "boot/boot_game_d2.h"
+#include "boot/boot_menu_d2.h"
+#include "boot/boot_game_e2.h"
+#include "boot/boot_menu_e2.h"
 #include "boot/boot_flashcart.h"
 }
 
@@ -134,10 +138,28 @@ void arduboy_t::reset()
 
     if(flashcart_loaded || cfg.bootloader)
     {
+        unsigned char const* ptr = nullptr;
+        size_t size = 0;
         if(flashcart_loaded || cfg.boot_to_menu)
-            (void)load_bootloader_hex(ARDENS_BOOT_MENU, sizeof(ARDENS_BOOT_MENU));
+        {
+            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 1)
+                ptr = ARDENS_BOOT_MENU_D1, size = sizeof(ARDENS_BOOT_MENU_D1);
+            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 2)
+                ptr = ARDENS_BOOT_MENU_D2, size = sizeof(ARDENS_BOOT_MENU_D2);
+            if(cfg.fxport_reg = 0x2e && cfg.fxport_mask == 1 << 2)
+                ptr = ARDENS_BOOT_MENU_E2, size = sizeof(ARDENS_BOOT_MENU_E2);
+        }
         else
-            (void)load_bootloader_hex(ARDENS_BOOT_GAME, sizeof(ARDENS_BOOT_GAME));
+        {
+            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 1)
+                ptr = ARDENS_BOOT_GAME_D1, size = sizeof(ARDENS_BOOT_GAME_D1);
+            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 2)
+                ptr = ARDENS_BOOT_GAME_D2, size = sizeof(ARDENS_BOOT_GAME_D2);
+            if(cfg.fxport_reg = 0x2e && cfg.fxport_mask == 1 << 2)
+                ptr = ARDENS_BOOT_GAME_E2, size = sizeof(ARDENS_BOOT_GAME_E2);
+        }
+        if(ptr != nullptr && size != 0)
+            (void)load_bootloader_hex(ptr, size);
     }
 
     if(cpu.program_loaded)
@@ -456,7 +478,8 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     if(is_present_state())
     {
         profiler_total_with_sleep += cycles;
-        if(cpu.active || cpu.wakeup_cycles != 0)
+        if((cpu.active || cpu.wakeup_cycles != 0) &&
+            cpu.decoded_prog[cpu.executing_instr_pc].func != INSTR_SLEEP)
         {
             profiler_total += cycles;
             if(profiler_enabled && cpu.executing_instr_pc < profiler_counts.size())

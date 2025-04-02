@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(bitsery
         LANGUAGES CXX
         VERSION 5.2.2)
@@ -17,12 +17,12 @@ include(GNUInstallDirs)
 target_include_directories(bitsery INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-#target_compile_features(bitsery INTERFACE
-#        cxx_auto_type
-#        cxx_constexpr
-#        cxx_lambdas
-#        cxx_nullptr
-#        cxx_variadic_templates)
+target_compile_features(bitsery INTERFACE
+        cxx_auto_type
+        cxx_constexpr
+        cxx_lambdas
+        cxx_nullptr
+        cxx_variadic_templates)
 
 #=============== setup installation =======================
 include(CMakePackageConfigHelpers)

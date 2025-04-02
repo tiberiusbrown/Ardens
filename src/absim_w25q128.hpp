@@ -186,7 +186,8 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
             current_addr &= 0xfff000;
             track_page();
             auto& sector = sectors[current_addr / SECTOR_BYTES];
-            memset(sector->data(), 0xff, SECTOR_BYTES);
+            if(sector)
+                memset(sector->data(), 0xff, SECTOR_BYTES);
             sectors_modified.set(current_addr >> 12);
             sectors_dirty = true;
             busy_ps_rem = 100ull * 1000 * 1000 * 1000; // 100 ms

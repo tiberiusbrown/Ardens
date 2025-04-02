@@ -5,6 +5,8 @@ set -x
 rm -rf build/
 mkdir build
 
+export ARCH=x86_64
+
 docker run --rm -v `pwd`:/io ghcr.io/phusion/holy-build-box/hbb-64 bash /io/cmake/hbb.sh
 
 cd build

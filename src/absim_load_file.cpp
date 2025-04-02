@@ -865,6 +865,8 @@ static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
     if(0 != memcmp(d.data() + 0x39, "Bootloader", 10)) goto not_flashcart;
     a.flashcart_loaded = true;
 
+    
+
 not_flashcart:
 
     return "";

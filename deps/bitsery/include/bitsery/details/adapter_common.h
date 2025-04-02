@@ -28,7 +28,6 @@
 #include <algorithm>
 #include <cassert>
 #include <climits>
-#include <cstdint>
 
 namespace bitsery {
 
@@ -195,11 +194,10 @@ getSystemEndianness()
            : EndiannessType::BigEndian;
 }
 
-template<typename Config, typename T>
+template<typename Config>
 using ShouldSwap =
   std::integral_constant<bool,
-                         Config::Endianness != details::getSystemEndianness() &&
-                           sizeof(T) != 1>;
+                         Config::Endianness != details::getSystemEndianness()>;
 
 /**
  * helper types to work with bits
@@ -289,7 +287,7 @@ struct OutputAdapterBaseCRTP
   {
     static_assert(std::is_integral<T>(), "");
     static_assert(sizeof(T) == SIZE, "");
-    writeSwappedValue(&v, ShouldSwap<typename Adapter::TConfig, T>{});
+    writeSwappedValue(&v, ShouldSwap<typename Adapter::TConfig>{});
   }
 
   template<size_t SIZE, typename T>
@@ -297,7 +295,7 @@ struct OutputAdapterBaseCRTP
   {
     static_assert(std::is_integral<T>(), "");
     static_assert(sizeof(T) == SIZE, "");
-    writeSwappedBuffer(buf, count, ShouldSwap<typename Adapter::TConfig, T>{});
+    writeSwappedBuffer(buf, count, ShouldSwap<typename Adapter::TConfig>{});
   }
 
   template<typename T>
@@ -362,7 +360,7 @@ struct InputAdapterBaseCRTP
     static_assert(sizeof(T) == SIZE, "");
     static_cast<Adapter*>(this)->template readInternalValue<sizeof(T)>(
       reinterpret_cast<typename Adapter::TValue*>(&v));
-    swapDataBits(v, ShouldSwap<typename Adapter::TConfig, T>{});
+    swapDataBits(v, ShouldSwap<typename Adapter::TConfig>{});
   }
 
   template<size_t SIZE, typename T>
@@ -372,7 +370,7 @@ struct InputAdapterBaseCRTP
     static_assert(sizeof(T) == SIZE, "");
     static_cast<Adapter*>(this)->readInternalBuffer(
       reinterpret_cast<typename Adapter::TValue*>(buf), sizeof(T) * count);
-    swapDataBits(buf, count, ShouldSwap<typename Adapter::TConfig, T>{});
+    swapDataBits(buf, count, ShouldSwap<typename Adapter::TConfig>{});
   }
 
   template<typename T>
