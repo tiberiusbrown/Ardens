@@ -465,9 +465,9 @@ static std::string recurse_value(
                 union { uint32_t x; float f; } u;
                 u.x = (uint32_t)x;
                 return
-                    base == dwarf_value_base::dec ? fmt::format(FMT, u.f) :
-                    base == dwarf_value_base::hex ? fmt::format(FMT, u.x) :
-                    base == dwarf_value_base::bin ? fmt::format(FMT, u.x) :
+                    base == dwarf_value_base::dec ? fmt::format("{}", u.f) :
+                    base == dwarf_value_base::hex ? fmt::format("{:#x}", u.x) :
+                    base == dwarf_value_base::bin ? fmt::format("{:#b}", u.x) :
                     "";
             }
             if(bytes == 8)
