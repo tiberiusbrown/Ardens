@@ -142,20 +142,20 @@ void arduboy_t::reset()
         size_t size = 0;
         if(flashcart_loaded || cfg.boot_to_menu)
         {
-            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 1)
+            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 1)
                 ptr = ARDENS_BOOT_MENU_D1, size = sizeof(ARDENS_BOOT_MENU_D1);
-            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 2)
+            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 2)
                 ptr = ARDENS_BOOT_MENU_D2, size = sizeof(ARDENS_BOOT_MENU_D2);
-            if(cfg.fxport_reg = 0x2e && cfg.fxport_mask == 1 << 2)
+            if(cfg.fxport_reg == 0x2e && cfg.fxport_mask == 1 << 2)
                 ptr = ARDENS_BOOT_MENU_E2, size = sizeof(ARDENS_BOOT_MENU_E2);
         }
         else
         {
-            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 1)
+            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 1)
                 ptr = ARDENS_BOOT_GAME_D1, size = sizeof(ARDENS_BOOT_GAME_D1);
-            if(cfg.fxport_reg = 0x2b && cfg.fxport_mask == 1 << 2)
+            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 2)
                 ptr = ARDENS_BOOT_GAME_D2, size = sizeof(ARDENS_BOOT_GAME_D2);
-            if(cfg.fxport_reg = 0x2e && cfg.fxport_mask == 1 << 2)
+            if(cfg.fxport_reg == 0x2e && cfg.fxport_mask == 1 << 2)
                 ptr = ARDENS_BOOT_GAME_E2, size = sizeof(ARDENS_BOOT_GAME_E2);
         }
         if(ptr != nullptr && size != 0)

@@ -25,6 +25,9 @@ static void hotspot_row(int i)
         {
             disassembly_scroll_addr = (addr_begin + addr_end) / 2;
             profiler_selected_hotspot = i;
+            settings.open_disassembly = true;
+            update_settings();
+            SetWindowFocus("Disassembly");
         }
     }
     SetCursorPos(pos);
