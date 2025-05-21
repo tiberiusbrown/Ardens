@@ -498,9 +498,11 @@ if(ARDENS_DEBUGGER)
         miniz
         fmt
         bitsery
-        SDL3_net-static
         ${SYSTEM_LIBS}
         )
+    if(NOT EMSCRIPTEN)
+        target_link_libraries(Ardens PRIVATE SDL3_net-static)
+    endif()
     target_include_directories(Ardens SYSTEM PRIVATE
         deps
         deps/imgui
