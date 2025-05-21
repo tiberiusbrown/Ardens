@@ -371,7 +371,7 @@ bool platform_toggle_fullscreen()
 #ifdef __EMSCRIPTEN__
     EmscriptenFullscreenChangeEvent e{};
     if(emscripten_get_fullscreen_status(&e) != EMSCRIPTEN_RESULT_SUCCESS)
-        return;
+        return false;
     if(e.isFullscreen)
         emscripten_exit_fullscreen();
     else
