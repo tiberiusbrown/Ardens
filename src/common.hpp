@@ -111,9 +111,11 @@ float platform_pixel_ratio();
 void platform_destroy_fonts_texture();
 void platform_create_fonts_texture();
 void platform_open_url(char const* url);
-void platform_toggle_fullscreen();
+bool platform_toggle_fullscreen();
 void platform_quit();
 void platform_set_title(char const* title);
+void platform_set_window_size(int w, int h);
+void platform_set_window_maximized(bool maximized);
 
 #ifdef __EMSCRIPTEN__
 void file_download(
