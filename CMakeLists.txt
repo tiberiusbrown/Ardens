@@ -67,26 +67,29 @@ if(MINGW)
     add_link_options(-s)
 endif()
 
-option(ARDENS_LLVM      "Build and link LLVM (enables loading ELF and debug info)" ON)
-option(ARDENS_DEBUGGER  "Build debugger target" ON)
-option(ARDENS_LIB       "Build static library for emulator core" OFF)
-option(ARDENS_PLAYER    "Build player target" ON)
-option(ARDENS_FLASHCART "Build flashcart player target" ON)
-option(ARDENS_LIBRETRO  "Build libretro core target" OFF)
-option(ARDENS_DIST      "Build distributable game from dist/game.arduboy" OFF)
-option(ARDENS_BENCHMARK "Build benchmark executable" OFF)
-option(ARDENS_CYCLES    "Build cycle counting executable" OFF)
+option(ARDENS_LLVM        "Build and link LLVM (enables loading ELF and debug info)" ON)
+option(ARDENS_DEBUGGER    "Build debugger target" ON)
+option(ARDENS_LIB         "Build static library for emulator core" OFF)
+option(ARDENS_PLAYER      "Build player target" ON)
+option(ARDENS_FLASHCART   "Build flashcart player target" ON)
+option(ARDENS_LIBRETRO    "Build libretro core target" OFF)
+option(ARDENS_DIST        "Build distributable game from dist/game.arduboy" OFF)
+option(ARDENS_BENCHMARK   "Build benchmark executable" OFF)
+option(ARDENS_INTEGRATION "Build integration tests executable" ON)
+option(ARDENS_CYCLES      "Build cycle counting executable" OFF)
 
 if(EMSCRIPTEN)
     option(ARDENS_WEB_JS "Build JS-only (not WASM)" OFF)
 endif()
 
 if(ARDENS_LIBRETRO)
-    set(ARDENS_LLVM      OFF)
-    set(ARDENS_DEBUGGER  OFF)
-    set(ARDENS_PLAYER    OFF)
-    set(ARDENS_FLASHCART OFF)
-    set(ARDENS_DIST      OFF)
+    set(ARDENS_LLVM        OFF)
+    set(ARDENS_DEBUGGER    OFF)
+    set(ARDENS_PLAYER      OFF)
+    set(ARDENS_FLASHCART   OFF)
+    set(ARDENS_INTEGRATION OFF)
+    set(ARDENS_BENCHMARK   OFF)
+    set(ARDENS_DIST        OFF)
     set(CMAKE_CXX_STANDARD 14)
 endif()
 
@@ -455,6 +458,7 @@ if(ARDENS_DEBUGGER)
         src/scalenx.cpp
         src/saveload.cpp
         src/file_watch.cpp
+        src/gdbrsp.cpp
 
         src/window_disassembly.cpp
         src/window_profiler.cpp
@@ -618,7 +622,7 @@ if(ARDENS_CYCLES)
 
 endif()
 
-if(NOT ARDENS_LIBRETRO)
+if(ARDENS_INTEGRATION)
     add_executable(integration_tests
         .editorconfig
         tests/integration_tests.cpp

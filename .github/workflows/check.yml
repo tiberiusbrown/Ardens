@@ -25,13 +25,8 @@ jobs:
       with:
         submodules: 'recursive'
         
-    - name: Install prerequisites
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libx11-dev
-        
     - name: Configure
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DARDENS_LIB=1 -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=0
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DARDENS_LIB=1 -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=0 -DARDENS_FLASHCART=0
       
     - name: Build
       run: cmake --build ${{github.workspace}}/build -j --config Release --target integration_tests
