@@ -115,7 +115,7 @@ void window_display_buffer(bool& open)
                 w += display_buffer_w, h += display_buffer_h;
             float u = (float)display_buffer_w / 128;
             float v = (float)display_buffer_h / 64;
-            Image(display_buffer_texture, { w, h }, { 0, 0 }, { u, v });
+            Image((uintptr_t)display_buffer_texture, { w, h }, { 0, 0 }, { u, v });
         }
     }
     End();

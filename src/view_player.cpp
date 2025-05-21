@@ -151,7 +151,7 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
         vs[3] = {a.x, b.y};
         std::rotate(vs.begin(), vs.begin() + settings.display_orientation, vs.end());
         d->AddImageQuad(
-            display_texture,
+            (uintptr_t)display_texture,
             vs[0], vs[1], vs[2], vs[3]);
     }
 

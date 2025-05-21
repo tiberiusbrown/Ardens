@@ -160,6 +160,10 @@ if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_FLASHCART OR ARDENS_DEBUGGER))
     disable_all_warnings(SDL3-static)
 endif()
 
+if(NOT EMSCRIPTEN AND ARDENS_DEBUGGER)
+    add_subdirectory(deps/SDL_Net)
+endif()
+
 if(ARDENS_LLVM)
 	
 	# Avoid warning about DOWNLOAD_EXTRACT_TIMESTAMP in CMake 3.24:
@@ -490,6 +494,7 @@ if(ARDENS_DEBUGGER)
         miniz
         fmt
         bitsery
+        SDL3_net-static
         ${SYSTEM_LIBS}
         )
     target_include_directories(Ardens SYSTEM PRIVATE
