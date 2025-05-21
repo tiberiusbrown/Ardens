@@ -114,6 +114,16 @@ struct settings_t
 
     int volume = 100;
 
+#if defined(ARDENS_PLAYER)
+    int window_w = 512;
+    int window_h = 256;
+#else
+    int window_w = 1280;
+    int window_h = 720;
+#endif
+    bool window_maximized = false;
+    bool window_fullscreen = false;
+
     bool recording_sameasdisplay = true;
 };
 
