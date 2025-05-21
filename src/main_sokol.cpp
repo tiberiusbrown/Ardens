@@ -356,7 +356,7 @@ void platform_create_fonts_texture()
     idesc.sampler = _simgui.font_smp;
     _simgui.default_font = simgui_make_image(&idesc);
 
-    io.Fonts->TexID = simgui_imtextureid(_simgui.default_font);
+    io.Fonts->TexID = (uintptr_t)simgui_imtextureid(_simgui.default_font);
 }
 
 void platform_toggle_fullscreen()
