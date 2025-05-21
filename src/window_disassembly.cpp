@@ -499,12 +499,12 @@ void window_disassembly(bool& open)
     using namespace ImGui;
     if(!open) return;
     SetNextWindowSize({ 200 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    int do_scroll = disassembly_scroll_addr;
-    disassembly_scroll_addr = -1;
-    if(scroll_highlight_time > 0)
-        scroll_highlight_time -= GetIO().DeltaTime;
     if(Begin("Disassembly", &open) && arduboy.cpu.decoded)
     {
+        int do_scroll = disassembly_scroll_addr;
+        disassembly_scroll_addr = -1;
+        if(scroll_highlight_time > 0)
+            scroll_highlight_time -= GetIO().DeltaTime;
         AlignTextToFramePadding();
         TextUnformatted("Jump: 0x");
         SameLine(0.f, 0.f);
