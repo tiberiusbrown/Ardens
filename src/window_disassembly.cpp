@@ -80,7 +80,8 @@ static char const* get_prog_addr_source_line(uint16_t addr)
 
 static std::string disassembly_arg_str(
     uint16_t addr,
-    absim::disassembled_instr_arg_t const& a)
+    absim::disassembled_instr_arg_t const& a,
+    bool diffable = false)
 {
     switch(a.type)
     {
@@ -91,11 +92,21 @@ static std::string disassembly_arg_str(
     case absim::disassembled_instr_arg_t::type::BIT:
         return fmt::format("{}", a.val);
     case absim::disassembled_instr_arg_t::type::DS_ADDR:
-        return fmt::format("{:#06x} [{}]", a.val, prog_addr_name(a.val));
+        return fmt::format("{:#06x}", a.val);
     case absim::disassembled_instr_arg_t::type::PROG_ADDR:
-        return fmt::format("{:#06x} [{}]", a.val * 2, prog_addr_name(a.val * 2));
+    {
+        auto p = prog_addr_name(a.val * 2);
+        if(!diffable || p.empty())
+            return fmt::format("{:#06x} [{}]", a.val, p);
+        return fmt::format("[{}]", p);
+    }
     case absim::disassembled_instr_arg_t::type::OFFSET:
-        return fmt::format(".{:+d} [{}]", (int16_t)a.val * 2, prog_addr_name(addr + (int16_t)a.val * 2));
+    {
+        auto p = prog_addr_name(addr + (int16_t)a.val * 2);
+        if(!diffable || p.empty())
+            return fmt::format(".{:+d} [{}]", (int16_t)a.val * 2, p);
+        return fmt::format("[{}]", p);
+    }
     case absim::disassembled_instr_arg_t::type::PTR_REG:
         return fmt::format("{}", char('X' + (a.val - 26) / 2));
     case absim::disassembled_instr_arg_t::type::PTR_REG_OFFSET:
@@ -111,7 +122,7 @@ static std::string disassembly_arg_str(
     }
 }
 
-static void copy_disassembly_to_clipboard()
+static void copy_disassembly_to_clipboard(bool diffable = false)
 {
     int num = arduboy.elf ?
         (int)arduboy.elf->asm_with_source.size() :
@@ -123,7 +134,8 @@ static void copy_disassembly_to_clipboard()
         switch(d.type)
         {
         case absim::disassembled_instr_t::SOURCE:
-            ss << fmt::format("        ; {}\n", get_prog_addr_source_line(d.addr));
+            if(!diffable)
+                ss << fmt::format("        ; {}\n", get_prog_addr_source_line(d.addr));
             break;
         case absim::disassembled_instr_t::SYMBOL:
         {
@@ -133,7 +145,9 @@ static void copy_disassembly_to_clipboard()
             auto it = elf.text_symbols.find(d.addr);
             if(it == elf.text_symbols.end())
                 break;
-            ss << fmt::format("        {}:\n", it->second.name);
+            if(!diffable)
+                ss << "        ";
+            ss << fmt::format("{}:\n", it->second.name);
             break;
         }
         case absim::disassembled_instr_t::OBJECT:
@@ -154,16 +168,20 @@ static void copy_disassembly_to_clipboard()
                 charbuf[i] = c;
                 charbuf[i + 1] = '\0';
             }
-            ss << fmt::format("{:#06x}:   {}   {}\n", d.addr, buf.data(), charbuf.data());
+            if(!diffable)
+                ss << fmt::format("{:#06x}: ", d.addr);
+            ss << fmt::format("  {} {}\n", buf.data(), charbuf.data());
             break;
         }
         case absim::disassembled_instr_t::INSTR:
         {
-            ss << fmt::format("{:#06x}:   {}", d.addr, d.name ? d.name : "???");
+            if(!diffable)
+                ss << fmt::format("{:#06x}: ", d.addr);
+            ss << fmt::format("  {}", d.name ? d.name : "???");
             if(d.arg0.type != absim::disassembled_instr_arg_t::type::NONE)
-                ss << " " << disassembly_arg_str(d.addr, d.arg0);
+                ss << " " << disassembly_arg_str(d.addr, d.arg0, diffable);
             if(d.arg1.type != absim::disassembled_instr_arg_t::type::NONE)
-                ss << ", " << disassembly_arg_str(d.addr, d.arg1);
+                ss << ", " << disassembly_arg_str(d.addr, d.arg1, diffable);
             ss << "\n";
             break;
         }
@@ -541,8 +559,16 @@ void window_disassembly(bool& open)
         SameLine();
         if(Button("Copy"))
         {
-            copy_disassembly_to_clipboard();
+            copy_disassembly_to_clipboard(
+                IsKeyDown(ImGuiKey_LeftShift) || IsKeyDown(ImGuiKey_RightShift));
         }
+        if(IsItemHovered() && BeginTooltip())
+        {
+            TextUnformatted("Click to copy disassembly to clipboard.");
+            TextUnformatted("Shift-click to copy diffable disassembly.");
+            EndTooltip();
+        }
+        
 
         static bool show_full_range = false;
         SameLine();
