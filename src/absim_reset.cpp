@@ -83,6 +83,11 @@ void atmega32u4_t::reset()
     st_handlers[0x57] = st_handle_spmcsr;
     st_handlers[0x60] = st_handle_wdtcsr;
 
+    st_handlers[0x63] = st_handler_timsk;
+    st_handlers[0x6f] = st_handler_timsk;
+    st_handlers[0x71] = st_handler_timsk;
+    st_handlers[0x72] = st_handler_timsk;
+
     for(int i = 0x84; i <= 0x8d; ++i)
         ld_handlers[i] = timer1_handle_ld_regs;
     for(int i = 0x94; i <= 0x9d; ++i)
