@@ -507,6 +507,8 @@ struct atmega32u4_t
 
     pqueue peripheral_queue;
 
+    static void st_handler_timsk(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+
     // timer0
     struct timer8_t
     {

@@ -370,6 +370,31 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
     constexpr uint64_t MAX_MERGED_CYCLES = 1024;
 
+    // peripheral updates
+    for(;;)
+    {
+        auto qi = peripheral_queue.next();
+        if(qi.cycle > cycle_count)
+            break;
+        peripheral_queue.pop();
+        switch(qi.type)
+        {
+        case PQ_SPI: update_spi(); break;
+        case PQ_TIMER0: update_timer0(); break;
+        case PQ_TIMER1: update_timer1(); break;
+        case PQ_TIMER3: update_timer3(); break;
+        case PQ_TIMER4: update_timer4(); break;
+        case PQ_USB: update_usb(); break;
+        case PQ_WATCHDOG: update_watchdog(); break;
+        case PQ_EEPROM: update_eeprom(); break;
+        case PQ_PLL: update_pll(); break;
+        case PQ_ADC: update_adc(); break;
+        case PQ_SPM: update_spm(); break;
+        case PQ_INTERRUPT: check_all_interrupts(); break;
+        default: break;
+        }
+    }
+
     if(active)
     {
         // not sleeping: execute instruction(s)
@@ -427,8 +452,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 cycles_max -= instr_cycles;
             } while((int64_t)cycles_max > 0);
             cycles = uint32_t(cycle_count - tcycles);
-            if(!(should_autobreak() || io_reg_accessed))
-                goto skip_peripheral_updates;
         }
     }
     else if(wakeup_cycles > 0)
@@ -460,39 +483,6 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         cycles = (uint32_t)t;
         cycle_count += cycles;
     }
-
-    //if(single_instr_only)
-    {
-
-        // peripheral updates
-
-        for(;;)
-        {
-            auto qi = peripheral_queue.next();
-            if(qi.cycle > cycle_count)
-                break;
-            peripheral_queue.pop();
-            switch(qi.type)
-            {
-            case PQ_SPI: update_spi(); break;
-            case PQ_TIMER0: update_timer0(); break;
-            case PQ_TIMER1: update_timer1(); break;
-            case PQ_TIMER3: update_timer3(); break;
-            case PQ_TIMER4: update_timer4(); break;
-            case PQ_USB: update_usb(); break;
-            case PQ_WATCHDOG: update_watchdog(); break;
-            case PQ_EEPROM: update_eeprom(); break;
-            case PQ_PLL: update_pll(); break;
-            case PQ_ADC: update_adc(); break;
-            case PQ_SPM: update_spm(); break;
-            case PQ_INTERRUPT: check_all_interrupts(); break;
-            default: break;
-            }
-        }
-
-    }
-
-skip_peripheral_updates:
 
     // if interrupts were just enabled, schedule interrupt check for next cycle
     if(~prev_sreg & sreg() & SREG_I)
