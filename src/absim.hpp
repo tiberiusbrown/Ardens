@@ -650,9 +650,9 @@ struct atmega32u4_t
     // SPI
     bool spsr_read_after_transmit;
     bool spi_busy;
-    bool spi_busy_clear;
-    bool spi_latch_read;
-    bool spi_data_latched;
+    bool spi_busy_clear; // TODO: unused
+    bool spi_latch_read; // TODO: unused
+    bool spi_data_latched; // TODO: unused
     uint8_t spi_data_byte;
     uint8_t spi_datain_byte;
     uint64_t spi_done_cycle;

@@ -137,8 +137,6 @@ uint8_t atmega32u4_t::spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr)
 
 ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
 {
-    auto const& cpu = *this;
-
     if(!spi_busy)
         return;
     if(cycle_count < spi_transmit_zero_cycle)
