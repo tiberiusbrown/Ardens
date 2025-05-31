@@ -45,9 +45,19 @@ static std::string prog_addr_name(uint16_t addr)
 
 static absim::disassembled_instr_t const& dis_instr(int row)
 {
-    return arduboy.elf && row < arduboy.elf->asm_with_source.size() ?
-        arduboy.elf->asm_with_source[row] :
-        arduboy.cpu.disassembled_prog[row];
+    size_t index = (size_t)row;
+    if(arduboy.elf)
+    {
+        if(row < arduboy.elf->asm_with_source.size())
+            return arduboy.elf->asm_with_source[row];
+        index -= arduboy.elf->asm_with_source.size();
+        index += arduboy.cpu.num_instrs;
+    }
+    if(index < arduboy.cpu.disassembled_prog.size())
+        return arduboy.cpu.disassembled_prog[index];
+    static const absim::disassembled_instr_t DUMMY =
+    { nullptr, absim::disassembled_instr_t::OBJECT, 1 };
+    return DUMMY;
 }
 
 static char const* get_prog_addr_source_line(uint16_t addr)
@@ -573,8 +583,11 @@ void window_disassembly(bool& open)
                 ImGuiTableColumnFlags_WidthFixed,
                 CalcTextSize(settings.profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
             ImGuiListClipper clipper;
+            int extra_instrs = (int)(arduboy.cpu.num_instrs_total - arduboy.cpu.num_instrs);
             clipper.Begin(
                 show_full_range ?
+                arduboy.elf ?
+                (int)arduboy.elf->asm_with_source.size() + extra_instrs :
                 (int)arduboy.cpu.num_instrs_total :
                 arduboy.elf ?
                 (int)arduboy.elf->asm_with_source.size() :
