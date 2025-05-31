@@ -86,6 +86,11 @@ static void settings_read_line(
     ARDENS_INT_SETTING(uiscale, 0, 6);
     ARDENS_INT_SETTING(volume, 0, 200);
 
+    ARDENS_INT_SETTING(window_w, 128, 8192);
+    ARDENS_INT_SETTING(window_h, 64, 4096);
+    ARDENS_BOOL_SETTING(window_maximized);
+    ARDENS_BOOL_SETTING(window_fullscreen);
+
 #undef ARDENS_BOOL_SETTING
 #undef ARDENS_INT_SETTING
 }
@@ -157,6 +162,11 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_INT_SETTING(recording_orientation, 0, 3);
     ARDENS_INT_SETTING(uiscale, 0, 6);
     ARDENS_INT_SETTING(volume, 0, 200);
+
+    ARDENS_INT_SETTING(window_w, 128, 8192);
+    ARDENS_INT_SETTING(window_h, 64, 4096);
+    ARDENS_BOOL_SETTING(window_maximized);
+    ARDENS_BOOL_SETTING(window_fullscreen);
 
 #undef ARDENS_BOOL_SETTING
 #undef ARDENS_INT_SETTING

@@ -795,7 +795,10 @@ void frame_logic()
     }
 
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))
-        platform_toggle_fullscreen();
+    {
+        settings.window_fullscreen = platform_toggle_fullscreen();
+        update_settings();
+    }
 
 #ifdef ARDENS_OS_MACOS
     if(ImGui::GetIO().KeySuper && ImGui::IsKeyPressed(ImGuiKey_Q))
