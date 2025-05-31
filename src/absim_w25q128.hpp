@@ -141,7 +141,7 @@ ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)
             current_addr &= 0xffffff;
             ++reading;
         }
-        if(reading >= 4)
+        else if(reading >= 4)
         {
             //track_page();
             data_to_send = read_byte(current_addr);

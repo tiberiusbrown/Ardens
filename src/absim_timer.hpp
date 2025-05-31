@@ -3,6 +3,12 @@
 namespace absim
 {
 
+void atmega32u4_t::st_handler_timsk(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    cpu.data[ptr] = x;
+    cpu.schedule_interrupt_check();
+}
+
 ARDENS_FORCEINLINE static uint32_t word(atmega32u4_t const& cpu, uint32_t addr)
 {
     uint32_t lo = cpu.data[addr + 0];
@@ -88,7 +94,7 @@ ARDENS_FORCEINLINE static void update_timer8_state(
     auto ocrNb = timer.ocrNb;
     auto tov = timer.tov;
     auto top = timer.top;
-    uint8_t tifr = cpu.data[0x35] & 0x7;
+    uint8_t tifr = 0;
 
     while(timer_cycles > 0)
     {
@@ -137,7 +143,7 @@ ARDENS_FORCEINLINE static void update_timer8_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
-    if(~cpu.data[0x35] & tifr)
+    if(tifr)
         cpu.schedule_interrupt_check();
     cpu.data[0x35] |= tifr;
     cpu.data[0x46] = uint8_t(tcnt);
@@ -360,7 +366,7 @@ ARDENS_FORCEINLINE static void update_timer16_state(
     auto tov = timer.tov;
     auto top = timer.top;
     auto com3a = timer.com3a;
-    uint8_t tifr = cpu.data[timer.tifrN_addr] & 0xf;
+    uint8_t tifr = 0;
 
     while(timer_cycles > 0)
     {
@@ -429,7 +435,7 @@ ARDENS_FORCEINLINE static void update_timer16_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
-    if(~cpu.data[timer.tifrN_addr] & tifr)
+    if(tifr)
         cpu.schedule_interrupt_check();
     cpu.data[timer.tifrN_addr] |= tifr;
     cpu.data[timer.base_addr + 0x4] = uint8_t(tcnt >> 0);
@@ -620,7 +626,7 @@ ARDENS_FORCEINLINE static void update_timer10_state(
     }
     auto tov = timer.tov;
     auto top = timer.top;
-    uint8_t tifr = cpu.data[0x39] & 0xe4;
+    uint8_t tifr = 0;
     uint8_t& portc = cpu.data[0x28];
     uint8_t portc_mask = cpu.data[0x27];
 
@@ -691,7 +697,7 @@ ARDENS_FORCEINLINE static void update_timer10_state(
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
-    if(~cpu.data[0x39] & tifr)
+    if(tifr)
         cpu.schedule_interrupt_check();
     cpu.data[0x39] |= tifr;
     cpu.data[0xbe] = uint8_t(tcnt >> 0);
