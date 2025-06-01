@@ -179,6 +179,7 @@ static void app_event(sapp_event const* e)
         touch_points.clear();
         sapp_consume_event();
     }
+#ifndef __EMSCRIPTEN__
     if(e->type == SAPP_EVENTTYPE_RESIZED &&
         !settings.window_maximized &&
         !sapp_is_fullscreen())
@@ -187,6 +188,7 @@ static void app_event(sapp_event const* e)
         settings.window_h = sapp_height();
         update_settings();
     }
+#endif
 
 #if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
