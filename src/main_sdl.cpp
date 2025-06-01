@@ -164,12 +164,11 @@ void platform_open_url(char const* url)
     SDL_OpenURL(url);
 }
 
-bool platform_toggle_fullscreen()
+void platform_toggle_fullscreen()
 {
-    settings.window_fullscreen = !settings.window_fullscreen;
-    SDL_SetWindowFullscreen(window, (SDL_bool)settings.window_fullscreen);
-    update_settings();
-    return settings.window_fullscreen;
+    static bool fs = false;
+    fs = !fs;
+    SDL_SetWindowFullscreen(window, (SDL_bool)fs);
 }
 
 static void main_loop()
@@ -206,24 +205,6 @@ static void main_loop()
         if(event.type == SDL_EVENT_FINGER_UP)
         {
             touch_points.erase(event.tfinger.fingerID);
-        }
-        if(event.type == SDL_EVENT_WINDOW_RESIZED &&
-            !settings.window_maximized &&
-            !settings.window_fullscreen)
-        {
-            settings.window_w = event.window.data1;
-            settings.window_h = event.window.data2;
-            update_settings();
-        }
-        if(event.type == SDL_EVENT_WINDOW_MAXIMIZED)
-        {
-            settings.window_maximized = true;
-            update_settings();
-        }
-        if(event.type == SDL_EVENT_WINDOW_RESTORED)
-        {
-            settings.window_maximized = false;
-            update_settings();
         }
     }
 
@@ -313,32 +294,16 @@ void platform_quit()
 
 void platform_set_title(char const* title)
 {
-    (void)SDL_SetWindowTitle(window, title);
-}
-
-void platform_set_window_size(int w, int h)
-{
-    (void)SDL_SetWindowSize(window, w, h);
-}
-
-void platform_set_window_maximized(bool maximized)
-{
-    if(maximized)
-        (void)SDL_MaximizeWindow(window);
-    else
-        (void)SDL_RestoreWindow(window);
+    SDL_SetWindowTitle(window, title);
 }
 
 int main(int argc, char** argv)
 {
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    init();
-
-    int width = settings.window_w;
-    int height = settings.window_h;
-
+#ifdef ARDENS_PLAYER
+    int width = 512, height = 256;
+#else
+    int width = 1280, height = 720;
+#endif
 #ifndef __EMSCRIPTEN__
     {
         sargs_desc d{};
@@ -358,6 +323,11 @@ int main(int argc, char** argv)
         }
     }
 #endif
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    init();
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
@@ -385,10 +355,6 @@ int main(int argc, char** argv)
         SDL_WINDOW_RESIZABLE |
         SDL_WINDOW_HIGH_PIXEL_DENSITY |
         0);
-    if(settings.window_fullscreen)
-        window_flags |= SDL_WINDOW_FULLSCREEN;
-    else if(settings.window_maximized)
-        window_flags |= SDL_WINDOW_MAXIMIZED;
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
 
     renderer = SDL_CreateRenderer(window, nullptr);
