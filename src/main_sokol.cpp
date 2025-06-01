@@ -96,6 +96,7 @@ static void app_init()
         saudio_setup(&desc);
     }
 
+    init();
     update_pixel_ratio();
     rescale_style();
     rebuild_fonts();
@@ -179,16 +180,6 @@ static void app_event(sapp_event const* e)
         touch_points.clear();
         sapp_consume_event();
     }
-#ifndef __EMSCRIPTEN__
-    if(e->type == SAPP_EVENTTYPE_RESIZED &&
-        !settings.window_maximized &&
-        !sapp_is_fullscreen())
-    {
-        settings.window_w = sapp_width();
-        settings.window_h = sapp_height();
-        update_settings();
-    }
-#endif
 
 #if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
@@ -368,20 +359,18 @@ void platform_create_fonts_texture()
     io.Fonts->TexID = simgui_imtextureid(_simgui.default_font);
 }
 
-bool platform_toggle_fullscreen()
+void platform_toggle_fullscreen()
 {
 #ifdef __EMSCRIPTEN__
     EmscriptenFullscreenChangeEvent e{};
     if(emscripten_get_fullscreen_status(&e) != EMSCRIPTEN_RESULT_SUCCESS)
-        return false;
+        return;
     if(e.isFullscreen)
         emscripten_exit_fullscreen();
     else
         emscripten_request_fullscreen("#canvas", true);
-    return !e.isFullscreen;
 #else
     sapp_toggle_fullscreen();
-    return sapp_is_fullscreen();
 #endif
 }
 
@@ -393,18 +382,6 @@ void platform_quit()
 void platform_set_title(char const* title)
 {
     sapp_set_window_title(title);
-}
-
-void platform_set_window_size(int w, int h)
-{
-    (void)w;
-    (void)h;
-    // TODO
-}
-
-void platform_set_window_maximized(bool maximized)
-{
-    (void)maximized;
 }
 
 static std::array<std::vector<uint32_t>, SAPP_MAX_ICONIMAGES> icon_imgs;
@@ -441,8 +418,6 @@ sapp_desc sokol_main(int argc, char** argv)
     }
 #endif
 
-    init();
-
     sapp_desc desc{};
     desc.enable_clipboard = true;
     desc.clipboard_size = (1 << 20); // 1 MB
@@ -454,9 +429,13 @@ sapp_desc sokol_main(int argc, char** argv)
 #ifdef __EMSCRIPTEN__
     desc.html5_canvas_name = "canvas";
 #else
-    desc.width = settings.window_w;
-    desc.height = settings.window_h;
-    desc.fullscreen = settings.window_fullscreen;
+#ifdef ARDENS_PLAYER
+    desc.width = 512;
+    desc.height = 256;
+#else
+    desc.width = 1280;
+    desc.height = 720;
+#endif
     desc.window_title = preferred_title().c_str();
 #ifndef ARDENS_DIST
     desc.enable_dragndrop = true;
