@@ -149,10 +149,6 @@ jobs:
       run: |
         cp ${{github.workspace}}/src/live_Ardens.html ${{github.workspace}}/Ardens_web_wasm/index.html
         cp ${{github.workspace}}/src/live_ArdensPlayer.html ${{github.workspace}}/Ardens_web_wasm/player.html
-        cp ${{github.workspace}}/src/live_ArdensFlashcart.html ${{github.workspace}}/Ardens_web_wasm/flashcart.html
-        cp ${{github.workspace}}/build/ArdensFlashcart.js ${{github.workspace}}/Ardens_web_wasm
-        cp ${{github.workspace}}/build/ArdensFlashcart.wasm ${{github.workspace}}/Ardens_web_wasm
-        cp ${{github.workspace}}/src/boot/flashcart.zip ${{github.workspace}}/Ardens_web_wasm
         
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@v4
