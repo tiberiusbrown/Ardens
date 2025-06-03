@@ -479,6 +479,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     {
         profiler_total_with_sleep += cycles;
         if((cpu.active || cpu.wakeup_cycles != 0) &&
+            cpu.executing_instr_pc < cpu.decoded_prog.size() &&
             cpu.decoded_prog[cpu.executing_instr_pc].func != INSTR_SLEEP)
         {
             profiler_total += cycles;
