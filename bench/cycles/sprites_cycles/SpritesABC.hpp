@@ -9,6 +9,7 @@
 struct SpritesABC
 {
     // color: 0 for BLACK, 1 for WHITE
+    static void fillRect_clipped(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t color);
     static void fillRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t color);
 
     static constexpr uint8_t MODE_OVERWRITE      = 0;

@@ -12,19 +12,24 @@
 #include "img_SpritesU.hpp"
 #include "fxdata.hpp"
 
+#include "arduboy_profile.hpp"
+
 #include <stdio.h>
 
 Arduboy2Base a;
 
+[[gnu::noinline]]
+static void blah(uint32_t cycles)
+{
+    Serial.print(F(" "));
+    Serial.print(cycles);
+    Serial.print(F(" |"));    
+}
+
 template<class F>
 void debug_cycles(F&& f)
 {
-    uint8_t sreg = SREG;
-    cli();
-    asm volatile("break\n");
-    f();
-    asm volatile("break\n");
-    SREG = sreg;
+    blah(profile(static_cast<F&&>(f)));
 }
 
 int debug_putc(char c, FILE* f) 
@@ -84,7 +89,7 @@ void setup() {
         debug_cycles([=](){ FX::drawBitmap(0, 0, IMG_FX + i * 4, 1, dbmOverwrite); });
         debug_cycles([=](){ FX::drawBitmap(0, 4, IMG_FX + i * 4, 0, dbmOverwrite); });
         debug_cycles([=](){ FX::drawBitmap(x, 0, IMG_FX + i * 4, 0, dbmOverwrite); });
-        
+
         Serial.print(F("\n| SpritesU::drawOverwriteFX |"));
         debug_cycles([=](){ SpritesU::drawOverwriteFX(0, 0, IMG_FX_SPRITESU + i * 2, 0); });
         debug_cycles([=](){ SpritesU::drawOverwriteFX(0, 0, IMG_FX_SPRITESU + i * 2, 1); });
@@ -158,7 +163,6 @@ void setup() {
         Serial.print(F(" - |"));
         debug_cycles([=](){ SpritesABC::drawBasicFX(0, 4, ws[i], hs[i], IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
         debug_cycles([=](){ SpritesABC::drawBasicFX(x, 0, ws[i], hs[i], IMG_FX_SPRITESU + 2, SpritesABC::MODE_PLUSMASK); });
-    
     }
 
     Serial.print(F("\n\n"));

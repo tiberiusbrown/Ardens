@@ -134,25 +134,77 @@ void SpritesABC::drawBasicFX(
     uint24_t image, uint8_t mode)
 {
     /*
-    register bool     bottom     asm("r2");
-    register uint8_t  col_start  asm("r3");
-    register uint8_t  buf_adv    asm("r4");
-    register uint8_t  shift_coef asm("r5");
-    register uint16_t shift_mask asm("r6");
-    register uint8_t  cols       asm("r8");
-    register uint8_t  buf_data   asm("r9");
-    register uint8_t  a_mode     asm("r12") = mode;
-    register uint8_t  reseek     asm("r11");
-    register uint24_t a_image    asm("r14") = image;
-    register int8_t   page_start asm("r17");
-    register uint8_t  a_h        asm("r18") = h;
-    register uint8_t  pages      asm("r19");
-    register uint8_t  a_w        asm("r20") = w;
-    register uint8_t  count      asm("r21");
-    register int16_t  a_y        asm("r22") = y;
-    register int16_t  a_x        asm("r24") = x;
-    register uint8_t* buf        asm("r26");
-    register uint8_t* bufn       asm("r30");
+        uint8_t  reseek       [T flag]
+        uint16_t shift_mask   r6
+        uint8_t  cols         r8
+        uint8_t  mode         r12
+        uint24_t image        r14
+        int8_t   page_start   r17 (reused for shift_coef)
+        uint8_t  h            r18 (reused for buf_data)
+        uint8_t  pages        r19
+        uint8_t  w            r20
+        uint8_t  count        r21
+        int16_t  y            r22 (reused for sreg and bottom)
+        bool     bottom       r23 bit 0
+        bool     top          r23 bit 1
+        int16_t  x            r24 (reused in render loops and for buf_adv)
+        uint8_t* buf          r26
+        uint8_t* bufn         r30
+
+        INPUT
+
+            r24:r25      x
+            r22:r23      y
+            r20          w
+            r18          h
+            r14:r15:r16  image
+            r12          mode
+
+        OUTPUT
+
+            T flag       reseek
+            r4           buf_adv
+            r6:r7        [reserved for use in render loops]
+            r8           cols
+            r12          mode
+            r14:r15:r16  image - w (w readded in first seek)
+            r17          shift_coef
+            r18          [reserved for use in render loops]
+            r19          pages
+            r20          w (needed for reseek method)
+            r21          [reserved for render loop counter]
+            r22 (w/ T)   sreg
+            r23 bit 0    bottom
+            r23 bit 1    top (page_start < 0)
+            r24          [reserved for use in render loops]
+            r25
+            r26:r27      buf
+            r30:r31      bufn
+
+        PSEUDOCODE (unfinished)
+
+            image += data_page * 256
+            
+            pages = h >> 3
+            page_start = y >> 3;
+            if page_start < -1:
+                page_stage = -page_start - 1   [~page_start]
+                pages -= page_start
+                if mode & 1:
+                    page_start <<= 1
+                image += page_start * w
+                page_start = -1
+
+            cols = w
+            if x < 0:
+                cols += x
+                if mode & 1:
+                    x <<= 1
+                image -= x
+                x = 0
+            
+            buf = sBuffer + page_start * 128 + x
+
     */
 
     asm volatile(R"ASM(
@@ -183,16 +235,21 @@ void SpritesABC::drawBasicFX(
             ret
         1:
     
-            push r2
-            push r3
-            push r4
-            push r5
+            ; begin initial seek
+            cbi  %[fxport], %[fxbit]
+            ldi  r21, 3
+            out  %[spdr], r21
+    
+            ; push r2  ; unmodified
+            ; push r3  ; unmodified
+            ; push r4  ; unmodified
+            ; push r5  ; unmodified
             push r6
             push r7
             push r8
-            push r9
+            ; push r9  ; unmodified
             ; push r10 ; unmodified
-            push r11
+            ; push r11 ; unmodified
             ; push r12 ; unmodified
             ; push r13 ; unmodified
             push r14
@@ -200,30 +257,21 @@ void SpritesABC::drawBasicFX(
             push r16
             push r17
         
-            mov  r3, r24
-            clr  r2
-            mov  r8, r20
+            clr  r6
     
             mov  r19, r18
             lsr  r19
             lsr  r19
             lsr  r19
-    
-            ; begin initial seek
-            cbi  %[fxport], %[fxbit]
-            ldi  r21, 3
-            out  %[spdr], r21
             
-            movw r30, r22
-            asr  r31
-            ror  r30
-            asr  r31
-            ror  r30
-            asr  r31
-            ror  r30
+            ; page_start
+            mov  r17, r22
+            asr  r23
+            ror  r17
+            asr  r17
+            asr  r17
             
             ; clip against top edge
-            mov  r17, r30
             cpi  r17, 0xff
             brge 1f
             com  r17
@@ -233,7 +281,7 @@ void SpritesABC::drawBasicFX(
             mul  r17, r20
             add  r14, r0
             adc  r15, r1
-            adc  r16, r2
+            adc  r16, r6
             ldi  r17, 0xff
         1:
         
@@ -243,6 +291,7 @@ void SpritesABC::drawBasicFX(
             adc r16, r0
         
             ; clip against left edge
+            mov  r8, r20
             sbrs r25, 7
             rjmp 2f
             add  r8, r24
@@ -252,10 +301,10 @@ void SpritesABC::drawBasicFX(
             rol  r25
         1:  sub  r14, r24
             sbc  r15, r25
-            sbc  r16, r2
+            sbc  r16, r6
             sbrc r25, 7
             inc  r16
-            clr  r3
+            clr  r24
         2:
         
             ; continue initial seek
@@ -266,67 +315,557 @@ void SpritesABC::drawBasicFX(
             ldi  r27, hi8(%[sBuffer])
             ldi  r21, 128
             mulsu r17, r21
-            add  r0, r3
+            add  r0, r24
             add  r26, r0
             adc  r27, r1
             
             ; clip against right edge
-            sub  r21, r3
+            sub  r21, r24
             cp   r8, r21
             brlo 1f
             mov  r8, r21
         1:
         
+            ; flag register
+            clr  r23
+
             ; clip against bottom edge
             ldi  r30, 7
             sub  r30, r17
+
+            ; top flag: r23[1] = (page_start < 0)
+            bst  r17, 7
+            bld  r23, 1
+            
+            ; continue initial seek
+            out  %[spdr], r15
             
             cp   r30, r19
             brge 1f
             mov  r19, r30
-            inc  r2
+            ori  r23, (1<<0)
         1:
-            
-            ; continue initial seek
-            out  %[spdr], r15
         
-            ldi  r30, 128
-            sub  r30, r8
-            mov  r4, r30
+            ldi  r25, 128
+            sub  r25, r8
             
             ; precompute vertical shift coef and mask
-            ldi  r21, 1
+            ldi  r17, 1
             sbrc r22, 1
-            ldi  r21, 4
+            ldi  r17, 4
             sbrc r22, 0
-            lsl  r21
+            lsl  r17
             sbrc r22, 2
-            swap r21
-            mov  r5, r21
+            swap r17
 
             ldi  r30, 0xff
-            mul  r30, r5
+            mul  r30, r17
             movw r6, r0
+
             com  r6
-            com  r7
             
             ; continue initial seek
             out  %[spdr], r14
         
-            ; continue initial seek
+            com  r7
             clr  __zero_reg__
-            in   r22, %[sreg]
             rcall L%=_delay_14
+
+            ; continue initial seek
             out  %[spdr], __zero_reg__
-            clr  r11
-            cp   r20, r8
-            breq .+2
-            inc  r11
-            rjmp L%=_begin
+
+            ; reseek flag in T
+            clt
+            cpse r20, r8
+            set
+            in   r22, %[sreg]
 
         ;
         ;   RENDERING
         ;
+
+        L%=_begin:
+
+            sbrc r12, 1
+            rjmp L%=_begin_erase
+            sbrc r12, 2
+            rjmp L%=_begin_selfmask
+            sbrc r23, 1
+            rjmp L%=_top
+            tst  r19
+            brne L%=_middle_skip_reseek
+            rjmp L%=_bottom_dispatch
+
+        L%=_top:
+
+            ; init buf
+            subi r26, lo8(-128)
+            sbci r27, hi8(-128)
+            mov  r21, r8
+
+            ; loop dispatch
+            sbrc r12, 0
+            rjmp L%=_top_loop_masked
+
+        L%=_top_loop:
+
+            cli
+            out  %[spdr], __zero_reg__
+            in   r24, %[spdr]
+            out  %[sreg], r22
+            mul  r24, r17
+            ld   r18, X
+            and  r18, r7
+            or   r18, r1
+            st   X+, r18
+            rjmp .+0
+            dec  r21
+            brne L%=_top_loop
+            rjmp L%=_top_loop_done
+
+        L%=_top_loop_masked:
+
+            cli
+            out  %[spdr], __zero_reg__
+            in   r0, %[spdr]
+            out  %[sreg], r22
+            mul  r0, r17
+            mov  r24, r1
+            rcall L%=_delay_10
+            cli
+            out  %[spdr], __zero_reg__
+            in   r0, %[spdr]
+            out  %[sreg], r22
+            mul  r0, r17
+            mov  r7, r1
+            ld   r18, X
+            com  r7
+            and  r18, r7
+            or   r18, r24
+            st   X+, r18
+            dec  r21
+            brne L%=_top_loop_masked
+
+        L%=_top_loop_done:
+
+            ; decrement pages, reset buf back
+            clr __zero_reg__
+            sub  r26, r8
+            sbc  r27, __zero_reg__
+            dec  r19
+            brne L%=_middle
+            rjmp L%=_finish
+
+        L%=_middle:
+
+            ; only seek again if necessary
+            brtc L%=_middle_skip_reseek
+            sbi  %[fxport], %[fxbit]
+            rcall L%=_seek
+
+        L%=_middle_skip_reseek:
+
+            movw r30, r26
+            subi r30, lo8(-128)
+            sbci r31, hi8(-128)
+
+        L%=_middle_loop_outer:
+
+            mov  r21, r8
+
+            ; loop dispatch
+            sbrc r12, 0
+            rjmp L%=_middle_loop_inner_masked
+
+            lsr  r21
+        1:  brcc L%=_middle_loop_inner
+            inc  r21
+            ld   r18, X
+            rjmp 2f
+
+        L%=_middle_loop_inner:
+
+            ; unrolled twice to meet SPI rate
+            in   r24, %[spdr]
+            out  %[spdr], __zero_reg__
+            mul  r24, r17
+            ld   r18, X
+            and  r18, r6
+            or   r18, r0
+            st   X+, r18
+            ld   r18, Z
+            and  r18, r7
+            or   r18, r1
+            st   Z+, r18
+            ld   r18, X
+        2:  in   r24, %[spdr]
+            out  %[spdr], __zero_reg__
+            mul  r24, r17
+            and  r18, r6
+            or   r18, r0
+            st   X+, r18
+            ld   r18, Z
+            and  r18, r7
+            or   r18, r1
+            st   Z+, r18
+            nop
+            dec  r21
+            brne L%=_middle_loop_inner
+            rjmp L%=_middle_loop_outer_next
+
+        L%=_middle_loop_inner_masked:
+
+            cli
+            out  %[spdr], __zero_reg__
+            in   r0, %[spdr]
+            out  %[sreg], r22
+            mul  r0, r17
+            movw r6, r0
+            ld   r18, X
+            ld   r24, Z
+            rcall L%=_delay_7
+            in   r0, %[spdr]
+            out  %[spdr], __zero_reg__
+            mul  r0, r17
+            com  r0
+            and  r18, r0
+            or   r18, r6
+            st   X+, r18
+            com  r1
+            and  r24, r1
+            or   r24, r7
+            st   Z+, r24
+            dec  r21
+            brne L%=_middle_loop_inner_masked
+
+        L%=_middle_loop_outer_next:
+
+            ; advance buf to the next page
+            clr  __zero_reg__
+            add  r26, r25
+            adc  r27, __zero_reg__
+            dec  r19
+            breq 1f
+            rjmp L%=_middle
+        1:
+
+        L%=_bottom:
+
+            sbrs r23, 0
+            rjmp L%=_finish
+
+            ; seek if needed
+            brtc L%=_bottom_dispatch
+            sbi  %[fxport], %[fxbit]
+            rcall L%=_seek
+            rjmp .+0
+            lpm
+            
+        L%=_bottom_dispatch:
+
+            ; loop dispatch
+            sbrc r12, 0
+            rjmp L%=_bottom_loop_masked
+
+        L%=_bottom_loop:
+
+            ; write one page from image to buf
+            cli
+            out  %[spdr], __zero_reg__
+            in   r24, %[spdr]
+            out  %[sreg], r22
+            mul  r24, r17
+            ld   r18, X
+            and  r18, r6
+            or   r18, r0
+            st   X+, r18
+            rjmp .+0
+            dec  r8
+            brne L%=_bottom_loop
+            rjmp L%=_finish
+
+        L%=_bottom_loop_masked:
+
+            ; write one page from image to buf
+            cli
+            out  %[spdr], __zero_reg__
+            in   r24, %[spdr]
+            out  %[sreg], r22
+            mul  r24, r17
+            movw r24, r0
+            rcall L%=_delay_10
+            cli
+            out  %[spdr], __zero_reg__
+            in   r19, %[spdr]
+            out  %[sreg], r22
+            mul  r19, r17
+            mov  r19, r0
+            ld   r18, X
+            com  r19
+            and  r18, r19
+            or   r18, r24
+            st   X+, r18
+            dec  r8
+            brne L%=_bottom_loop_masked
+            nop
+            rjmp L%=_finish
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ; SELFMASK MODE
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        L%=_begin_selfmask:
+
+            sbrc r23, 1
+            rjmp L%=_top_selfmask
+            tst  r19
+            brne L%=_middle_skip_reseek_selfmask
+            rjmp L%=_bottom_loop_selfmask
+
+        L%=_top_selfmask:
+
+            ; init buf
+            subi r26, lo8(-128)
+            sbci r27, hi8(-128)
+            mov  r21, r8
+
+        L%=_top_loop_selfmask:
+
+            cli
+            out  %[spdr], __zero_reg__
+            in   r24, %[spdr]
+            out  %[sreg], r22
+            mul  r24, r17
+            ld   r18, X
+            or   r18, r1
+            st   X+, r18
+            lpm
+            dec  r21
+            brne L%=_top_loop_selfmask
+
+        L%=_top_loop_done_selfmask:
+
+            ; decrement pages, reset buf back
+            clr __zero_reg__
+            sub  r26, r8
+            sbc  r27, __zero_reg__
+            dec  r19
+            brne L%=_middle_selfmask
+            rjmp L%=_finish
+
+        L%=_middle_selfmask:
+
+            ; only seek again if necessary
+            brtc L%=_middle_skip_reseek_selfmask
+            sbi  %[fxport], %[fxbit]
+            rcall L%=_seek
+            rjmp .+0
+            rjmp .+0
+
+        L%=_middle_skip_reseek_selfmask:
+
+            movw r30, r26
+            subi r30, lo8(-128)
+            sbci r31, hi8(-128)
+            mov  r21, r8
+
+        L%=_middle_loop_inner_selfmask:
+
+            ; write one page from image to buf/buf+128
+            in   r24, %[spdr]
+            out  %[spdr], __zero_reg__
+            mul  r24, r17
+            ld   r18, X
+            or   r18, r0
+            st   X+, r18
+            ld   r18, Z
+            or   r18, r1
+            st   Z+, r18
+            nop
+            dec  r21
+            brne L%=_middle_loop_inner_selfmask
+
+            ; advance buf to the next page
+            clr  __zero_reg__
+            add  r26, r25
+            adc  r27, __zero_reg__
+            dec  r19
+            brne L%=_middle_selfmask
+
+        L%=_bottom_selfmask:
+
+            sbrs r23, 0
+            rjmp L%=_finish
+
+            ; seek if needed
+            brtc L%=_bottom_loop_selfmask
+            sbi  %[fxport], %[fxbit]
+            rcall L%=_seek
+            rjmp .+0
+            rjmp .+0
+            lpm        
+        
+        L%=_bottom_loop_selfmask:
+
+            ; write one page from image to buf
+            cli
+            out  %[spdr], __zero_reg__
+            in   r24, %[spdr]
+            out  %[sreg], r22
+            mul  r24, r17
+            ld   r18, X
+            or   r18, r0
+            st   X+, r18
+            lpm
+            dec  r8
+            brne L%=_bottom_loop_selfmask
+            rjmp L%=_finish
+
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ; SELFMASK_ERASE MODE
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+        L%=_begin_erase:
+
+            sbrc r23, 1
+            rjmp L%=_top_erase
+            tst  r19
+            brne L%=_middle_skip_reseek_erase
+            rjmp L%=_bottom_loop_erase
+
+        L%=_top_erase:
+
+            ; init buf
+            subi r26, lo8(-128)
+            sbci r27, hi8(-128)
+            mov  r21, r8
+            rjmp .+0
+
+        L%=_top_loop_erase:
+
+            cli
+            out  %[spdr], __zero_reg__
+            in   r24, %[spdr]
+            out  %[sreg], r22
+            mul  r24, r17
+            com  r0
+            com  r1
+            ld   r18, X
+            and  r18, r1
+            st   X+, r18
+            nop
+            dec  r21
+            brne L%=_top_loop_erase
+
+        L%=_top_loop_done_erase:
+
+            ; decrement pages, reset buf back
+            clr __zero_reg__
+            sub  r26, r8
+            sbc  r27, __zero_reg__
+            dec  r19
+            brne L%=_middle_erase
+            rjmp L%=_finish
+
+        L%=_middle_erase:
+
+            ; only seek again if necessary
+            brtc L%=_middle_skip_reseek_erase
+            sbi  %[fxport], %[fxbit]
+            rcall L%=_seek
+            rjmp .+0
+            rjmp .+0
+
+        L%=_middle_skip_reseek_erase:
+
+            movw r30, r26
+            subi r30, lo8(-128)
+            sbci r31, hi8(-128)
+            mov  r21, r8
+
+        L%=_middle_loop_inner_erase:
+
+            ; write one page from image to buf/buf+128
+            in   r24, %[spdr]
+            out  %[spdr], __zero_reg__
+            mul  r24, r17
+            com  r0
+            com  r1
+            ld   r18, X
+            and  r18, r0
+            st   X+, r18
+            ld   r18, Z
+            and  r18, r1
+            st   Z+, r18
+            dec  r21
+            brne L%=_middle_loop_inner_erase
+
+            ; advance buf to the next page
+            clr  __zero_reg__
+            add  r26, r25
+            adc  r27, __zero_reg__
+            dec  r19
+            brne L%=_middle_erase
+
+        L%=_bottom_erase:
+
+            sbrs r23, 0
+            rjmp L%=_finish
+
+            ; seek if needed
+            brtc L%=_bottom_loop_pre_erase
+            sbi  %[fxport], %[fxbit]
+            rcall L%=_seek
+            rjmp .+0
+
+        L%=_bottom_loop_pre_erase:
+        
+            rjmp .+0
+        
+        L%=_bottom_loop_erase:
+
+            ; write one page from image to buf
+            cli
+            out  %[spdr], __zero_reg__
+            in   r24, %[spdr]
+            out  %[sreg], r22
+            mul  r24, r17
+            com  r0
+            com  r1
+            ld   r18, X
+            and  r18, r0
+            st   X+, r18
+            nop
+            dec  r8
+            brne L%=_bottom_loop_erase
+
+        L%=_finish:
+
+            clr  __zero_reg__
+            sbi  %[fxport], %[fxbit]
+            
+        L%=_end:
+
+            pop  r17
+            pop  r16
+            pop  r15
+            pop  r14
+            ; pop  r13 ; unmodified
+            ; pop  r12 ; unmodified
+            ; pop  r11 ; unmodified
+            ; pop  r10 ; unmodified
+            ; pop  r9  ; unmodified
+            pop  r8
+            pop  r7
+            pop  r6
+            ; pop  r5  ; unmodified
+            ; pop  r4  ; unmodified
+            ; pop  r3  ; unmodified
+            ; pop  r2  ; unmodified
+            
+        L%=_end_postpop:
+            
+            ret
 
         L%=_seek:
 
@@ -344,11 +883,7 @@ void SpritesABC::drawBasicFX(
             adc  r15, __zero_reg__
             sbrc r12, 0
             adc  r16, __zero_reg__
-            clr  r11
-            cp   r20, r8
-            breq .+2
-            inc  r11
-            lpm
+            rcall L%=_delay_7
             out  %[spdr], r16
             rcall L%=_delay_17
             out  %[spdr], r15
@@ -373,507 +908,6 @@ void SpritesABC::drawBasicFX(
         L%=_delay_7:
             ret
 
-        L%=_begin:
-
-            sbrc r12, 1
-            rjmp L%=_begin_erase
-            sbrc r12, 2
-            rjmp L%=_begin_selfmask
-            cp   r17, __zero_reg__
-            brlt L%=_top
-            tst  r19
-            brne L%=_middle_skip_reseek
-            rjmp L%=_bottom_dispatch
-
-        L%=_top:
-
-            ; init buf
-            subi r26, lo8(-128)
-            sbci r27, hi8(-128)
-            mov  r21, r8
-
-            ; loop dispatch
-            sbrc r12, 0
-            rjmp L%=_top_loop_masked
-
-        L%=_top_loop:
-
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            ld   r9, X
-            and  r9, r7
-            or   r9, r1
-            st   X+, r9
-            rjmp .+0
-            dec  r21
-            brne L%=_top_loop
-            rjmp L%=_top_loop_done
-
-        L%=_top_loop_masked:
-
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            movw r24, r0
-            rcall L%=_delay_10
-            cli
-            out  %[spdr], __zero_reg__
-            in   r6, %[spdr]
-            out  %[sreg], r22
-            mul  r6, r5
-            movw r6, r0
-            ld   r9, X
-            com  r7
-            and  r9, r7
-            or   r9, r25
-            st   X+, r9
-            dec  r21
-            brne L%=_top_loop_masked
-
-        L%=_top_loop_done:
-
-            ; decrement pages, reset buf back
-            clr __zero_reg__
-            sub  r26, r8
-            sbc  r27, __zero_reg__
-            dec  r19
-            brne L%=_middle
-            rjmp L%=_finish
-
-        L%=_middle:
-
-            ; only seek again if necessary
-            tst  r11
-            breq L%=_middle_skip_reseek
-            in   r0, %[spsr]
-            sbi  %[fxport], %[fxbit]
-            rcall L%=_seek
-
-        L%=_middle_skip_reseek:
-
-            movw r30, r26
-            subi r30, lo8(-128)
-            sbci r31, hi8(-128)
-
-        L%=_middle_loop_outer:
-
-            mov  r21, r8
-
-            ; loop dispatch
-            sbrc r12, 0
-            rjmp L%=_middle_loop_inner_masked
-
-            lsr  r21
-        1:  brcc L%=_middle_loop_inner
-            inc  r21
-            ld   r9, X
-            rjmp 2f
-
-        L%=_middle_loop_inner:
-
-            ; unrolled twice to meet SPI rate
-            in   r24, %[spdr]
-            out  %[spdr], __zero_reg__
-            mul  r24, r5
-            ld   r9, X
-            and  r9, r6
-            or   r9, r0
-            st   X+, r9
-            ld   r9, Z
-            and  r9, r7
-            or   r9, r1
-            st   Z+, r9
-            ld   r9, X
-        2:  in   r24, %[spdr]
-            out  %[spdr], __zero_reg__
-            mul  r24, r5
-            and  r9, r6
-            or   r9, r0
-            st   X+, r9
-            ld   r9, Z
-            and  r9, r7
-            or   r9, r1
-            st   Z+, r9
-            nop
-            dec  r21
-            brne L%=_middle_loop_inner
-            rjmp L%=_middle_loop_outer_next
-
-        L%=_middle_loop_inner_masked:
-
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            movw r24, r0
-            ld   r9, X
-            ld   r7, Z
-            rcall L%=_delay_7
-            in   r6, %[spdr]
-            out  %[spdr], __zero_reg__
-            mul  r6, r5
-            com  r0
-            and  r9, r0
-            or   r9, r24
-            st   X+, r9
-            com  r1
-            and  r7, r1
-            or   r7, r25
-            st   Z+, r7
-            dec  r21
-            brne L%=_middle_loop_inner_masked
-
-        L%=_middle_loop_outer_next:
-
-            ; advance buf to the next page
-            clr  __zero_reg__
-            add  r26, r4
-            adc  r27, __zero_reg__
-            dec  r19
-            breq 1f
-            rjmp L%=_middle
-        1:
-
-        L%=_bottom:
-
-            tst  r2
-            brne 1f
-            rjmp L%=_finish
-        1:
-
-            ; seek if needed
-            tst  r11
-            breq L%=_bottom_dispatch
-            in   r0, %[spsr]
-            sbi  %[fxport], %[fxbit]
-            rcall L%=_seek
-            rjmp .+0
-            lpm
-            
-        L%=_bottom_dispatch:
-
-            ; loop dispatch
-            sbrc r12, 0
-            rjmp L%=_bottom_loop_masked
-
-        L%=_bottom_loop:
-
-            ; write one page from image to buf
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            ld   r9, X
-            and  r9, r6
-            or   r9, r0
-            st   X+, r9
-            rjmp .+0
-            dec  r8
-            brne L%=_bottom_loop
-            rjmp L%=_finish
-
-        L%=_bottom_loop_masked:
-
-            ; write one page from image to buf
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            movw r24, r0
-            rcall L%=_delay_10
-            cli
-            out  %[spdr], __zero_reg__
-            in   r19, %[spdr]
-            out  %[sreg], r22
-            mul  r19, r5
-            mov  r19, r0
-            ld   r9, X
-            com  r19
-            and  r9, r19
-            or   r9, r24
-            st   X+, r9
-            dec  r8
-            brne L%=_bottom_loop_masked
-            nop
-            rjmp L%=_finish
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ; SELFMASK MODE
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        L%=_begin_selfmask:
-
-            cp   r17, __zero_reg__
-            brlt L%=_top_selfmask
-            tst  r19
-            brne L%=_middle_skip_reseek_selfmask
-            rjmp L%=_bottom_loop_selfmask
-
-        L%=_top_selfmask:
-
-            ; init buf
-            subi r26, lo8(-128)
-            sbci r27, hi8(-128)
-            mov  r21, r8
-
-        L%=_top_loop_selfmask:
-
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            ld   r9, X
-            or   r9, r1
-            st   X+, r9
-            lpm
-            dec  r21
-            brne L%=_top_loop_selfmask
-
-        L%=_top_loop_done_selfmask:
-
-            ; decrement pages, reset buf back
-            clr __zero_reg__
-            sub  r26, r8
-            sbc  r27, __zero_reg__
-            dec  r19
-            brne L%=_middle_selfmask
-            rjmp L%=_finish
-
-        L%=_middle_selfmask:
-
-            ; only seek again if necessary
-            tst  r11
-            breq L%=_middle_skip_reseek_selfmask
-            in   r0, %[spsr]
-            sbi  %[fxport], %[fxbit]
-            rcall L%=_seek
-            rjmp .+0
-            rjmp .+0
-
-        L%=_middle_skip_reseek_selfmask:
-
-            movw r30, r26
-            subi r30, lo8(-128)
-            sbci r31, hi8(-128)
-            mov  r21, r8
-
-        L%=_middle_loop_inner_selfmask:
-
-            ; write one page from image to buf/buf+128
-            in   r24, %[spdr]
-            out  %[spdr], __zero_reg__
-            mul  r24, r5
-            ld   r9, X
-            or   r9, r0
-            st   X+, r9
-            ld   r9, Z
-            or   r9, r1
-            st   Z+, r9
-            nop
-            dec  r21
-            brne L%=_middle_loop_inner_selfmask
-
-            ; advance buf to the next page
-            clr  __zero_reg__
-            add  r26, r4
-            adc  r27, __zero_reg__
-            dec  r19
-            brne L%=_middle_selfmask
-
-        L%=_bottom_selfmask:
-
-            tst  r2
-            brne 1f
-            rjmp L%=_finish
-        1:
-
-            ; seek if needed
-            tst  r11
-            breq L%=_bottom_loop_selfmask
-            in   r0, %[spsr]
-            sbi  %[fxport], %[fxbit]
-            rcall L%=_seek
-            rjmp .+0
-            rjmp .+0
-            lpm        
-        
-        L%=_bottom_loop_selfmask:
-
-            ; write one page from image to buf
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            ld   r9, X
-            or   r9, r0
-            st   X+, r9
-            lpm
-            dec  r8
-            brne L%=_bottom_loop_selfmask
-            rjmp L%=_finish
-
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        ; SELFMASK_ERASE MODE
-        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-        L%=_begin_erase:
-
-            cp   r17, __zero_reg__
-            brlt L%=_top_erase
-            tst  r19
-            brne L%=_middle_skip_reseek_erase
-            rjmp L%=_bottom_loop_erase
-
-        L%=_top_erase:
-
-            ; init buf
-            subi r26, lo8(-128)
-            sbci r27, hi8(-128)
-            mov  r21, r8
-
-        L%=_top_loop_erase:
-
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            com  r0
-            com  r1
-            ld   r9, X
-            and  r9, r1
-            st   X+, r9
-            nop
-            dec  r21
-            brne L%=_top_loop_erase
-
-        L%=_top_loop_done_erase:
-
-            ; decrement pages, reset buf back
-            clr __zero_reg__
-            sub  r26, r8
-            sbc  r27, __zero_reg__
-            dec  r19
-            brne L%=_middle_erase
-            rjmp L%=_finish
-
-        L%=_middle_erase:
-
-            ; only seek again if necessary
-            tst  r11
-            breq L%=_middle_skip_reseek_erase
-            in   r0, %[spsr]
-            sbi  %[fxport], %[fxbit]
-            rcall L%=_seek
-            rjmp .+0
-            rjmp .+0
-
-        L%=_middle_skip_reseek_erase:
-
-            movw r30, r26
-            subi r30, lo8(-128)
-            sbci r31, hi8(-128)
-            mov  r21, r8
-
-        L%=_middle_loop_inner_erase:
-
-            ; write one page from image to buf/buf+128
-            in   r24, %[spdr]
-            out  %[spdr], __zero_reg__
-            mul  r24, r5
-            com  r0
-            com  r1
-            ld   r9, X
-            and  r9, r0
-            st   X+, r9
-            ld   r9, Z
-            and  r9, r1
-            st   Z+, r9
-            dec  r21
-            brne L%=_middle_loop_inner_erase
-
-            ; advance buf to the next page
-            clr  __zero_reg__
-            add  r26, r4
-            adc  r27, __zero_reg__
-            dec  r19
-            brne L%=_middle_erase
-
-        L%=_bottom_erase:
-
-            tst  r2
-            brne 1f
-            rjmp L%=_finish
-        1:
-
-            ; seek if needed
-            tst  r11
-            breq L%=_bottom_loop_pre_erase
-            in   r0, %[spsr]
-            sbi  %[fxport], %[fxbit]
-            rcall L%=_seek
-            rjmp .+0
-
-        L%=_bottom_loop_pre_erase:
-        
-            rjmp .+0
-        
-        L%=_bottom_loop_erase:
-
-            ; write one page from image to buf
-            cli
-            out  %[spdr], __zero_reg__
-            in   r24, %[spdr]
-            out  %[sreg], r22
-            mul  r24, r5
-            com  r0
-            com  r1
-            ld   r9, X
-            and  r9, r0
-            st   X+, r9
-            nop
-            dec  r8
-            brne L%=_bottom_loop_erase
-
-        L%=_finish:
-
-            clr  __zero_reg__
-            sbi  %[fxport], %[fxbit]
-            in   r0, %[spsr]
-            
-        L%=_end:
-
-            pop  r17
-            pop  r16
-            pop  r15
-            pop  r14
-            ; pop  r13 ; unmodified
-            ; pop  r12 ; unmodified
-            pop  r11
-            ; pop  r10 ; unmodified
-            pop  r9
-            pop  r8
-            pop  r7
-            pop  r6
-            pop  r5
-            pop  r4
-            pop  r3
-            pop  r2
-            
-        L%=_end_postpop:
-            
-            ret
-
         )ASM"
         
         :
@@ -888,27 +922,6 @@ void SpritesABC::drawBasicFX(
         );
 }
 
-// from Mr. Blinky's ArduboyFX library
-[[gnu::always_inline]]
-static uint8_t SpritesABC_bitShiftLeftMaskUInt8(uint8_t bit)
-{
-    uint8_t result;
-    asm volatile(
-        "ldi    %[result], 1    \n" // 0 = 000 => 1111 1111 = -1
-        "sbrc   %[bit], 1       \n" // 1 = 001 => 1111 1110 = -2
-        "ldi    %[result], 4    \n" // 2 = 010 => 1111 1100 = -4
-        "sbrc   %[bit], 0       \n" // 3 = 011 => 1111 1000 = -8
-        "lsl    %[result]       \n"
-        "sbrc   %[bit], 2       \n" // 4 = 100 => 1111 0000 = -16
-        "swap   %[result]       \n" // 5 = 101 => 1110 0000 = -32
-        "neg    %[result]       \n" // 6 = 110 => 1100 0000 = -64
-        :[result] "=&d" (result)    // 7 = 111 => 1000 0000 = -128
-        :[bit]    "r"   (bit)
-        :
-    );
-    return result;
-}
-
 void SpritesABC::fillRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t color)
 {
     if(x >= 128) return;
@@ -916,9 +929,42 @@ void SpritesABC::fillRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t co
     if(x + w <= 0) return;
     if(y + h <= 0) return;
     if(w == 0 || h == 0) return;
-    
-    if(color & 1) color = 0xff;
 
+#if 1
+    uint8_t t;
+    asm volatile(R"(
+            sbrs %B[y], 7
+            rjmp 1f
+            add  %[h], %A[y]
+            clr  %A[y]
+        1:
+            sbrs %B[x], 7
+            rjmp 1f
+            add  %[w], %A[x]
+            clr  %A[x]
+        1:
+            ldi  %[t], 64
+            sub  %[t], %A[y]
+            cp   %[h], %[t]
+            brlo 1f
+            mov  %[h], %[t]
+        1:
+            ldi  %[t], 128
+            sub  %[t], %A[x]
+            cp   %[w], %[t]
+            brlo 1f
+            mov  %[w], %[t]
+        1:
+        )"
+        : [t] "=&d" (t)
+        , [x] "+&r" (x)
+        , [y] "+&r" (y)
+        , [w] "+&r" (w)
+        , [h] "+&r" (h)
+    );
+
+    fillRect_clipped((uint8_t)x, (uint8_t)y, w, h, color);
+#else
     // clip coords
     uint8_t xc = x;
     uint8_t yc = y;
@@ -932,67 +978,103 @@ void SpritesABC::fillRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t co
         h = 64 - yc;
     if(w >= uint8_t(128 - xc))
         w = 128 - xc;
-    uint8_t y1 = yc + h;
 
-    uint8_t c0 = SpritesABC_bitShiftLeftMaskUInt8(yc); // 11100000
-    uint8_t m1 = SpritesABC_bitShiftLeftMaskUInt8(y1); // 11000000
-    uint8_t m0 = ~c0; // 00011111
-    uint8_t c1 = ~m1; // 00111111
+    fillRect_clipped(xc, yc, w, h, color);
+#endif
 
-    uint8_t r0 = yc;
-    uint8_t r1 = y1 - 1;
-    asm volatile(
-        "lsr %[r0]\n"
-        "lsr %[r0]\n"
-        "lsr %[r0]\n"
-        "lsr %[r1]\n"
-        "lsr %[r1]\n"
-        "lsr %[r1]\n"
-        : [r0] "+&r" (r0),
-          [r1] "+&r" (r1));
+}
 
-    uint8_t* buf = Arduboy2Base::sBuffer;
-    asm volatile(
-        "mul %[r0], %[c128]\n"
-        "add %A[buf], r0\n"
-        "adc %B[buf], r1\n"
-        "clr __zero_reg__\n"
-        "add %A[buf], %[x]\n"
-        "adc %B[buf], __zero_reg__\n"
-        :
-        [buf]  "+&e" (buf)
-        :
-        [r0]   "r"   (r0),
-        [x]    "r"   (xc),
-        [c128] "r"   ((uint8_t)128)
+void SpritesABC::fillRect_clipped(uint8_t xc, uint8_t yc, uint8_t w, uint8_t h, uint8_t color)
+{
+    uint8_t r0, m1, c0;
+    uint8_t* buf;
+    uint8_t buf_adv;
+    uint8_t col;
+    uint8_t t;
+
+    asm volatile(R"(
+
+            add  %[r1], %[r0]
+
+            ldi  %[c0], 1
+            sbrc %[r0], 1
+            ldi  %[c0], 4
+            sbrc %[r0], 0
+            lsl  %[c0]
+            sbrc %[r0], 2
+            swap %[c0]
+            neg  %[c0]
+
+            ldi  %[m1], 1
+            sbrc %[r1], 1
+            ldi  %[m1], 4
+            sbrc %[r1], 0
+            lsl  %[m1]
+            sbrc %[r1], 2
+            swap %[m1]
+            neg  %[m1]
+
+            dec  %[r1]
+
+            lsr  %[r0]
+            lsr  %[r0]
+            lsr  %[r0]
+            lsr  %[r1]
+            lsr  %[r1]
+            lsr  %[r1]
+
+            ldi  %[buf_adv], 128
+            mul  %[r0], %[buf_adv]
+            movw %A[buf], r0
+            clr  __zero_reg__
+            subi %A[buf], lo8(-(%[sBuffer]))
+            sbci %B[buf], hi8(-(%[sBuffer]))
+            add  %A[buf], %[x]
+            adc  %B[buf], __zero_reg__
+            sub  %[buf_adv], %[w]
+
+            sub  %[r1], %[r0]
+            sbrc %[c0], 0
+            inc  %[r1]
+            sbrc %[m1], 0
+            inc  %[r1]
+            sbrc %[color], 0
+            ldi  %[color], 0xff
+        )"
+        : [buf]     "=&e" (buf)
+        , [buf_adv] "=&d" (buf_adv)
+        , [r0]      "+&r" (yc)
+        , [r1]      "+&r" (h)
+        , [color]   "+&d" (color)
+        , [c0]      "=&d" (c0)
+        , [m1]      "=&d" (m1)
+        : [x]       "r"   (xc)
+        , [w]       "r"   (w)
+        , [sBuffer] ""    (Arduboy2Base::sBuffer)
         );
 
-    uint8_t rows = r1 - r0; // middle rows + 1
-    uint8_t bot = c1;
-    if(c0 & 1) ++rows; // no top fragment
-    if(m1 & 1) ++rows; // no bottom fragment
-    c0 &= color;
-    c1 &= color;
-
-    uint8_t col;
-    uint8_t buf_adv = 128 - w;
-
-#ifdef ARDUINO_ARCH_AVR
-    asm volatile(R"ASM(
-            tst  %[rows]
-            brne L%=_top
-            or   %[m1], %[m0]
-            and  %[c1], %[c0]
+    asm volatile(R"(
+            mov  %[t], %[c0]
+            com  %[t]
+            cpse %[rows], __zero_reg__
+            rjmp L%=_top
+            mov  r0, %[m1]
+            com  r0
+            or   %[m1], %[t]
+            mov  %[t], r0
+            and  %[t], %[c0]
+            and  %[t], %[color]
             rjmp L%=_bottom_loop
 
         L%=_top:
-            tst  %[m0]
+            ; Z flag from com t still set
             breq L%=_middle
+            and  %[c0], %[color]
             mov  %[col], %[w]
 
         L%=_top_loop:
             ld   __tmp_reg__, %a[buf]
-            and  __tmp_reg__, %[m0]
+            and  __tmp_reg__, %[t]
             or   __tmp_reg__, %[c0]
             st   %a[buf]+, __tmp_reg__
             dec  %[col]
@@ -1039,78 +1121,29 @@ void SpritesABC::fillRect(int16_t x, int16_t y, uint8_t w, uint8_t h, uint8_t co
             brne L%=_middle_loop
 
         L%=_bottom:
-            tst  %[bot]
+            mov  %[t], %[m1]
+            com  %[t]
             breq L%=_finish
+            and  %[t], %[color]
 
         L%=_bottom_loop:
             ld   __tmp_reg__, %a[buf]
             and  __tmp_reg__, %[m1]
-            or   __tmp_reg__, %[c1]
+            or   __tmp_reg__, %[t]
             st   %a[buf]+, __tmp_reg__
             dec  %[w]
             brne L%=_bottom_loop
 
         L%=_finish:
-        )ASM"
-        :
-        [buf]     "+&e" (buf),
-        [w]       "+&d" (w),
-        [rows]    "+&r" (rows),
-        [col]     "=&d" (col)
-        :
-        [buf_adv] "r"   (buf_adv),
-        [color]   "r"   (color),
-        [m0]      "r"   (m0),
-        [m1]      "r"   (m1),
-        [c0]      "r"   (c0),
-        [c1]      "r"   (c1),
-        [bot]     "r"   (bot)
+        )"
+        : [buf]     "+&e" (buf)
+        , [w]       "+&r" (w)
+        , [rows]    "+&r" (h)
+        , [col]     "=&d" (col)
+        , [t]       "=&r" (t)
+        : [buf_adv] "r"   (buf_adv)
+        , [color]   "r"   (color)
+        , [m1]      "r"   (m1)
+        , [c0]      "r"   (c0)
         );
-#else
-    if(rows == 0)
-    {
-        m1 |= m0;
-        c1 &= c0;
-    }
-    else
-    {
-        if(m0 != 0)
-        {
-            col = w;
-            do
-            {
-                uint8_t t = *buf;
-                t &= m0;
-                t |= c0;
-                *buf++ = t;
-            } while(--col != 0);
-            buf += buf_adv;
-        }
-        
-        if(--rows != 0)
-        {
-            do
-            {
-                col = w;
-                do
-                {
-                    *buf++ = color;
-                } while(--col != 0);
-                buf += buf_adv;
-            } while(--rows != 0);
-        }
-    }
-    
-    if(bot)
-    {
-        do
-        {
-            uint8_t t = *buf;
-            t &= m1;
-            t |= c1;
-            *buf++ = t;
-        } while(--w != 0);
-    }
-    
-#endif
 }
