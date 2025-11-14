@@ -56,6 +56,9 @@ void window_simulation(bool& open)
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
         }
+        SameLine();
+        AlignTextToFramePadding();
+        Text("%.3f", (double)arduboy.cpu.cycle_count * (1.0 / 16e6));
 
         bool was_paused = arduboy.paused;
         bool was_present = arduboy.is_present_state();

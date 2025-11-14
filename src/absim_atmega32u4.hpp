@@ -286,7 +286,11 @@ ARDENS_FORCEINLINE bool atmega32u4_t::check_interrupt(
 ARDENS_FORCEINLINE void atmega32u4_t::check_all_interrupts()
 {
     if(!(prev_sreg & sreg() & SREG_I))
+    {
+        if(sreg() & SREG_I)
+            peripheral_queue.schedule(cycle_count + 1, PQ_INTERRUPT);
         return;
+    }
 
     // check for stack overflow only when interrupts are enabled
     check_stack_overflow();
@@ -485,8 +489,9 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     }
 
     // if interrupts were just enabled, schedule interrupt check for next cycle
+    // (allows next instruction to execute)
     if(~prev_sreg & sreg() & SREG_I)
-        schedule_interrupt_check();
+        peripheral_queue.schedule(cycle_count + 1, PQ_INTERRUPT);
 
     update_sound();
 
