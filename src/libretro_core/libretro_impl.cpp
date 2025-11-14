@@ -20,6 +20,10 @@ static char const* save_path = nullptr;
 static uint64_t need_save_cycle = UINT64_MAX;
 static bool need_save = false;
 
+static size_t serialize_size = 0;
+
+static unsigned core_options_version = 0;
+
 // save interval is 200ms
 constexpr uint64_t SAVE_INTERVAL_CYCLES = 16000000 / 5;
 
@@ -126,7 +130,63 @@ unsigned retro_api_version()
 	return RETRO_API_VERSION;
 }
 
-void retro_set_environment(retro_environment_t cb) { func_env = cb; }
+void retro_set_environment(retro_environment_t cb)
+{
+    func_env = cb;
+
+    if(!func_env(RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION, &core_options_version))
+        core_options_version = 0;
+
+    if(true || core_options_version == 0)
+    {
+        retro_variable options[] = {
+            { "refresh_rate", "Refresh rate (Hz); 60|120|144|240" },
+            { "display_temporal_filter", "Display filter for grayscale games; true|false" },
+            { "support_multi_sector_fx_saves", "Support multi-sector FX saves; false|true" },
+            { nullptr, nullptr },
+        };
+        func_env(RETRO_ENVIRONMENT_SET_VARIABLES, options);
+    }
+    else if(core_options_version >= 1)
+    {
+        retro_core_option_definition options[] = {
+            {
+                "refresh_rate",
+                "Refresh rate (Hz)",
+                "This is the core frame update rate. The Arduboy's actual physical refresh rate can vary at runtime depending on display configuration, up to about 160 Hz.",
+                {
+                    { "60" , "60 Hz" },
+                    { "120", "120 Hz" },
+                    { "144", "144 Hz" },
+                    { "240", "240 Hz" },
+                },
+                "60"
+            },
+            {
+                "display_temporal_filter",
+                "Display temportal filter",
+                "Temporally smooths consecutive frames for grayscale games.",
+                {
+                    { "true", "Enabled" },
+                    { "false", "Disabled" },
+                },
+                "true"
+            },
+            {
+                "support_multi_sector_fx_saves",
+                "Support multi-sector FX saves",
+                "Very few games need this, if any.",
+                {
+                    { "true", "Enabled" },
+                    { "false", "Disabled" },
+                },
+                "false"
+            },
+        };
+        func_env(RETRO_ENVIRONMENT_SET_CORE_OPTIONS, options);
+    }
+}
+
 void retro_set_video_refresh(retro_video_refresh_t cb) { func_video = cb; }
 void retro_set_audio_sample(retro_audio_sample_t cb) { func_audio_sample = cb; }
 void retro_set_audio_sample_batch(retro_audio_sample_batch_t cb) { func_audio_batch = cb; }
@@ -246,6 +306,14 @@ void retro_run()
     }
 }
 
+static bool support_multi_sector_fx_saves()
+{
+    retro_variable var = { "support_multi_sector_fx_saves", nullptr };
+    return
+        func_env(RETRO_ENVIRONMENT_GET_VARIABLE, &var) &&
+        var.value && !strcmp(var.value, "true");
+}
+
 static size_t compute_serialize_size()
 {
     std::ostringstream ss;
@@ -254,11 +322,10 @@ static size_t compute_serialize_size()
 
     // calculate the theoretical maximum serialize size:
     // if all fx sectors are present (each sector is 4097 bytes serialized)
-    size_t num_sectors = 0;
-    for(auto const& s : arduboy->fx.sectors)
-        if(s) ++num_sectors;
-    num_sectors = std::min<size_t>(num_sectors, 4096);
-    size += (4096 - num_sectors) * 4097;
+    if(support_multi_sector_fx_saves())
+        size += 4096 * 4097;
+    else
+        size += 1 * 4097;
 
     func_log(RETRO_LOG_INFO, "Calculated serialize size: %u\n", (unsigned)size);
     return size;
@@ -266,14 +333,36 @@ static size_t compute_serialize_size()
 
 size_t retro_serialize_size()
 {
-    static size_t size = size_t(-1);
-    if(size == size_t(-1))
-        size = compute_serialize_size();
-    return size;
+    return serialize_size;
 }
 
 bool retro_serialize(void* data, size_t size)
 {
+    if(!support_multi_sector_fx_saves())
+    {
+        // max 1 modified sector allowed
+        bool warned = false;
+        size_t mod_sector = size_t(-1);
+        for(size_t i = 0; i < 4096; ++i)
+            if(arduboy->fx.sectors_modified_data[i])
+            {
+                mod_sector = i;
+                break;
+            }
+        for(size_t i = 0; i < 4096; ++i)
+        {
+            if(i == mod_sector) continue;
+            if(arduboy->fx.sectors_modified_data[i] && !warned)
+            {
+                warned = true;
+                func_log(RETRO_LOG_WARN,
+                    "Game has multiple modified FX sectors. "
+                    "Recommend enabling multi-sector FX saves in core options.");
+            }
+            arduboy->fx.sectors_modified.reset(i);
+            arduboy->fx.sectors_modified_data[i].reset();
+        }
+    }
     absim::ostrstream s((char*)data, (std::streamsize)size);
     std::string err = arduboy->save_savestate(s);
     if(err.empty()) return true;
@@ -295,6 +384,9 @@ void retro_cheat_set(unsigned index, bool enabled, const char* code) {}
 
 bool retro_load_game(const struct retro_game_info* game)
 {
+    arduboy->reset();
+    serialize_size = compute_serialize_size();
+
     int format = RETRO_PIXEL_FORMAT_XRGB8888;
     if(!func_env(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &format))
     {
