@@ -16,7 +16,7 @@
 #endif
 
 /* helper to write a little-endian 16-bit number portably */
-#define write_num(fd, n) write((fd), (uint8_t []) {(n) & 0xFF, (n) >> 8}, 2)
+#define write_num(fd, n) write((fd), (uint8_t []) {(uint8_t)((n) & 0xFF), (uint8_t)((n) >> 8)}, 2)
 
 static uint8_t vga[0x30] = {
     0x00, 0x00, 0x00,
@@ -123,7 +123,7 @@ ge_new_gif(
     if(depth < 0)
         depth = -depth;
     gif->depth = depth > 1 ? depth : 2;
-    write(gif->fd, (uint8_t[]) { 0xF0 | (depth - 1), (uint8_t)bgindex, 0x00 }, 3);
+    write(gif->fd, (uint8_t[]) { (uint8_t)(0xF0 | (depth - 1)), (uint8_t)bgindex, 0x00 }, 3);
     if(custom_gct) {
         write(gif->fd, palette, 3 << depth);
     }
@@ -137,7 +137,7 @@ ge_new_gif(
             for(g = 0; g < 6; g++) {
                 for(b = 0; b < 6; b++) {
                     write_and_store(store_gct, palette, gif->fd,
-                        ((uint8_t[]) {r * 51, g * 51, b * 51}), 3
+                        ((uint8_t[]) {(uint8_t)(r * 51), (uint8_t)(g * 51), (uint8_t)(b * 51)}), 3
                         );
                     if(++i == 1 << depth)
                         goto done_gct;
@@ -147,7 +147,7 @@ ge_new_gif(
         for(i = 1; i <= 24; i++) {
             v = i * 0xFF / 25;
             write_and_store(store_gct, palette, gif->fd,
-                ((uint8_t[]) {v, v, v}), 3
+                ((uint8_t[]) {(uint8_t)v, (uint8_t)v, (uint8_t)v}), 3
                 );
         }
     }
@@ -203,7 +203,7 @@ end_key(ge_GIF *gif)
     if(gif->offset % 8)
         gif->buffer[byte_offset++] = gif->partial & 0xFF;
     if(byte_offset) {
-        write(gif->fd, (uint8_t[]) { byte_offset }, 1);
+        write(gif->fd, (uint8_t[]) { (uint8_t)byte_offset }, 1);
         write(gif->fd, gif->buffer, byte_offset);
     }
     write(gif->fd, "\0", 1);
@@ -222,7 +222,7 @@ put_image(ge_GIF *gif, uint16_t w, uint16_t h, uint16_t x, uint16_t y)
     write_num(gif->fd, y);
     write_num(gif->fd, w);
     write_num(gif->fd, h);
-    write(gif->fd, (uint8_t[]) { 0x00, gif->depth }, 2);
+    write(gif->fd, (uint8_t[]) { 0x00, (uint8_t)gif->depth }, 2);
     root = node = new_trie(degree, &nkeys);
     key_size = gif->depth + 1;
     put_key(gif, degree, key_size); /* clear code */
