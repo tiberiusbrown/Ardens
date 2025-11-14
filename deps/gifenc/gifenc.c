@@ -16,7 +16,7 @@
 #endif
 
 /* helper to write a little-endian 16-bit number portably */
-#define write_num(fd, n) write((fd), (uint8_t []) {(n) & 0xFF, (n) >> 8}, 2)
+#define write_num(fd, n) write((fd), (uint8_t []) {(uint8_t)(n) & 0xFF, (uint8_t)(n) >> 8}, 2)
 
 static uint8_t vga[0x30] = {
     0x00, 0x00, 0x00,
