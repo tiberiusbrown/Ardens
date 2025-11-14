@@ -203,7 +203,7 @@ end_key(ge_GIF *gif)
     if(gif->offset % 8)
         gif->buffer[byte_offset++] = gif->partial & 0xFF;
     if(byte_offset) {
-        write(gif->fd, (uint8_t[]) { byte_offset }, 1);
+        write(gif->fd, (uint8_t[]) { (uint8_t)byte_offset }, 1);
         write(gif->fd, gif->buffer, byte_offset);
     }
     write(gif->fd, "\0", 1);
@@ -222,7 +222,7 @@ put_image(ge_GIF *gif, uint16_t w, uint16_t h, uint16_t x, uint16_t y)
     write_num(gif->fd, y);
     write_num(gif->fd, w);
     write_num(gif->fd, h);
-    write(gif->fd, (uint8_t[]) { 0x00, gif->depth }, 2);
+    write(gif->fd, (uint8_t[]) { 0x00, (uint8_t)gif->depth }, 2);
     root = node = new_trie(degree, &nkeys);
     key_size = gif->depth + 1;
     put_key(gif, degree, key_size); /* clear code */
