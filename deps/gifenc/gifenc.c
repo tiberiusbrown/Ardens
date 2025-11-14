@@ -16,7 +16,7 @@
 #endif
 
 /* helper to write a little-endian 16-bit number portably */
-#define write_num(fd, n) write((fd), (uint8_t []) {(uint8_t)(n) & 0xFF, (uint8_t)(n) >> 8}, 2)
+#define write_num(fd, n) write((fd), (uint8_t []) {(uint8_t)((n) & 0xFF), (uint8_t)((n) >> 8)}, 2)
 
 static uint8_t vga[0x30] = {
     0x00, 0x00, 0x00,
@@ -123,7 +123,7 @@ ge_new_gif(
     if(depth < 0)
         depth = -depth;
     gif->depth = depth > 1 ? depth : 2;
-    write(gif->fd, (uint8_t[]) { 0xF0 | (depth - 1), (uint8_t)bgindex, 0x00 }, 3);
+    write(gif->fd, (uint8_t[]) { (uint8_t)(0xF0 | (depth - 1)), (uint8_t)bgindex, 0x00 }, 3);
     if(custom_gct) {
         write(gif->fd, palette, 3 << depth);
     }
@@ -137,7 +137,7 @@ ge_new_gif(
             for(g = 0; g < 6; g++) {
                 for(b = 0; b < 6; b++) {
                     write_and_store(store_gct, palette, gif->fd,
-                        ((uint8_t[]) {r * 51, g * 51, b * 51}), 3
+                        ((uint8_t[]) {(uint8_t)(r * 51), (uint8_t)(g * 51), (uint8_t)(b * 51)}), 3
                         );
                     if(++i == 1 << depth)
                         goto done_gct;
@@ -147,7 +147,7 @@ ge_new_gif(
         for(i = 1; i <= 24; i++) {
             v = i * 0xFF / 25;
             write_and_store(store_gct, palette, gif->fd,
-                ((uint8_t[]) {v, v, v}), 3
+                ((uint8_t[]) {(uint8_t)v, (uint8_t)v, (uint8_t)v}), 3
                 );
         }
     }
