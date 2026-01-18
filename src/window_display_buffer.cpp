@@ -17,7 +17,7 @@ static int hex_value(char c)
 static void update_display_buffer_texture()
 {
     if(display_buffer_addr < 0) return;
-    if(display_buffer_addr >= arduboy.cpu.data.size()) return;
+    if(display_buffer_addr >= (int)arduboy.cpu.data.size()) return;
 
     static uint8_t pixels[128 * 64 * 4];
     uint8_t* bpixels = (uint8_t*)pixels;
@@ -71,7 +71,7 @@ void window_display_buffer(bool& open)
             char* b = addr_buf;
             while(*b != 0)
                 a = (a << 4) + hex_value(*b++);
-            if(a >= 0 && a < arduboy.cpu.prog.size())
+            if(a >= 0 && a < (int)arduboy.cpu.prog.size())
                 display_buffer_addr = a;
         }
         if(arduboy.elf)

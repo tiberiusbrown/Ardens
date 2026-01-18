@@ -105,7 +105,7 @@ void window_source(bool& open)
        
         auto it = arduboy.elf->source_file_names.find(info.FileName);
         if(it != arduboy.elf->source_file_names.end() &&
-            it->second >= 0 && it->second < arduboy.elf->source_files.size())
+            it->second >= 0 && it->second < (int)arduboy.elf->source_files.size())
         {
             load_file_to_editor(arduboy.elf->source_files[it->second]);
             editor.Render(info.FileName.c_str());

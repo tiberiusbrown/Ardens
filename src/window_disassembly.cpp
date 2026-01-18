@@ -16,7 +16,7 @@ void hover_data_space(uint16_t addr);
 
 static std::string prog_addr_name(uint16_t addr)
 {
-    if(addr / 4 < absim::INT_VECTOR_INFO.size())
+    if(addr / 4u < absim::INT_VECTOR_INFO.size())
     {
         auto const& info = absim::INT_VECTOR_INFO[addr / 4];
         if(info.name)
@@ -48,7 +48,7 @@ static absim::disassembled_instr_t const& dis_instr(int row)
     size_t index = (size_t)row;
     if(arduboy.elf)
     {
-        if(row < arduboy.elf->asm_with_source.size())
+        if((size_t)row < arduboy.elf->asm_with_source.size())
             return arduboy.elf->asm_with_source[row];
         index -= arduboy.elf->asm_with_source.size();
         index += arduboy.cpu.num_instrs;
@@ -70,10 +70,10 @@ static char const* get_prog_addr_source_line(uint16_t addr)
         return nullptr;
     int file = it->second.first;
     int line = it->second.second;
-    if(file >= elf.source_files.size())
+    if((size_t)file >= elf.source_files.size())
         return nullptr;
     auto const& sf = elf.source_files[file];
-    if(line >= sf.lines.size())
+    if((size_t)line >= sf.lines.size())
         return nullptr;
     return sf.lines[line].c_str();
 }
@@ -254,10 +254,10 @@ static void prog_addr_source_line(uint16_t addr)
         return;
     int file = it->second.first;
     int line = it->second.second;
-    if(file >= elf.source_files.size())
+    if((size_t)file >= elf.source_files.size())
         return;
     auto const& sf = elf.source_files[file];
-    if(line >= sf.lines.size())
+    if((size_t)line >= sf.lines.size())
         return;
     TextDisabled("%s", sf.lines[line].c_str());
     if(IsItemHovered())
@@ -269,7 +269,7 @@ static void prog_addr_source_line(uint16_t addr)
         for(int i = line - N; i <= line + N; ++i)
         {
             if(i < 0) continue;
-            if(i >= sf.lines.size()) continue;
+            if((size_t)i >= sf.lines.size()) continue;
             if(i == line) PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.f, 1.f));
             Text("%5d  ", i);
             SameLine();
@@ -283,7 +283,7 @@ static void prog_addr_source_line(uint16_t addr)
 static void prog_addr_tooltip(uint16_t addr)
 {
     using namespace ImGui;
-    if(addr / 4 < absim::INT_VECTOR_INFO.size())
+    if(addr / 4u < absim::INT_VECTOR_INFO.size())
     {
         auto const& info = absim::INT_VECTOR_INFO[addr / 4];
         if(info.name && info.desc)

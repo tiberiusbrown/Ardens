@@ -182,7 +182,7 @@ public:
         pos_type pos,
         std::ios_base::openmode which = std::ios_base::in | std::ios_base::out) override
     {
-        setg((char*)vec.data(), (char*)vec.data() + pos, (char*)vec.data() + vec.size());
+        setg((char*)vec.data(), (char*)vec.data() + (size_t)pos, (char*)vec.data() + vec.size());
         return pos;
     }
 };

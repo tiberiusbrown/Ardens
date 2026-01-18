@@ -170,7 +170,7 @@ bool instr_is_ret(avr_instr_t i)
 
 ARDENS_FORCEINLINE static bool next_instr_is_two_words(atmega32u4_t const& cpu)
 {
-    if(cpu.pc + 1 >= cpu.decoded_prog.size())
+    if(cpu.pc + 1u >= cpu.decoded_prog.size())
         return false;
     return instr_is_two_words(cpu.decoded_prog[cpu.pc + 1]);
 }

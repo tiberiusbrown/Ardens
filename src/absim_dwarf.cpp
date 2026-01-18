@@ -107,7 +107,7 @@ std::vector<uint32_t> dwarf_array_bounds(llvm::DWARFDie die)
         if(child.getTag() != DW_TAG_subrange_type)
             continue;
 
-        size_t n = 0;
+        uint64_t n = 0;
         if(auto elem_count_attr = child.find(DW_AT_count))
             if(auto elem_count = elem_count_attr->getAsUnsignedConstant())
                 n = *elem_count;
@@ -118,7 +118,7 @@ std::vector<uint32_t> dwarf_array_bounds(llvm::DWARFDie die)
                 int64_t lower_bound = 0;
                 if(auto lower_bound_attr = child.find(DW_AT_lower_bound))
                     lower_bound = lower_bound_attr->getAsUnsignedConstant().value_or(0);
-                n = *upper_bound - lower_bound + 1;
+                n = uint64_t(*upper_bound - lower_bound + 1);
             }
         }
         r.push_back((uint32_t)n);
@@ -422,7 +422,7 @@ static std::string recurse_value(
         //addr += bit_offset / 8;
         bit_offset %= 8;
         int bytes = (bits + 7) / 8;
-        if(bytes > mem.size()) break;
+        if((size_t)bytes > mem.size()) break;
         uint64_t x = 0;
 
         // extract data bits from RAM

@@ -34,12 +34,12 @@ static uint64_t regval(uint64_t i)
 {
     if(i < 31)
     {
-        uint64_t x = arduboy.cpu.data[i + 1];
-        x = (x << 8) + arduboy.cpu.data[i];
+        uint64_t x = arduboy.cpu.data[size_t(i + 1)];
+        x = (x << 8) + arduboy.cpu.data[size_t(i)];
         return x;
     }
     else if(i == 31)
-        return arduboy.cpu.data[i];
+        return arduboy.cpu.data[size_t(i)];
     else if(i == 32)
         return arduboy.cpu.sp();
     else
@@ -135,7 +135,7 @@ dwarf_var_data dwarf_evaluate_location(
         {
             auto i = op.getRawOperand(0);
             CHECK(i < stack.size());
-            stack.push(stack.pick(i));
+            stack.push(stack.pick(size_t(i)));
         }
         else if(code == DW_OP_swap)
         {
@@ -159,7 +159,7 @@ dwarf_var_data dwarf_evaluate_location(
         {
             CHECK(!stack.empty());
             auto t = stack.pop();
-            CHECK(t.data + 1 < cpu.data.size());
+            CHECK(t.data + 1u < cpu.data.size());
             uint64_t x = cpu.data[t.data + 1];
             x = (x << 8) + cpu.data[t.data];
             stack.push_data(x);
@@ -334,7 +334,7 @@ dwarf_var_data dwarf_evaluate_location(
                 // TODO: unavailable
                 for(size_t j = i; j < i + n && j < d.size(); ++j)
                     vd.unavailable[j] = 0xff;
-                i += n;
+                i += (size_t)n;
             }
             else
             {
