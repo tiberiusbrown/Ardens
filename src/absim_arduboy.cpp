@@ -100,7 +100,6 @@ void arduboy_t::reset()
 {
     input_history.clear();
     state_history.clear();
-    history_size = 0;
     present_state.clear();
     present_cycle = 0;
 
@@ -629,7 +628,6 @@ void arduboy_t::update_history()
         tt_state_t state;
         state.cycle = cpu.cycle_count;
         save_state_to_vector(state.state);
-        history_size += state.state.size();
         state_history.emplace_back(std::move(state));
     }
     while(input_history.size() >= 2 &&
@@ -717,6 +715,8 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
             a.cpu.PINF() = p.pinf = input.pinf;
             pcs.push_back(p);
             travel_back_advance_instr(a);
+            if(f(p))
+                break;
         }
         size_t pi = pcs.size();
         while(pi-- > 0)

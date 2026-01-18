@@ -1203,15 +1203,16 @@ struct arduboy_t
         uint64_t cycle;
         uint8_t pinb, pine, pinf;
         bool operator<(inputs_t const& other) { return cycle < other.cycle; }
+        template <class A> void serialize(A& a) { a(cycle, pinb, pine, pinf); }
     };
     std::vector<inputs_t> input_history;
     struct tt_state_t
     {
         uint64_t cycle;
         std::vector<uint8_t> state;
+        template <class A> void serialize(A& a) { a(cycle, state); }
     };
     std::vector<tt_state_t> state_history;
-    uint64_t history_size;
     std::vector<uint8_t> present_state;
     uint64_t present_cycle;
     static constexpr uint64_t STATE_HISTORY_CYCLES = 0x100000;
