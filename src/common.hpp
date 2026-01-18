@@ -71,7 +71,7 @@ extern bool first_touch;
 extern bool always_touch;
 extern uint64_t ms_since_touch;
 struct touch_point_t { float x, y; };
-extern std::unordered_map<uintptr_t, touch_point_t> touch_points;
+extern std::unordered_map<uint64_t, touch_point_t> touch_points;
 enum { TOUCH_U, TOUCH_D, TOUCH_L, TOUCH_R, TOUCH_A, TOUCH_B };
 struct touched_buttons_t { bool btns[6]; };
 struct touch_rect_t { float x0, y0, x1, y1; };
