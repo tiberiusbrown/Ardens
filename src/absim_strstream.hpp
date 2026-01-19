@@ -47,7 +47,7 @@ public:
             if(0 == n && !traits_type::not_eof(this->underflow()))
                 return -1;
         }
-        std::memmove(static_cast<void*>(s), this->gptr(), n);
+        std::memmove(static_cast<void*>(s), this->gptr(), (size_t)n);
         this->gbump(static_cast<int>(n));
         return n;
     }
@@ -64,7 +64,7 @@ public:
             if(0 == n && !traits_type::not_eof(this->overflow()))
                 return -1;
         }
-        std::memmove(this->pptr(), static_cast<void const*>(s), n);
+        std::memmove(this->pptr(), static_cast<void const*>(s), (size_t)n);
         this->pbump(static_cast<int>(n));
         return n;
     }

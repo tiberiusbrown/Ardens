@@ -93,7 +93,7 @@ uint64_t ms_since_start;
 uint64_t ms_since_touch;
 bool first_touch = false;
 bool always_touch = false;
-std::unordered_map<uintptr_t, touch_point_t> touch_points;
+std::unordered_map<uint64_t, touch_point_t> touch_points;
 
 bool done = false;
 bool layout_done = false;

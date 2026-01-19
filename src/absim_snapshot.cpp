@@ -182,7 +182,7 @@ public:
         pos_type pos,
         std::ios_base::openmode which = std::ios_base::in | std::ios_base::out) override
     {
-        setg((char*)vec.data(), (char*)vec.data() + pos, (char*)vec.data() + vec.size());
+        setg((char*)vec.data(), (char*)vec.data() + (size_t)pos, (char*)vec.data() + vec.size());
         return pos;
     }
 };
@@ -407,7 +407,15 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.cfg.boot_to_menu);
     ar(a.flashcart_loaded);
 
-    return serdes_savestate(ar, a);
+    serdes_savestate(ar, a);
+
+    // time-travel debugging history
+    ar(a.input_history);
+    ar(a.state_history);
+    ar(a.present_state);
+    ar(a.present_cycle);
+
+    return "";
 }
 
 std::string arduboy_t::save_savestate(std::ostream& f)
@@ -450,6 +458,21 @@ bool arduboy_t::save_snapshot(std::ostream& f)
         bitsery::Serializer<BufferAdapter> ar(data);
         auto r = serdes_snapshot<false>(ar, *this);
         if(!r.empty()) return false;
+
+#if 0
+        // time-travel state
+        ar(input_history);
+        if(state_history.empty())
+            ar(state_history);
+        else
+        {
+            std::vector<tt_state_t> t;
+            t.push_back(state_history.front());
+            ar(t);
+        }
+        ar(present_state);
+        ar(present_cycle);
+#endif
     }
 
     // compress
@@ -510,6 +533,42 @@ std::string arduboy_t::load_snapshot(std::istream& f)
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
         auto r = serdes_snapshot<true>(ar, *this);
         if(!r.empty()) return r;
+
+#if 0
+        // time-travel state
+        ar(input_history);
+        ar(state_history);
+        ar(present_state);
+        ar(present_cycle);
+
+        // resimulate history
+        if(!state_history.empty())
+        {
+            uint64_t saved_present_cycle = std::max(cpu.cycle_count, present_cycle);
+            auto saved_present_state = present_state;
+            uint64_t saved_cycle = cpu.cycle_count;
+            bool saved_paused = paused;
+            state_history.resize(1);
+            travel_to_present();
+            travel_back_to_cycle(state_history.back().cycle);
+            paused = false;
+
+            while(state_history.back().cycle + STATE_HISTORY_CYCLES < saved_present_cycle)
+            {
+                ps_rem = PS_BUFFER;
+                advance(CYCLE_PS * STATE_HISTORY_CYCLES);
+                tt_state_t state;
+                state.cycle = cpu.cycle_count;
+                save_state_to_vector(state.state);
+                state_history.emplace_back(std::move(state));
+            }
+            travel_to_present();
+            travel_back_to_cycle(saved_cycle);
+            present_cycle = saved_present_cycle;
+            present_state = saved_present_state;
+            paused = saved_paused;
+        }
+#endif
     }
 
     return "";

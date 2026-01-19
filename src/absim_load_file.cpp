@@ -102,7 +102,7 @@ static int get_hex_byte(std::istream& f)
 
 static void find_stack_check_data(atmega32u4_t& cpu, uint16_t n)
 {
-    if(n + 11 >= cpu.decoded_prog.size()) return;
+    if(n + 11u >= cpu.decoded_prog.size()) return;
     uint8_t first_reg;
     uint32_t val;
     auto const* i = &cpu.decoded_prog[n];
@@ -135,7 +135,7 @@ static void find_stack_check_data(atmega32u4_t& cpu, uint16_t n)
 
 static void find_stack_check_bss(atmega32u4_t& cpu, uint16_t n)
 {
-    if(n + 8 >= cpu.decoded_prog.size()) return;
+    if(n + 8u >= cpu.decoded_prog.size()) return;
     uint8_t first_reg;
     uint32_t val;
     auto const* i = &cpu.decoded_prog[n];
@@ -904,7 +904,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
             return "ARDUBOY: No info.json file";
         mz_zip_archive_file_stat stat{};
         mz_zip_reader_file_stat(z, i, &stat);
-        info.resize(stat.m_uncomp_size);
+        info.resize((size_t)stat.m_uncomp_size);
         mz_zip_reader_extract_to_mem(z, i, info.data(), info.size(), 0);
     }
 
@@ -965,7 +965,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
             return "ARDUBOY: missing hex file indicated in info.json";
         mz_zip_archive_file_stat stat{};
         mz_zip_reader_file_stat(z, i, &stat);
-        data.resize(stat.m_uncomp_size);
+        data.resize((size_t)stat.m_uncomp_size);
         mz_zip_reader_extract_to_mem(z, i, data.data(), data.size(), 0);
     }
 
@@ -993,7 +993,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                 return "ARDUBOY: missing FX data file indicated in info.json";
             mz_zip_archive_file_stat stat{};
             mz_zip_reader_file_stat(z, i, &stat);
-            a.fxdata.resize(stat.m_uncomp_size);
+            a.fxdata.resize((size_t)stat.m_uncomp_size);
             mz_zip_reader_extract_to_mem(z, i, a.fxdata.data(), a.fxdata.size(), 0);
         }
 
@@ -1010,7 +1010,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                     return "ARDUBOY: missing FX save file indicated in info.json";
                 mz_zip_archive_file_stat stat{};
                 mz_zip_reader_file_stat(z, i, &stat);
-                a.fxsave.resize(stat.m_uncomp_size);
+                a.fxsave.resize((size_t)stat.m_uncomp_size);
                 mz_zip_reader_extract_to_mem(z, i, a.fxsave.data(), a.fxsave.size(), 0);
             }
         }

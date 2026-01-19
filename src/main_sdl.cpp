@@ -199,7 +199,7 @@ static void main_loop()
             int w = 0, h = 0;
             SDL_GetWindowSize(window, &w, &h);
             first_touch = true;
-            auto& tp = touch_points[event.tfinger.fingerID];
+            auto& tp = touch_points[(size_t)event.tfinger.fingerID];
             tp = { event.tfinger.x * w, event.tfinger.y * h };
         }
         if(event.type == SDL_EVENT_FINGER_UP)
