@@ -715,8 +715,6 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
             a.cpu.PINF() = p.pinf = input.pinf;
             pcs.push_back(p);
             travel_back_advance_instr(a);
-            if(f(p))
-                break;
         }
         size_t pi = pcs.size();
         while(pi-- > 0)
