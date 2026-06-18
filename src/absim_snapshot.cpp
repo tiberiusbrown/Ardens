@@ -48,7 +48,7 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
-constexpr version_t SNAPSHOT_VERSION = { 0, 23, 11 };
+constexpr version_t SNAPSHOT_VERSION = { 0, 24, 16 };
 
 static std::string version_str(version_t const& v)
 {
@@ -114,6 +114,11 @@ void serialize(S& s, std::unique_ptr<T>& obj)
 namespace absim
 {
 
+static bool bitsery_ok(bitsery::ReaderError error, bool completed)
+{
+    return error == bitsery::ReaderError::NoError && completed;
+}
+
 bool compress_zlib(std::vector<uint8_t>& dst, void const* src, size_t src_bytes)
 {
     dst.resize(mz_compressBound((mz_ulong)src_bytes));
@@ -166,6 +171,31 @@ bool uncompress_zlib(std::vector<uint8_t>& dst, void const* src, size_t src_byte
     }
 
     return MZ_OK == mz_inflateEnd(&stream);
+}
+
+static bool uncompress_zlib_sized(
+    std::vector<uint8_t>& dst,
+    void const* src,
+    size_t src_bytes,
+    size_t dst_bytes)
+{
+    dst.resize(dst_bytes);
+
+    mz_ulong actual_dst_bytes = (mz_ulong)dst.size();
+    mz_ulong actual_src_bytes = (mz_ulong)src_bytes;
+    int status = mz_uncompress2(
+        dst.data(), &actual_dst_bytes,
+        (uint8_t const*)src, &actual_src_bytes);
+
+    if(status != MZ_OK ||
+        actual_dst_bytes != dst_bytes ||
+        actual_src_bytes != src_bytes)
+    {
+        dst.clear();
+        return false;
+    }
+
+    return true;
 }
 
 template<typename CharT>
@@ -342,6 +372,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.fx.programming);
     ar(a.fx.erasing_sector);
     ar(a.fx.releasing);
+    ar(a.fx.reading_jedec_id);
     ar(a.fx.busy_ps_rem);
     ar(a.fx.current_addr);
     ar(a.fx.command);
@@ -355,6 +386,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.title);
     ar(a.device_type);
     ar(a.prev_display_reset);
+    ar(a.ps_rem);
 
     return "";
 }
@@ -388,6 +420,7 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.frame_bytes_total);
     ar(a.frame_bytes);
     ar(a.frame_cpu_usage);
+    ar(a.ms_cpu_usage_raw);
     ar(a.ms_cpu_usage);
     ar(a.profiler_enabled);
     ar(a.cached_profiler_total);
@@ -426,21 +459,63 @@ std::string arduboy_t::save_savestate(std::ostream& f)
     return serdes_savestate(ar, *this);
 }
 
+size_t arduboy_t::max_savestate_size() const
+{
+    std::ostringstream ss;
+    const_cast<arduboy_t*>(this)->save_savestate(ss);
+    size_t size = ss.str().size();
+
+    // Calculate the theoretical maximum serialize size:
+    // if all FX sectors are present (each sector is 4097 bytes serialized).
+    size_t num_sectors = 0;
+    for(auto const& s : fx.sectors)
+        if(s) ++num_sectors;
+    num_sectors = std::min<size_t>(num_sectors, w25q128_t::NUM_SECTORS);
+    size += (w25q128_t::NUM_SECTORS - num_sectors) * 4097;
+
+    return size;
+}
+
 std::string arduboy_t::load_savestate(std::istream& f)
 {
     bitsery::Deserializer<bitsery::InputStreamAdapter> ar(f);
 
-    std::array<char, 8> id;
+    std::array<char, 8> id{};
     ar(id);
+    if(ar.adapter().error() != bitsery::ReaderError::NoError)
+        return "Snapshot: invalid header";
     if(id != SNAPSHOT_ID)
         return "Snapshot: invalid identifier";
 
-    version_t version;
+    version_t version{};
     ar(version);
+    if(ar.adapter().error() != bitsery::ReaderError::NoError)
+        return "Snapshot: invalid header";
     if(version != SNAPSHOT_VERSION)
         return "Snapshot: incompatible version (created with " + version_str(version) + ")";
 
+    std::vector<uint8_t> backup;
+    {
+        bitsery::Serializer<bitsery::OutputBufferAdapter<std::vector<uint8_t>>> bak(backup);
+        auto br = serdes_savestate(bak, *this);
+        if(!br.empty()) return br;
+    }
+
     auto r = serdes_savestate(ar, *this);
+    if(!r.empty())
+    {
+        bitsery::Deserializer<bitsery::InputBufferAdapter<std::vector<uint8_t>>> bak(
+            backup.begin(), backup.end());
+        serdes_savestate(bak, *this);
+        return r;
+    }
+    if(ar.adapter().error() != bitsery::ReaderError::NoError)
+    {
+        bitsery::Deserializer<bitsery::InputBufferAdapter<std::vector<uint8_t>>> bak(
+            backup.begin(), backup.end());
+        serdes_savestate(bak, *this);
+        return "Snapshot: invalid data";
+    }
     return r;
 }
 
@@ -458,6 +533,7 @@ bool arduboy_t::save_snapshot(std::ostream& f)
         bitsery::Serializer<BufferAdapter> ar(data);
         auto r = serdes_snapshot<false>(ar, *this);
         if(!r.empty()) return false;
+        data.resize(ar.adapter().writtenBytesCount());
 
 #if 0
         // time-travel state
@@ -505,17 +581,23 @@ std::string arduboy_t::load_snapshot(std::istream& f)
     {
         bitsery::Deserializer<StreamAdapter> ar(f);
 
-        std::array<char, 8> id;
+        std::array<char, 8> id{};
         ar(id);
+        if(ar.adapter().error() != bitsery::ReaderError::NoError)
+            return "Snapshot: invalid header";
         if(id != SNAPSHOT_ID)
             return "Snapshot: invalid identifier";
 
-        version_t version;
+        version_t version{};
         ar(version);
+        if(ar.adapter().error() != bitsery::ReaderError::NoError)
+            return "Snapshot: invalid header";
         if(version != SNAPSHOT_VERSION)
             return "Snapshot: incompatible version (created with " + version_str(version) + ")";
 
         ar(dst_size);
+        if(ar.adapter().error() != bitsery::ReaderError::NoError)
+            return "Snapshot: invalid header";
 
         if(dst_size >= 256 * 1024 * 1024)
             return "Snapshot: data too large";
@@ -526,13 +608,33 @@ std::string arduboy_t::load_snapshot(std::istream& f)
         std::istreambuf_iterator<char>());
 
     std::vector<uint8_t> dst;
-    uncompress_zlib(dst, data.data(), data.size());
+    if(!uncompress_zlib_sized(dst, data.data(), data.size(), dst_size))
+        return "Snapshot: invalid data";
 
     // deserialize
     {
+        std::vector<uint8_t> backup;
+        {
+            bitsery::Serializer<bitsery::OutputBufferAdapter<std::vector<uint8_t>>> bak(backup);
+            auto br = serdes_snapshot<false>(bak, *this);
+            if(!br.empty()) return br;
+        }
+
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
+        cpu.reset();
         auto r = serdes_snapshot<true>(ar, *this);
-        if(!r.empty()) return r;
+        if(!r.empty())
+        {
+            bitsery::Deserializer<BufferAdapter> bak(backup.begin(), backup.end());
+            serdes_snapshot<true>(bak, *this);
+            return r;
+        }
+        if(!bitsery_ok(ar.adapter().error(), ar.adapter().isCompletedSuccessfully()))
+        {
+            bitsery::Deserializer<BufferAdapter> bak(backup.begin(), backup.end());
+            serdes_snapshot<true>(bak, *this);
+            return "Snapshot: invalid data";
+        }
 
 #if 0
         // time-travel state
@@ -586,13 +688,16 @@ bool arduboy_t::load_savedata(std::istream& f)
 {
     using StreamAdapter = bitsery::InputStreamAdapter;
     bitsery::Deserializer<StreamAdapter> ar(f);
-    savedata.clear();
-    ar(savedata);
-    if(savedata.game_hash != game_hash)
+    savedata_t data;
+    data.clear();
+    ar(data);
+    if(!bitsery_ok(ar.adapter().error(), ar.adapter().isCompletedSuccessfully()))
+        return false;
+    if(data.game_hash != game_hash)
     {
-        savedata.clear();
         return false;
     }
+    savedata = std::move(data);
 
     // overwrite eeprom / fx with saved data
 

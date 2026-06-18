@@ -88,6 +88,30 @@ static void load_savedata()
     }
 }
 
+static void flush_savedata()
+{
+    if(!arduboy || !save_path || (!need_save && !arduboy->savedata_dirty))
+    {
+        return;
+    }
+
+    need_save = false;
+    arduboy->savedata_dirty = false;
+
+    std::string fname = savedata_filename();
+    std::ofstream f(fname, std::ios::out | std::ios::binary);
+    if(!f.fail())
+    {
+        arduboy->save_savedata(f);
+        f.close();
+        func_log(RETRO_LOG_INFO, "Saved to %s\n", fname.c_str());
+    }
+    else
+    {
+        func_log(RETRO_LOG_ERROR, "Could not save to %s\n", fname.c_str());
+    }
+}
+
 //
 // REFER TO:
 //    https://docs.libretro.com/development/cores/developing-cores
@@ -114,6 +138,7 @@ void retro_init()
 
 void retro_deinit()
 {
+    flush_savedata();
     arduboy.reset();
     {
         std::vector<uint8_t> empty;
@@ -232,43 +257,18 @@ void retro_run()
 
     if(save_path && need_save && arduboy->cpu.cycle_count >= need_save_cycle)
     {
-        need_save = false;
-        std::string fname = savedata_filename();
-        std::ofstream f(fname, std::ios::out | std::ios::binary);
-        if(!f.fail())
-        {
-            arduboy->save_savedata(f);
-            f.close();
-            func_log(RETRO_LOG_INFO, "Saved to %s\n", fname.c_str());
-        }
-        else
-            func_log(RETRO_LOG_ERROR, "Could not save to %s\n", fname.c_str());
+        flush_savedata();
     }
-}
-
-static size_t compute_serialize_size()
-{
-    std::ostringstream ss;
-    arduboy->save_savestate(ss);
-    size_t size = ss.str().size();
-
-    // calculate the theoretical maximum serialize size:
-    // if all fx sectors are present (each sector is 4097 bytes serialized)
-    size_t num_sectors = 0;
-    for(auto const& s : arduboy->fx.sectors)
-        if(s) ++num_sectors;
-    num_sectors = std::min<size_t>(num_sectors, 4096);
-    size += (4096 - num_sectors) * 4097;
-
-    func_log(RETRO_LOG_INFO, "Calculated serialize size: %u\n", (unsigned)size);
-    return size;
 }
 
 size_t retro_serialize_size()
 {
     static size_t size = size_t(-1);
     if(size == size_t(-1))
-        size = compute_serialize_size();
+    {
+        size = arduboy->max_savestate_size();
+        func_log(RETRO_LOG_INFO, "Calculated serialize size: %u\n", (unsigned)size);
+    }
     return size;
 }
 
@@ -329,7 +329,10 @@ bool retro_load_game_special(
     return false;
 }
 
-void retro_unload_game() {}
+void retro_unload_game()
+{
+    flush_savedata();
+}
 
 unsigned retro_get_region()
 {

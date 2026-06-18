@@ -407,6 +407,8 @@ static void scale_icon(
     }
 }
 
+static std::string g_title;
+
 sapp_desc sokol_main(int argc, char** argv)
 {
 #ifndef __EMSCRIPTEN__
@@ -417,6 +419,8 @@ sapp_desc sokol_main(int argc, char** argv)
         sargs_setup(&d);
     }
 #endif
+
+    g_title = preferred_title();
 
     sapp_desc desc{};
     desc.enable_clipboard = true;
@@ -436,7 +440,7 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.width = 1280;
     desc.height = 720;
 #endif
-    desc.window_title = preferred_title().c_str();
+    desc.window_title = g_title.c_str();
 #ifndef ARDENS_DIST
     desc.enable_dragndrop = true;
     desc.max_dropped_files = 2;
