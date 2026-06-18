@@ -220,17 +220,23 @@ static void install_js_api()
                 if(typeof fn === 'function')
                     return fn(component) | 0;
                 if(typeof Module['ccall'] === 'function')
-                    return Module['ccall'](
-                        'get_led_state', 'number', ['number'], [component]) | 0;
+                {
+                    var args = [];
+                    args[0] = 'get_led_state';
+                    args[1] = 'number';
+                    args[2] = ['number'];
+                    args[3] = [component];
+                    return Module['ccall'].apply(null, args) | 0;
+                }
                 return 0;
             };
-            return {
-                tx: get(0),
-                rx: get(1),
-                r: get(2),
-                g: get(3),
-                b: get(4)
-            };
+            var state = {};
+            state['tx'] = get(0);
+            state['rx'] = get(1);
+            state['r'] = get(2);
+            state['g'] = get(3);
+            state['b'] = get(4);
+            return state;
         };
     });
 }
