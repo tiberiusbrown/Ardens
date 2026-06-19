@@ -42,19 +42,31 @@ void check_save_savedata()
 
     if(need_save && ms_since_start >= need_save_time)
     {
-        need_save = false;
-        auto fname = savedata_filename();
-        std::ofstream f(fname, std::ios::out | std::ios::binary);
-        if(!f.fail())
-        {
-            arduboy.save_savedata(f);
-            f.close();
+        flush_savedata();
+    }
+}
+
+void flush_savedata()
+{
+    if(!need_save && !arduboy.savedata_dirty)
+    {
+        return;
+    }
+
+    need_save = false;
+    arduboy.savedata_dirty = false;
+
+    auto fname = savedata_filename();
+    std::ofstream f(fname, std::ios::out | std::ios::binary);
+    if(!f.fail())
+    {
+        arduboy.save_savedata(f);
+        f.close();
 #ifdef __EMSCRIPTEN__
-            EM_ASM(
-                FS.syncfs(function(err) {});
-            );
+        EM_ASM(
+            FS.syncfs(function(err) {});
+        );
 #endif
-            printf("Saved %s\n", fname.c_str());
-        }
+        printf("Saved %s\n", fname.c_str());
     }
 }
