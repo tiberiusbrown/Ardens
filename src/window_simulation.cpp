@@ -36,8 +36,7 @@ void window_simulation(bool& open)
         if(Button("Reset"))
         {
             arduboy.paused = false;
-            arduboy.reset();
-            load_savedata();
+            reset_primary_simulation();
         }
         SameLine();
         if(arduboy.paused)
@@ -70,7 +69,7 @@ void window_simulation(bool& open)
         SameLine();
         if(Button("Step Into"))
         {
-            arduboy.advance_instr();
+            advance_primary_instr();
             disassembly_scroll_addr = arduboy.cpu.pc * 2;
         }
         if(IsItemHovered())
@@ -95,7 +94,7 @@ void window_simulation(bool& open)
             }
             else
             {
-                arduboy.advance_instr();
+                advance_primary_instr();
                 disassembly_scroll_addr = arduboy.cpu.pc * 2;
             }
         }

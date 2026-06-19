@@ -70,8 +70,13 @@ extern unsigned char const ProggyVector[198188];
 std::filesystem::path userpath;
 
 texture_t display_texture{};
+texture_t linked_secondary_display_texture{};
 texture_t display_buffer_texture{};
 absim::arduboy_t arduboy;
+std::unique_ptr<absim::arduboy_t> linked_secondary_arduboy;
+absim::i2c_local_link_cable_t linked_i2c_cable;
+bool linked_secondary_input_focus = false;
+int linked_secondary_display_texture_zoom = -1;
 
 int profiler_selected_hotspot = -1;
 int disassembly_scroll_addr = -1;
@@ -171,11 +176,246 @@ void platform_open_url(char const *url)
 }
 #endif
 
+bool linked_secondary_arduboy_connected()
+{
+    return linked_secondary_arduboy != nullptr;
+}
+
+static void set_unpressed_buttons(absim::arduboy_t& a)
+{
+    a.cpu.data[0x23] = 0x10;
+    a.cpu.data[0x2c] = 0x40;
+    a.cpu.data[0x2f] = 0xf0;
+}
+
+static void set_current_buttons(absim::arduboy_t& a)
+{
+    // PINF: 4,5,6,7=D,L,R,U
+    // PINE: 6=A
+    // PINB: 4=B
+    uint8_t pinf = 0xf0;
+    uint8_t pine = 0x40;
+    uint8_t pinb = 0x10;
+
+    std::array<ImGuiKey, 4> keys =
+    {
+        ImGuiKey_UpArrow,
+        ImGuiKey_RightArrow,
+        ImGuiKey_DownArrow,
+        ImGuiKey_LeftArrow,
+    };
+    std::array<int, 4> tkeys =
+    {
+        TOUCH_U, TOUCH_R, TOUCH_D, TOUCH_L,
+    };
+    auto touch = touched_buttons();
+
+    std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
+    std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
+
+    if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~0x80;
+    if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~0x40;
+    if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~0x10;
+    if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~0x20;
+
+    if( ImGui::IsKeyDown(ImGuiKey_A) ||
+        ImGui::IsKeyDown(ImGuiKey_Z) ||
+        touch.btns[TOUCH_A])
+        pine &= ~0x40;
+    if( ImGui::IsKeyDown(ImGuiKey_B) ||
+        ImGui::IsKeyDown(ImGuiKey_S) ||
+        ImGui::IsKeyDown(ImGuiKey_X) ||
+        touch.btns[TOUCH_B])
+        pinb &= ~0x10;
+
+    a.cpu.data[0x23] = pinb;
+    a.cpu.data[0x2c] = pine;
+    a.cpu.data[0x2f] = pinf;
+}
+
+void apply_runtime_settings(absim::arduboy_t& a)
+{
+    a.cpu.adc_nondeterminism = settings.nondeterminism;
+    a.frame_bytes_total = 1024;
+
+    a.display.enable_filter = settings.display_auto_filter;
+    a.display.enable_current_limiting = (settings.display_current_modeling != 0);
+    a.display.ref_segment_current = 0.195f;
+    switch(settings.display_current_modeling)
+    {
+    case 0:  a.display.current_limit_slope = 0.f;   break;
+    case 1:  a.display.current_limit_slope = 0.75f; break;
+    case 2:  a.display.current_limit_slope = 0.45f; break;
+    case 3:  a.display.current_limit_slope = 0.f;   break;
+    default: a.display.current_limit_slope = 0.f;   break;
+    }
+
+    switch(settings.fxport)
+    {
+    case FXPORT_D1:
+        a.fxport_reg = 0x2b;
+        a.fxport_mask = 1 << 1;
+        break;
+    case FXPORT_D2:
+        a.fxport_reg = 0x2b;
+        a.fxport_mask = 1 << 2;
+        break;
+    case FXPORT_E2:
+        a.fxport_reg = 0x2e;
+        a.fxport_mask = 1 << 2;
+        break;
+    default:
+        break;
+    }
+
+    switch(settings.display)
+    {
+    case DISPLAY_SSD1306:
+        a.display.type = absim::display_t::SSD1306;
+        break;
+    case DISPLAY_SSD1309:
+        a.display.type = absim::display_t::SSD1309;
+        break;
+    case DISPLAY_SH1106:
+        a.display.type = absim::display_t::SH1106;
+        break;
+    default:
+        break;
+    }
+}
+
+void disconnect_linked_secondary_arduboy()
+{
+    linked_secondary_input_focus = false;
+    linked_i2c_cable.disconnect();
+
+    platform_destroy_texture(linked_secondary_display_texture);
+    linked_secondary_display_texture = {};
+    linked_secondary_display_texture_zoom = -1;
+    linked_secondary_arduboy.reset();
+}
+
+static void preroll_linked_secondary_arduboy()
+{
+    if(!linked_secondary_arduboy) return;
+
+    apply_runtime_settings(*linked_secondary_arduboy);
+    set_unpressed_buttons(*linked_secondary_arduboy);
+    linked_secondary_arduboy->paused = false;
+    linked_i2c_cable.update_lines();
+    linked_secondary_arduboy->advance(50ull * 1000000000ull);
+    linked_i2c_cable.update_lines();
+}
+
+static bool load_linked_secondary_arduboy(bool preroll)
+{
+    if(!arduboy.cpu.decoded || arduboy.prog_filedata.empty())
+        return false;
+
+    auto secondary = std::make_unique<absim::arduboy_t>();
+    secondary->cfg = arduboy.cfg;
+    absim::istrstream f(
+        (char const*)arduboy.prog_filedata.data(),
+        (int)arduboy.prog_filedata.size());
+    std::string err = secondary->load_file(arduboy.prog_filename.c_str(), f);
+    if(!err.empty())
+    {
+        dropfile_err = err;
+        return false;
+    }
+
+    linked_secondary_arduboy = std::move(secondary);
+    linked_i2c_cable.connect({ &arduboy, linked_secondary_arduboy.get() });
+    linked_i2c_cable.update_lines();
+    if(preroll)
+        preroll_linked_secondary_arduboy();
+    return true;
+}
+
+bool connect_linked_secondary_arduboy()
+{
+    disconnect_linked_secondary_arduboy();
+    return load_linked_secondary_arduboy(false);
+}
+
+static void reset_linked_secondary_arduboy()
+{
+    if(!linked_secondary_arduboy) return;
+
+    linked_i2c_cable.disconnect();
+    linked_secondary_arduboy.reset();
+
+    load_linked_secondary_arduboy(true);
+}
+
+void reset_primary_simulation()
+{
+    arduboy.reset();
+    load_savedata();
+    reset_linked_secondary_arduboy();
+}
+
+static void advance_linked_secondary(uint64_t ps)
+{
+    if(!linked_secondary_arduboy || ps == 0) return;
+
+    bool prev_paused = linked_secondary_arduboy->paused;
+    linked_secondary_arduboy->paused = false;
+    apply_runtime_settings(*linked_secondary_arduboy);
+    if(!linked_secondary_input_focus)
+        set_unpressed_buttons(*linked_secondary_arduboy);
+    linked_secondary_arduboy->advance(ps);
+    linked_secondary_arduboy->paused = prev_paused;
+}
+
+void advance_primary(uint64_t ps)
+{
+    if(!linked_secondary_arduboy)
+    {
+        arduboy.advance(ps);
+        return;
+    }
+
+    constexpr uint64_t LINK_UPDATE_PS = 10ull * 1000000ull;
+    while(ps > 0 && !arduboy.paused)
+    {
+        uint64_t chunk = std::min<uint64_t>(ps, LINK_UPDATE_PS);
+        uint64_t before = arduboy.cpu.cycle_count;
+
+        linked_i2c_cable.update_lines();
+        arduboy.advance(chunk);
+        linked_i2c_cable.update_lines();
+
+        uint64_t cycles = arduboy.cpu.cycle_count - before;
+        advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
+        linked_i2c_cable.update_lines();
+
+        if(cycles == 0 && chunk >= ps)
+            break;
+        ps -= chunk;
+    }
+}
+
+void advance_primary_instr()
+{
+    uint64_t before = arduboy.cpu.cycle_count;
+    arduboy.advance_instr();
+    uint64_t cycles = arduboy.cpu.cycle_count - before;
+    if(linked_secondary_arduboy)
+    {
+        linked_i2c_cable.update_lines();
+        advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
+        linked_i2c_cable.update_lines();
+    }
+}
+
 extern "C" int load_file(
     char const* param, char const* filename, uint8_t const* data, size_t size)
 {
     absim::istrstream f((char const*)data, size);
     bool save = !strcmp(param, "save");
+    if(!save)
+        disconnect_linked_secondary_arduboy();
     dropfile_err = arduboy.load_file(filename, f, save);
     autoset_from_device_type();
     if(dropfile_err.empty())
@@ -610,53 +850,29 @@ void frame_logic()
     if(dt > 100) dt = 100;
     if(arduboy.cpu.decoded && !arduboy.paused)
     {
-        // PINF: 4,5,6,7=D,L,R,U
-        // PINE: 6=A
-        // PINB: 4=B
-        uint8_t pinf = 0xf0;
-        uint8_t pine = 0x40;
-        uint8_t pinb = 0x10;
-
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
-            std::array<ImGuiKey, 4> keys =
+            bool input_to_secondary =
+                !settings.fullzoom &&
+                settings.open_linked_secondary_arduboy &&
+                linked_secondary_input_focus &&
+                linked_secondary_arduboy != nullptr;
+
+            if(input_to_secondary)
             {
-                ImGuiKey_UpArrow,
-                ImGuiKey_RightArrow,
-                ImGuiKey_DownArrow,
-                ImGuiKey_LeftArrow,
-            };
-            std::array<int, 4> tkeys =
+                set_unpressed_buttons(arduboy);
+                set_current_buttons(*linked_secondary_arduboy);
+            }
+            else
             {
-                TOUCH_U, TOUCH_R, TOUCH_D, TOUCH_L,
-            };
-            auto touch = touched_buttons();
-
-            std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
-            std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
-
-            if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~0x80;
-            if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~0x40;
-            if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~0x10;
-            if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~0x20;
-
-            if( ImGui::IsKeyDown(ImGuiKey_A) ||
-                ImGui::IsKeyDown(ImGuiKey_Z) ||
-                touch.btns[TOUCH_A])
-                pine &= ~0x40;
-            if( ImGui::IsKeyDown(ImGuiKey_B) ||
-                ImGui::IsKeyDown(ImGuiKey_S) ||
-                ImGui::IsKeyDown(ImGuiKey_X) ||
-                touch.btns[TOUCH_B])
-                pinb &= ~0x10;
-
-            arduboy.cpu.data[0x23] = pinb;
-            arduboy.cpu.data[0x2c] = pine;
-            arduboy.cpu.data[0x2f] = pinf;
+                set_current_buttons(arduboy);
+                if(linked_secondary_arduboy)
+                    set_unpressed_buttons(*linked_secondary_arduboy);
+            }
         }
 
         bool prev_paused = arduboy.paused;
-        arduboy.frame_bytes_total = 1024;
+        apply_runtime_settings(arduboy);
 
         arduboy.cpu.enabled_autobreaks.reset();
 #ifndef ARDENS_NO_GUI
@@ -668,51 +884,6 @@ void frame_logic()
 
         arduboy.allow_nonstep_breakpoints =
             arduboy.break_step == 0xffffffff || settings.enable_step_breaks;
-        arduboy.display.enable_filter = settings.display_auto_filter;
-
-        arduboy.display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy.display.ref_segment_current = 0.195f;
-        switch(settings.display_current_modeling)
-        {
-        case 0:  arduboy.display.current_limit_slope = 0.f;   break;
-        case 1:  arduboy.display.current_limit_slope = 0.75f; break;
-        case 2:  arduboy.display.current_limit_slope = 0.45f; break;
-        case 3:  arduboy.display.current_limit_slope = 0.f;   break;
-        default: arduboy.display.current_limit_slope = 0.f;   break;
-        }
-
-        switch(settings.fxport)
-        {
-        case FXPORT_D1:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 1;
-            break;
-        case FXPORT_D2:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 2;
-            break;
-        case FXPORT_E2:
-            arduboy.fxport_reg = 0x2e;
-            arduboy.fxport_mask = 1 << 2;
-            break;
-        default:
-            break;
-        }
-
-        switch(settings.display)
-        {
-        case DISPLAY_SSD1306:
-            arduboy.display.type = absim::display_t::SSD1306;
-            break;
-        case DISPLAY_SSD1309:
-            arduboy.display.type = absim::display_t::SSD1309;
-            break;
-        case DISPLAY_SH1106:
-            arduboy.display.type = absim::display_t::SH1106;
-            break;
-        default:
-            break;
-        }
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;
         uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;
@@ -722,7 +893,7 @@ void frame_logic()
             uint64_t ps = DT_20_MS - gif_ps_rem;
             while(dtps >= ps)
             {
-                arduboy.advance(ps);
+                advance_primary(ps);
                 send_gif_frame(2, recording_pixels(false));
                 dtps -= ps;
                 ps = DT_20_MS;
@@ -731,7 +902,7 @@ void frame_logic()
             gif_ps_rem += dtps;
         }
         if(dtps > 0)
-            arduboy.advance(dtps * SPEEDUP);
+            advance_primary(dtps * SPEEDUP);
 
         check_save_savedata();
 
@@ -758,11 +929,7 @@ void frame_logic()
     if(arduboy.cpu.decoded)
     {
         recreate_display_texture();
-        int z = display_texture_zoom;
-        std::vector<uint8_t> pixels;
-        pixels.resize(128 * 64 * 4 * z * z);
-        scalenx(pixels.data(), arduboy.display.filtered_pixels.data(), true);
-        platform_update_texture(display_texture, pixels.data(), pixels.size());
+        update_display_texture(display_texture, arduboy.display.filtered_pixels.data());
 
 #if ALLOW_SCREENSHOTS
         if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
@@ -791,8 +958,7 @@ void frame_logic()
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
     {
-        arduboy.reset();
-        load_savedata();
+        reset_primary_simulation();
     }
 
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))

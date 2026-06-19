@@ -136,6 +136,8 @@ static void app_init()
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
+                if(!save)
+                    disconnect_linked_secondary_arduboy();
                 dropfile_err = arduboy.load_file(value, f, save);
                 autoset_from_device_type();
                 if(dropfile_err.empty())

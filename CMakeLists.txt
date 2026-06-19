@@ -326,6 +326,7 @@ set(ARDENS_SOURCES
     src/absim_adc.hpp
     src/absim_pll.hpp
     src/absim_spi.hpp
+    src/absim_twi.hpp
     src/absim_eeprom.hpp
     src/absim_sound.hpp
     src/absim_led.cpp
@@ -455,6 +456,7 @@ if(ARDENS_DEBUGGER)
         src/window_disassembly.cpp
         src/window_profiler.cpp
         src/window_display.cpp
+        src/window_linked_secondary_arduboy.cpp
         src/window_display_buffer.cpp
         src/window_display_internals.cpp
         src/window_data_space.cpp

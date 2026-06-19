@@ -5,6 +5,45 @@
 
 #include <cmath>
 
+void draw_display_texture(texture_t texture, int texture_zoom)
+{
+	using namespace ImGui;
+
+    auto t = GetContentRegionAvail();
+
+    float z = (float)display_filter_zoom();
+    float tw = 128.f * z;
+    float th = 64.f * z;
+    if(settings.display_orientation & 1)
+        std::swap(tw, th);
+    float w = tw, h = th;
+    bool smaller = false;
+
+    if(t.x >= 1.f && t.y >= 1.f)
+    {
+        while(w > t.x || h > t.y)
+            w *= 0.5f, h *= 0.5f, smaller = true;
+
+        while(w + tw < t.x && h + th < t.y)
+            w += tw, h += th;
+    }
+
+    if(smaller)
+        platform_texture_scale_linear(texture);
+    else
+        platform_texture_scale_nearest(texture);
+
+    auto* d = GetWindowDrawList();
+    ImVec2 avail = GetContentRegionAvail();
+    ImVec2 a = GetCursorScreenPos();
+    a.x += (avail.x - w) * 0.5f;
+    a.y += (avail.y - h) * 0.5f;
+    a.x = std::round(a.x);
+    a.y = std::round(a.y);
+    ImVec2 b = { a.x + w, a.y + h };
+    display_with_scanlines(d, a, b, texture, texture_zoom);
+}
+
 void window_display(bool& open)
 {
 	using namespace ImGui;
@@ -16,41 +55,7 @@ void window_display(bool& open)
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse))
         {
-            auto t = GetContentRegionAvail();
-
-            float z = (float)display_filter_zoom();
-            float tw = 128.f * z;
-            float th = 64.f * z;
-            if(settings.display_orientation & 1)
-                std::swap(tw, th);
-            float w = tw, h = th;
-            bool smaller = false;
-
-            if(t.x >= 1.f && t.y >= 1.f)
-            {
-                while(w > t.x || h > t.y)
-                    w *= 0.5f, h *= 0.5f, smaller = true;
-
-                while(w + tw < t.x && h + th < t.y)
-                    w += tw, h += th;
-            }
-
-            if(smaller)
-                platform_texture_scale_linear(display_texture);
-            else
-                platform_texture_scale_nearest(display_texture);
-
-            {
-                auto* d = GetWindowDrawList();
-                ImVec2 avail = GetContentRegionAvail();
-                ImVec2 a = GetCursorScreenPos();
-                a.x += (avail.x - w) * 0.5f;
-                a.y += (avail.y - h) * 0.5f;
-                a.x = std::round(a.x);
-                a.y = std::round(a.y);
-                ImVec2 b = { a.x + w, a.y + h };
-                display_with_scanlines(d, a, b);
-            }
+            draw_display_texture(display_texture, display_texture_zoom);
 #if 0
             AlignTextToFramePadding();
             TextUnformatted("Filter for:");

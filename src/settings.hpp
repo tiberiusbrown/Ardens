@@ -44,6 +44,7 @@ struct settings_t
 
     bool open_disassembly = false;
     bool open_display = true;
+    bool open_linked_secondary_arduboy = false;
     bool open_display_buffer = false;
     bool open_display_internals = false;
     bool open_data_space = false;

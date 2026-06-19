@@ -139,10 +139,9 @@ touched_buttons_t touched_buttons()
     return t;
 }
 
-void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
+void display_with_scanlines(
+    ImDrawList* d, ImVec2 const& a, ImVec2 const& b, texture_t texture, int texture_zoom)
 {
-    platform_texture_scale_nearest(display_texture);
-
     {
         std::array<ImVec2, 4> vs;
         vs[0] = {a.x, a.y};
@@ -151,12 +150,12 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
         vs[3] = {a.x, b.y};
         std::rotate(vs.begin(), vs.begin() + settings.display_orientation, vs.end());
         d->AddImageQuad(
-            display_texture,
+            texture,
             vs[0], vs[1], vs[2], vs[3]);
     }
 
     if(settings.display_pixel_grid == PGRID_NONE) return;
-    if(display_texture_zoom != 1) return;
+    if(texture_zoom != 1) return;
     float w = b.x - a.x;
 
     int numh = 128;
@@ -207,6 +206,12 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
         d->PathRect(p1, p2);
         d->PathFillConvex(line_color);
     }
+}
+
+void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
+{
+    platform_texture_scale_nearest(display_texture);
+    display_with_scanlines(d, a, b, display_texture, display_texture_zoom);
 }
 
 void view_player()

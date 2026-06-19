@@ -27,6 +27,7 @@ enum pqueue_type
     PQ_PLL,
     PQ_ADC,
     PQ_SPM,
+    PQ_TWI,
     PQ_INTERRUPT,
     NUM_PQ
 };

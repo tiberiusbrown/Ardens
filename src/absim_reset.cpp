@@ -38,6 +38,11 @@ void atmega32u4_t::reset()
     st_handlers[0x4e] = spi_handle_st_spdr;
     st_handlers[0x64] = st_handle_prr0;
     st_handlers[0x7a] = adc_st_handle_adcsra;
+    st_handlers[0xb9] = twi_handle_st_twsr;
+    st_handlers[0xba] = twi_handle_st_twar_or_twamr;
+    st_handlers[0xbb] = twi_handle_st_twdr;
+    st_handlers[0xbc] = twi_handle_st_twcr;
+    st_handlers[0xbd] = twi_handle_st_twar_or_twamr;
 
     st_handlers[0x23] = st_handle_pin;
     st_handlers[0x26] = st_handle_pin;
@@ -45,9 +50,9 @@ void atmega32u4_t::reset()
     st_handlers[0x2c] = st_handle_pin;
     st_handlers[0x2f] = st_handle_pin;
 
-    //st_handlers[0x25] = st_handle_port;
+    st_handlers[0x2a] = st_handle_ddrd;
     //st_handlers[0x28] = st_handle_port;
-    //st_handlers[0x2b] = st_handle_port;
+    st_handlers[0x2b] = st_handle_port;
     //st_handlers[0x2e] = st_handle_port;
     //st_handlers[0x31] = st_handle_port;
 
@@ -77,6 +82,7 @@ void atmega32u4_t::reset()
     ld_handlers[0x4d] = spi_handle_ld_spsr;
     ld_handlers[0x4e] = spi_handle_ld_spdr;
     ld_handlers[0x46] = timer0_handle_ld_tcnt;
+    ld_handlers[0x29] = twi_handle_ld_pind;
 
     st_handlers[0x54] = st_handle_mcusr;
     st_handlers[0x55] = st_handle_mcucr;
@@ -185,6 +191,30 @@ void atmega32u4_t::soft_reset()
     spi_clock_cycles = 4;
     spi_done_cycle = UINT64_MAX;
     spi_transmit_zero_cycle = UINT64_MAX;
+
+    twi_link = nullptr;
+    twi_link_endpoint = i2c_link_cable_t::BROADCAST_ENDPOINT;
+    twi_prev_cycle = cycle_count;
+    twi_done_cycle = UINT64_MAX;
+    twi_mode = TWI_MODE_IDLE;
+    twi_pending = TWI_PENDING_NONE;
+    twi_status = 0xf8;
+    twi_address = 0;
+    twi_busy = false;
+    twi_started = false;
+    twi_repeated_start = false;
+    twi_reading = false;
+    twi_general_call = false;
+    twi_pull_scl_low = false;
+    twi_pull_sda_low = false;
+    twi_external_scl_low = false;
+    twi_external_sda_low = false;
+    TWBR() = 0x00;
+    TWSR() = 0xf8;
+    TWAR() = 0xfe;
+    TWDR() = 0xff;
+    TWCR() = 0x00;
+    TWAMR() = 0x00;
 
     eeprom_prev_cycle = cycle_count;
     eeprom_clear_eempe_cycles = 0;

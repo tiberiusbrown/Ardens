@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <stdint.h>
 #include <unordered_map>
@@ -54,8 +55,13 @@ constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 using texture_t = void*;
 
 extern absim::arduboy_t arduboy;
+extern std::unique_ptr<absim::arduboy_t> linked_secondary_arduboy;
+extern absim::i2c_local_link_cable_t linked_i2c_cable;
+extern bool linked_secondary_input_focus;
 extern int display_texture_zoom;
 extern texture_t display_texture;
+extern int linked_secondary_display_texture_zoom;
+extern texture_t linked_secondary_display_texture;
 extern texture_t display_buffer_texture;
 extern std::string dropfile_err;
 extern bool loading_indicator;
@@ -94,6 +100,13 @@ void save_screenshot();
 void toggle_recording();
 void take_snapshot();
 std::string preferred_title();
+void apply_runtime_settings(absim::arduboy_t& a);
+void advance_primary(uint64_t ps);
+void advance_primary_instr();
+void reset_primary_simulation();
+bool connect_linked_secondary_arduboy();
+void disconnect_linked_secondary_arduboy();
+bool linked_secondary_arduboy_connected();
 
 float volume_gain();
 bool ends_with(std::string const& str, std::string const& end);
@@ -159,7 +172,10 @@ void view_debugger();
 void view_player();
 struct ImDrawList;
 struct ImVec2;
+void display_with_scanlines(
+    ImDrawList* d, ImVec2 const& a, ImVec2 const& b, texture_t texture, int texture_zoom);
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b);
+void draw_display_texture(texture_t texture, int texture_zoom);
 void modal_settings();
 void modal_about();
 
@@ -200,8 +216,10 @@ uint8_t* recording_pixels(bool rgba);
 int filter_zoom(int f);
 int display_filter_zoom();
 int recording_filter_zoom();
+void recreate_display_texture(texture_t& texture, int& texture_zoom);
 void recreate_display_texture();
 void scalenx(uint8_t* dst, uint8_t const* src, bool rgba);
+void update_display_texture(texture_t texture, uint8_t const* src);
 
 std::string savedata_filename();
 void load_savedata();
@@ -215,6 +233,7 @@ void symbol_tooltip(
 void window_disassembly(bool& open);
 void window_profiler(bool& open);
 void window_display(bool& open);
+void window_linked_secondary_arduboy(bool& open);
 void window_display_buffer(bool& open);
 void window_display_internals(bool& open);
 void window_data_space(bool& open);

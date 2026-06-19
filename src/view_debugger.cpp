@@ -78,6 +78,7 @@ void view_debugger()
                 if(ImGui::BeginMenu("Display"))
                 {
                     ImGui::MenuItem("Display", nullptr, &settings.open_display);
+                    ImGui::MenuItem("Linked Secondary Arduboy", nullptr, &settings.open_linked_secondary_arduboy);
                     ImGui::MenuItem("Display Buffer (RAM)", nullptr, &settings.open_display_buffer);
                     ImGui::MenuItem("Display Internals", nullptr, &settings.open_display_internals);
                     ImGui::EndMenu();
@@ -185,6 +186,7 @@ void view_debugger()
         {
             window_display(settings.open_display);
             window_display_buffer(settings.open_display_buffer);
+            window_linked_secondary_arduboy(settings.open_linked_secondary_arduboy);
             window_simulation(settings.open_simulation);
             window_source(settings.open_source);
             window_disassembly(settings.open_disassembly);

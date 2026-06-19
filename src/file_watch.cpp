@@ -86,13 +86,21 @@ void file_watch_check()
     {
         std::ifstream f(fname_hex.c_str(), std::ios::in | std::ios::binary);
         if(f.fail()) load_hex.store(true);
-        else dropfile_err = arduboy.load_file(fname_hex.c_str(), f);
+        else
+        {
+            disconnect_linked_secondary_arduboy();
+            dropfile_err = arduboy.load_file(fname_hex.c_str(), f);
+        }
     }
     if(ms_since_start >= ms_reload_bin && load_bin.exchange(false))
     {
         std::ifstream f(fname_bin.c_str(), std::ios::in | std::ios::binary);
         if(f.fail()) load_bin.store(true);
-        else dropfile_err = arduboy.load_file(fname_bin.c_str(), f);
+        else
+        {
+            disconnect_linked_secondary_arduboy();
+            dropfile_err = arduboy.load_file(fname_bin.c_str(), f);
+        }
     }
 }
 

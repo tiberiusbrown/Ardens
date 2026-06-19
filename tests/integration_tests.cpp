@@ -28,6 +28,12 @@ static void advance(absim::arduboy_t& a, int ms)
     }
 }
 
+static bool serial_passed(absim::arduboy_t const& a)
+{
+    auto const& d = a.cpu.serial_bytes;
+    return d.size() == 1 && d[0] == 'P';
+}
+
 static int test(char const* name)
 {
     int r = 0;
@@ -47,7 +53,7 @@ static int test(char const* name)
         arduboy->cpu.sound_buffer.clear();
     }
 
-    bool pass = (d.size() == 1 && d[0] == 'P');
+    bool pass = serial_passed(*arduboy);
 
     printf("   %-30s : %s\n", name, pass ? "PASS" : "FAIL");
     return pass ? 0 : 1;
@@ -289,6 +295,21 @@ static bool same_cpu_state(absim::atmega32u4_t const& a, absim::atmega32u4_t con
         a.spi_done_cycle == b.spi_done_cycle &&
         a.spi_transmit_zero_cycle == b.spi_transmit_zero_cycle &&
         a.spi_clock_cycles == b.spi_clock_cycles &&
+        a.twi_prev_cycle == b.twi_prev_cycle &&
+        a.twi_done_cycle == b.twi_done_cycle &&
+        a.twi_mode == b.twi_mode &&
+        a.twi_pending == b.twi_pending &&
+        a.twi_status == b.twi_status &&
+        a.twi_address == b.twi_address &&
+        a.twi_busy == b.twi_busy &&
+        a.twi_started == b.twi_started &&
+        a.twi_repeated_start == b.twi_repeated_start &&
+        a.twi_reading == b.twi_reading &&
+        a.twi_general_call == b.twi_general_call &&
+        a.twi_pull_scl_low == b.twi_pull_scl_low &&
+        a.twi_pull_sda_low == b.twi_pull_sda_low &&
+        a.twi_external_scl_low == b.twi_external_scl_low &&
+        a.twi_external_sda_low == b.twi_external_sda_low &&
         a.eeprom_prev_cycle == b.eeprom_prev_cycle &&
         a.eeprom_clear_eempe_cycles == b.eeprom_clear_eempe_cycles &&
         a.eeprom_write_addr == b.eeprom_write_addr &&
@@ -529,6 +550,54 @@ static bool same_snapshot_state(absim::arduboy_t const& a, absim::arduboy_t cons
     return true;
 }
 
+static int i2c_handshake_test_impl(const char* test_name, const char* rom_dir, const char* rom_file)
+{
+    auto a = std::make_unique<absim::arduboy_t>();
+    auto b = std::make_unique<absim::arduboy_t>();
+
+    auto err = load_rom(*a, rom_dir, rom_file);
+    bool r = !err.empty();
+    err = load_rom(*b, rom_dir, rom_file);
+    r = r || !err.empty();
+    if(r)
+    {
+        printf("   %-30s : FAIL\n", test_name);
+        return 1;
+    }
+
+    a->reset();
+    b->reset();
+
+    advance(*a, 50);
+
+    absim::i2c_local_link_cable_t link;
+    link.connect({ a.get(), b.get() });
+
+    for(int i = 0; i < 100000 && !(serial_passed(*a) && serial_passed(*b)); ++i)
+    {
+        link.update_lines();
+        a->advance(10'000'000ull);
+        a->cpu.sound_buffer.clear();
+        link.update_lines();
+        b->advance(10'000'000ull);
+        b->cpu.sound_buffer.clear();
+    }
+
+    bool pass = serial_passed(*a) && serial_passed(*b);
+    printf("   %-30s : %s\n", test_name, pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
+static int i2c_handshake_test()
+{
+    return i2c_handshake_test_impl("i2c handshake", "i2c_handshake", "i2c_handshake.ino-arduboy-fx.hex");
+}
+
+static int i2c_handshake2_test()
+{
+    return i2c_handshake_test_impl("i2c handshake 2", "i2c_handshake2", "i2c_handshake2.ino-arduboy-fx.hex");
+}
+
 static int savestate_snapshot_test()
 {
     auto original = std::make_unique<absim::arduboy_t>();
@@ -670,16 +739,16 @@ int main(int argc, char** argv)
     arduboy = std::make_unique<absim::arduboy_t>();
     arduboy->display.enable_filter = true;
 
-    printf("\nSnapshot tests...\n");
+    printf("\nIntegration tests...\n");
     r |= savestate_snapshot_test();
     r |= savestate_libretro_roundtrip_test();
     r |= full_snapshot_test();
-
-    printf("\nIntegration tests...\n");
     r |= test("float");
     r |= test("instructions");
     r |= test("signature");
     r |= test("timer_tcnt_write");
+    r |= i2c_handshake_test();
+    r |= i2c_handshake2_test();
 
     printf("\nImage tests...\n");
     r |= image_test("arduchess", "arduchess.hex");

@@ -5,6 +5,7 @@
 #include "absim_adc.hpp"
 #include "absim_pll.hpp"
 #include "absim_spi.hpp"
+#include "absim_twi.hpp"
 #include "absim_eeprom.hpp"
 #include "absim_w25q128.hpp"
 #include "absim_sound.hpp"
@@ -21,6 +22,7 @@ void atmega32u4_t::st_handle_prr0(
     assert(ptr == 0x64);
     cpu.data[0x64] = x;
     cpu.adc_handle_prr0(x);
+    cpu.twi_handle_prr0(x);
 }
 
 void atmega32u4_t::st_handle_pin(
@@ -29,11 +31,20 @@ void atmega32u4_t::st_handle_pin(
     cpu.data[ptr + 2] ^= x;
 }
 
+void atmega32u4_t::st_handle_ddrd(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    cpu.data[ptr] = x;
+    if(cpu.twi_link)
+        cpu.twi_link->sync_lines();
+}
+
 void atmega32u4_t::st_handle_port(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    // TODO: handle pullup behavior
     cpu.data[ptr] = x;
+    if(ptr == 0x2b && cpu.twi_link)
+        cpu.twi_link->sync_lines();
 }
 
 void atmega32u4_t::st_handle_mcucr(
@@ -341,6 +352,13 @@ ARDENS_FORCEINLINE void atmega32u4_t::check_all_interrupts()
         if(check_interrupt(0x46, i & 0x01, tifr3())) return; // TIMER3 OVF
     }
 
+    i = (TWCR() & ((1 << 7) | (1 << 0))) == ((1 << 7) | (1 << 0)) ? (1 << 7) : 0;
+    if(i)
+    {
+        uint8_t dummy = i;
+        if(check_interrupt(0x48, i, dummy)) return; // TWI
+    }
+
     i = tifr4() & timsk4();
     if(i)
     {
@@ -394,6 +412,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         case PQ_PLL: update_pll(); break;
         case PQ_ADC: update_adc(); break;
         case PQ_SPM: update_spm(); break;
+        case PQ_TWI: update_twi(); break;
         case PQ_INTERRUPT: check_all_interrupts(); break;
         default: break;
         }
@@ -505,6 +524,7 @@ void atmega32u4_t::update_all()
     update_timer3();
     update_timer4();
     update_usb();
+    update_twi();
     update_sound();
 }
 
