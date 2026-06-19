@@ -20,6 +20,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <bitsery/brief_syntax.h>
+
 #include "absim_config.hpp"
 
 #include "absim_instructions.hpp"
