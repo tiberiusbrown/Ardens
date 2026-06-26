@@ -188,6 +188,62 @@ extern "C" int load_file(
     return 0;
 }
 
+extern "C" int get_led_state(int component)
+{
+    if(!arduboy.cpu.decoded) return 0;
+
+    uint8_t r = 0;
+    uint8_t g = 0;
+    uint8_t b = 0;
+    arduboy.cpu.led_rgb(r, g, b);
+
+    switch(component)
+    {
+    case 0: return arduboy.cpu.led_tx();
+    case 1: return arduboy.cpu.led_rx();
+    case 2: return r;
+    case 3: return g;
+    case 4: return b;
+    default: return 0;
+    }
+}
+
+#ifdef __EMSCRIPTEN__
+static void install_js_api()
+{
+    EM_ASM({
+        var root = (typeof globalThis !== 'undefined') ? globalThis : window;
+        root['Ardens'] = Module;
+        Module['getLedState'] = function() {
+            var get = function(component) {
+                var fn = Module['_get_led_state'];
+                if(typeof fn === 'function')
+                    return fn(component) | 0;
+                if(typeof Module['ccall'] === 'function')
+                {
+                    var args = [];
+                    args[0] = 'get_led_state';
+                    args[1] = 'number';
+                    args[2] = ['number'];
+                    args[3] = [component];
+                    return Module['ccall'].apply(null, args) | 0;
+                }
+                return 0;
+            };
+            var state = {};
+            state['tx'] = get(0);
+            state['rx'] = get(1);
+            state['r'] = get(2);
+            state['g'] = get(3);
+            state['b'] = get(4);
+            return state;
+        };
+    });
+}
+#else
+static void install_js_api() {}
+#endif
+
 float volume_gain()
 {
     float gain = 1.f / 32768;
@@ -415,6 +471,8 @@ void shutdown()
 
 void init()
 {
+    install_js_api();
+
     printf(
         "Ardens "
 #if defined(ARDENS_FLASHCART)

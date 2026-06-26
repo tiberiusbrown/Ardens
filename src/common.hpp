@@ -82,6 +82,7 @@ touch_rect_t touch_rect(int btn);
 extern "C" int setparam(char const* name, char const* value);
 extern "C" int load_file(
     char const* param, char const* filename, uint8_t const* data, size_t size);
+extern "C" int get_led_state(int component);
 void init();
 void shutdown();
 void frame_logic();
