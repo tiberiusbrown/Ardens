@@ -20,6 +20,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include <bitsery/brief_syntax.h>
+
 #include "absim_config.hpp"
 
 #include "absim_instructions.hpp"
@@ -1084,6 +1086,9 @@ struct elf_data_t
 // game save data
 struct savedata_t
 {
+    static constexpr size_t MAX_EEPROM_BYTES = 1024;
+    static constexpr size_t MAX_FX_SECTORS = w25q128_t::NUM_SECTORS;
+
     uint64_t game_hash;
     std::vector<uint8_t> eeprom;
     std::map<uint32_t, std::array<uint8_t, 4096>> fx_sectors;
@@ -1091,7 +1096,9 @@ struct savedata_t
 
     template<class A> void serialize(A& a)
     {
-        a(game_hash, eeprom, fx_sectors);
+        a(game_hash);
+        a(bitsery::maxSize(eeprom, MAX_EEPROM_BYTES));
+        a(bitsery::maxSize(fx_sectors, MAX_FX_SECTORS));
         a(eeprom_modified_bytes);
     }
     void clear()
@@ -1262,6 +1269,7 @@ struct arduboy_t
     std::string load_snapshot(std::istream& f);
 
     // savestates only contain device state and are not compressed (e.g., for RetroArch)
+    size_t max_savestate_size() const;
     std::string save_savestate(std::ostream& f);
     std::string load_savestate(std::istream& f);
 };

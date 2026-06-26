@@ -4,6 +4,10 @@
 #define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_impl_sdl3.h"

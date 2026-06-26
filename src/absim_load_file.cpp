@@ -11,6 +11,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <limits>
 
 #include "absim_strstream.hpp"
 
@@ -843,13 +844,32 @@ static std::string load_elf(arduboy_t& a, std::string const& fname)
 }
 #endif
 
+static bool round_up(size_t size, size_t align, size_t& rounded)
+{
+    if(size > std::numeric_limits<size_t>::max() - (align - 1))
+        return true;
+    rounded = (size + align - 1) & ~(align - 1);
+    return false;
+}
+
+static bool fx_payload_too_large(size_t fxdata_size, size_t fxsave_size)
+{
+    size_t fxdata_bytes = 0;
+    size_t fxsave_bytes = 0;
+    return
+        round_up(fxdata_size, 256, fxdata_bytes) ||
+        round_up(fxsave_size, 4096, fxsave_bytes) ||
+        fxdata_bytes > w25q128_t::DATA_BYTES ||
+        fxsave_bytes > w25q128_t::DATA_BYTES - fxdata_bytes;
+}
+
 static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
 {
     auto& d = save ? a.fxsave : a.fxdata;
     d = std::vector<uint8_t>(
         (std::istreambuf_iterator<char>(f)),
         std::istreambuf_iterator<char>());
-    if(a.fxdata.size() + a.fxsave.size() >= a.fx.DATA_BYTES)
+    if(fx_payload_too_large(a.fxdata.size(), a.fxsave.size()))
         return "BIN: FX data too large";
 
     // analyze data to determine if the binfile was a flashcart
@@ -865,10 +885,7 @@ static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
     if(0 != memcmp(d.data() + 0x39, "Bootloader", 10)) goto not_flashcart;
     a.flashcart_loaded = true;
 
-    
-
 not_flashcart:
-
     return "";
 }
 
@@ -1015,7 +1032,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
             }
         }
 
-        if(a.fxdata.size() + a.fxsave.size() >= a.fx.DATA_BYTES)
+        if(fx_payload_too_large(a.fxdata.size(), a.fxsave.size()))
             return "BIN: FX data too large";
     }
     else

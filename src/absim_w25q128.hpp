@@ -17,6 +17,9 @@ void w25q128_t::erase_all_data()
 
 uint8_t w25q128_t::read_byte(size_t addr)
 {
+    if(addr >= DATA_BYTES)
+        return 0xff;
+
     size_t sector_index = addr / SECTOR_BYTES;
     size_t byte_index = addr % SECTOR_BYTES;
     auto& sector = sectors[sector_index];
@@ -25,6 +28,9 @@ uint8_t w25q128_t::read_byte(size_t addr)
 
 void w25q128_t::write_byte(size_t addr, uint8_t data)
 {
+    if(addr >= DATA_BYTES)
+        return;
+
     size_t sector_index = addr / SECTOR_BYTES;
     size_t byte_index = addr % SECTOR_BYTES;
     auto& sector = sectors[sector_index];
@@ -43,6 +49,10 @@ void w25q128_t::program_byte(size_t addr, uint8_t data)
 
 void w25q128_t::write_bytes(size_t addr, uint8_t const* data, size_t bytes)
 {
+    if(addr >= DATA_BYTES)
+        return;
+    bytes = std::min(bytes, DATA_BYTES - addr);
+
     while(bytes > 0)
     {
         size_t sector_index = addr / SECTOR_BYTES;

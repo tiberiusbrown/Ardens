@@ -462,6 +462,7 @@ void rescale_style()
 
 void shutdown()
 {
+    flush_savedata();
     sfetch_shutdown();
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::DestroyContext();

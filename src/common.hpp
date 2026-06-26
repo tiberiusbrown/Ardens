@@ -207,6 +207,7 @@ void scalenx(uint8_t* dst, uint8_t const* src, bool rgba);
 std::string savedata_filename();
 void load_savedata();
 void check_save_savedata(); // save savedata if necessary
+void flush_savedata(); // immediately save pending savedata
 
 // defined in window_data_space.cpp
 void symbol_tooltip(
