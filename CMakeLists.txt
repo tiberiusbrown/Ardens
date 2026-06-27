@@ -346,6 +346,14 @@ if(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(SYSTEM_LIBS X11 Xi Xcursor GL asound dl m pthread)
 endif()
 
+add_library(ardens_platform INTERFACE)
+if(ARDENS_SDL)
+    target_compile_definitions(ardens_platform INTERFACE ARDENS_PLATFORM_SDL)
+    target_link_libraries(ardens_platform INTERFACE SDL3-static)
+else()
+    target_compile_definitions(ardens_platform INTERFACE ARDENS_PLATFORM_SOKOL)
+endif()
+
 macro(configure_app_target target)
     if(MACOS)
         set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${target}")
@@ -364,12 +372,7 @@ macro(configure_app_target target)
     if(WIN32)
         target_link_libraries(${target} PRIVATE shcore.lib)
     endif()
-    if(ARDENS_SDL)
-        target_compile_definitions(${target} PUBLIC -DARDENS_PLATFORM_SDL)
-        target_link_libraries(${target} PRIVATE SDL3-static)
-    else()
-        target_compile_definitions(${target} PRIVATE -DARDENS_PLATFORM_SOKOL)
-    endif()
+    target_link_libraries(${target} PRIVATE ardens_platform)
 endmacro()
 
 set(MACOS_ICON)
@@ -387,31 +390,130 @@ if(WIN32)
     set_source_files_properties(${RC_FILE} PROPERTIES HEADER_FILE_ONLY ON)
 endif()
 
+set(ARDENS_APP_ENTRY_SOURCES
+    src/main_sdl.cpp
+    src/main_sokol.cpp
+    )
+
+set(ARDENS_PLAYER_APP_SOURCES
+    src/settings.hpp
+    src/settings.cpp
+    src/common.hpp
+    src/common.cpp
+    src/view_player.cpp
+    src/record_gif.cpp
+    src/record_wav.cpp
+    src/scalenx.cpp
+    src/saveload.cpp
+    src/file_watch.cpp
+    )
+
+set(ARDENS_PLAYER_APP_DEPS
+    deps/stb_image_write.h
+    ${IMGUI_SOURCES}
+    ${GIFENC_SOURCES}
+    ${EM_FILE_BROWSER_SOURCES}
+    ${SOKOL_SOURCES}
+    )
+
+set(ARDENS_DEBUGGER_APP_SOURCES
+    src/font.cpp
+    src/settings_modal.cpp
+    src/modal_about.cpp
+    src/view_debugger.cpp
+    src/window_disassembly.cpp
+    src/window_profiler.cpp
+    src/window_display.cpp
+    src/window_display_buffer.cpp
+    src/window_display_internals.cpp
+    src/window_data_space.cpp
+    src/window_progmem.cpp
+    src/window_simulation.cpp
+    src/window_call_stack.cpp
+    src/window_symbols.cpp
+    src/window_globals.cpp
+    src/window_fx_data.cpp
+    src/window_fx_internals.cpp
+    src/window_eeprom.cpp
+    src/window_cpu_usage.cpp
+    src/window_led.cpp
+    src/window_savefile.cpp
+    src/window_serial.cpp
+    src/window_sound.cpp
+    src/window_source.cpp
+    deps/ImGuiColorTextEdit/TextEditor.h
+    deps/ImGuiColorTextEdit/TextEditor.cpp
+    )
+
+set(ARDENS_DEBUGGER_APP_DEPS
+    ${ARDENS_PLAYER_APP_DEPS}
+    ${IMPLOT_SOURCES}
+    ${SIMPLE_FFT_SOURCES}
+    ${HQX_SOURCES}
+    )
+
+function(configure_core_library target)
+    target_include_directories(${target} PUBLIC src)
+    target_include_directories(${target} SYSTEM PUBLIC deps)
+    target_link_libraries(${target} PUBLIC bitsery miniz fmt)
+    if(MSVC)
+        target_compile_options(${target} PUBLIC /Zc:__cplusplus)
+    endif()
+endfunction()
+
+function(configure_player_core target)
+    target_compile_definitions(${target} PUBLIC
+        ARDENS_PLAYER
+        ARDENS_NO_SNAPSHOTS
+        ARDENS_NO_DEBUGGER
+        ARDENS_NO_GUI
+        ARDENS_NO_SAVED_SETTINGS
+        ARDENS_NO_SCALING
+        )
+endfunction()
+
+function(add_ardens_app_shell target app_library)
+    add_executable(${target} ${EXEFLAG}
+        .editorconfig
+        ${ARDENS_APP_ENTRY_SOURCES}
+        ${RC_FILE}
+        ${MACOS_ICON}
+        src/ardens_icon.hpp
+        )
+    set_target_properties(${target} PROPERTIES LINKER_LANGUAGE CXX)
+    target_link_libraries(${target} PRIVATE ${app_library} ${SYSTEM_LIBS})
+    configure_app_target(${target})
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /Zc:__cplusplus)
+    endif()
+endfunction()
+
+function(add_ardens_player_app_library target core_library)
+    add_library(${target} STATIC
+        .editorconfig
+        ${ARDENS_PLAYER_APP_SOURCES}
+        ${ARDENS_PLAYER_APP_DEPS}
+        ${ARGN}
+        )
+    target_include_directories(${target} SYSTEM PUBLIC
+        deps
+        deps/imgui
+        deps/gifenc
+        )
+    target_link_libraries(${target} PUBLIC ${core_library})
+    target_link_libraries(${target} PRIVATE ardens_platform)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /Zc:__cplusplus)
+    endif()
+endfunction()
+
 if(NOT ARDENS_LIBRETRO)
-    add_library(ardenslib STATIC
-        .editorconfig
-        ${ARDENS_SOURCES}
-        )
+    add_library(ardenslib STATIC .editorconfig ${ARDENS_SOURCES})
+    configure_core_library(ardenslib)
+    configure_player_core(ardenslib)
 
-    target_include_directories(ardenslib PUBLIC src)
-    target_include_directories(ardenslib SYSTEM PUBLIC deps)
-
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_PLAYER)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SNAPSHOTS)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_DEBUGGER)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_GUI)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SAVED_SETTINGS)
-    target_compile_definitions(ardenslib PUBLIC -DARDENS_NO_SCALING)
-
-    target_link_libraries(ardenslib PUBLIC bitsery miniz fmt)
-
-    add_library(ardensdebuggerlib STATIC
-        .editorconfig
-        ${ARDENS_SOURCES}
-        )
-    target_include_directories(ardensdebuggerlib PUBLIC src)
-    target_include_directories(ardensdebuggerlib SYSTEM PUBLIC deps)
-    target_link_libraries(ardensdebuggerlib PUBLIC bitsery miniz fmt)
+    add_library(ardensdebuggerlib STATIC .editorconfig ${ARDENS_SOURCES})
+    configure_core_library(ardensdebuggerlib)
     if(ARDENS_LLVM)
         target_link_libraries(ardensdebuggerlib PUBLIC
             LLVMDebugInfoDWARF
@@ -428,71 +530,15 @@ endif()
 
 if(ARDENS_DEBUGGER)
 
-    add_executable(Ardens ${EXEFLAG}
+    add_library(ardens_debugger_app STATIC
         .editorconfig
-
-        src/main_sdl.cpp
-        src/main_sokol.cpp
-        ${RC_FILE}
-        ${MACOS_ICON}
-        src/ardens_icon.hpp
-
-        src/font.cpp
-        src/settings.hpp
-        src/settings.cpp
-        src/settings_modal.cpp
-        src/modal_about.cpp
-        src/common.hpp
-        src/common.cpp
-        src/view_debugger.cpp
-        src/view_player.cpp
-        src/record_gif.cpp
-        src/record_wav.cpp
-        src/scalenx.cpp
-        src/saveload.cpp
-        src/file_watch.cpp
-
-        src/window_disassembly.cpp
-        src/window_profiler.cpp
-        src/window_display.cpp
-        src/window_display_buffer.cpp
-        src/window_display_internals.cpp
-        src/window_data_space.cpp
-        src/window_progmem.cpp
-        src/window_simulation.cpp
-        src/window_call_stack.cpp
-        src/window_symbols.cpp
-        src/window_globals.cpp
-        src/window_fx_data.cpp
-        src/window_fx_internals.cpp
-        src/window_eeprom.cpp
-        src/window_cpu_usage.cpp
-        src/window_led.cpp
-        src/window_savefile.cpp
-        src/window_serial.cpp
-        src/window_sound.cpp
-        src/window_source.cpp
-
-        deps/stb_image_write.h
-        ${IMGUI_SOURCES}
-        ${IMPLOT_SOURCES}
-        ${GIFENC_SOURCES}
-        ${EM_FILE_BROWSER_SOURCES}
-        ${SIMPLE_FFT_SOURCES}
-        ${HQX_SOURCES}
-        ${SOKOL_SOURCES}
-
-        deps/ImGuiColorTextEdit/TextEditor.h
-        deps/ImGuiColorTextEdit/TextEditor.cpp
+        ${ARDENS_PLAYER_APP_SOURCES}
+        ${ARDENS_DEBUGGER_APP_SOURCES}
+        ${ARDENS_DEBUGGER_APP_DEPS}
         )
-    target_link_libraries(Ardens PRIVATE
-        ardensdebuggerlib
-        miniz
-        fmt
-        bitsery
-        ${SYSTEM_LIBS}
-        )
-    target_include_directories(Ardens SYSTEM PRIVATE
+    target_link_libraries(ardens_debugger_app PUBLIC ardensdebuggerlib)
+    target_link_libraries(ardens_debugger_app PRIVATE ardens_platform)
+    target_include_directories(ardens_debugger_app SYSTEM PUBLIC
         deps
         deps/imgui
         deps/implot
@@ -501,90 +547,25 @@ if(ARDENS_DEBUGGER)
         deps/hqx/include
         deps/rapidjson/include
         )
-    configure_app_target(Ardens)
+    if(MSVC)
+        target_compile_options(ardens_debugger_app PRIVATE /Zc:__cplusplus)
+    endif()
+    add_ardens_app_shell(Ardens ardens_debugger_app)
         
 endif()
 
 if(ARDENS_PLAYER)
 
-    add_executable(ArdensPlayer ${EXEFLAG}
-        .editorconfig
-
-        src/main_sdl.cpp
-        src/main_sokol.cpp
-        ${RC_FILE}
-        ${MACOS_ICON}
-        src/ardens_icon.hpp
-
-        src/settings.hpp
-        src/settings.cpp
-        src/common.hpp
-        src/common.cpp
-        src/view_player.cpp
-        src/record_gif.cpp
-        src/record_wav.cpp
-        src/scalenx.cpp
-        src/saveload.cpp
-        src/file_watch.cpp
-
-        deps/stb_image_write.h
-        ${IMGUI_SOURCES}
-        ${GIFENC_SOURCES}
-        ${EM_FILE_BROWSER_SOURCES}
-        ${SOKOL_SOURCES}
-        )
-    target_include_directories(ArdensPlayer SYSTEM PRIVATE
-        deps
-        deps/imgui
-        deps/gifenc
-        )
-    target_link_libraries(ArdensPlayer PRIVATE
-        ardenslib
-        ${SYSTEM_LIBS}
-        )
-    configure_app_target(ArdensPlayer)
+    add_ardens_player_app_library(ardens_player_app ardenslib)
+    add_ardens_app_shell(ArdensPlayer ardens_player_app)
 
 endif()
 
 if(ARDENS_FLASHCART)
 
-    add_executable(ArdensFlashcart ${EXEFLAG}
-        .editorconfig
-
-        src/main_sdl.cpp
-        src/main_sokol.cpp
-        ${RC_FILE}
-        ${MACOS_ICON}
-        src/ardens_icon.hpp
-
-        src/settings.hpp
-        src/settings.cpp
-        src/common.hpp
-        src/common.cpp
-        src/view_player.cpp
-        src/record_gif.cpp
-        src/record_wav.cpp
-        src/scalenx.cpp
-        src/saveload.cpp
-        src/file_watch.cpp
-
-        deps/stb_image_write.h
-        ${IMGUI_SOURCES}
-        ${GIFENC_SOURCES}
-        ${EM_FILE_BROWSER_SOURCES}
-        ${SOKOL_SOURCES}
-        )
-    target_include_directories(ArdensFlashcart SYSTEM PRIVATE
-        deps
-        deps/imgui
-        deps/gifenc
-        )
-    target_link_libraries(ArdensFlashcart PRIVATE
-        ardenslib
-        ${SYSTEM_LIBS}
-        )
-    target_compile_definitions(ArdensFlashcart PRIVATE -DARDENS_FLASHCART)
-    configure_app_target(ArdensFlashcart)
+    add_ardens_player_app_library(ardens_flashcart_app ardenslib)
+    target_compile_definitions(ardens_flashcart_app PUBLIC ARDENS_FLASHCART)
+    add_ardens_app_shell(ArdensFlashcart ardens_flashcart_app)
 
 endif()
 
@@ -653,51 +634,18 @@ if(ARDENS_DIST)
             "game_arduboy"
             )
 
-        add_executable("${ARDENS_DIST_TARGET}" ${EXEFLAG}
-            .editorconfig
-
-            src/main_sdl.cpp
-            src/main_sokol.cpp
-            ${RC_FILE}
-            ${MACOS_ICON}
-            src/ardens_icon.hpp
-
-            src/settings.hpp
-            src/settings.cpp
-            src/common.hpp
-            src/common.cpp
-            src/view_player.cpp
-            src/record_gif.cpp
-            src/record_wav.cpp
-            src/scalenx.cpp
-            src/saveload.cpp
-            src/file_watch.cpp
-
-            deps/stb_image_write.h
-            ${IMGUI_SOURCES}
-            ${GIFENC_SOURCES}
-            ${EM_FILE_BROWSER_SOURCES}
-            ${SOKOL_SOURCES}
-
+        set(ARDENS_DIST_APP_LIBRARY "${ARDENS_DIST_TARGET}_app")
+        add_ardens_player_app_library("${ARDENS_DIST_APP_LIBRARY}" ardenslib
             "${DISTGAME_DIR}/distgame.c"
             "${DISTGAME_DIR}/distgame.h"
             )
-        target_include_directories("${ARDENS_DIST_TARGET}" SYSTEM PRIVATE
-            deps
-            deps/imgui
-            deps/gifenc
+        target_compile_definitions("${ARDENS_DIST_APP_LIBRARY}" PUBLIC
+            ARDENS_DIST
+            ARDENS_DISTNAME="${ARDENS_DIST_TARGET}"
             )
-        target_link_libraries("${ARDENS_DIST_TARGET}" PRIVATE
-            ardenslib
-            ${SYSTEM_LIBS}
-            )
-        configure_app_target("${ARDENS_DIST_TARGET}")
-        target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DIST)
-        target_compile_definitions("${ARDENS_DIST_TARGET}" PRIVATE -DARDENS_DISTNAME="${ARDENS_DIST_TARGET}")
-        target_include_directories("${ARDENS_DIST_TARGET}" PRIVATE "${DISTGAME_DIR}")
-        if(MSVC)
-            target_compile_options("${ARDENS_DIST_TARGET}" PRIVATE /Zc:__cplusplus)
-        else()
+        target_include_directories("${ARDENS_DIST_APP_LIBRARY}" PRIVATE "${DISTGAME_DIR}")
+        add_ardens_app_shell("${ARDENS_DIST_TARGET}" "${ARDENS_DIST_APP_LIBRARY}")
+        if(NOT MSVC)
             set_target_properties("${ARDENS_DIST_TARGET}" PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${DISTGAME_OUTDIR}")
         endif()
     endforeach()
@@ -711,19 +659,29 @@ if(ARDENS_LIBRETRO)
         set(ARDENS_LIBRETRO_TYPE STATIC)
     endif()
     file(GLOB MINIZ_SOURCES deps/miniz/*.h deps/miniz/*.c)
-    add_library(ardens_libretro ${ARDENS_LIBRETRO_TYPE}
+    add_library(ardens_libretro_core OBJECT
         .editorconfig
         ${ARDENS_SOURCES}
-        src/libretro_core/libretro.h
-        src/libretro_core/libretro_impl.cpp
         ${MINIZ_SOURCES}
         )
-    target_compile_definitions(ardens_libretro PRIVATE -DMINIZ_NO_STDIO=1 -DMINIZ_NO_TIME=1)
-    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_PLAYER)
-    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_DEBUGGER)
-    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_GUI)
-    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SAVED_SETTINGS)
-    target_compile_definitions(ardens_libretro PRIVATE -DARDENS_NO_SCALING)
+    target_compile_definitions(ardens_libretro_core PRIVATE
+        MINIZ_NO_STDIO=1
+        MINIZ_NO_TIME=1
+        )
+    configure_player_core(ardens_libretro_core)
+    target_include_directories(ardens_libretro_core PUBLIC src src/libretro_core)
+    target_include_directories(ardens_libretro_core SYSTEM PUBLIC
+        deps
+        deps/bitsery/include
+        deps/miniz
+        )
+    add_library(ardens_libretro ${ARDENS_LIBRETRO_TYPE}
+        .editorconfig
+        $<TARGET_OBJECTS:ardens_libretro_core>
+        src/libretro_core/libretro.h
+        src/libretro_core/libretro_impl.cpp
+        )
+    configure_player_core(ardens_libretro)
     target_link_libraries(ardens_libretro PRIVATE bitsery)
     target_include_directories(ardens_libretro PUBLIC src src/libretro_core)
     target_include_directories(ardens_libretro SYSTEM PUBLIC deps deps/miniz)
