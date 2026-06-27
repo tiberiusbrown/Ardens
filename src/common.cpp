@@ -781,7 +781,7 @@ void take_snapshot()
 std::string preferred_title()
 {
 #ifdef ARDENS_DIST
-    if(arduboy && !arduboy.title.empty())
+    if(!arduboy.title.empty())
         return arduboy.title;
 #endif
     return ARDENS_TITLE;

@@ -154,7 +154,7 @@ endif()
 
 add_subdirectory(deps/bitsery)
 
-if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_FLASHCART OR ARDENS_DEBUGGER))
+if(ARDENS_SDL AND (ARDENS_PLAYER OR ARDENS_FLASHCART OR ARDENS_DEBUGGER OR ARDENS_DIST))
     set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
     add_subdirectory(deps/SDL)
     disable_all_warnings(SDL3-static)
@@ -629,6 +629,13 @@ if(ARDENS_DIST)
     include(cmake/bin2c.cmake)
 
     file(GLOB ARDUBOY_FILES "dist/*.arduboy")
+    if(NOT ARDUBOY_FILES)
+        set(ARDENS_DIST_COMPILE_CHECK_FILE
+            "${CMAKE_CURRENT_BINARY_DIR}/ardens_dist_compile_check.arduboy")
+        file(WRITE "${ARDENS_DIST_COMPILE_CHECK_FILE}" "compile-check")
+        list(APPEND ARDUBOY_FILES "${ARDENS_DIST_COMPILE_CHECK_FILE}")
+        message(STATUS "No dist/*.arduboy files found; building ARDENS_DIST compile-check target")
+    endif()
     foreach(ARDUBOY_FILE ${ARDUBOY_FILES})
         message(STATUS "ARDUBOY_FILE=${ARDUBOY_FILE}")
         get_filename_component(ARDENS_DIST_TARGET "${ARDUBOY_FILE}" NAME_WLE)
