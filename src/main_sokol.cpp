@@ -40,6 +40,8 @@ static simgui_desc_t const SIMGUI_DESC = []() {
 
 static sg_sampler DEFAULT_SAMPLER;
 
+static void register_sokol_platform_services();
+
 static void app_frame()
 {
     frame_logic();
@@ -96,6 +98,7 @@ static void app_init()
         saudio_setup(&desc);
     }
 
+    register_sokol_platform_services();
     init();
     update_pixel_ratio();
     rescale_style();
@@ -221,12 +224,12 @@ static void app_cleanup()
     sg_shutdown();
 }
 
-void platform_destroy_texture(texture_t t)
+static void sokol_platform_destroy_texture(texture_t t)
 {
     simgui_destroy_image({ (uint32_t)(uintptr_t)t });
 }
 
-texture_t platform_create_texture(int w, int h)
+static texture_t sokol_platform_create_texture(int w, int h)
 {
     sg_image_desc desc{};
     desc.width = w;
@@ -242,7 +245,7 @@ texture_t platform_create_texture(int w, int h)
     return (texture_t)(uintptr_t)t.id;
 }
 
-void platform_update_texture(texture_t t, void const* data, size_t n)
+static void sokol_platform_update_texture(texture_t t, void const* data, size_t n)
 {
     sg_image_data idata{};
     idata.subimage[0][0] = { data, n };
@@ -252,22 +255,22 @@ void platform_update_texture(texture_t t, void const* data, size_t n)
     sg_update_image(desc.image, &idata);
 }
 
-void platform_texture_scale_linear(texture_t t)
+static void sokol_platform_texture_scale_linear(texture_t t)
 {
     // not supported by sokol_gfx
 }
 
-void platform_texture_scale_nearest(texture_t t)
+static void sokol_platform_texture_scale_nearest(texture_t t)
 {
     // not supported by sokol_gfx
 }
 
-void platform_set_clipboard_text(char const* str)
+static void sokol_platform_set_clipboard_text(char const* str)
 {
     sapp_set_clipboard_string(str);
 }
 
-void platform_send_sound()
+static void sokol_platform_send_sound()
 {
     std::vector<int16_t> buf;
     buf.swap(arduboy.cpu.sound_buffer);
@@ -312,7 +315,7 @@ void platform_send_sound()
     }
 }
 
-uint64_t platform_get_ms_dt()
+static uint64_t sokol_platform_get_ms_dt()
 {
     static uint64_t dt_rem = 0;
     static uint64_t pt = 0;
@@ -323,19 +326,19 @@ uint64_t platform_get_ms_dt()
     return ms;
 }
 
-float platform_pixel_ratio()
+static float sokol_platform_pixel_ratio()
 {
     return sapp_dpi_scale();
 }
 
-void platform_destroy_fonts_texture()
+static void sokol_platform_destroy_fonts_texture()
 {
     simgui_destroy_image(_simgui.default_font);
     _simgui.font_img = {};
     _simgui.default_font = {};
 }
 
-void platform_create_fonts_texture()
+static void sokol_platform_create_fonts_texture()
 {
     unsigned char* font_pixels;
     int font_width, font_height;
@@ -359,7 +362,7 @@ void platform_create_fonts_texture()
     io.Fonts->TexID = simgui_imtextureid(_simgui.default_font);
 }
 
-void platform_toggle_fullscreen()
+static void sokol_platform_toggle_fullscreen()
 {
 #ifdef __EMSCRIPTEN__
     EmscriptenFullscreenChangeEvent e{};
@@ -374,14 +377,32 @@ void platform_toggle_fullscreen()
 #endif
 }
 
-void platform_quit()
+static void sokol_platform_quit()
 {
     sapp_request_quit();
 }
 
-void platform_set_title(char const* title)
+static void sokol_platform_set_title(char const* title)
 {
     sapp_set_window_title(title);
+}
+
+static void register_sokol_platform_services()
+{
+    platform_services.destroy_texture = sokol_platform_destroy_texture;
+    platform_services.create_texture = sokol_platform_create_texture;
+    platform_services.update_texture = sokol_platform_update_texture;
+    platform_services.texture_scale_linear = sokol_platform_texture_scale_linear;
+    platform_services.texture_scale_nearest = sokol_platform_texture_scale_nearest;
+    platform_services.set_clipboard_text = sokol_platform_set_clipboard_text;
+    platform_services.send_sound = sokol_platform_send_sound;
+    platform_services.get_ms_dt = sokol_platform_get_ms_dt;
+    platform_services.pixel_ratio = sokol_platform_pixel_ratio;
+    platform_services.destroy_fonts_texture = sokol_platform_destroy_fonts_texture;
+    platform_services.create_fonts_texture = sokol_platform_create_fonts_texture;
+    platform_services.toggle_fullscreen = sokol_platform_toggle_fullscreen;
+    platform_services.quit = sokol_platform_quit;
+    platform_services.set_title = sokol_platform_set_title;
 }
 
 static std::array<std::vector<uint32_t>, SAPP_MAX_ICONIMAGES> icon_imgs;

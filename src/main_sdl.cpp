@@ -68,13 +68,13 @@ static SDL_AudioStream* audio_stream;
 static SDL_Window* window;
 static SDL_Renderer* renderer;
 
-void platform_destroy_texture(texture_t t)
+static void sdl_platform_destroy_texture(texture_t t)
 {
     if(t != nullptr)
         SDL_DestroyTexture((SDL_Texture*)t);
 }
 
-texture_t platform_create_texture(int w, int h)
+static texture_t sdl_platform_create_texture(int w, int h)
 {
     return SDL_CreateTexture(
         renderer,
@@ -84,7 +84,7 @@ texture_t platform_create_texture(int w, int h)
         h);
 }
 
-void platform_update_texture(texture_t t, void const* data, size_t n)
+static void sdl_platform_update_texture(texture_t t, void const* data, size_t n)
 {
     SDL_Texture* texture = (SDL_Texture*)t;
     if(!texture || !data)
@@ -138,22 +138,22 @@ void platform_update_texture(texture_t t, void const* data, size_t n)
     SDL_UnlockTexture(texture);
 }
 
-void platform_texture_scale_linear(texture_t t)
+static void sdl_platform_texture_scale_linear(texture_t t)
 {
     SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_SCALEMODE_LINEAR);
 }
 
-void platform_texture_scale_nearest(texture_t t)
+static void sdl_platform_texture_scale_nearest(texture_t t)
 {
     SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_SCALEMODE_NEAREST);
 }
 
-void platform_set_clipboard_text(char const* str)
+static void sdl_platform_set_clipboard_text(char const* str)
 {
     SDL_SetClipboardText(str);
 }
 
-uint64_t platform_get_ms_dt()
+static uint64_t sdl_platform_get_ms_dt()
 {
     static uint64_t pt = 0;
     uint64_t t = SDL_GetTicks();
@@ -163,7 +163,7 @@ uint64_t platform_get_ms_dt()
     return dt;
 }
 
-void platform_send_sound()
+static void sdl_platform_send_sound()
 {
     std::vector<int16_t> buf;
     buf.swap(arduboy.cpu.sound_buffer);
@@ -192,27 +192,27 @@ void platform_send_sound()
     }
 }
 
-float platform_pixel_ratio()
+static float sdl_platform_pixel_ratio()
 {
     return SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
 }
 
-void platform_destroy_fonts_texture()
+static void sdl_platform_destroy_fonts_texture()
 {
     ImGui_ImplSDLRenderer3_DestroyFontsTexture();
 }
 
-void platform_create_fonts_texture()
+static void sdl_platform_create_fonts_texture()
 {
     ImGui_ImplSDLRenderer3_CreateFontsTexture();
 }
 
-void platform_open_url(char const* url)
+static void sdl_platform_open_url(char const* url)
 {
     SDL_OpenURL(url);
 }
 
-void platform_toggle_fullscreen()
+static void sdl_platform_toggle_fullscreen()
 {
     static bool fs = false;
     fs = !fs;
@@ -327,16 +327,35 @@ static void main_loop()
     SDL_RenderPresent(renderer);
 }
 
-void platform_quit()
+static void sdl_platform_quit()
 {
     SDL_Event e;
     e.type = SDL_EVENT_QUIT;
     SDL_PushEvent(&e);
 }
 
-void platform_set_title(char const* title)
+static void sdl_platform_set_title(char const* title)
 {
     SDL_SetWindowTitle(window, title);
+}
+
+static void register_sdl_platform_services()
+{
+    platform_services.destroy_texture = sdl_platform_destroy_texture;
+    platform_services.create_texture = sdl_platform_create_texture;
+    platform_services.update_texture = sdl_platform_update_texture;
+    platform_services.texture_scale_linear = sdl_platform_texture_scale_linear;
+    platform_services.texture_scale_nearest = sdl_platform_texture_scale_nearest;
+    platform_services.set_clipboard_text = sdl_platform_set_clipboard_text;
+    platform_services.send_sound = sdl_platform_send_sound;
+    platform_services.get_ms_dt = sdl_platform_get_ms_dt;
+    platform_services.pixel_ratio = sdl_platform_pixel_ratio;
+    platform_services.destroy_fonts_texture = sdl_platform_destroy_fonts_texture;
+    platform_services.create_fonts_texture = sdl_platform_create_fonts_texture;
+    platform_services.open_url = sdl_platform_open_url;
+    platform_services.toggle_fullscreen = sdl_platform_toggle_fullscreen;
+    platform_services.quit = sdl_platform_quit;
+    platform_services.set_title = sdl_platform_set_title;
 }
 
 int main(int argc, char** argv)
@@ -368,6 +387,8 @@ int main(int argc, char** argv)
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
+    register_sdl_platform_services();
 
     init();
 

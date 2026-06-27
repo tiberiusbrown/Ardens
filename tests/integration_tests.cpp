@@ -471,102 +471,131 @@ static bool same_fx_state(absim::w25q128_t const& a, absim::w25q128_t const& b)
 
 static bool same_runtime_state(absim::arduboy_t const& a, absim::arduboy_t const& b)
 {
-    return same_cpu_state(a.cpu, b.cpu) &&
-        same_display_state(a.display, b.display) &&
-        same_fx_state(a.fx, b.fx) &&
-        a.prog_filename == b.prog_filename &&
-        a.prog_filedata == b.prog_filedata &&
-        a.fxport_reg == b.fxport_reg &&
-        a.fxport_mask == b.fxport_mask &&
-        a.game_hash == b.game_hash &&
-        a.title == b.title &&
-        a.device_type == b.device_type &&
-        a.prev_display_reset == b.prev_display_reset;
+    return same_cpu_state(a.core_state.cpu, b.core_state.cpu) &&
+        same_display_state(a.peripherals.display, b.peripherals.display) &&
+        same_fx_state(a.peripherals.fx, b.peripherals.fx) &&
+        a.program_state.prog_filename == b.program_state.prog_filename &&
+        a.program_state.prog_filedata == b.program_state.prog_filedata &&
+        a.peripherals.fxport_reg == b.peripherals.fxport_reg &&
+        a.peripherals.fxport_mask == b.peripherals.fxport_mask &&
+        a.program_state.game_hash == b.program_state.game_hash &&
+        a.program_state.title == b.program_state.title &&
+        a.program_state.device_type == b.program_state.device_type &&
+        a.peripherals.prev_display_reset == b.peripherals.prev_display_reset;
 }
 
 static bool same_snapshot_state(absim::arduboy_t const& a, absim::arduboy_t const& b)
 {
-    if(a.cpu.serial_bytes != b.cpu.serial_bytes ||
-        a.cpu.sound_buffer != b.cpu.sound_buffer ||
-        a.fx.sectors.size() != b.fx.sectors.size() ||
-        a.profiler_total != b.profiler_total ||
-        a.profiler_total_with_sleep != b.profiler_total_with_sleep ||
-        a.prev_frame_cycles != b.prev_frame_cycles ||
-        a.total_frames != b.total_frames ||
-        a.prev_ms_cycles != b.prev_ms_cycles ||
-        a.total_ms != b.total_ms ||
-        a.frame_bytes_total != b.frame_bytes_total ||
-        a.frame_bytes != b.frame_bytes ||
-        a.frame_cpu_usage != b.frame_cpu_usage ||
-        a.ms_cpu_usage_raw != b.ms_cpu_usage_raw ||
-        a.ms_cpu_usage != b.ms_cpu_usage ||
-        a.profiler_enabled != b.profiler_enabled ||
-        a.cached_profiler_total != b.cached_profiler_total ||
-        a.cached_profiler_total_with_sleep != b.cached_profiler_total_with_sleep ||
-        a.num_hotspots != b.num_hotspots ||
-        a.breakpoints != b.breakpoints ||
-        a.breakpoints_rd != b.breakpoints_rd ||
-        a.breakpoints_wr != b.breakpoints_wr ||
-        a.paused != b.paused ||
-        a.cfg.display_type != b.cfg.display_type ||
-        a.cfg.fxport_reg != b.cfg.fxport_reg ||
-        a.cfg.fxport_mask != b.cfg.fxport_mask ||
-        a.cfg.bootloader != b.cfg.bootloader ||
-        a.cfg.boot_to_menu != b.cfg.boot_to_menu ||
-        a.flashcart_loaded != b.flashcart_loaded ||
-        a.input_history.size() != b.input_history.size() ||
-        a.state_history.size() != b.state_history.size() ||
-        a.present_state != b.present_state ||
-        a.present_cycle != b.present_cycle)
+    if(a.core_state.cpu.serial_bytes != b.core_state.cpu.serial_bytes ||
+        a.core_state.cpu.sound_buffer != b.core_state.cpu.sound_buffer ||
+        a.peripherals.fx.sectors.size() != b.peripherals.fx.sectors.size() ||
+        a.profiler_state.total != b.profiler_state.total ||
+        a.profiler_state.total_with_sleep != b.profiler_state.total_with_sleep ||
+        a.profiler_state.prev_frame_cycles != b.profiler_state.prev_frame_cycles ||
+        a.profiler_state.total_frames != b.profiler_state.total_frames ||
+        a.profiler_state.prev_ms_cycles != b.profiler_state.prev_ms_cycles ||
+        a.profiler_state.total_ms != b.profiler_state.total_ms ||
+        a.profiler_state.frame_bytes_total != b.profiler_state.frame_bytes_total ||
+        a.profiler_state.frame_bytes != b.profiler_state.frame_bytes ||
+        a.profiler_state.frame_cpu_usage != b.profiler_state.frame_cpu_usage ||
+        a.profiler_state.ms_cpu_usage_raw != b.profiler_state.ms_cpu_usage_raw ||
+        a.profiler_state.ms_cpu_usage != b.profiler_state.ms_cpu_usage ||
+        a.profiler_state.enabled != b.profiler_state.enabled ||
+        a.profiler_state.cached_total != b.profiler_state.cached_total ||
+        a.profiler_state.cached_total_with_sleep != b.profiler_state.cached_total_with_sleep ||
+        a.profiler_state.num_hotspots != b.profiler_state.num_hotspots ||
+        a.debugger_state.breakpoints != b.debugger_state.breakpoints ||
+        a.debugger_state.breakpoints_rd != b.debugger_state.breakpoints_rd ||
+        a.debugger_state.breakpoints_wr != b.debugger_state.breakpoints_wr ||
+        a.debugger_state.paused != b.debugger_state.paused ||
+        a.program_state.cfg.display_type != b.program_state.cfg.display_type ||
+        a.program_state.cfg.fxport_reg != b.program_state.cfg.fxport_reg ||
+        a.program_state.cfg.fxport_mask != b.program_state.cfg.fxport_mask ||
+        a.program_state.cfg.bootloader != b.program_state.cfg.bootloader ||
+        a.program_state.cfg.boot_to_menu != b.program_state.cfg.boot_to_menu ||
+        a.program_state.flashcart_loaded != b.program_state.flashcart_loaded ||
+        a.debugger_state.input_history.size() != b.debugger_state.input_history.size() ||
+        a.debugger_state.state_history.size() != b.debugger_state.state_history.size() ||
+        a.debugger_state.present_state != b.debugger_state.present_state ||
+        a.debugger_state.present_cycle != b.debugger_state.present_cycle)
     {
         return false;
     }
 
-    if(a.profiler_hotspots_symbol.size() != b.profiler_hotspots_symbol.size())
+    if(a.profiler_state.hotspots_symbol.size() != b.profiler_state.hotspots_symbol.size())
         return false;
 
-    for(size_t i = 0; i < a.profiler_hotspots_symbol.size(); ++i)
+    for(size_t i = 0; i < a.profiler_state.hotspots_symbol.size(); ++i)
     {
-        auto const& x = a.profiler_hotspots_symbol[i];
-        auto const& y = b.profiler_hotspots_symbol[i];
+        auto const& x = a.profiler_state.hotspots_symbol[i];
+        auto const& y = b.profiler_state.hotspots_symbol[i];
         if(x.count != y.count || x.begin != y.begin || x.end != y.end)
             return false;
     }
 
-    for(size_t i = 0; i < a.profiler_hotspots.size(); ++i)
+    for(size_t i = 0; i < a.profiler_state.hotspots.size(); ++i)
     {
-        auto const& x = a.profiler_hotspots[i];
-        auto const& y = b.profiler_hotspots[i];
+        auto const& x = a.profiler_state.hotspots[i];
+        auto const& y = b.profiler_state.hotspots[i];
         if(x.count != y.count || x.begin != y.begin || x.end != y.end)
             return false;
     }
 
-    for(size_t i = 0; i < a.input_history.size(); ++i)
+    for(size_t i = 0; i < a.debugger_state.input_history.size(); ++i)
     {
-        auto const& x = a.input_history[i];
-        auto const& y = b.input_history[i];
+        auto const& x = a.debugger_state.input_history[i];
+        auto const& y = b.debugger_state.input_history[i];
         if(x.cycle != y.cycle || x.pinb != y.pinb || x.pine != y.pine || x.pinf != y.pinf)
             return false;
     }
 
-    for(size_t i = 0; i < a.state_history.size(); ++i)
+    for(size_t i = 0; i < a.debugger_state.state_history.size(); ++i)
     {
-        auto const& x = a.state_history[i];
-        auto const& y = b.state_history[i];
+        auto const& x = a.debugger_state.state_history[i];
+        auto const& y = b.debugger_state.state_history[i];
         if(x.cycle != y.cycle || x.state != y.state)
             return false;
     }
 
-    for(size_t i = 0; i < a.fx.sectors.size(); ++i)
+    for(size_t i = 0; i < a.peripherals.fx.sectors.size(); ++i)
     {
-        bool ahas = (bool)a.fx.sectors[i];
-        bool bhas = (bool)b.fx.sectors[i];
+        bool ahas = (bool)a.peripherals.fx.sectors[i];
+        bool bhas = (bool)b.peripherals.fx.sectors[i];
         if(ahas != bhas) return false;
-        if(ahas && !same_fx_sector(*a.fx.sectors[i], *b.fx.sectors[i]))
+        if(ahas && !same_fx_sector(*a.peripherals.fx.sectors[i], *b.peripherals.fx.sectors[i]))
             return false;
     }
 
     return true;
+}
+
+static bool legacy_aliases_point_at_grouped_state(absim::arduboy_t const& a)
+{
+    return &a.cpu == &a.core_state.cpu &&
+        &a.display == &a.peripherals.display &&
+        &a.fx == &a.peripherals.fx &&
+        &a.prev_display_reset == &a.peripherals.prev_display_reset &&
+        &a.fxport_reg == &a.peripherals.fxport_reg &&
+        &a.fxport_mask == &a.peripherals.fxport_mask &&
+        &a.game_hash == &a.program_state.game_hash &&
+        &a.title == &a.program_state.title &&
+        &a.prog_filename == &a.program_state.prog_filename &&
+        &a.profiler_counts == &a.profiler_state.counts &&
+        &a.profiler_hotspots == &a.profiler_state.hotspots &&
+        &a.breakpoints == &a.debugger_state.breakpoints &&
+        &a.paused == &a.debugger_state.paused &&
+        &a.savedata == &a.save_data_state.savedata &&
+        &a.input_history == &a.debugger_state.input_history &&
+        &a.cfg == &a.program_state.cfg &&
+        &a.flashcart_loaded == &a.program_state.flashcart_loaded;
+}
+
+static int grouped_state_alias_test()
+{
+    auto a = std::make_unique<absim::arduboy_t>();
+    bool pass = legacy_aliases_point_at_grouped_state(*a);
+    printf("   %-30s : %s\n", "grouped state aliases", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
 }
 
 static int savestate_snapshot_test()
@@ -709,6 +738,9 @@ int main(int argc, char** argv)
     int r = 0;
     arduboy = std::make_unique<absim::arduboy_t>();
     arduboy->display.enable_filter = true;
+
+    printf("\nState layout tests...\n");
+    r |= grouped_state_alias_test();
 
     printf("\nSnapshot tests...\n");
     r |= savestate_snapshot_test();

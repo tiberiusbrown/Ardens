@@ -7,8 +7,6 @@
 
 #include <fmt/format.h>
 
-extern int disassembly_scroll_addr;
-
 static void window_call_stack_contents()
 {
 	using namespace ImGui;

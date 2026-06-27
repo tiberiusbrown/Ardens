@@ -1179,109 +1179,203 @@ struct arduboy_config_t
     bool boot_to_menu = false;
 };
 
-struct arduboy_t
+static constexpr size_t ARDUBOY_NUM_INSTRS =
+    atmega32u4_t::PROG_SIZE_BYTES / 2;
+
+struct arduboy_profiler_hotspot_t
 {
-    atmega32u4_t cpu;
-    display_t display;
-    w25q128_t fx;
+    uint64_t count{};
+    uint16_t begin{}, end{};
+    template <class A> void serialize(A& a) { a(count, begin, end); }
+};
 
-    bool prev_display_reset;
+struct arduboy_debugger_input_t
+{
+    uint64_t cycle{};
+    uint8_t pinb{}, pine{}, pinf{};
+    bool operator<(arduboy_debugger_input_t const& other) const
+    {
+        return cycle < other.cycle;
+    }
+    template <class A> void serialize(A& a) { a(cycle, pinb, pine, pinf); }
+};
 
-    uint8_t fxport_reg;
-    uint8_t fxport_mask;
+struct arduboy_debugger_tt_state_t
+{
+    uint64_t cycle{};
+    std::vector<uint8_t> state;
+    template <class A> void serialize(A& a) { a(cycle, state); }
+};
 
-    uint64_t game_hash;
-    void update_game_hash();
+struct arduboy_core_state_t
+{
+    atmega32u4_t cpu{};
+    uint64_t ps_rem{};
+};
 
+struct arduboy_peripherals_t
+{
+    display_t display{};
+    w25q128_t fx{};
+    bool prev_display_reset{};
+    uint8_t fxport_reg = 0x2b;
+    uint8_t fxport_mask = 1 << 1;
+};
+
+struct arduboy_program_state_t
+{
+    uint64_t game_hash{};
     std::string title;
     std::string device_type;
     std::string prog_filename;
     std::vector<uint8_t> prog_filedata;
-    
     std::vector<uint8_t> fxdata;
     std::vector<uint8_t> fxsave;
-    void reload_fx();
-
     std::unique_ptr<elf_data_t> elf;
-    elf_data_symbol_t const* symbol_for_prog_addr(uint16_t addr);
-    elf_data_symbol_t const* symbol_for_data_addr(uint16_t addr);
+    arduboy_config_t cfg;
+    bool flashcart_loaded{};
+};
 
-    static constexpr size_t NUM_INSTRS = atmega32u4_t::PROG_SIZE_BYTES / 2;
-
-    std::array<uint64_t, NUM_INSTRS> profiler_counts;
-    uint64_t profiler_total;
-    uint64_t profiler_total_with_sleep;
+struct arduboy_profiler_state_t
+{
+    std::array<uint64_t, ARDUBOY_NUM_INSTRS> counts{};
+    uint64_t total{};
+    uint64_t total_with_sleep{};
 
     // counts for previous frame
-    uint64_t prev_profiler_total;
-    uint64_t prev_profiler_total_with_sleep;
-    uint64_t prev_frame_cycles;
-    uint32_t total_frames;
-    uint32_t total_ms;
-    uint32_t frame_bytes_total;
-    uint32_t frame_bytes;
+    uint64_t prev_total{};
+    uint64_t prev_total_with_sleep{};
+    uint64_t prev_frame_cycles{};
+    uint32_t total_frames{};
+    uint32_t total_ms{};
+    uint32_t frame_bytes_total{};
+    uint32_t frame_bytes{};
     std::vector<float> frame_cpu_usage;
 
     // time-based cpu usage
     std::vector<float> ms_cpu_usage_raw;
     std::vector<float> ms_cpu_usage;
-    uint64_t prev_profiler_total_ms;
-    uint64_t prev_profiler_total_with_sleep_ms;
-    uint64_t prev_ms_cycles;
+    uint64_t prev_total_ms{};
+    uint64_t prev_total_with_sleep_ms{};
+    uint64_t prev_ms_cycles{};
 
-    bool profiler_enabled;
+    bool enabled{};
     
-    uint64_t cached_profiler_total;
-    uint64_t cached_profiler_total_with_sleep;
-    struct hotspot_t
-    {
-        uint64_t count;
-        uint16_t begin, end;
-        template <class A> void serialize(A& a) { a(count, begin, end); }
-    };
-    std::array<hotspot_t, NUM_INSTRS> profiler_hotspots;
-    uint32_t num_hotspots;
-    std::vector<hotspot_t> profiler_hotspots_symbol;
+    uint64_t cached_total{};
+    uint64_t cached_total_with_sleep{};
+    std::array<arduboy_profiler_hotspot_t, ARDUBOY_NUM_INSTRS> hotspots{};
+    uint32_t num_hotspots{};
+    std::vector<arduboy_profiler_hotspot_t> hotspots_symbol;
+};
+
+struct arduboy_debugger_state_t
+{
+    // breakpoints
+    std::bitset<ARDUBOY_NUM_INSTRS> breakpoints;
+    std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_rd;
+    std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_wr;
+    bool allow_nonstep_breakpoints{};
+    uint32_t break_step = 0xffffffff;
+
+    // paused at breakpoint
+    bool paused{};
+
+    // time-travel debugging info
+    std::vector<arduboy_debugger_input_t> input_history;
+    std::vector<arduboy_debugger_tt_state_t> state_history;
+    std::vector<uint8_t> present_state;
+    uint64_t present_cycle{};
+};
+
+struct arduboy_save_data_state_t
+{
+    savedata_t savedata;
+    bool dirty{};
+};
+
+struct arduboy_t
+{
+    static constexpr size_t NUM_INSTRS = ARDUBOY_NUM_INSTRS;
+    using hotspot_t = arduboy_profiler_hotspot_t;
+    using inputs_t = arduboy_debugger_input_t;
+    using tt_state_t = arduboy_debugger_tt_state_t;
+
+    arduboy_core_state_t core_state;
+    arduboy_peripherals_t peripherals;
+    arduboy_program_state_t program_state;
+    arduboy_profiler_state_t profiler_state;
+    arduboy_debugger_state_t debugger_state;
+    arduboy_save_data_state_t save_data_state;
+
+    atmega32u4_t& cpu;
+    display_t& display;
+    w25q128_t& fx;
+    bool& prev_display_reset;
+    uint8_t& fxport_reg;
+    uint8_t& fxport_mask;
+    uint64_t& game_hash;
+    std::string& title;
+    std::string& device_type;
+    std::string& prog_filename;
+    std::vector<uint8_t>& prog_filedata;
+    std::vector<uint8_t>& fxdata;
+    std::vector<uint8_t>& fxsave;
+    std::unique_ptr<elf_data_t>& elf;
+    std::array<uint64_t, NUM_INSTRS>& profiler_counts;
+    uint64_t& profiler_total;
+    uint64_t& profiler_total_with_sleep;
+    uint64_t& prev_profiler_total;
+    uint64_t& prev_profiler_total_with_sleep;
+    uint64_t& prev_frame_cycles;
+    uint32_t& total_frames;
+    uint32_t& total_ms;
+    uint32_t& frame_bytes_total;
+    uint32_t& frame_bytes;
+    std::vector<float>& frame_cpu_usage;
+    std::vector<float>& ms_cpu_usage_raw;
+    std::vector<float>& ms_cpu_usage;
+    uint64_t& prev_profiler_total_ms;
+    uint64_t& prev_profiler_total_with_sleep_ms;
+    uint64_t& prev_ms_cycles;
+    bool& profiler_enabled;
+    uint64_t& cached_profiler_total;
+    uint64_t& cached_profiler_total_with_sleep;
+    std::array<hotspot_t, NUM_INSTRS>& profiler_hotspots;
+    uint32_t& num_hotspots;
+    std::vector<hotspot_t>& profiler_hotspots_symbol;
+    std::bitset<NUM_INSTRS>& breakpoints;
+    std::bitset<atmega32u4_t::DATA_SIZE_BYTES>& breakpoints_rd;
+    std::bitset<atmega32u4_t::DATA_SIZE_BYTES>& breakpoints_wr;
+    bool& allow_nonstep_breakpoints;
+    uint32_t& break_step;
+    uint64_t& ps_rem;
+    bool& paused;
+    savedata_t& savedata;
+    bool& savedata_dirty;
+    std::vector<inputs_t>& input_history;
+    std::vector<tt_state_t>& state_history;
+    std::vector<uint8_t>& present_state;
+    uint64_t& present_cycle;
+    arduboy_config_t& cfg;
+    bool& flashcart_loaded;
+
+    arduboy_t();
+    arduboy_t(arduboy_t const&) = delete;
+    arduboy_t& operator=(arduboy_t const&) = delete;
+    arduboy_t(arduboy_t&&) = delete;
+    arduboy_t& operator=(arduboy_t&&) = delete;
+
+    void update_game_hash();
+    void reload_fx();
+    elf_data_symbol_t const* symbol_for_prog_addr(uint16_t addr);
+    elf_data_symbol_t const* symbol_for_data_addr(uint16_t addr);
 
     void profiler_build_hotspots();
     void profiler_reset();
 
-    // breakpoints
-    std::bitset<NUM_INSTRS> breakpoints;
-    std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_rd;
-    std::bitset<atmega32u4_t::DATA_SIZE_BYTES> breakpoints_wr;
-    bool allow_nonstep_breakpoints;
-    uint32_t break_step;
-
-    uint64_t ps_rem;
-
-    // paused at breakpoint
-    bool paused;
-
-    // saved data
-    savedata_t savedata;
-    bool savedata_dirty;
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
-    // time-travel debugging info
-    struct inputs_t
-    {
-        uint64_t cycle;
-        uint8_t pinb, pine, pinf;
-        bool operator<(inputs_t const& other) { return cycle < other.cycle; }
-        template <class A> void serialize(A& a) { a(cycle, pinb, pine, pinf); }
-    };
-    std::vector<inputs_t> input_history;
-    struct tt_state_t
-    {
-        uint64_t cycle;
-        std::vector<uint8_t> state;
-        template <class A> void serialize(A& a) { a(cycle, state); }
-    };
-    std::vector<tt_state_t> state_history;
-    std::vector<uint8_t> present_state;
-    uint64_t present_cycle;
     static constexpr uint64_t STATE_HISTORY_CYCLES = 0x100000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_MS = 60000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_CYCLES =
@@ -1299,8 +1393,6 @@ struct arduboy_t
     void travel_continue();
     bool is_present_state();
 
-    arduboy_config_t cfg;
-    bool flashcart_loaded;
     void reset();
 
     // advance at least one cycle (returns how many cycles were advanced)

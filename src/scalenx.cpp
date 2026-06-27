@@ -8,8 +8,6 @@
 // used for scale4x first stage
 static uint8_t tmpbuf[128 * 64 * 2 * 2];
 
-int display_texture_zoom = -1;
-
 // palette handling
 void palette_rgba(int palette, uint8_t x, uint8_t y[4])
 {

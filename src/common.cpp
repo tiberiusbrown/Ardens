@@ -70,42 +70,36 @@ void process_sound_samples() {}
 extern unsigned char const ProggyVector[198188];
 #endif
 
-std::filesystem::path userpath;
+app_state_t app;
+platform_services_t platform_services;
 
-texture_t display_texture{};
-texture_t display_buffer_texture{};
-absim::arduboy_t arduboy;
-
-int profiler_selected_hotspot = -1;
-int disassembly_scroll_addr = -1;
-bool scroll_addr_to_top = false;
-int simulation_slowdown = 1000;
-int fx_data_scroll_addr = -1;
-
-int display_buffer_addr = -1;
-int display_buffer_w = 128;
-int display_buffer_h = 64;
+absim::arduboy_t& arduboy = app.emulator;
+int& display_texture_zoom = app.display_texture_zoom;
+texture_t& display_texture = app.display_texture;
+texture_t& display_buffer_texture = app.display_buffer_texture;
+std::string& dropfile_err = app.dropfile_err;
+bool& loading_indicator = app.loading_indicator;
+uint64_t& ms_since_start = app.ms_since_start;
+std::filesystem::path& userpath = app.userpath;
+bool& first_touch = app.first_touch;
+bool& always_touch = app.always_touch;
+uint64_t& ms_since_touch = app.ms_since_touch;
+std::unordered_map<uint64_t, touch_point_t>& touch_points = app.touch_points;
+float& pixel_ratio = app.pixel_ratio;
+bool& done = app.done;
+bool& layout_done = app.layout_done;
+bool& settings_loaded = app.settings_loaded;
+bool& fs_ready = app.fs_ready;
+int& profiler_selected_hotspot = app.profiler_selected_hotspot;
+int& disassembly_scroll_addr = app.disassembly_scroll_addr;
+bool& scroll_addr_to_top = app.scroll_addr_to_top;
+int& simulation_slowdown = app.simulation_slowdown;
+int& fx_data_scroll_addr = app.fx_data_scroll_addr;
+int& display_buffer_addr = app.display_buffer_addr;
+int& display_buffer_w = app.display_buffer_w;
+int& display_buffer_h = app.display_buffer_h;
 
 static ImGuiStyle default_style;
-
-float pixel_ratio = 1.f;
-std::string dropfile_err;
-bool loading_indicator = false;
-uint64_t ms_since_start;
-
-uint64_t ms_since_touch;
-bool first_touch = false;
-bool always_touch = false;
-std::unordered_map<uint64_t, touch_point_t> touch_points;
-
-bool done = false;
-bool layout_done = false;
-bool settings_loaded = false;
-#ifdef __EMSCRIPTEN__
-bool fs_ready = false;
-#else
-bool fs_ready = true;
-#endif
 
 #if defined(ARDENS_FLASHCART)
 static uint8_t FLASHCART_BUFFER[8 * 1024 * 1024];
@@ -147,7 +141,6 @@ void file_download(
 }
 #endif
 
-#ifndef ARDENS_PLATFORM_SDL
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -155,7 +148,8 @@ void file_download(
 #include <windows.h>
 #include <shellapi.h>
 #endif
-void platform_open_url(char const *url)
+
+static void default_platform_open_url(char const *url)
 {
 #ifdef __EMSCRIPTEN__
     EM_ASM(
@@ -172,7 +166,101 @@ void platform_open_url(char const *url)
     (void)system(fmt::format("xdg-open {}", url).c_str());
 #endif
 }
-#endif
+
+void platform_destroy_texture(texture_t t)
+{
+    if(platform_services.destroy_texture)
+        platform_services.destroy_texture(t);
+}
+
+texture_t platform_create_texture(int w, int h)
+{
+    return platform_services.create_texture ?
+        platform_services.create_texture(w, h) :
+        nullptr;
+}
+
+void platform_update_texture(texture_t t, void const* data, size_t n)
+{
+    if(platform_services.update_texture)
+        platform_services.update_texture(t, data, n);
+}
+
+void platform_texture_scale_linear(texture_t t)
+{
+    if(platform_services.texture_scale_linear)
+        platform_services.texture_scale_linear(t);
+}
+
+void platform_texture_scale_nearest(texture_t t)
+{
+    if(platform_services.texture_scale_nearest)
+        platform_services.texture_scale_nearest(t);
+}
+
+void platform_set_clipboard_text(char const* str)
+{
+    if(platform_services.set_clipboard_text)
+        platform_services.set_clipboard_text(str);
+}
+
+void platform_send_sound()
+{
+    if(platform_services.send_sound)
+        platform_services.send_sound();
+}
+
+uint64_t platform_get_ms_dt()
+{
+    return platform_services.get_ms_dt ?
+        platform_services.get_ms_dt() :
+        0;
+}
+
+float platform_pixel_ratio()
+{
+    return platform_services.pixel_ratio ?
+        platform_services.pixel_ratio() :
+        1.f;
+}
+
+void platform_destroy_fonts_texture()
+{
+    if(platform_services.destroy_fonts_texture)
+        platform_services.destroy_fonts_texture();
+}
+
+void platform_create_fonts_texture()
+{
+    if(platform_services.create_fonts_texture)
+        platform_services.create_fonts_texture();
+}
+
+void platform_open_url(char const* url)
+{
+    if(platform_services.open_url)
+        platform_services.open_url(url);
+    else
+        default_platform_open_url(url);
+}
+
+void platform_toggle_fullscreen()
+{
+    if(platform_services.toggle_fullscreen)
+        platform_services.toggle_fullscreen();
+}
+
+void platform_quit()
+{
+    if(platform_services.quit)
+        platform_services.quit();
+}
+
+void platform_set_title(char const* title)
+{
+    if(platform_services.set_title)
+        platform_services.set_title(title);
+}
 
 extern "C" int load_file(
     char const* param, char const* filename, uint8_t const* data, size_t size)
