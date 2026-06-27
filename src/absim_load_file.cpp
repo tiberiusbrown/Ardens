@@ -1095,7 +1095,7 @@ static bool check_for_fx_usage_in_prog_helper(arduboy_t& a, uint8_t fxport, uint
         // check for BOTH cbi/sbi %[fxport], %[fxbit]
         {
             auto const& di = p[i];
-            if(di.dst == fxport && di.src != fxbit)
+            if(di.dst == fxport && di.src == fxbit)
             {
                 if(di.func == INSTR_CBI) found_cbi = true;
                 if(di.func == INSTR_SBI) found_sbi = true;
