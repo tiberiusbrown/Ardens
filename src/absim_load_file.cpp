@@ -101,6 +101,68 @@ static int get_hex_byte(std::istream& f)
     return lo + hi * 16;
 }
 
+struct hex_record_t
+{
+    uint8_t count = 0;
+    uint16_t address = 0;
+    uint8_t type = 0;
+    std::vector<uint8_t> data;
+};
+
+static bool find_next_hex_record(std::istream& f)
+{
+    while(!f.eof())
+    {
+        if(f.get() == ':')
+            return true;
+    }
+    return false;
+}
+
+static std::string read_hex_record(std::istream& f, hex_record_t& record)
+{
+    uint8_t checksum = 0;
+
+    int count = get_hex_byte(f);
+    if(count < 0)
+        return "HEX bad byte count";
+    checksum += (uint8_t)count;
+
+    int addr_hi = get_hex_byte(f);
+    int addr_lo = get_hex_byte(f);
+    if(addr_hi < 0 || addr_lo < 0)
+        return "HEX: bad address";
+    checksum += (uint8_t)addr_hi;
+    checksum += (uint8_t)addr_lo;
+
+    int type = get_hex_byte(f);
+    if(type < 0 || type > 5)
+        return "HEX: bad type";
+    checksum += (uint8_t)type;
+
+    record.count = (uint8_t)count;
+    record.address = (uint16_t)(((uint16_t)addr_hi << 8) | (uint16_t)addr_lo);
+    record.type = (uint8_t)type;
+    record.data.clear();
+    record.data.reserve(record.count);
+
+    for(uint8_t i = 0; i < record.count; ++i)
+    {
+        int data = get_hex_byte(f);
+        if(data < 0)
+            return "HEX: bad data";
+        checksum += (uint8_t)data;
+        record.data.push_back((uint8_t)data);
+    }
+
+    checksum = uint8_t(-checksum);
+    int check = get_hex_byte(f);
+    if(checksum != check)
+        return "HEX: bad checksum";
+
+    return "";
+}
+
 static void find_stack_check_data(atmega32u4_t& cpu, uint16_t n)
 {
     if(n + 11u >= cpu.decoded_prog.size()) return;
@@ -207,80 +269,53 @@ static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = fal
     uint32_t addr_upper = 0;
     uint32_t num_records = 0;
 
-    while(!f.eof())
+    while(find_next_hex_record(f))
     {
-        while(!f.eof() && f.get() != ':')
-            ;
-        if(f.eof())
-            break;
-        uint8_t checksum = 0;
-        int count = get_hex_byte(f);
         ++num_records;
-        if(count < 0)
-            return "HEX bad byte count";
-        checksum += (uint8_t)count;
-        uint32_t addr_hi = (uint32_t)get_hex_byte(f);
-        uint32_t addr_lo = (uint32_t)get_hex_byte(f);
-        if(addr_lo < 0 || addr_hi < 0)
-            return "HEX: bad address";
-        checksum += (uint8_t)addr_lo;
-        checksum += (uint8_t)addr_hi;
-        uint32_t addr = addr_lo + addr_hi * 256;
-        addr += (addr_upper << 16);
-        int type = get_hex_byte(f);
-        checksum += (uint8_t)type;
-        if(type < 0 || type > 5)
-            return "HEX: bad type";
-        if(type == 0)
+
+        hex_record_t record;
+        std::string err = read_hex_record(f, record);
+        if(!err.empty())
+            return err;
+
+        uint32_t addr = record.address + (addr_upper << 16);
+        if(record.type == 0)
         {
-            for(int i = 0; i < count; ++i)
+            for(size_t i = 0; i < record.data.size(); ++i)
             {
-                int data = get_hex_byte(f);
-                if(data < 0)
-                    return "HEX: bad data";
-                checksum += (uint8_t)data;
                 if(addr >= 0x800000)
                     continue;
-                if(addr + i >= cpu.prog.size())
+                uint32_t write_addr = addr + (uint32_t)i;
+                if(write_addr >= cpu.prog.size())
                     return "Too many instructions!";
-                if(!bootloader && addr + i > cpu.last_addr)
-                    cpu.last_addr = addr + i;
-                cpu.prog[addr + i] = (uint8_t)data;
+                if(!bootloader && write_addr > cpu.last_addr)
+                    cpu.last_addr = (uint16_t)write_addr;
+                cpu.prog[write_addr] = record.data[i];
             }
         }
-        else if(type == 1)
+        else if(record.type == 1)
         {
-            if(count != 0)
+            if(record.count != 0)
                 return "HEX: non-zero byte count at end-of-file record";
             break;
         }
-        else if(type == 4)
+        else if(record.type == 4)
         {
             addr_upper = 0;
-            for(int i = 0; i < count; ++i)
+            for(uint8_t data : record.data)
             {
-                int data = get_hex_byte(f);
-                if(data < 0)
-                    return "HEX: bad data";
-                checksum += (uint8_t)data;
                 addr_upper <<= 8;
-                addr_upper |= (uint32_t)data;
+                addr_upper |= data;
             }
         }
-        else if(type == 3)
+        else if(record.type == 3)
         {
             // ignore
-            for(int i = 0; i < count; ++i)
-                checksum += (uint8_t)get_hex_byte(f);
         }
         else
         {
             return "HEX: unsupported type";
         }
-        checksum = uint8_t(-checksum);
-        int check = get_hex_byte(f);
-        if(checksum != check)
-            return "HEX: bad checksum";
     }
 
     if(num_records == 0)

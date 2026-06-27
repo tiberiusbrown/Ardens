@@ -128,6 +128,46 @@ static std::string load_rom(absim::arduboy_t& a, char const* dir, char const* ga
     return a.load_file(game, f);
 }
 
+static int hex_malformed_input_test()
+{
+    struct test_case_t
+    {
+        char const* name;
+        char const* hex;
+        char const* error;
+    };
+
+    test_case_t const cases[] =
+    {
+        { "bad byte count", ":GG000001FF", "HEX bad byte count" },
+        { "bad address high byte", ":00GG0001FF", "HEX: bad address" },
+        { "bad address low byte", ":0000GG01FF", "HEX: bad address" },
+        { "bad type", ":000000GGFF", "HEX: bad type" },
+        { "bad data", ":01000000G0", "HEX: bad data" },
+        { "bad ignored-record data", ":040000030102GG04", "HEX: bad data" },
+        { "bad checksum", ":00000001FE", "HEX: bad checksum" },
+        {
+            "non-zero EOF byte count",
+            ":0100000100FE",
+            "HEX: non-zero byte count at end-of-file record"
+        },
+        { "unsupported type", ":00000002FE", "HEX: unsupported type" },
+    };
+
+    int r = 0;
+    for(auto const& c : cases)
+    {
+        auto a = std::make_unique<absim::arduboy_t>();
+        std::stringstream f(c.hex);
+        auto err = a->load_file("malformed.hex", f);
+        bool pass = (err == c.error);
+        if(!pass)
+            r = 1;
+        printf("   %-30s : %s\n", c.name, pass ? "PASS" : "FAIL");
+    }
+    return r;
+}
+
 static std::string save_savestate_bytes(absim::arduboy_t& a)
 {
     std::ostringstream ss;
@@ -680,6 +720,9 @@ int main(int argc, char** argv)
     r |= test("instructions");
     r |= test("signature");
     r |= test("timer_tcnt_write");
+
+    printf("\nHEX parser tests...\n");
+    r |= hex_malformed_input_test();
 
     printf("\nImage tests...\n");
     r |= image_test("arduchess", "arduchess.hex");
