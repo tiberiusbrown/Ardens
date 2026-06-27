@@ -1054,10 +1054,57 @@ static std::string load_arduboy(arduboy_t& a, std::string const& fname)
 }
 #endif
 
-static bool ends_with(std::string const& str, std::string const& end)
+enum class load_file_type_t
 {
-    if(str.size() < end.size()) return false;
-    return str.substr(str.size() - end.size()) == end;
+    UNKNOWN,
+    SAVE,
+    HEX,
+    BIN,
+    ELF,
+    ARDUBOY,
+    SNAPSHOT,
+};
+
+static std::string strip_url_query(std::string const& filename)
+{
+    auto query = filename.find_first_of("?#");
+    return query == std::string::npos ? filename : filename.substr(0, query);
+}
+
+static std::string lowercase_ascii(std::string str)
+{
+    for(char& c : str)
+        if(c >= 'A' && c <= 'Z')
+            c += 'a' - 'A';
+    return str;
+}
+
+static std::string file_extension(std::string const& filename)
+{
+    auto without_query = strip_url_query(filename);
+    auto slash = without_query.find_last_of("/\\");
+    auto dot = without_query.find_last_of('.');
+    if(dot == std::string::npos || (slash != std::string::npos && dot < slash))
+        return "";
+    return lowercase_ascii(without_query.substr(dot));
+}
+
+static load_file_type_t detect_load_file_type(std::string const& filename)
+{
+    auto ext = file_extension(filename);
+    if(ext == ".save") return load_file_type_t::SAVE;
+    if(ext == ".hex") return load_file_type_t::HEX;
+    if(ext == ".bin") return load_file_type_t::BIN;
+#ifdef ARDENS_LLVM
+    if(ext == ".elf") return load_file_type_t::ELF;
+#endif
+#ifndef ARDENS_NO_ARDUBOY_FILE
+    if(ext == ".arduboy") return load_file_type_t::ARDUBOY;
+#endif
+#ifndef ARDENS_NO_SNAPSHOTS
+    if(ext == ".snapshot") return load_file_type_t::SNAPSHOT;
+#endif
+    return load_file_type_t::UNKNOWN;
 }
 
 // returns true if fx usage detected
@@ -1201,9 +1248,11 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
 
     std::string fname(filename);
     std::string r;
+    auto type = detect_load_file_type(fname);
 
-    if(ends_with(fname, ".save"))
+    switch(type)
     {
+    case load_file_type_t::SAVE:
         if(cpu.decoded)
         {
             reset();
@@ -1211,10 +1260,8 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
                 savedata_dirty = true;
         }
         return "";
-    }
 
-    if(ends_with(fname, ".hex"))
-    {
+    case load_file_type_t::HEX:
         flashcart_loaded = false;
         reset();
         elf.reset();
@@ -1226,10 +1273,9 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
             cpu.program_loaded = true;
         }
         reset();
-    }
+        break;
 
-    if(ends_with(fname, ".bin"))
-    {
+    case load_file_type_t::BIN:
         reset();
         r = load_bin(*this, f, save);
         reload_fx();
@@ -1246,11 +1292,9 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
             reset();
         }
         return r;
-    }
 
 #ifdef ARDENS_LLVM
-    if(ends_with(fname, ".elf"))
-    {
+    case load_file_type_t::ELF:
         flashcart_loaded = false;
         reset();
         device_type.clear();
@@ -1261,12 +1305,11 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
             cpu.program_loaded = true;
         }
         reset();
-}
+        break;
 #endif
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
-    if(ends_with(fname, ".arduboy"))
-    {
+    case load_file_type_t::ARDUBOY:
         flashcart_loaded = false;
         reset();
         elf.reset();
@@ -1276,16 +1319,19 @@ std::string arduboy_t::load_file(char const* filename, std::istream& f, bool sav
         if(r.empty())
             cpu.program_loaded = true;
         reset();
-    }
+        break;
 #endif
 
 #ifndef ARDENS_NO_SNAPSHOTS
-    if(ends_with(fname, ".snapshot"))
-    {
+    case load_file_type_t::SNAPSHOT:
         r = load_snapshot(f);
-    }
-    else
+        return r;
 #endif
+
+    case load_file_type_t::UNKNOWN:
+        return "Unsupported file type";
+    }
+
     if(r.empty())
     {
         f.clear();
