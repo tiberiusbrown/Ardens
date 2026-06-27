@@ -220,13 +220,13 @@ static void main_loop()
     do
     {
         int count = 0;
-        auto* j = SDL_GetGamepads(&count);
-        if(!j) break;
+        auto* gamepads = SDL_GetGamepads(&count);
+        if(!gamepads) break;
         auto& io = ImGui::GetIO();
         for(int i = 0; i < count; ++i)
         {
-            if(!SDL_IsGamepad(j[i])) continue;
-            auto* g = SDL_OpenGamepad(j[i]);
+            if(!SDL_IsGamepad(gamepads[i])) continue;
+            auto* g = SDL_OpenGamepad(gamepads[i]);
             if(!g) continue;
             io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_SOUTH     ) != 0);
             io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_EAST      ) != 0);
@@ -234,8 +234,10 @@ static void main_loop()
             io.AddKeyEvent(ImGuiKey_DownArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_DOWN ) != 0);
             io.AddKeyEvent(ImGuiKey_LeftArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_LEFT ) != 0);
             io.AddKeyEvent(ImGuiKey_RightArrow, SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) != 0);
+            SDL_CloseGamepad(g);
             break;
         }
+        SDL_free(gamepads);
     } while(0);
 
     ImGui::NewFrame();
