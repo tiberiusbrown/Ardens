@@ -13,13 +13,13 @@ void view_debugger()
 {
     const bool enableDocking = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable;
     ImGuiID dockspace_id = ImGui::GetID("DockSpace");
-    if(fs_ready && enableDocking)
+    if(app.fs_ready && enableDocking)
     {
 #ifdef __EMSCRIPTEN__
-        if(!settings_loaded)
+        if(!app.settings_loaded)
         {
             ImGui::LoadIniSettingsFromDisk("/offline/imgui.ini");
-            settings_loaded = true;
+            app.settings_loaded = true;
         }
         if(ImGui::GetIO().WantSaveIniSettings)
         {
@@ -53,15 +53,15 @@ void view_debugger()
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, nullptr);
         ImGui::End();
 
-        if(!dockspace_created && !layout_done)
+        if(!dockspace_created && !app.layout_done)
         {
             // default docked layout is just display
             ImGui::DockBuilderDockWindow("Display", dockspace_id);
         }
-        layout_done = true;
+        app.layout_done = true;
     }
 
-    if(layout_done)
+    if(app.layout_done)
     {
         bool do_settings_modal = false;
         bool do_about_modal = false;
@@ -121,7 +121,7 @@ void view_debugger()
                     settings.fullzoom = !settings.fullzoom;
                     update_settings();
                 }
-                if(!arduboy.cpu.decoded) ImGui::BeginDisabled();
+                if(!app.emulator.core_state.cpu.decoded) ImGui::BeginDisabled();
                 if(ImGui::MenuItem("Take PNG Screenshot", "F2"))
                     save_screenshot();
                 if(ImGui::MenuItem("Toggle GIF Recording", "F3"))
@@ -130,16 +130,16 @@ void view_debugger()
                 if(ImGui::MenuItem("Take Snapshot", "F4"))
                     take_snapshot();
 #endif
-                if(!arduboy.cpu.decoded) ImGui::EndDisabled();
+                if(!app.emulator.core_state.cpu.decoded) ImGui::EndDisabled();
                 ImGui::EndMenu();
             }
 
-            if(arduboy.paused)
+            if(app.emulator.debugger_state.paused)
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 255, 255));
                 float w = ImGui::CalcTextSize("PAUSED").x;
                 if(ImGui::Selectable("PAUSED##paused", false, 0, { w, 0.f }))
-                    arduboy.paused = false;
+                    app.emulator.debugger_state.paused = false;
                 ImGui::PopStyleColor();
             }
 
@@ -181,7 +181,7 @@ void view_debugger()
         if(do_about_modal)
             ImGui::OpenPopup("About");
 
-        if(arduboy.cpu.decoded)
+        if(app.emulator.core_state.cpu.decoded)
         {
             window_display(settings.open_display);
             window_display_buffer(settings.open_display_buffer);

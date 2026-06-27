@@ -252,7 +252,7 @@ static void find_stack_check(atmega32u4_t& cpu)
 
 static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = false)
 {
-    auto& cpu = a.cpu;
+    auto& cpu = a.core_state.cpu;
     if(!bootloader)
     {
         memset(&cpu.prog, 0, atmega32u4_t::PROGRAM_FLASH_BYTES);
@@ -261,9 +261,9 @@ static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = fal
         memset(&cpu.eeprom, 0xff, sizeof(cpu.eeprom));
         cpu.eeprom_modified = false;
 
-        a.breakpoints.reset();
-        a.breakpoints_rd.reset();
-        a.breakpoints_wr.reset();
+        a.debugger_state.breakpoints.reset();
+        a.debugger_state.breakpoints_rd.reset();
+        a.debugger_state.breakpoints_wr.reset();
     }
 
     uint32_t addr_upper = 0;
@@ -482,8 +482,8 @@ static void load_elf_debug_recurse_globals(
         g.addr -= 0x800000;
     else
         g.text = true;
-    if(g.text && g.addr >= a.cpu.prog.size()) return;
-    if(!g.text && g.addr >= a.cpu.data.size()) return;
+    if(g.text && g.addr >= a.core_state.cpu.prog.size()) return;
+    if(!g.text && g.addr >= a.core_state.cpu.data.size()) return;
     elf.globals[sname] = g;
 }
 
@@ -494,7 +494,7 @@ static void load_elf_debug(
 {
     using namespace llvm;
 
-    auto& cpu = a.cpu;
+    auto& cpu = a.core_state.cpu;
 
 #if 0
     // get frame unwind info
@@ -665,14 +665,14 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
 {
     using namespace llvm;
 
-    a.elf.reset();
-    auto& cpu = a.cpu;
+    a.program_state.elf.reset();
+    auto& cpu = a.core_state.cpu;
     memset(&cpu.prog, 0, sizeof(cpu.prog));
     memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
     memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
-    memset(&a.breakpoints, 0, sizeof(a.breakpoints));
-    memset(&a.breakpoints_rd, 0, sizeof(a.breakpoints_rd));
-    memset(&a.breakpoints_wr, 0, sizeof(a.breakpoints_wr));
+    memset(&a.debugger_state.breakpoints, 0, sizeof(a.debugger_state.breakpoints));
+    memset(&a.debugger_state.breakpoints_rd, 0, sizeof(a.debugger_state.breakpoints_rd));
+    memset(&a.debugger_state.breakpoints_wr, 0, sizeof(a.debugger_state.breakpoints_wr));
     bool found_text = false;
 
     auto elf_ptr = std::make_unique<elf_data_t>();
@@ -865,7 +865,7 @@ static std::string load_elf(arduboy_t& a, std::istream& f, std::string const& fn
 
     elf.obj.swap(bin_or_err.get());
     elf.dwarf_ctx.swap(dwarf_ctx);
-    a.elf.swap(elf_ptr);
+    a.program_state.elf.swap(elf_ptr);
 
     return "";
 }
@@ -888,15 +888,15 @@ static bool fx_payload_too_large(size_t fxdata_size, size_t fxsave_size)
 
 static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
 {
-    auto& d = save ? a.fxsave : a.fxdata;
+    auto& d = save ? a.program_state.fxsave : a.program_state.fxdata;
     d = std::vector<uint8_t>(
         (std::istreambuf_iterator<char>(f)),
         std::istreambuf_iterator<char>());
-    if(fx_payload_too_large(a.fxdata.size(), a.fxsave.size()))
+    if(fx_payload_too_large(a.program_state.fxdata.size(), a.program_state.fxsave.size()))
         return "BIN: FX data too large";
 
     // analyze data to determine if the binfile was a flashcart
-    a.flashcart_loaded = false;
+    a.program_state.flashcart_loaded = false;
     if(save) goto not_flashcart;
 
     if(d.size() < 1024) goto not_flashcart;
@@ -906,7 +906,7 @@ static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
     for(int i = 0x0f; i < 0x39; ++i)
         if(d[i] != 0xff) goto not_flashcart;
     if(0 != memcmp(d.data() + 0x39, "Bootloader", 10)) goto not_flashcart;
-    a.flashcart_loaded = true;
+    a.program_state.flashcart_loaded = true;
 
 not_flashcart:
     return "";
@@ -1038,10 +1038,10 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
     if(!yyjson_is_str(hexfile))
         return "ARDUBOY: primary binary filename not string type";
 
-    a.title.clear();
+    a.program_state.title.clear();
     yyjson_val* title = yyjson_obj_get(root, "title");
     if(title && yyjson_is_str(title))
-        a.title = yyjson_get_str(title);
+        a.program_state.title = yyjson_get_str(title);
 
     std::vector<uint8_t> data;
     {
@@ -1063,12 +1063,12 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         if(!err.empty()) return err;
     }
 
-    a.fxdata.clear();
-    a.fxsave.clear();
-    a.device_type.clear();
+    a.program_state.fxdata.clear();
+    a.program_state.fxsave.clear();
+    a.program_state.device_type.clear();
     yyjson_val* device = yyjson_obj_get(bin, "device");
     if(device && yyjson_is_str(device))
-        a.device_type = yyjson_get_str(device);
+        a.program_state.device_type = yyjson_get_str(device);
     yyjson_val* binfile = yyjson_obj_get(bin, "flashdata");
     if(binfile)
     {
@@ -1084,7 +1084,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                 "ARDUBOY: FX data file too large",
                 "ARDUBOY: could not extract FX data file",
                 w25q128_t::DATA_BYTES,
-                a.fxdata);
+                a.program_state.fxdata);
             if(!err.empty()) return err;
         }
 
@@ -1098,7 +1098,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
             {
                 w25q128_t::fx_data_save_layout_t layout{};
                 if(!w25q128_t::make_data_save_layout(
-                    a.fxdata.size(), 0, layout))
+                    a.program_state.fxdata.size(), 0, layout))
                 {
                     return "ARDUBOY: FX data file too large";
                 }
@@ -1111,19 +1111,19 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                     "ARDUBOY: FX save file too large",
                     "ARDUBOY: could not extract FX save file",
                     layout.data_offset,
-                    a.fxsave);
+                    a.program_state.fxsave);
                 if(!err.empty()) return err;
             }
         }
 
-        if(fx_payload_too_large(a.fxdata.size(), a.fxsave.size()))
+        if(fx_payload_too_large(a.program_state.fxdata.size(), a.program_state.fxsave.size()))
             return "BIN: FX data too large";
     }
     else
     {
         // this game has no FX data.
         // erase any existing data to ensure correct game hash
-        a.fx.erase_all_data();
+        a.peripherals.fx.erase_all_data();
     }
 
     return "";
@@ -1198,7 +1198,7 @@ static bool check_for_fx_usage_in_prog_helper(arduboy_t& a, uint8_t fxport, uint
     // if none, erase FX data to ensure correct game hash
     bool found_sbi = false;
     bool found_cbi = false;
-    auto const& p = a.cpu.decoded_prog;
+    auto const& p = a.core_state.cpu.decoded_prog;
     for(size_t i = 0; i < p.size(); ++i)
     {
 
@@ -1235,7 +1235,7 @@ static bool check_for_fx_usage_in_prog_helper(arduboy_t& a, uint8_t fxport, uint
                 return true;
         }
     }
-    a.fx.erase_all_data();
+    a.peripherals.fx.erase_all_data();
     return false;
 }
 
@@ -1243,17 +1243,17 @@ static void check_for_fx_usage_in_prog(arduboy_t& a)
 {
     if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 1))
     {
-        a.device_type = "ArduboyFX";
+        a.program_state.device_type = "ArduboyFX";
         return;
     }
     else if(check_for_fx_usage_in_prog_helper(a, 0x2e, 1 << 2))
     {
-        a.device_type = "ArduboyMini";
+        a.program_state.device_type = "ArduboyMini";
         return;
     }
     else if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 2))
     {
-        a.device_type = "ArduboyFXDevKit";
+        a.program_state.device_type = "ArduboyFXDevKit";
         return;
     }
 }
@@ -1271,6 +1271,12 @@ std::string arduboy_t::load_bootloader_hex(uint8_t const* data, size_t size)
 
 std::string arduboy_t::load_flashcart_zip(uint8_t const* data, size_t size)
 {
+    auto& cpu = core_state.cpu;
+    auto& fx = peripherals.fx;
+    auto& fxdata = program_state.fxdata;
+    auto& fxsave = program_state.fxsave;
+    auto& flashcart_loaded = program_state.flashcart_loaded;
+
     cpu.program_loaded = false;
     fxdata.clear();
     fxsave.clear();
@@ -1327,6 +1333,14 @@ std::string arduboy_t::load_flashcart_zip(uint8_t const* data, size_t size)
 
 std::string arduboy_t::load_file(char const* filename, std::istream& f, bool save)
 {
+    auto& cpu = core_state.cpu;
+    auto& flashcart_loaded = program_state.flashcart_loaded;
+    auto& elf = program_state.elf;
+    auto& device_type = program_state.device_type;
+    auto& prog_filename = program_state.prog_filename;
+    auto& prog_filedata = program_state.prog_filedata;
+    auto& savedata_dirty = save_data_state.dirty;
+
     if(f.fail())
         return "Failed to open file";
 

@@ -24,11 +24,11 @@ static void window_contents()
 
     bool& frame_based = settings.frame_based_cpu_usage;
 
-    if(!frame_based && arduboy.ms_cpu_usage.empty() ||
-        frame_based && arduboy.frame_cpu_usage.empty())
+    if(!frame_based && app.emulator.profiler_state.ms_cpu_usage.empty() ||
+        frame_based && app.emulator.profiler_state.frame_cpu_usage.empty())
         return;
 
-    if(!arduboy.is_present_state())
+    if(!app.emulator.is_present_state())
     {
         return;
     }
@@ -37,7 +37,7 @@ static void window_contents()
         float usage = 0.f;
         size_t i;
         size_t n = frame_based ? 16 : 3;
-        auto const& d = frame_based ? arduboy.frame_cpu_usage : arduboy.ms_cpu_usage;
+        auto const& d = frame_based ? app.emulator.profiler_state.frame_cpu_usage : app.emulator.profiler_state.ms_cpu_usage;
         for(i = 0; i < n; ++i)
         {
             if(i >= d.size())
@@ -52,11 +52,11 @@ static void window_contents()
         if(red) ImGui::PopStyleColor();
     }
 
-    if(arduboy.prev_frame_cycles != 0)
+    if(app.emulator.profiler_state.prev_frame_cycles != 0)
     {
         static std::array<float, 16> fps_queue{};
         static size_t fps_i = 0;
-        float fps = 16e6f / float(arduboy.prev_frame_cycles);
+        float fps = 16e6f / float(app.emulator.profiler_state.prev_frame_cycles);
         fps_queue[fps_i] = fps;
         fps_i = (fps_i + 1) % fps_queue.size();
         fps = std::accumulate(fps_queue.begin(), fps_queue.end(), 0.f) * (1.f / fps_queue.size());
@@ -80,8 +80,8 @@ static void window_contents()
         auto* plot = GetCurrentPlot();
         constexpr double ZOOM = 4.0;
         constexpr double IZOOM = 1.0 / ZOOM;
-        double n = double(frame_based? arduboy.total_frames : arduboy.total_ms);
-        auto const& d = frame_based ? arduboy.frame_cpu_usage : arduboy.ms_cpu_usage;
+        double n = double(frame_based? app.emulator.profiler_state.total_frames : app.emulator.profiler_state.total_ms);
+        auto const& d = frame_based ? app.emulator.profiler_state.frame_cpu_usage : app.emulator.profiler_state.ms_cpu_usage;
         double m = n - d.size();
         double w = plot->FrameRect.GetWidth();
 
@@ -102,7 +102,7 @@ static void window_contents()
 
         double lim_min = m;
         double lim_max = (n < z ? z : n);
-        if(!arduboy.paused)
+        if(!app.emulator.debugger_state.paused)
         {
             if(n < w)
                 lim_max = w;
@@ -141,8 +141,8 @@ void window_cpu_usage(bool& open)
 {
     if(!open) return;
 
-    ImGui::SetNextWindowSize({ 400 * pixel_ratio, 200 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(ImGui::Begin("CPU Usage", &open) && arduboy.cpu.decoded)
+    ImGui::SetNextWindowSize({ 400 * app.pixel_ratio, 200 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+    if(ImGui::Begin("CPU Usage", &open) && app.emulator.core_state.cpu.decoded)
     {
         window_contents();
     }

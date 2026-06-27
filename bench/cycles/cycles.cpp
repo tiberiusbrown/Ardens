@@ -33,46 +33,46 @@ int main(int argc, char** argv)
     uint8_t pinf = 0xf0;
     uint8_t pine = 0x40;
     uint8_t pinb = 0x10;
-    arduboy.cpu.data[0x23] = pinb;
-    arduboy.cpu.data[0x2c] = pine;
-    arduboy.cpu.data[0x2f] = pinf;
-    arduboy.fxport_reg = 0x2b;
-    arduboy.fxport_mask = 1 << 1;
-    arduboy.profiler_enabled = true;
-    arduboy.cpu.enabled_autobreaks.set();
+    arduboy.core_state.cpu.data[0x23] = pinb;
+    arduboy.core_state.cpu.data[0x2c] = pine;
+    arduboy.core_state.cpu.data[0x2f] = pinf;
+    arduboy.peripherals.fxport_reg = 0x2b;
+    arduboy.peripherals.fxport_mask = 1 << 1;
+    arduboy.profiler_state.enabled = true;
+    arduboy.core_state.cpu.enabled_autobreaks.set();
 
     constexpr uint64_t MS = 1'000'000'000ull;
 
     uint64_t prev_cycle = 0;
 
-    while(arduboy.cpu.active)
+    while(arduboy.core_state.cpu.active)
     {
-        if(arduboy.paused)
+        if(arduboy.debugger_state.paused)
         {
             if(prev_cycle == 0)
             {
-                prev_cycle = arduboy.cpu.cycle_count;
+                prev_cycle = arduboy.core_state.cpu.cycle_count;
             }
             else
             {
-                prev_cycle = arduboy.cpu.cycle_count - prev_cycle - 1;
+                prev_cycle = arduboy.core_state.cpu.cycle_count - prev_cycle - 1;
                 printf(" %" PRIu64 " |", prev_cycle);
                 prev_cycle = 0;
             }
         }
 
-        arduboy.paused = false;
+        arduboy.debugger_state.paused = false;
         arduboy.advance(1 * MS);
 
-        if(!arduboy.cpu.serial_bytes.empty())
+        if(!arduboy.core_state.cpu.serial_bytes.empty())
         {
-            for(auto b : arduboy.cpu.serial_bytes)
+            for(auto b : arduboy.core_state.cpu.serial_bytes)
                 printf("%c", (char)b);
-            arduboy.cpu.serial_bytes.clear();
+            arduboy.core_state.cpu.serial_bytes.clear();
         }
 
         // quit after ten seconds simulated
-        if(arduboy.cpu.cycle_count >= 10000 * MS)
+        if(arduboy.core_state.cpu.cycle_count >= 10000 * MS)
             break;
     }
 

@@ -116,7 +116,7 @@ static void app_init()
             idesc.image = sg_make_image(&desc);
             idesc.sampler = DEFAULT_SAMPLER;
             auto iimg = simgui_make_image(&idesc);
-            display_texture = simgui_imtextureid(iimg);
+            app.display_texture = simgui_imtextureid(iimg);
         }
 
         {
@@ -124,7 +124,7 @@ static void app_init()
             idesc.image = sg_make_image(&desc);
             idesc.sampler = DEFAULT_SAMPLER;
             auto iimg = simgui_make_image(&idesc);
-            display_buffer_texture = simgui_imtextureid(iimg);
+            app.display_buffer_texture = simgui_imtextureid(iimg);
         }
     }
 
@@ -139,16 +139,16 @@ static void app_init()
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy.load_file(value, f, save);
+                app.dropfile_err = app.emulator.load_file(value, f, save);
                 autoset_from_device_type();
-                if(dropfile_err.empty())
+                if(app.dropfile_err.empty())
                 {
                     load_savedata();
                     if(!save) file_watch(value);
                 }
             }
             else
-                dropfile_err = fmt::format("Could not open file: \"{}\"", value);
+                app.dropfile_err = fmt::format("Could not open file: \"{}\"", value);
 #endif
         }
     }
@@ -159,14 +159,14 @@ static void app_event(sapp_event const* e)
 {
     simgui_handle_event(e);
 
-    float ipr = 1.f / pixel_ratio;
+    float ipr = 1.f / app.pixel_ratio;
     if( e->type == SAPP_EVENTTYPE_TOUCHES_BEGAN ||
         e->type == SAPP_EVENTTYPE_TOUCHES_MOVED)
     {
-        first_touch = true;
+        app.first_touch = true;
         for(int i = 0; i < e->num_touches; ++i)
         {
-            auto& tp = touch_points[e->touches[i].identifier];
+            auto& tp = app.touch_points[e->touches[i].identifier];
             tp = { e->touches[i].pos_x * ipr, e->touches[i].pos_y * ipr };
         }
         sapp_consume_event();
@@ -175,25 +175,25 @@ static void app_event(sapp_event const* e)
     {
         for(int i = 0; i < e->num_touches; ++i)
             if(e->touches[i].changed)
-                touch_points.erase(e->touches[i].identifier);
+                app.touch_points.erase(e->touches[i].identifier);
         sapp_consume_event();
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
     {
-        touch_points.clear();
+        app.touch_points.clear();
         sapp_consume_event();
     }
 
 #if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
     {
-        touch_points.clear();
-        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
+        app.touch_points.clear();
+        app.touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
     }
-    if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !touch_points.empty())
-        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
+    if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !app.touch_points.empty())
+        app.touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
     if(e->type == SAPP_EVENTTYPE_MOUSE_UP)
-        touch_points.clear();
+        app.touch_points.clear();
 #endif
 
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
@@ -273,7 +273,7 @@ static void sokol_platform_set_clipboard_text(char const* str)
 static void sokol_platform_send_sound()
 {
     std::vector<int16_t> buf;
-    buf.swap(arduboy.cpu.sound_buffer);
+    buf.swap(app.emulator.core_state.cpu.sound_buffer);
 
     if(saudio_expect() <= 0)
         return;
@@ -311,7 +311,7 @@ static void sokol_platform_send_sound()
     if(ns < buf.size())
     {
         buf.erase(buf.begin(), buf.begin() + ns);
-        buf.swap(arduboy.cpu.sound_buffer);
+        buf.swap(app.emulator.core_state.cpu.sound_buffer);
     }
 }
 

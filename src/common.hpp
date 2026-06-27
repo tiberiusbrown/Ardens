@@ -125,19 +125,6 @@ struct platform_services_t
 extern app_state_t app;
 extern platform_services_t platform_services;
 
-extern absim::arduboy_t& arduboy;
-extern int& display_texture_zoom;
-extern texture_t& display_texture;
-extern texture_t& display_buffer_texture;
-extern std::string& dropfile_err;
-extern bool& loading_indicator;
-extern uint64_t& ms_since_start;
-extern std::filesystem::path& userpath;
-extern bool& first_touch;
-extern bool& always_touch;
-extern uint64_t& ms_since_touch;
-extern std::unordered_map<uint64_t, touch_point_t>& touch_points;
-
 // platform-agnostic functionality (common.cpp)
 extern "C" int setparam(char const* name, char const* value);
 extern "C" int load_file(
@@ -200,21 +187,6 @@ void file_watch(std::string const& filename);
 void file_watch_clear();
 void file_watch_check();
 
-extern float& pixel_ratio;
-extern bool& done;
-extern bool& layout_done;
-extern bool& settings_loaded;
-extern bool& fs_ready;
-
-extern int& profiler_selected_hotspot;
-extern int& disassembly_scroll_addr;
-extern bool& scroll_addr_to_top;
-extern int& simulation_slowdown;
-extern int& fx_data_scroll_addr;
-
-extern int& display_buffer_addr;
-extern int& display_buffer_w;
-extern int& display_buffer_h;
 
 uint32_t color_for_index(size_t index);
 uint32_t darker_color_for_index(size_t index);

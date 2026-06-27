@@ -16,8 +16,8 @@ static uint64_t need_save_time;
 std::string savedata_filename()
 {
     char buf[128];
-    snprintf(buf, sizeof(buf), "absim_%" PRIx64 ".save", arduboy.game_hash);
-    return (userpath / buf).generic_string();
+    snprintf(buf, sizeof(buf), "absim_%" PRIx64 ".save", app.emulator.program_state.game_hash);
+    return (app.userpath / buf).generic_string();
 }
 
 void load_savedata()
@@ -27,20 +27,20 @@ void load_savedata()
     if(!f.fail())
     {
         printf("Loaded %s\n", fname.c_str());
-        arduboy.load_savedata(f);
+        app.emulator.load_savedata(f);
     }
 }
 
 void check_save_savedata()
 {
-    if(arduboy.savedata_dirty)
+    if(app.emulator.save_data_state.dirty)
     {
         need_save = true;
-        need_save_time = ms_since_start + SAVE_INTERVAL_MS;
-        arduboy.savedata_dirty = false;
+        need_save_time = app.ms_since_start + SAVE_INTERVAL_MS;
+        app.emulator.save_data_state.dirty = false;
     }
 
-    if(need_save && ms_since_start >= need_save_time)
+    if(need_save && app.ms_since_start >= need_save_time)
     {
         flush_savedata();
     }
@@ -48,19 +48,19 @@ void check_save_savedata()
 
 void flush_savedata()
 {
-    if(!need_save && !arduboy.savedata_dirty)
+    if(!need_save && !app.emulator.save_data_state.dirty)
     {
         return;
     }
 
     need_save = false;
-    arduboy.savedata_dirty = false;
+    app.emulator.save_data_state.dirty = false;
 
     auto fname = savedata_filename();
     std::ofstream f(fname, std::ios::out | std::ios::binary);
     if(!f.fail())
     {
-        arduboy.save_savedata(f);
+        app.emulator.save_savedata(f);
         f.close();
 #ifdef __EMSCRIPTEN__
         EM_ASM(

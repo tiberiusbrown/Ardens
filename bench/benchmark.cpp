@@ -14,7 +14,13 @@ static absim::arduboy_t arduboy;
 
 void save_screenshot(absim::arduboy_t const& a, std::string const& fname)
 {
-    stbi_write_png(fname.c_str(), 128, 64, 1, a.display.filtered_pixels.data(), 128 * 1);
+    stbi_write_png(
+        fname.c_str(),
+        128,
+        64,
+        1,
+        a.peripherals.display.filtered_pixels.data(),
+        128 * 1);
 }
 
 static void bench(benchmark::State& state, std::string const& fname, bool prof = false)
@@ -36,12 +42,12 @@ static void bench(benchmark::State& state, std::string const& fname, bool prof =
     uint8_t pine = 0x40;
     uint8_t pinb = 0x10;
 
-    arduboy.fxport_reg = 0x2b;
-    arduboy.fxport_mask = 1 << 1;
-    arduboy.display.enable_filter = true;
-    arduboy.cpu.data[0x23] = pinb;
-    arduboy.cpu.data[0x2c] = pine;
-    arduboy.cpu.data[0x2f] = pinf;
+    arduboy.peripherals.fxport_reg = 0x2b;
+    arduboy.peripherals.fxport_mask = 1 << 1;
+    arduboy.peripherals.display.enable_filter = true;
+    arduboy.core_state.cpu.data[0x23] = pinb;
+    arduboy.core_state.cpu.data[0x2c] = pine;
+    arduboy.core_state.cpu.data[0x2f] = pinf;
     arduboy.advance(2000 * MS);
     arduboy.save_savestate(ss);
     save_screenshot(arduboy, fname + ".pre.png");
@@ -52,14 +58,14 @@ static void bench(benchmark::State& state, std::string const& fname, bool prof =
         ss.seekg(0);
         if("" != arduboy.load_savestate(ss))
             break;
-        arduboy.fxport_reg = 0x2b;
-        arduboy.fxport_mask = 1 << 1;
-        arduboy.display.enable_filter = true;
-        arduboy.cpu.data[0x23] = pinb;
-        arduboy.cpu.data[0x2c] = pine;
-        arduboy.cpu.data[0x2f] = pinf;
+        arduboy.peripherals.fxport_reg = 0x2b;
+        arduboy.peripherals.fxport_mask = 1 << 1;
+        arduboy.peripherals.display.enable_filter = true;
+        arduboy.core_state.cpu.data[0x23] = pinb;
+        arduboy.core_state.cpu.data[0x2c] = pine;
+        arduboy.core_state.cpu.data[0x2f] = pinf;
         state.ResumeTiming();
-        arduboy.profiler_enabled = prof;
+        arduboy.profiler_state.enabled = prof;
         arduboy.advance(100 * MS);
     }
 

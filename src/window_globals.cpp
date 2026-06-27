@@ -107,7 +107,7 @@ static bool do_var_row(
         if(!local && IsItemHovered())
         {
             uint16_t addr = (uint16_t)(ptrdiff_t)(mem.begin -
-                (text ? arduboy.cpu.prog.data() : arduboy.cpu.data.data()));
+                (text ? app.emulator.core_state.cpu.prog.data() : app.emulator.core_state.cpu.data.data()));
             BeginTooltip();
             Text("Address: 0x%04x%s", addr, text ? " [PROG]" : "");
             EndTooltip();
@@ -197,7 +197,7 @@ static bool do_global(
     using namespace ImGui;
 
     bool remove = false;
-    auto* dwarf = arduboy.elf->dwarf_ctx.get();
+    auto* dwarf = app.emulator.program_state.elf->dwarf_ctx.get();
     auto* cu = dwarf->getCompileUnitForOffset(g.cu_offset);
     if(!cu) return true;
 
@@ -205,9 +205,9 @@ static bool do_global(
 
     absim::dwarf_span mem;
     if(g.text)
-        mem = absim::to_dwarf_span(arduboy.cpu.prog);
+        mem = absim::to_dwarf_span(app.emulator.core_state.cpu.prog);
     else
-        mem = absim::to_dwarf_span(arduboy.cpu.data);
+        mem = absim::to_dwarf_span(app.emulator.core_state.cpu.data);
 
     return do_var_row(id, name.c_str(), true, false, mem.offset(g.addr), g.text, type);
 }
@@ -226,7 +226,7 @@ static void gather_locals(
 {
     if(!die.isValid()) return;
 
-    uint64_t pc = uint64_t(arduboy.cpu.pc) * 2;
+    uint64_t pc = uint64_t(app.emulator.core_state.cpu.pc) * 2;
 
     llvm::DWARFAddressRangesVector ranges;
     ranges.push_back({ 0, UINT64_MAX });
@@ -279,14 +279,14 @@ void window_locals(bool& open)
 {
     using namespace ImGui;
     if(!open) return;
-    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
     ImGuiWindowFlags wflags = 0;
     if(Begin("Locals", &open, wflags) &&
-        arduboy.cpu.decoded && arduboy.elf && arduboy.paused)
+        app.emulator.core_state.cpu.decoded && app.emulator.program_state.elf && app.emulator.debugger_state.paused)
     {
-        auto& e = *arduboy.elf;
+        auto& e = *app.emulator.program_state.elf;
         auto& dwarf = *e.dwarf_ctx;
-        uint64_t pc = uint64_t(arduboy.cpu.pc) * 2;
+        uint64_t pc = uint64_t(app.emulator.core_state.cpu.pc) * 2;
 
         auto dies = dwarf.getDIEsForAddress(pc);
         std::vector<local_var_t> locals;
@@ -325,9 +325,9 @@ void window_globals(bool& open)
 {
     using namespace ImGui;
     if(!open) return;
-    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
     ImGuiWindowFlags wflags = 0;
-    if(Begin("Globals", &open, wflags) && arduboy.cpu.decoded && arduboy.elf)
+    if(Begin("Globals", &open, wflags) && app.emulator.core_state.cpu.decoded && app.emulator.program_state.elf)
     {
         if(Button("Add variable..."))
             OpenPopup("##addvar");
@@ -340,7 +340,7 @@ void window_globals(bool& open)
 
         if(BeginPopup("##addvar"))
         {
-            for(auto const& kv : arduboy.elf->globals)
+            for(auto const& kv : app.emulator.program_state.elf->globals)
             {
                 auto const& name = kv.first;
                 auto const& g = kv.second;
@@ -353,7 +353,7 @@ void window_globals(bool& open)
         }
         if(BeginPopup("##addprog"))
         {
-            for(auto const& kv : arduboy.elf->globals)
+            for(auto const& kv : app.emulator.program_state.elf->globals)
             {
                 auto const& name = kv.first;
                 auto const& g = kv.second;
@@ -365,7 +365,7 @@ void window_globals(bool& open)
         }
         if(BeginPopup("##addio"))
         {
-            for(auto const& kv : arduboy.elf->globals)
+            for(auto const& kv : app.emulator.program_state.elf->globals)
             {
                 auto const& name = kv.first;
                 auto const& g = kv.second;
@@ -395,8 +395,8 @@ void window_globals(bool& open)
             for(size_t i = 0; i < watches.size(); ++i)
             {
                 auto const& name = watches[i];
-                auto it = arduboy.elf->globals.find(name);
-                if(it == arduboy.elf->globals.end())
+                auto it = app.emulator.program_state.elf->globals.find(name);
+                if(it == app.emulator.program_state.elf->globals.end())
                 {
                     watches.erase(watches.begin() + i);
                     --i;

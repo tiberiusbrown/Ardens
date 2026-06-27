@@ -24,7 +24,7 @@ static void advance(absim::arduboy_t& a, int ms)
     for(int i = 0; i < ms; ++i)
     {
         a.advance(1'000'000'000ull); // 1 ms
-        a.cpu.sound_buffer.clear();
+        a.core_state.cpu.sound_buffer.clear();
     }
 }
 
@@ -39,12 +39,12 @@ static int test(char const* name)
     auto err = arduboy->load_file("test.hex", f);
     if(!err.empty()) return 1;
     arduboy->reset();
-    auto const& d = arduboy->cpu.serial_bytes;
+    auto const& d = arduboy->core_state.cpu.serial_bytes;
     for(int i = 0; i < 10000; ++i) // up to ten seconds
     {
         arduboy->advance(1'000'000'000ull); // 1 ms
         if(!d.empty()) break;
-        arduboy->cpu.sound_buffer.clear();
+        arduboy->core_state.cpu.sound_buffer.clear();
     }
 
     bool pass = (d.size() == 1 && d[0] == 'P');
@@ -65,9 +65,9 @@ static int compare_image(char const* dir, int n)
     snprintf(ifname, sizeof(ifname), "%s/%s/image%d.bin", TESTS_DIR, dir, n);
 #if WRITE_IMAGES
     std::ofstream fi(ifname, std::ios::binary);
-    fi.write((char const*)arduboy->display.filtered_pixels.data(), 8192);
+    fi.write((char const*)arduboy->peripherals.display.filtered_pixels.data(), 8192);
     snprintf(ifname, sizeof(ifname), "%s/%s/image%d.png", TESTS_DIR, dir, n);
-    stbi_write_png(ifname, 128, 64, 1, arduboy->display.filtered_pixels.data(), 128);
+    stbi_write_png(ifname, 128, 64, 1, arduboy->peripherals.display.filtered_pixels.data(), 128);
 #else
     std::ifstream fi(ifname, std::ios::binary);
     std::vector<char> id;
@@ -75,7 +75,7 @@ static int compare_image(char const* dir, int n)
     fi.read(id.data(), 8192);
     for(size_t i = 0; i < 8192; ++i)
     {
-        bool w0 = (uint8_t)arduboy->display.filtered_pixels[i] < 128;
+        bool w0 = (uint8_t)arduboy->peripherals.display.filtered_pixels[i] < 128;
         bool w1 = (uint8_t)id[i] < 128;
         if(w0 != w1)
             r = 1;
@@ -90,29 +90,29 @@ static int image_test(char const* dir, char const* game)
     auto err = arduboy->load_file(game, f);
     int r = 0;
     if(!err.empty()) r = 1;
-    arduboy->cfg.display_type = absim::display_t::type_t::SSD1306;
-    arduboy->cfg.fxport_reg = 0x2b;
-    arduboy->cfg.fxport_mask = 1 << 1;
-    arduboy->cfg.bootloader = true;
-    arduboy->cfg.boot_to_menu = false;
+    arduboy->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
+    arduboy->program_state.cfg.fxport_reg = 0x2b;
+    arduboy->program_state.cfg.fxport_mask = 1 << 1;
+    arduboy->program_state.cfg.bootloader = true;
+    arduboy->program_state.cfg.boot_to_menu = false;
     arduboy->reset();
 
     int n = 0;
 
-    arduboy->cpu.data[0x23] = 0x10;
-    arduboy->cpu.data[0x2c] = 0x40;
-    arduboy->cpu.data[0x2f] = 0xf0;
+    arduboy->core_state.cpu.data[0x23] = 0x10;
+    arduboy->core_state.cpu.data[0x2c] = 0x40;
+    arduboy->core_state.cpu.data[0x2f] = 0xf0;
     advance(1000);
     r |= compare_image(dir, n++);
     for(int i = 0; i < 9; ++i)
     {
         advance(1000);
-        arduboy->cpu.data[0x2c] = 0x00;
+        arduboy->core_state.cpu.data[0x2c] = 0x00;
         if(i != 0)
-            arduboy->cpu.data[0x2f] = 0xa0;
+            arduboy->core_state.cpu.data[0x2f] = 0xa0;
         advance(100);
-        arduboy->cpu.data[0x2c] = 0x40;
-        arduboy->cpu.data[0x2f] = 0xf0;
+        arduboy->core_state.cpu.data[0x2c] = 0x40;
+        arduboy->core_state.cpu.data[0x2f] = 0xf0;
         advance(1000);
         r |= compare_image(dir, n++);
     }
@@ -569,33 +569,55 @@ static bool same_snapshot_state(absim::arduboy_t const& a, absim::arduboy_t cons
     return true;
 }
 
-static bool legacy_aliases_point_at_grouped_state(absim::arduboy_t const& a)
+static int grouped_state_roundtrip_test()
 {
-    return &a.cpu == &a.core_state.cpu &&
-        &a.display == &a.peripherals.display &&
-        &a.fx == &a.peripherals.fx &&
-        &a.prev_display_reset == &a.peripherals.prev_display_reset &&
-        &a.fxport_reg == &a.peripherals.fxport_reg &&
-        &a.fxport_mask == &a.peripherals.fxport_mask &&
-        &a.game_hash == &a.program_state.game_hash &&
-        &a.title == &a.program_state.title &&
-        &a.prog_filename == &a.program_state.prog_filename &&
-        &a.profiler_counts == &a.profiler_state.counts &&
-        &a.profiler_hotspots == &a.profiler_state.hotspots &&
-        &a.breakpoints == &a.debugger_state.breakpoints &&
-        &a.paused == &a.debugger_state.paused &&
-        &a.savedata == &a.save_data_state.savedata &&
-        &a.input_history == &a.debugger_state.input_history &&
-        &a.cfg == &a.program_state.cfg &&
-        &a.flashcart_loaded == &a.program_state.flashcart_loaded;
-}
+    auto original = std::make_unique<absim::arduboy_t>();
+    auto restored = std::make_unique<absim::arduboy_t>();
 
-static int grouped_state_alias_test()
-{
-    auto a = std::make_unique<absim::arduboy_t>();
-    bool pass = legacy_aliases_point_at_grouped_state(*a);
-    printf("   %-30s : %s\n", "grouped state aliases", pass ? "PASS" : "FAIL");
-    return pass ? 0 : 1;
+    auto err = load_rom(*original, snapshot_name, snapshot_rom);
+    if(!err.empty())
+    {
+        printf("   %-30s : FAIL\n", "grouped state roundtrip");
+        return 1;
+    }
+    err = load_rom(*restored, snapshot_name, snapshot_rom);
+    if(!err.empty())
+    {
+        printf("   %-30s : FAIL\n", "grouped state roundtrip");
+        return 1;
+    }
+
+    original->reset();
+    restored->reset();
+    original->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
+    original->program_state.cfg.fxport_reg = 0x2b;
+    original->program_state.cfg.fxport_mask = 1 << 1;
+    original->program_state.cfg.bootloader = true;
+    original->program_state.cfg.boot_to_menu = false;
+    original->peripherals.display.enable_filter = true;
+    original->core_state.cpu.data[0x23] = 0x10;
+    original->core_state.cpu.data[0x2c] = 0x40;
+    original->core_state.cpu.data[0x2f] = 0xf0;
+    advance(*original, 250);
+
+    std::stringstream state;
+    err = original->save_savestate(state);
+    if(!err.empty())
+    {
+        printf("   %-30s : FAIL\n", "grouped state roundtrip");
+        return 1;
+    }
+
+    err = restored->load_savestate(state);
+    bool r = !err.empty() || !same_runtime_state(*original, *restored);
+
+    advance(*original, 250);
+    advance(*restored, 250);
+    r = r || !same_runtime_state(*original, *restored);
+    r = r || save_savestate_bytes(*original) != save_savestate_bytes(*restored);
+
+    printf("   %-30s : %s\n", "grouped state roundtrip", r ? "FAIL" : "PASS");
+    return r ? 1 : 0;
 }
 
 static int savestate_snapshot_test()
@@ -688,11 +710,11 @@ static int full_snapshot_test()
     auto original = std::make_unique<absim::arduboy_t>();
     auto restored = std::make_unique<absim::arduboy_t>();
 
-    original->cfg.display_type = absim::display_t::type_t::SSD1306;
-    original->cfg.fxport_reg = 0x2b;
-    original->cfg.fxport_mask = 1 << 1;
-    original->cfg.bootloader = true;
-    original->cfg.boot_to_menu = false;
+    original->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
+    original->program_state.cfg.fxport_reg = 0x2b;
+    original->program_state.cfg.fxport_mask = 1 << 1;
+    original->program_state.cfg.bootloader = true;
+    original->program_state.cfg.boot_to_menu = false;
 
     auto err = load_rom(*original, snapshot_name, snapshot_rom);
     if(!err.empty())
@@ -702,9 +724,9 @@ static int full_snapshot_test()
     }
 
     original->reset();
-    original->cpu.data[0x23] = 0x10;
-    original->cpu.data[0x2c] = 0x40;
-    original->cpu.data[0x2f] = 0xf0;
+    original->core_state.cpu.data[0x23] = 0x10;
+    original->core_state.cpu.data[0x2c] = 0x40;
+    original->core_state.cpu.data[0x2f] = 0xf0;
     advance(*original, 500);
 
     std::stringstream snapshot;
@@ -737,10 +759,10 @@ int main(int argc, char** argv)
 {
     int r = 0;
     arduboy = std::make_unique<absim::arduboy_t>();
-    arduboy->display.enable_filter = true;
+    arduboy->peripherals.display.enable_filter = true;
 
-    printf("\nState layout tests...\n");
-    r |= grouped_state_alias_test();
+    printf("\nGrouped state tests...\n");
+    r |= grouped_state_roundtrip_test();
 
     printf("\nSnapshot tests...\n");
     r |= savestate_snapshot_test();

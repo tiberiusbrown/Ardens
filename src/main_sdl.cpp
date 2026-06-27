@@ -166,7 +166,7 @@ static uint64_t sdl_platform_get_ms_dt()
 static void sdl_platform_send_sound()
 {
     std::vector<int16_t> buf;
-    buf.swap(arduboy.cpu.sound_buffer);
+    buf.swap(app.emulator.core_state.cpu.sound_buffer);
     constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
     size_t num_bytes = buf.size() * SAMPLE_SIZE;
     uint32_t queued_bytes = SDL_GetAudioStreamQueued(audio_stream);
@@ -228,9 +228,9 @@ static void main_loop()
     {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if(event.type == SDL_EVENT_QUIT)
-            done = true;
+            app.done = true;
         if(event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
-            done = true;
+            app.done = true;
         if(event.type == SDL_EVENT_DROP_FILE)
         {
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
@@ -246,13 +246,13 @@ static void main_loop()
         {
             int w = 0, h = 0;
             SDL_GetWindowSize(window, &w, &h);
-            first_touch = true;
-            auto& tp = touch_points[(size_t)event.tfinger.fingerID];
+            app.first_touch = true;
+            auto& tp = app.touch_points[(size_t)event.tfinger.fingerID];
             tp = { event.tfinger.x * w, event.tfinger.y * h };
         }
         if(event.type == SDL_EVENT_FINGER_UP)
         {
-            touch_points.erase(event.tfinger.fingerID);
+            app.touch_points.erase(event.tfinger.fingerID);
         }
     }
 
@@ -436,14 +436,14 @@ int main(int argc, char** argv)
     define_font();
 
     recreate_display_texture();
-    display_buffer_texture = SDL_CreateTexture(
+    app.display_buffer_texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_ABGR8888,
         SDL_TEXTUREACCESS_STREAMING,
         128,
         64);
 
-    done = false;
+    app.done = false;
 
 #if !defined(__EMSCRIPTEN__)
     for(int i = 0; i < sargs_num_args(); ++i)
@@ -456,16 +456,16 @@ int main(int argc, char** argv)
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy.load_file(value, f, save);
+                app.dropfile_err = app.emulator.load_file(value, f, save);
                 autoset_from_device_type();
-                if(dropfile_err.empty())
+                if(app.dropfile_err.empty())
                 {
                     load_savedata();
                     if(!save) file_watch(value);
                 }
             }
             else
-                dropfile_err = std::string("Could not open file: \"") + value + "\"";
+                app.dropfile_err = std::string("Could not open file: \"") + value + "\"";
 #endif
     }
 }
@@ -474,21 +474,21 @@ int main(int argc, char** argv)
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(main_loop, -1, 1);
 #else
-    while(!done)
+    while(!app.done)
         main_loop();
 #endif
 
     shutdown();
 
-    if(display_texture)
+    if(app.display_texture)
     {
-        SDL_DestroyTexture((SDL_Texture*)display_texture);
-        display_texture = nullptr;
+        SDL_DestroyTexture((SDL_Texture*)app.display_texture);
+        app.display_texture = nullptr;
     }
-    if(display_buffer_texture)
+    if(app.display_buffer_texture)
     {
-        SDL_DestroyTexture((SDL_Texture*)display_buffer_texture);
-        display_buffer_texture = nullptr;
+        SDL_DestroyTexture((SDL_Texture*)app.display_buffer_texture);
+        app.display_buffer_texture = nullptr;
     }
 
     ImGui_ImplSDLRenderer3_Shutdown();

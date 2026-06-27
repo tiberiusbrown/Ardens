@@ -38,7 +38,7 @@ touch_rect_t touch_rect(int btn)
     auto rsize = rect_viewsize();
     float size = rsize.x * SZ[btn] / 32.f;
     
-    //float btnsize = rsize.x * pixel_ratio * (3.f / 32.f);
+    //float btnsize = rsize.x * app.pixel_ratio * (3.f / 32.f);
     //float scale = std::clamp(50.f / btnsize, 1.f, 1.4f);
     constexpr float scale = 1.f;
 
@@ -57,7 +57,7 @@ static void draw_button(ImDrawList* d, int btn, touched_buttons_t const& pressed
     constexpr ImU32 col = IM_COL32(100, 100, 100, 70);
     constexpr ImU32 outline_col = IM_COL32(50, 50, 50, 150);
     constexpr float ROT[4] = { 270, 90, 180, 0 };
-    float thickness = pixel_ratio * 3.f;
+    float thickness = app.pixel_ratio * 3.f;
     auto r = touch_rect(btn);
 
     switch(btn)
@@ -129,7 +129,7 @@ touched_buttons_t touched_buttons()
     {
         auto r = touch_rect(i);
         float s = 0.3f * (r.x1 - r.x0);
-        for(auto const& [k, v] : touch_points)
+        for(auto const& [k, v] : app.touch_points)
         {
             if(!(v.x >= r.x0 - s && v.x < r.x1 + s)) continue;
             if(!(v.y >= r.y0 - s && v.y < r.y1 + s)) continue;
@@ -141,7 +141,7 @@ touched_buttons_t touched_buttons()
 
 void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 {
-    platform_texture_scale_nearest(display_texture);
+    platform_texture_scale_nearest(app.display_texture);
 
     {
         std::array<ImVec2, 4> vs;
@@ -151,12 +151,12 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
         vs[3] = {a.x, b.y};
         std::rotate(vs.begin(), vs.begin() + settings.display_orientation, vs.end());
         d->AddImageQuad(
-            display_texture,
+            app.display_texture,
             vs[0], vs[1], vs[2], vs[3]);
     }
 
     if(settings.display_pixel_grid == PGRID_NONE) return;
-    if(display_texture_zoom != 1) return;
+    if(app.display_texture_zoom != 1) return;
     float w = b.x - a.x;
 
     int numh = 128;
@@ -211,7 +211,7 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 
 void view_player()
 {
-    if(!arduboy.cpu.decoded)
+    if(!app.emulator.core_state.cpu.decoded)
         return;
 
     auto* d = ImGui::GetBackgroundDrawList();
@@ -258,7 +258,7 @@ void view_player()
         std::round((size.x - dsize.x) * 0.5f),
         std::round((size.y - dsize.y) * 0.5f)
     };
-    if(first_touch || always_touch)
+    if(app.first_touch || app.always_touch)
         dstart.y = std::max(0.f, dstart.y - dsize.y * 0.5f);
     dstart.x = std::round(dstart.x);
     dstart.y = std::round(dstart.y);
@@ -266,8 +266,8 @@ void view_player()
         { dstart.x + dsize.x, dstart.y + dsize.y });
 
     // draw touch icons
-    if(always_touch || first_touch && (
-        ms_since_touch < MS_SHOW_TOUCH_CONTROLS || rect_offset().y >= dstart.y + dsize.y))
+    if(app.always_touch || app.first_touch && (
+        app.ms_since_touch < MS_SHOW_TOUCH_CONTROLS || rect_offset().y >= dstart.y + dsize.y))
     {
         auto pressed = touched_buttons();
         draw_button(d, TOUCH_U, pressed);
@@ -280,8 +280,8 @@ void view_player()
 
     if(gif_recording)
     {
-        float const F1 = 10.f * pixel_ratio;
-        float const F2 = 20.f * pixel_ratio;
+        float const F1 = 10.f * app.pixel_ratio;
+        float const F2 = 20.f * app.pixel_ratio;
         d->AddRectFilled(
             { F1, F1 }, { F2, F2 },
             IM_COL32(255, 0, 0, 128));

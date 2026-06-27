@@ -12,7 +12,7 @@ static void globals_usage()
 {
     using namespace ImGui;
 
-    if(!arduboy.elf || arduboy.elf->data_symbols_sorted_size.empty())
+    if(!app.emulator.program_state.elf || app.emulator.program_state.elf->data_symbols_sorted_size.empty())
         return;
     if(!BeginTooltip())
         return;
@@ -31,9 +31,9 @@ static void globals_usage()
         TableSetupColumn("Bytes", cf);
         TableSetupColumn("Name", cf);
         TableHeadersRow();
-        for(auto i : arduboy.elf->data_symbols_sorted_size)
+        for(auto i : app.emulator.program_state.elf->data_symbols_sorted_size)
         {
-            auto const& sym = arduboy.elf->data_symbols[i];
+            auto const& sym = app.emulator.program_state.elf->data_symbols[i];
             TableNextRow();
             TableSetColumnIndex(0);
             Text("0x%04x", sym.addr);
@@ -55,8 +55,8 @@ static std::string dwarf_value_string_addr(
     absim::dwarf_value_base base = absim::dwarf_value_base::dec)
 {
     absim::dwarf_span mem;
-    if(prog) mem = absim::to_dwarf_span(arduboy.cpu.prog);
-    else     mem = absim::to_dwarf_span(arduboy.cpu.data);
+    if(prog) mem = absim::to_dwarf_span(app.emulator.core_state.cpu.prog);
+    else     mem = absim::to_dwarf_span(app.emulator.core_state.cpu.data);
     return absim::dwarf_value_string(die, mem.offset(addr), bit_offset, bit_size, base);
 }
 #endif
@@ -69,13 +69,13 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
         return false;
     uint16_t offset = uint16_t(addr - sym.addr);
 
-    auto* dwarf = arduboy.elf->dwarf_ctx.get();
+    auto* dwarf = app.emulator.program_state.elf->dwarf_ctx.get();
     if(!dwarf) return false;
 
     // just do a full search for global
     char const* name = nullptr;
     llvm::DWARFDie type;
-    for(auto const& kv : arduboy.elf->globals)
+    for(auto const& kv : app.emulator.program_state.elf->globals)
     {
         auto const& g = kv.second;
         if(prog != g.text) continue;
@@ -119,12 +119,12 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
                 auto j = size - i - 1;
                 if(size > 1 && j == prim.offset)
                     ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 255, 255));
-                if(prog && a + j < arduboy.cpu.prog.size() ||
-                    !prog && a + j < arduboy.cpu.data.size())
+                if(prog && a + j < app.emulator.core_state.cpu.prog.size() ||
+                    !prog && a + j < app.emulator.core_state.cpu.data.size())
                 {
                     ImGui::Text("%02x", prog ?
-                        arduboy.cpu.prog[a + j] :
-                        arduboy.cpu.data[a + j]);
+                        app.emulator.core_state.cpu.prog[a + j] :
+                        app.emulator.core_state.cpu.data[a + j]);
                 }
                 else
                     ImGui::TextUnformatted("??");
@@ -163,12 +163,12 @@ static void draw_memory_breakpoints(size_t addr)
     using namespace ImGui;
     bool rd = false;
     bool wr = false;
-    if(addr < arduboy.cpu.data.size())
+    if(addr < app.emulator.core_state.cpu.data.size())
     {
-        rd = arduboy.breakpoints_rd.test(addr);
-        wr = arduboy.breakpoints_wr.test(addr);
+        rd = app.emulator.debugger_state.breakpoints_rd.test(addr);
+        wr = app.emulator.debugger_state.breakpoints_wr.test(addr);
     }
-    BeginDisabled(addr < 32 || addr >= arduboy.cpu.data.size());
+    BeginDisabled(addr < 32 || addr >= app.emulator.core_state.cpu.data.size());
     AlignTextToFramePadding();
     TextUnformatted("Break on:");
     SameLine();
@@ -176,10 +176,10 @@ static void draw_memory_breakpoints(size_t addr)
     SameLine();
     Checkbox("Write", &wr);
     EndDisabled();
-    if(addr < arduboy.cpu.data.size())
+    if(addr < app.emulator.core_state.cpu.data.size())
     {
-        arduboy.breakpoints_rd[addr] = rd;
-        arduboy.breakpoints_wr[addr] = wr;
+        app.emulator.debugger_state.breakpoints_rd[addr] = rd;
+        app.emulator.debugger_state.breakpoints_wr[addr] = wr;
     }
 }
 
@@ -225,21 +225,21 @@ static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
             IM_COL32(50, 50, 20, 255) :
             IM_COL32(0, 0, 0, 255);
     }
-    else if(off >= arduboy.cpu.min_stack)
+    else if(off >= app.emulator.core_state.cpu.min_stack)
     {
         r = IM_COL32(70, 0, 90, 255);
     }
-    else if(arduboy.cpu.stack_check > 0x100 && off >= arduboy.cpu.stack_check)
+    else if(app.emulator.core_state.cpu.stack_check > 0x100 && off >= app.emulator.core_state.cpu.stack_check)
     {
         r = IM_COL32(45, 45, 45, 255);
     }
-    else if(auto const* sym = arduboy.symbol_for_data_addr((uint16_t)off))
+    else if(auto const* sym = app.emulator.symbol_for_data_addr((uint16_t)off))
     {
         r = darker_color_for_index(sym->color_index);
     }
-    if(off < arduboy.cpu.data.size() && (
-        arduboy.breakpoints_rd.test(off) ||
-        arduboy.breakpoints_wr.test(off)))
+    if(off < app.emulator.core_state.cpu.data.size() && (
+        app.emulator.debugger_state.breakpoints_rd.test(off) ||
+        app.emulator.debugger_state.breakpoints_wr.test(off)))
     {
         r = IM_COL32(150, 50, 50, 255);
     }
@@ -249,7 +249,7 @@ static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 void hover_data_space(uint16_t addr)
 {
     using namespace ImGui;
-    auto const* sym = arduboy.symbol_for_data_addr(addr);
+    auto const* sym = app.emulator.symbol_for_data_addr(addr);
     BeginTooltip();
     if(addr < 256)
     {
@@ -275,7 +275,7 @@ void hover_data_space(uint16_t addr)
                         if(bit)
                         {
                             uint8_t mask = 0x80 >> i;
-                            if(arduboy.cpu.data[addr] & mask)
+                            if(app.emulator.core_state.cpu.data[addr] & mask)
                                 TableSetBgColor(ImGuiTableBgTarget_CellBg, BIT_SET);
                             TextUnformatted(bit);
                         }
@@ -318,16 +318,16 @@ void window_data_space(bool& open)
 
     if(open)
     {
-        SetNextWindowSize({ 200 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-        if(Begin("CPU Data Space", &open) && arduboy.cpu.decoded)
+        SetNextWindowSize({ 200 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+        if(Begin("CPU Data Space", &open) && app.emulator.core_state.cpu.decoded)
         {
-            if(arduboy.cpu.stack_check > 0x100)
+            if(app.emulator.core_state.cpu.stack_check > 0x100)
             {
-                float df = float(arduboy.cpu.stack_check - 0x100) / 2560;
+                float df = float(app.emulator.core_state.cpu.stack_check - 0x100) / 2560;
                 Text("Globals:     %d bytes (%d%%)",
-                    (int)(arduboy.cpu.stack_check - 0x100),
+                    (int)(app.emulator.core_state.cpu.stack_check - 0x100),
                     (int)std::round(df * 100));
-                if(arduboy.elf && !arduboy.elf->data_symbols_sorted_size.empty())
+                if(app.emulator.program_state.elf && !app.emulator.program_state.elf->data_symbols_sorted_size.empty())
                 {
                     SameLine();
                     PushStyleColor(ImGuiCol_Text, IM_COL32(150, 250, 150, 255));
@@ -337,21 +337,21 @@ void window_data_space(bool& open)
                         globals_usage();
                 }
                 Text("Stack:       %d/%d bytes used (%d free)",
-                    (int)(2560 + 256 - arduboy.cpu.sp()),
-                    (int)(2560 + 256 - arduboy.cpu.stack_check),
-                    (int)(arduboy.cpu.sp() - arduboy.cpu.stack_check));
+                    (int)(2560 + 256 - app.emulator.core_state.cpu.sp()),
+                    (int)(2560 + 256 - app.emulator.core_state.cpu.stack_check),
+                    (int)(app.emulator.core_state.cpu.sp() - app.emulator.core_state.cpu.stack_check));
                 Text("Stack (max): %d/%d bytes used (%d free)",
-                    (int)(2560 + 256 - arduboy.cpu.min_stack),
-                    (int)(2560 + 256 - arduboy.cpu.stack_check),
-                    (int)(arduboy.cpu.min_stack - arduboy.cpu.stack_check));
+                    (int)(2560 + 256 - app.emulator.core_state.cpu.min_stack),
+                    (int)(2560 + 256 - app.emulator.core_state.cpu.stack_check),
+                    (int)(app.emulator.core_state.cpu.min_stack - app.emulator.core_state.cpu.stack_check));
                 Separator();
             }
 
-            memed_data_space.ReadOnly = !arduboy.is_present_state();
+            memed_data_space.ReadOnly = !app.emulator.is_present_state();
 
             memed_data_space.DrawContents(
-                arduboy.cpu.data.data(),
-                arduboy.cpu.data.size());
+                app.emulator.core_state.cpu.data.data(),
+                app.emulator.core_state.cpu.data.size());
 
             auto addr = memed_data_space.DataPreviewAddr;
             draw_memory_breakpoints(addr);

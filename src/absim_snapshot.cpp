@@ -48,7 +48,7 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
-constexpr version_t SNAPSHOT_VERSION = { 0, 25, 0 };
+constexpr version_t SNAPSHOT_VERSION = { 0, 24, 18 };
 
 static std::string version_str(version_t const& v)
 {
@@ -468,7 +468,7 @@ size_t arduboy_t::max_savestate_size() const
     // Calculate the theoretical maximum serialize size:
     // if all FX sectors are present (each sector is 4097 bytes serialized).
     size_t num_sectors = 0;
-    for(auto const& s : fx.sectors)
+    for(auto const& s : peripherals.fx.sectors)
         if(s) ++num_sectors;
     num_sectors = std::min<size_t>(num_sectors, w25q128_t::NUM_SECTORS);
     size += (w25q128_t::NUM_SECTORS - num_sectors) * 4097;
@@ -621,7 +621,7 @@ std::string arduboy_t::load_snapshot(std::istream& f)
         }
 
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
-        cpu.reset();
+        core_state.cpu.reset();
         auto r = serdes_snapshot<true>(ar, *this);
         if(!r.empty())
         {
@@ -680,8 +680,8 @@ void arduboy_t::save_savedata(std::ostream& f)
 {
     using StreamAdapter = bitsery::OutputStreamAdapter;
     bitsery::Serializer<StreamAdapter> ar(f);
-    savedata.game_hash = game_hash;
-    ar(savedata);
+    save_data_state.savedata.game_hash = program_state.game_hash;
+    ar(save_data_state.savedata);
 }
 
 bool arduboy_t::load_savedata(std::istream& f)
@@ -693,24 +693,24 @@ bool arduboy_t::load_savedata(std::istream& f)
     ar(data);
     if(!bitsery_ok(ar.adapter().error(), ar.adapter().isCompletedSuccessfully()))
         return false;
-    if(data.game_hash != game_hash)
+    if(data.game_hash != program_state.game_hash)
     {
         return false;
     }
-    savedata = std::move(data);
+    save_data_state.savedata = std::move(data);
 
     // overwrite eeprom / fx with saved data
 
-    auto const& d = savedata;
-    if(d.eeprom.size() == cpu.eeprom.size())
-        memcpy(cpu.eeprom.data(), d.eeprom.data(), array_bytes(cpu.eeprom));
+    auto const& d = save_data_state.savedata;
+    if(d.eeprom.size() == core_state.cpu.eeprom.size())
+        memcpy(core_state.cpu.eeprom.data(), d.eeprom.data(), array_bytes(core_state.cpu.eeprom));
 
     for(auto const& kv : d.fx_sectors)
     {
         uint32_t sector = kv.first;
         auto const& sdata = kv.second;
-        if(sector >= fx.NUM_SECTORS) continue;
-        fx.write_bytes(sector * 4096, sdata.data(), 4096);
+        if(sector >= peripherals.fx.NUM_SECTORS) continue;
+        peripherals.fx.write_bytes(sector * 4096, sdata.data(), 4096);
     }
 
     return true;

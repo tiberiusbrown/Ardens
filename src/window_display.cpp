@@ -11,7 +11,7 @@ void window_display(bool& open)
 
     if(open)
     {
-        SetNextWindowSize({ 400 * pixel_ratio, 200 * pixel_ratio }, ImGuiCond_FirstUseEver);
+        SetNextWindowSize({ 400 * app.pixel_ratio, 200 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
         if(Begin("Display", &open,
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse))
@@ -36,9 +36,9 @@ void window_display(bool& open)
             }
 
             if(smaller)
-                platform_texture_scale_linear(display_texture);
+                platform_texture_scale_linear(app.display_texture);
             else
-                platform_texture_scale_nearest(display_texture);
+                platform_texture_scale_nearest(app.display_texture);
 
             {
                 auto* d = GetWindowDrawList();

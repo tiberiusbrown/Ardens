@@ -73,32 +73,6 @@ extern unsigned char const ProggyVector[198188];
 app_state_t app;
 platform_services_t platform_services;
 
-absim::arduboy_t& arduboy = app.emulator;
-int& display_texture_zoom = app.display_texture_zoom;
-texture_t& display_texture = app.display_texture;
-texture_t& display_buffer_texture = app.display_buffer_texture;
-std::string& dropfile_err = app.dropfile_err;
-bool& loading_indicator = app.loading_indicator;
-uint64_t& ms_since_start = app.ms_since_start;
-std::filesystem::path& userpath = app.userpath;
-bool& first_touch = app.first_touch;
-bool& always_touch = app.always_touch;
-uint64_t& ms_since_touch = app.ms_since_touch;
-std::unordered_map<uint64_t, touch_point_t>& touch_points = app.touch_points;
-float& pixel_ratio = app.pixel_ratio;
-bool& done = app.done;
-bool& layout_done = app.layout_done;
-bool& settings_loaded = app.settings_loaded;
-bool& fs_ready = app.fs_ready;
-int& profiler_selected_hotspot = app.profiler_selected_hotspot;
-int& disassembly_scroll_addr = app.disassembly_scroll_addr;
-bool& scroll_addr_to_top = app.scroll_addr_to_top;
-int& simulation_slowdown = app.simulation_slowdown;
-int& fx_data_scroll_addr = app.fx_data_scroll_addr;
-int& display_buffer_addr = app.display_buffer_addr;
-int& display_buffer_w = app.display_buffer_w;
-int& display_buffer_h = app.display_buffer_h;
-
 static ImGuiStyle default_style;
 
 #if defined(ARDENS_FLASHCART)
@@ -109,7 +83,7 @@ static void flashcart_fetch_callback(sfetch_response_t const* r)
 {
     if(r->fetched)
     {
-        flashcart_error = arduboy.load_flashcart_zip(
+        flashcart_error = app.emulator.load_flashcart_zip(
             (uint8_t const*)r->data.ptr, r->data.size);
     }
     else if(r->finished)
@@ -118,7 +92,7 @@ static void flashcart_fetch_callback(sfetch_response_t const* r)
     }
     if(r->finished)
     {
-        loading_indicator = false;
+        app.loading_indicator = false;
         if(flashcart_error.empty())
             printf("Flashcart loaded successfully.\n");
         else
@@ -267,9 +241,9 @@ extern "C" int load_file(
 {
     absim::istrstream f((char const*)data, size);
     bool save = !strcmp(param, "save");
-    dropfile_err = arduboy.load_file(filename, f, save);
+    app.dropfile_err = app.emulator.load_file(filename, f, save);
     autoset_from_device_type();
-    if(dropfile_err.empty())
+    if(app.dropfile_err.empty())
     {
         load_savedata();
 #ifndef ARDENS_DIST
@@ -281,17 +255,17 @@ extern "C" int load_file(
 
 extern "C" int get_led_state(int component)
 {
-    if(!arduboy.cpu.decoded) return 0;
+    if(!app.emulator.core_state.cpu.decoded) return 0;
 
     uint8_t r = 0;
     uint8_t g = 0;
     uint8_t b = 0;
-    arduboy.cpu.led_rgb(r, g, b);
+    app.emulator.core_state.cpu.led_rgb(r, g, b);
 
     switch(component)
     {
-    case 0: return arduboy.cpu.led_tx();
-    case 1: return arduboy.cpu.led_rx();
+    case 0: return app.emulator.core_state.cpu.led_tx();
+    case 1: return app.emulator.core_state.cpu.led_rx();
     case 2: return r;
     case 3: return g;
     case 4: return b;
@@ -636,14 +610,14 @@ extern "C" int setparam(char const* name, char const* value)
     {
         bool parsed = false;
         if(parse_bool(value, parsed))
-            always_touch = parsed;
+            app.always_touch = parsed;
         r = 1;
     }
     else if(!strcmp(name, "loading"))
     {
         bool parsed = false;
         if(parse_bool(value, parsed))
-            loading_indicator = parsed;
+            app.loading_indicator = parsed;
         r = 1;
     }
     return r;
@@ -651,7 +625,7 @@ extern "C" int setparam(char const* name, char const* value)
 
 extern "C" void postsyncfs()
 {
-    fs_ready = true;
+    app.fs_ready = true;
     load_savedata();
 }
 
@@ -659,8 +633,8 @@ bool update_pixel_ratio()
 {
     float ratio = platform_pixel_ratio();
     ratio *= (settings.uiscale * 0.25f + 0.5f);
-    bool changed = (ratio != pixel_ratio);
-    pixel_ratio = ratio;
+    bool changed = (ratio != app.pixel_ratio);
+    app.pixel_ratio = ratio;
     return changed;
 }
 
@@ -675,7 +649,7 @@ void define_font()
     io.Fonts->Clear();
 #if !defined(ARDENS_NO_GUI) && !PROFILING
     io.Fonts->AddFontFromMemoryTTF(
-        (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
+        (void*)ProggyVector, sizeof(ProggyVector), 13.f * app.pixel_ratio, &cfg);
 #endif
 }
 
@@ -690,7 +664,7 @@ void rescale_style()
 {
     auto& style = ImGui::GetStyle();
     style = default_style;
-    style.ScaleAllSizes(pixel_ratio);
+    style.ScaleAllSizes(app.pixel_ratio);
 }
 
 void shutdown()
@@ -729,25 +703,25 @@ void init()
     FS.syncfs(true, function(err) { ccall('postsyncfs', 'v'); });
     );
     io.IniFilename = "/offline/Ardens.ini";
-    userpath = "/offline";
+    app.userpath = "/offline";
 #else
     {
         static char ini_path[1024];
         get_user_config_folder(ini_path, sizeof(ini_path), "Ardens");
-        userpath = ini_path;
+        app.userpath = ini_path;
         std::error_code ec;
-        std::filesystem::create_directories(userpath, ec);
+        std::filesystem::create_directories(app.userpath, ec);
         strncpy(
             ini_path,
-            (userpath / "Ardens.ini").generic_string().c_str(),
+            (app.userpath / "Ardens.ini").generic_string().c_str(),
             sizeof(ini_path));
         io.IniFilename = ini_path;
     }
 #endif
 
-    printf("Data path: %s\n", userpath.generic_string().c_str());
+    printf("Data path: %s\n", app.userpath.generic_string().c_str());
 
-    arduboy.display.type = absim::display_t::SSD1306;
+    app.emulator.peripherals.display.type = absim::display_t::SSD1306;
 
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::CreateContext();
@@ -759,7 +733,7 @@ void init()
 
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_NO_SAVED_SETTINGS)
     ImGui::LoadIniSettingsFromDisk(io.IniFilename);
-    settings_loaded = true;
+    app.settings_loaded = true;
 #endif
 
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -780,13 +754,13 @@ void init()
 
     default_style = style;
 
-    arduboy.fx.erase_all_data();
-    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
-    arduboy.reset();
-    arduboy.fx.set_empty_page_range();
+    app.emulator.peripherals.fx.erase_all_data();
+    app.emulator.core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    app.emulator.reset();
+    app.emulator.peripherals.fx.set_empty_page_range();
 
-    ms_since_start = 0;
-    ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
+    app.ms_since_start = 0;
+    app.ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
 
 #ifdef ARDENS_DIST
     load_file("", "game.arduboy", game_arduboy, game_arduboy_size);
@@ -800,7 +774,7 @@ void init()
         req.path = "flashcart.zip";
         req.callback = flashcart_fetch_callback;
         sfetch_send(&req);
-        loading_indicator = true;
+        app.loading_indicator = true;
     }
 #endif
 }
@@ -838,14 +812,14 @@ void take_snapshot()
     std::string fname = timestamped_filename("ardens", "snapshot");
 #ifdef __EMSCRIPTEN__
     std::ofstream f("ardens.snapshot", std::ios::binary);
-    if(arduboy.save_snapshot(f))
+    if(app.emulator.save_snapshot(f))
     {
         f.close();
         file_download("ardens.snapshot", fname.c_str(), "application/octet-stream");
     }
 #else
     std::ofstream f(fname, std::ios::binary);
-    arduboy.save_snapshot(f);
+    app.emulator.save_snapshot(f);
 #endif
 #endif
 }
@@ -867,8 +841,8 @@ std::string timestamped_filename(char const* prefix, char const* extension)
 std::string preferred_title()
 {
 #ifdef ARDENS_DIST
-    if(!arduboy.title.empty())
-        return arduboy.title;
+    if(!app.emulator.program_state.title.empty())
+        return app.emulator.program_state.title;
 #endif
     return ARDENS_TITLE;
 }
@@ -879,24 +853,24 @@ void frame_logic()
 
     ImGuiIO& io = ImGui::GetIO();
 
-    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
-    if(!touch_points.empty())
-        ms_since_touch = 0;
+    app.emulator.core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    if(!app.touch_points.empty())
+        app.ms_since_touch = 0;
 
 #ifndef ARDENS_DIST
     file_watch_check();
 #endif
 
 #ifdef __EMSCRIPTEN__
-    if(done) emscripten_cancel_main_loop();
+    if(app.done) emscripten_cancel_main_loop();
 #endif
 
     // advance simulation
     uint64_t dt = platform_get_ms_dt();
-    ms_since_start += dt;
-    ms_since_touch += dt;
+    app.ms_since_start += dt;
+    app.ms_since_touch += dt;
     if(dt > 100) dt = 100;
-    if(arduboy.cpu.decoded && !arduboy.paused)
+    if(app.emulator.core_state.cpu.decoded && !app.emulator.debugger_state.paused)
     {
         // PINF: 4,5,6,7=D,L,R,U
         // PINE: 6=A
@@ -938,50 +912,50 @@ void frame_logic()
                 touch.btns[TOUCH_B])
                 pinb &= ~0x10;
 
-            arduboy.cpu.data[0x23] = pinb;
-            arduboy.cpu.data[0x2c] = pine;
-            arduboy.cpu.data[0x2f] = pinf;
+            app.emulator.core_state.cpu.data[0x23] = pinb;
+            app.emulator.core_state.cpu.data[0x2c] = pine;
+            app.emulator.core_state.cpu.data[0x2f] = pinf;
         }
 
-        bool prev_paused = arduboy.paused;
-        arduboy.frame_bytes_total = 1024;
+        bool prev_paused = app.emulator.debugger_state.paused;
+        app.emulator.profiler_state.frame_bytes_total = 1024;
 
-        arduboy.cpu.enabled_autobreaks.reset();
+        app.emulator.core_state.cpu.enabled_autobreaks.reset();
 #ifndef ARDENS_NO_GUI
-        arduboy.cpu.enabled_autobreaks.set(absim::AB_BREAK);
+        app.emulator.core_state.cpu.enabled_autobreaks.set(absim::AB_BREAK);
         for(int i = 1; i < absim::AB_NUM; ++i)
             if(settings.ab.index(i))
-                arduboy.cpu.enabled_autobreaks.set(i);
+                app.emulator.core_state.cpu.enabled_autobreaks.set(i);
 #endif
 
-        arduboy.allow_nonstep_breakpoints =
-            arduboy.break_step == 0xffffffff || settings.enable_step_breaks;
-        arduboy.display.enable_filter = settings.display_auto_filter;
+        app.emulator.debugger_state.allow_nonstep_breakpoints =
+            app.emulator.debugger_state.break_step == 0xffffffff || settings.enable_step_breaks;
+        app.emulator.peripherals.display.enable_filter = settings.display_auto_filter;
 
-        arduboy.display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy.display.ref_segment_current = 0.195f;
+        app.emulator.peripherals.display.enable_current_limiting = (settings.display_current_modeling != 0);
+        app.emulator.peripherals.display.ref_segment_current = 0.195f;
         switch(settings.display_current_modeling)
         {
-        case 0:  arduboy.display.current_limit_slope = 0.f;   break;
-        case 1:  arduboy.display.current_limit_slope = 0.75f; break;
-        case 2:  arduboy.display.current_limit_slope = 0.45f; break;
-        case 3:  arduboy.display.current_limit_slope = 0.f;   break;
-        default: arduboy.display.current_limit_slope = 0.f;   break;
+        case 0:  app.emulator.peripherals.display.current_limit_slope = 0.f;   break;
+        case 1:  app.emulator.peripherals.display.current_limit_slope = 0.75f; break;
+        case 2:  app.emulator.peripherals.display.current_limit_slope = 0.45f; break;
+        case 3:  app.emulator.peripherals.display.current_limit_slope = 0.f;   break;
+        default: app.emulator.peripherals.display.current_limit_slope = 0.f;   break;
         }
 
         switch(settings.fxport)
         {
         case FXPORT_D1:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 1;
+            app.emulator.peripherals.fxport_reg = 0x2b;
+            app.emulator.peripherals.fxport_mask = 1 << 1;
             break;
         case FXPORT_D2:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 2;
+            app.emulator.peripherals.fxport_reg = 0x2b;
+            app.emulator.peripherals.fxport_mask = 1 << 2;
             break;
         case FXPORT_E2:
-            arduboy.fxport_reg = 0x2e;
-            arduboy.fxport_mask = 1 << 2;
+            app.emulator.peripherals.fxport_reg = 0x2e;
+            app.emulator.peripherals.fxport_mask = 1 << 2;
             break;
         default:
             break;
@@ -990,27 +964,27 @@ void frame_logic()
         switch(settings.display)
         {
         case DISPLAY_SSD1306:
-            arduboy.display.type = absim::display_t::SSD1306;
+            app.emulator.peripherals.display.type = absim::display_t::SSD1306;
             break;
         case DISPLAY_SSD1309:
-            arduboy.display.type = absim::display_t::SSD1309;
+            app.emulator.peripherals.display.type = absim::display_t::SSD1309;
             break;
         case DISPLAY_SH1106:
-            arduboy.display.type = absim::display_t::SH1106;
+            app.emulator.peripherals.display.type = absim::display_t::SH1106;
             break;
         default:
             break;
         }
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;
-        uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;
+        uint64_t dtps = dt * MS_TO_PS * 1000 / app.simulation_slowdown;
         if(gif_recording)
         {
             constexpr uint64_t DT_20_MS = 20 * MS_TO_PS;
             uint64_t ps = DT_20_MS - gif_ps_rem;
             while(dtps >= ps)
             {
-                arduboy.advance(ps);
+                app.emulator.advance(ps);
                 send_gif_frame(2, recording_pixels(false));
                 dtps -= ps;
                 ps = DT_20_MS;
@@ -1019,45 +993,45 @@ void frame_logic()
             gif_ps_rem += dtps;
         }
         if(dtps > 0)
-            arduboy.advance(dtps * SPEEDUP);
+            app.emulator.advance(dtps * SPEEDUP);
 
         check_save_savedata();
 
-        if(arduboy.paused && !prev_paused)
-            disassembly_scroll_addr = arduboy.cpu.pc * 2;
+        if(app.emulator.debugger_state.paused && !prev_paused)
+            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
         //if(!settings.enable_stack_breaks)
-        //    arduboy.cpu.stack_overflow = false;
+        //    app.emulator.core_state.cpu.stack_overflow = false;
 
         // consume sound buffer
         send_wav_audio();
         process_sound_samples();
 #if !PROFILING
-        if(!arduboy.cpu.sound_buffer.empty() && simulation_slowdown == 1000)
+        if(!app.emulator.core_state.cpu.sound_buffer.empty() && app.simulation_slowdown == 1000)
             platform_send_sound();
 #endif
-        arduboy.cpu.sound_buffer.clear();
+        app.emulator.core_state.cpu.sound_buffer.clear();
     }
     else
     {
-        arduboy.break_step = 0xffffffff;
+        app.emulator.debugger_state.break_step = 0xffffffff;
     }
 
     // update framebuffer texture
-    if(arduboy.cpu.decoded)
+    if(app.emulator.core_state.cpu.decoded)
     {
         recreate_display_texture();
-        int z = display_texture_zoom;
+        int z = app.display_texture_zoom;
         std::vector<uint8_t> pixels;
         pixels.resize(128 * 64 * 4 * z * z);
-        scalenx(pixels.data(), arduboy.display.filtered_pixels.data(), true);
-        platform_update_texture(display_texture, pixels.data(), pixels.size());
+        scalenx(pixels.data(), app.emulator.peripherals.display.filtered_pixels.data(), true);
+        platform_update_texture(app.display_texture, pixels.data(), pixels.size());
 
 #if ALLOW_SCREENSHOTS
-        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
+        if(app.emulator.core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
             take_snapshot();
-        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        if(app.emulator.core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
             save_screenshot();
-        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
+        if(app.emulator.core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
             toggle_recording();
 #endif
     }
@@ -1075,11 +1049,11 @@ void frame_logic()
 
 #ifndef ARDENS_NO_DEBUGGER
     if(ImGui::IsKeyPressed(ImGuiKey_F5, false))
-        arduboy.paused = !arduboy.paused;
+        app.emulator.debugger_state.paused = !app.emulator.debugger_state.paused;
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
     {
-        arduboy.reset();
+        app.emulator.reset();
         load_savedata();
     }
 
@@ -1108,12 +1082,12 @@ void imgui_content()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    if(!arduboy.cpu.decoded)
+    if(!app.emulator.core_state.cpu.decoded)
     {
         auto* d = ImGui::GetBackgroundDrawList();
         auto size = ImGui::GetMainViewport()->Size;
-        float w = 100.f * pixel_ratio;
-        float pad = 25.f * pixel_ratio;
+        float w = 100.f * app.pixel_ratio;
+        float pad = 25.f * app.pixel_ratio;
         w = std::min(w, size.x - pad);
         w = std::min(w, size.y - pad);
         w = std::max(w, pad);
@@ -1123,7 +1097,7 @@ void imgui_content()
         constexpr uint8_t shade = 200;
         auto color = IM_COL32(shade, shade, shade, 255);
         float thickness = w * 0.04f;
-        if(loading_indicator)
+        if(app.loading_indicator)
         {
             for(int i = 0; i < 12; ++i)
             {
@@ -1164,7 +1138,7 @@ void imgui_content()
                 { cx - w2, cy - w2 },
                 { cx + w2, cy + w2 },
                 color,
-                10.f * pixel_ratio,
+                10.f * app.pixel_ratio,
                 0,
                 thickness);
             d->AddLine(
@@ -1196,22 +1170,22 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-    if(!dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
+    if(!app.dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
         ImGui::OpenPopup("File Load Error");
 
-    ImGui::SetNextWindowSize({ 500 * pixel_ratio, 0 });
+    ImGui::SetNextWindowSize({ 500 * app.pixel_ratio, 0 });
     if(ImGui::BeginPopupModal("File Load Error", NULL,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextUnformatted(dropfile_err.c_str());
+        ImGui::TextUnformatted(app.dropfile_err.c_str());
         ImGui::PopTextWrapPos();
-        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) ||
+        if(ImGui::Button("OK", ImVec2(120 * app.pixel_ratio, 0)) ||
             ImGui::IsKeyPressed(ImGuiKey_Enter) ||
-            dropfile_err.empty())
+            app.dropfile_err.empty())
         {
-            dropfile_err.clear();
+            app.dropfile_err.clear();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
@@ -1219,7 +1193,7 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-    if(arduboy.cpu.should_autobreak_gui())
+    if(app.emulator.core_state.cpu.should_autobreak_gui())
         ImGui::OpenPopup("Auto-Break");
 
     static std::array<char const*, absim::AB_NUM> const AB_REASONS =
@@ -1237,13 +1211,13 @@ void imgui_content()
         "FX Busy: attempted to execute FX command while flash chip was busy."
     };
 
-    ImGui::SetNextWindowSize({ 300 * pixel_ratio, 0 });
+    ImGui::SetNextWindowSize({ 300 * app.pixel_ratio, 0 });
     if(ImGui::BeginPopupModal("Auto-Break", NULL,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
         size_t ab = 0;
-        auto mask = arduboy.cpu.autobreaks & arduboy.cpu.enabled_autobreaks;
+        auto mask = app.emulator.core_state.cpu.autobreaks & app.emulator.core_state.cpu.enabled_autobreaks;
         for(size_t i = 1; i < mask.size(); ++i)
         {
             if(mask.test(i))
@@ -1258,9 +1232,9 @@ void imgui_content()
         ImGui::Separator();
         ImGui::TextUnformatted(AB_REASONS[ab]);
         ImGui::PopTextWrapPos();
-        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
+        if(ImGui::Button("OK", ImVec2(120 * app.pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         {
-            arduboy.cpu.autobreaks = 0;
+            app.emulator.core_state.cpu.autobreaks = 0;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

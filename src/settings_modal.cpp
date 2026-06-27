@@ -6,9 +6,9 @@ static_assert(sizeof(settings_t::ab) + 1 == absim::AB_NUM, "update settings_t::a
 
 static bool settings_begin_table()
 {
-    float const A = 300.f * pixel_ratio;
-    float const B = 150.f * pixel_ratio;
-    float const Y = 260.f * pixel_ratio;
+    float const A = 300.f * app.pixel_ratio;
+    float const B = 150.f * app.pixel_ratio;
+    float const Y = 260.f * app.pixel_ratio;
 
     bool r = ImGui::BeginTable(
         "##table", 2,
@@ -394,21 +394,21 @@ void modal_settings()
         EndTabBar();
     }
 
-    if(Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
+    if(Button("OK", ImVec2(120 * app.pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
     {
         switch(settings.fxport)
         {
         case FXPORT_D1:
-            arduboy.cfg.fxport_reg = 0x2b;
-            arduboy.cfg.fxport_mask = 1 << 1;
+            app.emulator.program_state.cfg.fxport_reg = 0x2b;
+            app.emulator.program_state.cfg.fxport_mask = 1 << 1;
             break;
         case FXPORT_D2:
-            arduboy.cfg.fxport_reg = 0x2b;
-            arduboy.cfg.fxport_mask = 1 << 2;
+            app.emulator.program_state.cfg.fxport_reg = 0x2b;
+            app.emulator.program_state.cfg.fxport_mask = 1 << 2;
             break;
         case FXPORT_E2:
-            arduboy.cfg.fxport_reg = 0x2e;
-            arduboy.cfg.fxport_mask = 1 << 2;
+            app.emulator.program_state.cfg.fxport_reg = 0x2e;
+            app.emulator.program_state.cfg.fxport_mask = 1 << 2;
             break;
         default:
             break;
