@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cctype>
+#include <ctime>
 
 #include <string.h>
 #include <stdlib.h>
@@ -719,15 +720,7 @@ void init()
 
 void save_screenshot()
 {
-    char fname[256];
-    time_t rawtime;
-    struct tm* ti;
-    time(&rawtime);
-    ti = localtime(&rawtime);
-    (void)snprintf(fname, sizeof(fname),
-        "screenshot_%04d%02d%02d%02d%02d%02d.png",
-        ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-        ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+    std::string fname = timestamped_filename("screenshot", "png");
     int z = recording_filter_zoom();
     int w = 128 * z;
     int h = 64 * z;
@@ -739,9 +732,9 @@ void save_screenshot()
     }
 #ifdef __EMSCRIPTEN__
     stbi_write_png("screenshot.png", w, h, 4, recording_pixels(true), stride);
-    file_download("screenshot.png", fname, "image/x-png");
+    file_download("screenshot.png", fname.c_str(), "image/x-png");
 #else
-    stbi_write_png(fname, w, h, 4, recording_pixels(true), stride);
+    stbi_write_png(fname.c_str(), w, h, 4, recording_pixels(true), stride);
 #endif
 }
 
@@ -755,27 +748,33 @@ void toggle_recording()
 void take_snapshot()
 {
 #ifndef ARDENS_NO_SNAPSHOTS
-    char fname[256];
-    time_t rawtime;
-    struct tm* ti;
-    time(&rawtime);
-    ti = localtime(&rawtime);
-    (void)snprintf(fname, sizeof(fname),
-        "ardens_%04d%02d%02d%02d%02d%02d.snapshot",
-        ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-        ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+    std::string fname = timestamped_filename("ardens", "snapshot");
 #ifdef __EMSCRIPTEN__
     std::ofstream f("ardens.snapshot", std::ios::binary);
     if(arduboy.save_snapshot(f))
     {
         f.close();
-        file_download("ardens.snapshot", fname, "application/octet-stream");
+        file_download("ardens.snapshot", fname.c_str(), "application/octet-stream");
     }
 #else
     std::ofstream f(fname, std::ios::binary);
     arduboy.save_snapshot(f);
 #endif
 #endif
+}
+
+std::string timestamped_filename(char const* prefix, char const* extension)
+{
+    char timestamp[32];
+    time_t rawtime;
+    struct tm* ti;
+    time(&rawtime);
+    ti = localtime(&rawtime);
+    (void)snprintf(timestamp, sizeof(timestamp),
+        "%04d%02d%02d%02d%02d%02d",
+        ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
+        ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+    return fmt::format("{}_{}.{}", prefix, timestamp, extension);
 }
 
 std::string preferred_title()

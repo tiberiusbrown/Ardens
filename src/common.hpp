@@ -94,6 +94,9 @@ void rescale_style();
 void save_screenshot();
 void toggle_recording();
 void take_snapshot();
+std::string timestamped_filename(
+    char const* prefix,
+    char const* extension);
 std::string preferred_title();
 
 float volume_gain();

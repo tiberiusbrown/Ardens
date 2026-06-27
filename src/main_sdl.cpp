@@ -14,7 +14,6 @@
 #include "imgui_impl_sdlrenderer3.h"
 #include <implot/implot.h>
 #include <stdio.h>
-#include <time.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
@@ -267,20 +266,12 @@ static void main_loop()
         SDL_Surface* ss = SDL_ConvertSurface(rs, format);
         if(ss)
         {
-            char fname[256];
-            time_t rawtime;
-            struct tm* ti;
-            time(&rawtime);
-            ti = localtime(&rawtime);
-            (void)snprintf(fname, sizeof(fname),
-                "window_%04d%02d%02d%02d%02d%02d.png",
-                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+            std::string fname = timestamped_filename("window", "png");
 #ifdef __EMSCRIPTEN__
             stbi_write_png("screenshot.png", w, h, 3, ss->pixels, ss->pitch);
-            file_download("screenshot.png", fname, "image/x-png");
+            file_download("screenshot.png", fname.c_str(), "image/x-png");
 #else
-            stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
+            stbi_write_png(fname.c_str(), w, h, 3, ss->pixels, ss->pitch);
 #endif
         }
         SDL_DestroySurface(rs);
