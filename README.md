@@ -103,7 +103,7 @@ Values: `default`, `retro`, `lowcontrast`, `highcontrast`
 
 #### `af` or `autofilter`
 If enabled, applies temporal filtering to the display to help properly render grayscale games.
-Values: `0`, `1`
+Values: `0`, `1`, `false`, `true`, `off`, `on`, `no`, `yes`
 
 #### `f` or `filter`
 (Debugger only) Conditionally applies an upscaling filter.
@@ -111,7 +111,7 @@ Values: `none`, `scale2x`, `scale3x`, `scale4x`, `hq2x`, `hq3x`, `hq4x`
 
 #### `ds` or `downsample`
 (Debugger only) Downsamples by an integer ratio after applying an upsample filter.
-Values: `0`, `1`, `2`, `3`
+Values: `1`, `2`, `3`, `4`
 
 #### `ori` or `orientation`
 Rotates the display in 90 degree increments (directional button mapping is also rotated as if playing on a rotated Arduboy).
@@ -129,9 +129,15 @@ Sets the initial size of the application window. Value should be in the format `
 
 #### `i` or `intscale`
 Restricts the display scaling to an integral scaling factor. Defaults to false for the web player, and true for all other platforms.
+Values: `0`, `1`, `false`, `true`, `off`, `on`, `no`, `yes`
 
 #### `c` or `current`
-Enables modeling the display row driver current limit. This effectively darkens rows that have many lit pixels. Defaults to false.
+Controls modeling the display row driver current limit. This effectively darkens rows that have many lit pixels. Defaults to `0` / `off`.
+Values:
+- `0` or `false` or `off` or `no`
+- `1` or `true` or `on` or `yes` or `subtle`
+- `2` or `normal`
+- `3` or `exaggerated`
 
 #### `fxport`
 Sets the port to be used for the flash select. Values:

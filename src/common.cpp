@@ -12,6 +12,8 @@
 
 #include <fstream>
 #include <algorithm>
+#include <cerrno>
+#include <cctype>
 
 #include <string.h>
 #include <stdlib.h>
@@ -259,158 +261,300 @@ bool ends_with(std::string const& str, std::string const& end)
     return str.substr(str.size() - end.size()) == end;
 }
 
+static bool string_equals_ignore_case(char const* a, char const* b)
+{
+    if(!a || !b) return false;
+    while(*a && *b)
+    {
+        unsigned char ca = static_cast<unsigned char>(*a++);
+        unsigned char cb = static_cast<unsigned char>(*b++);
+        if(std::tolower(ca) != std::tolower(cb)) return false;
+    }
+    return *a == *b;
+}
+
+static bool parse_int(char const* value, int& result)
+{
+    if(!value || !*value) return false;
+    errno = 0;
+    char* end = nullptr;
+    long parsed = strtol(value, &end, 10);
+    if(errno || end == value || *end) return false;
+    result = static_cast<int>(parsed);
+    return true;
+}
+
+static bool parse_clamped_int(char const* value, int min_value, int max_value, int& result)
+{
+    int parsed = 0;
+    if(!parse_int(value, parsed)) return false;
+    result = std::clamp<int>(parsed, min_value, max_value);
+    return true;
+}
+
+static bool parse_bool(char const* value, bool& result)
+{
+    int parsed = 0;
+    if(parse_int(value, parsed))
+    {
+        result = parsed != 0;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "true") ||
+        string_equals_ignore_case(value, "yes") ||
+        string_equals_ignore_case(value, "on"))
+    {
+        result = true;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "false") ||
+        string_equals_ignore_case(value, "no") ||
+        string_equals_ignore_case(value, "off"))
+    {
+        result = false;
+        return true;
+    }
+    return false;
+}
+
+static bool parse_grid(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "none")) result = PGRID_NONE;
+    else if(string_equals_ignore_case(value, "normal")) result = PGRID_NORMAL;
+    else if(string_equals_ignore_case(value, "red")) result = PGRID_RED;
+    else if(string_equals_ignore_case(value, "green")) result = PGRID_GREEN;
+    else if(string_equals_ignore_case(value, "blue")) result = PGRID_BLUE;
+    else if(string_equals_ignore_case(value, "cyan")) result = PGRID_CYAN;
+    else if(string_equals_ignore_case(value, "magenta")) result = PGRID_MAGENTA;
+    else if(string_equals_ignore_case(value, "yellow")) result = PGRID_YELLOW;
+    else if(string_equals_ignore_case(value, "white")) result = PGRID_WHITE;
+    else return parse_clamped_int(value, PGRID_MIN, PGRID_MAX, result);
+    return true;
+}
+
+static bool parse_palette(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "default")) result = PALETTE_DEFAULT;
+    else if(string_equals_ignore_case(value, "retro")) result = PALETTE_RETRO;
+    else if(string_equals_ignore_case(value, "lowcontrast")) result = PALETTE_LOW_CONTRAST;
+    else if(string_equals_ignore_case(value, "highcontrast")) result = PALETTE_HIGH_CONTRAST;
+    else return parse_clamped_int(value, PALETTE_MIN, PALETTE_MAX, result);
+    return true;
+}
+
+static bool parse_filter(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "none")) result = FILTER_NONE;
+    else if(string_equals_ignore_case(value, "scale2x")) result = FILTER_SCALE2X;
+    else if(string_equals_ignore_case(value, "scale3x")) result = FILTER_SCALE3X;
+    else if(string_equals_ignore_case(value, "scale4x")) result = FILTER_SCALE4X;
+    else if(string_equals_ignore_case(value, "hq2x")) result = FILTER_HQ2X;
+    else if(string_equals_ignore_case(value, "hq3x")) result = FILTER_HQ3X;
+    else if(string_equals_ignore_case(value, "hq4x")) result = FILTER_HQ4X;
+    else return parse_clamped_int(value, FILTER_MIN, FILTER_MAX, result);
+    return true;
+}
+
+static bool parse_orientation(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "0") || string_equals_ignore_case(value, "normal"))
+        result = 0;
+    else if(string_equals_ignore_case(value, "90") ||
+        string_equals_ignore_case(value, "cw") ||
+        string_equals_ignore_case(value, "cw90"))
+        result = 1;
+    else if(string_equals_ignore_case(value, "180") || string_equals_ignore_case(value, "flip"))
+        result = 2;
+    else if(string_equals_ignore_case(value, "270") ||
+        string_equals_ignore_case(value, "ccw") ||
+        string_equals_ignore_case(value, "ccw90"))
+        result = 3;
+    else return parse_clamped_int(value, 0, 3, result);
+    return true;
+}
+
+static bool parse_current_model(char const* value, int& result)
+{
+    if(parse_clamped_int(value, 0, 3, result))
+        return true;
+    if(string_equals_ignore_case(value, "true") ||
+        string_equals_ignore_case(value, "yes") ||
+        string_equals_ignore_case(value, "on"))
+    {
+        result = 1;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "false") ||
+        string_equals_ignore_case(value, "no") ||
+        string_equals_ignore_case(value, "off"))
+    {
+        result = 0;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "subtle")) result = 1;
+    else if(string_equals_ignore_case(value, "normal")) result = 2;
+    else if(string_equals_ignore_case(value, "exaggerated")) result = 3;
+    else return false;
+    return true;
+}
+
+static bool parse_fxport(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "d1") || string_equals_ignore_case(value, "fx"))
+        result = FXPORT_D1;
+    else if(string_equals_ignore_case(value, "d2") || string_equals_ignore_case(value, "fxdevkit"))
+        result = FXPORT_D2;
+    else if(string_equals_ignore_case(value, "e2") || string_equals_ignore_case(value, "mini"))
+        result = FXPORT_E2;
+    else return parse_clamped_int(value, 0, FXPORT_NUM - 1, result);
+    return true;
+}
+
+static bool parse_display(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "ssd1306")) result = DISPLAY_SSD1306;
+    else if(string_equals_ignore_case(value, "ssd1309")) result = DISPLAY_SSD1309;
+    else if(string_equals_ignore_case(value, "sh1106")) result = DISPLAY_SH1106;
+    else return parse_clamped_int(value, 0, DISPLAY_NUM - 1, result);
+    return true;
+}
+
 extern "C" int setparam(char const* name, char const* value)
 {
     if(!name || !value) return 0;
-    int nvalue = atoi(value);
-    bool bvalue = (nvalue != 0);
     int r = 0;
     if(!strcmp(name, "z"))
     {
-        settings.fullzoom = bvalue;
-        update_settings();
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.fullzoom = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "g") || !strcmp(name, "grid"))
     {
-        if(!strcmp(value, "none"))
-            settings.display_pixel_grid = PGRID_NONE;
-        else if(!strcmp(value, "normal"))
-            settings.display_pixel_grid = PGRID_NORMAL;
-        else if(!strcmp(value, "red"))
-            settings.display_pixel_grid = PGRID_RED;
-        else if(!strcmp(value, "green"))
-            settings.display_pixel_grid = PGRID_GREEN;
-        else if(!strcmp(value, "blue"))
-            settings.display_pixel_grid = PGRID_BLUE;
-        else if(!strcmp(value, "cyan"))
-            settings.display_pixel_grid = PGRID_CYAN;
-        else if(!strcmp(value, "magenta"))
-            settings.display_pixel_grid = PGRID_MAGENTA;
-        else if(!strcmp(value, "yellow"))
-            settings.display_pixel_grid = PGRID_YELLOW;
-        else if(!strcmp(value, "white"))
-            settings.display_pixel_grid = PGRID_WHITE;
-        else
-            settings.display_pixel_grid = std::clamp<int>(nvalue, PGRID_MIN, PGRID_MAX);
-        update_settings();
+        int parsed = 0;
+        if(parse_grid(value, parsed))
+        {
+            settings.display_pixel_grid = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "p") || !strcmp(name, "palette"))
     {
-        if(!strcmp(value, "default"))
-            settings.display_palette = PALETTE_DEFAULT;
-        else if(!strcmp(value, "retro"))
-            settings.display_palette = PALETTE_RETRO;
-        else if(!strcmp(value, "lowcontrast"))
-            settings.display_palette = PALETTE_LOW_CONTRAST;
-        else if(!strcmp(value, "highcontrast"))
-            settings.display_palette = PALETTE_HIGH_CONTRAST;
-        else
-            settings.display_palette = std::clamp<int>(nvalue, PALETTE_MIN, PALETTE_MAX);
-        update_settings();
+        int parsed = 0;
+        if(parse_palette(value, parsed))
+        {
+            settings.display_palette = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "af") || !strcmp(name, "autofilter"))
     {
-        settings.display_auto_filter = bvalue;
-        update_settings();
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.display_auto_filter = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "f") || !strcmp(name, "filter"))
     {
-        if(!strcmp(value, "none"))
-            settings.display_filtering = FILTER_NONE;
-        else if(!strcmp(value, "scale2x"))
-            settings.display_filtering = FILTER_SCALE2X;
-        else if(!strcmp(value, "scale3x"))
-            settings.display_filtering = FILTER_SCALE3X;
-        else if(!strcmp(value, "scale4x"))
-            settings.display_filtering = FILTER_SCALE4X;
-        else if(!strcmp(value, "hq2x"))
-            settings.display_filtering = FILTER_HQ2X;
-        else if(!strcmp(value, "hq3x"))
-            settings.display_filtering = FILTER_HQ3X;
-        else if(!strcmp(value, "hq4x"))
-            settings.display_filtering = FILTER_HQ4X;
-        else
-            settings.display_filtering = std::clamp<int>(nvalue, FILTER_MIN, FILTER_MAX);
-        update_settings();
+        int parsed = 0;
+        if(parse_filter(value, parsed))
+        {
+            settings.display_filtering = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "ds") || !strcmp(name, "downsample"))
     {
-        settings.display_downsample = std::clamp<int>(nvalue, 1, 4);
-        update_settings();
+        int parsed = 0;
+        if(parse_clamped_int(value, 1, 4, parsed))
+        {
+            settings.display_downsample = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "ori") || !strcmp(name, "orientation"))
     {
-        if(!strcmp(value, "0") || !strcmp(value, "normal"))
-            settings.display_orientation = 0;
-        else if(!strcmp(value, "90") || !strcmp(value, "cw") || !strcmp(value, "cw90"))
-            settings.display_orientation = 1;
-        else if(!strcmp(value, "180") || !strcmp(value, "flip"))
-            settings.display_orientation = 2;
-        else if(!strcmp(value, "270") || !strcmp(value, "ccw") || !strcmp(value, "ccw90"))
-            settings.display_orientation = 3;
-        else
-            settings.display_orientation = std::clamp<int>(nvalue, 0, 3);
-        update_settings();
+        int parsed = 0;
+        if(parse_orientation(value, parsed))
+        {
+            settings.display_orientation = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "v") || !strcmp(name, "volume"))
     {
-        settings.volume = std::clamp<int>(nvalue, 0, 200);
-        update_settings();
+        int parsed = 0;
+        if(parse_clamped_int(value, 0, 200, parsed))
+        {
+            settings.volume = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "i") || !strcmp(name, "intscale"))
     {
-        settings.display_integer_scale = bvalue;
-        update_settings();
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.display_integer_scale = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "c") || !strcmp(name, "current"))
     {
-        settings.display_current_modeling = std::clamp<int>(nvalue, 0, 3);;
-        update_settings();
+        int parsed = 0;
+        if(parse_current_model(value, parsed))
+        {
+            settings.display_current_modeling = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "fxport"))
     {
-        if(!strcmp(value, "d1") || !strcmp(value, "fx"))
-            settings.fxport = FXPORT_D1;
-        else if(!strcmp(value, "d2") || !strcmp(value, "fxdevkit"))
-            settings.fxport = FXPORT_D2;
-        else if(!strcmp(value, "32") || !strcmp(value, "mini"))
-            settings.fxport = FXPORT_E2;
-        else
-            settings.fxport = std::clamp<int>(nvalue, 0, FXPORT_NUM - 1);
-        update_settings();
+        int parsed = 0;
+        if(parse_fxport(value, parsed))
+        {
+            settings.fxport = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "display"))
     {
-        if(!strcmp(value, "ssd1306"))
-            settings.display = DISPLAY_SSD1306;
-        else if(!strcmp(value, "ssd1309"))
-            settings.display = DISPLAY_SSD1309;
-        else if(!strcmp(value, "sh1106"))
-            settings.display = DISPLAY_SH1106;
-        else
-            settings.display = std::clamp<int>(nvalue, 0, DISPLAY_NUM - 1);
-        update_settings();
+        int parsed = 0;
+        if(parse_display(value, parsed))
+        {
+            settings.display = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "touch"))
     {
-        always_touch = bvalue;
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+            always_touch = parsed;
         r = 1;
     }
     else if(!strcmp(name, "loading"))
     {
-        loading_indicator = bvalue;
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+            loading_indicator = parsed;
         r = 1;
     }
     return r;
