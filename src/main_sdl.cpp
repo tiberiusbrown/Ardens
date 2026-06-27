@@ -86,11 +86,56 @@ texture_t platform_create_texture(int w, int h)
 
 void platform_update_texture(texture_t t, void const* data, size_t n)
 {
+    SDL_Texture* texture = (SDL_Texture*)t;
+    if(!texture || !data)
+        return;
+
+    float fw = 0.f, fh = 0.f;
+    if(SDL_GetTextureSize(texture, &fw, &fh) < 0)
+    {
+        SDL_Log("SDL_GetTextureSize failed: %s", SDL_GetError());
+        return;
+    }
+
+    int w = (int)fw;
+    int h = (int)fh;
+    if(w <= 0 || h <= 0)
+        return;
+
+    size_t const src_pitch = (size_t)w * 4;
+    size_t const expected_size = src_pitch * (size_t)h;
+    if(n < expected_size)
+    {
+        SDL_Log(
+            "Texture upload data too small: got %zu bytes, expected %zu bytes",
+            n,
+            expected_size);
+        return;
+    }
+
     void* pixels;
     int pitch;
-    SDL_LockTexture((SDL_Texture*)t, nullptr, &pixels, &pitch);
-    memcpy(pixels, data, n);
-    SDL_UnlockTexture((SDL_Texture*)t);
+    if(SDL_LockTexture(texture, nullptr, &pixels, &pitch) < 0)
+    {
+        SDL_Log("SDL_LockTexture failed: %s", SDL_GetError());
+        return;
+    }
+    if(pitch < (int)src_pitch)
+    {
+        SDL_Log(
+            "Texture upload pitch too small: got %d bytes, expected at least %zu bytes",
+            pitch,
+            src_pitch);
+        SDL_UnlockTexture(texture);
+        return;
+    }
+
+    uint8_t* dst = (uint8_t*)pixels;
+    uint8_t const* src = (uint8_t const*)data;
+    for(int y = 0; y < h; ++y)
+        memcpy(dst + (size_t)y * (size_t)pitch, src + (size_t)y * src_pitch, src_pitch);
+
+    SDL_UnlockTexture(texture);
 }
 
 void platform_texture_scale_linear(texture_t t)
