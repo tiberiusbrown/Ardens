@@ -1026,7 +1026,7 @@ struct icompare
             if(ca > cb) return 1;
         }
         if(sa < sb) return -1;
-        if(sb > sa) return 1;
+        if(sa > sb) return 1;
         return 0;
     }
     bool operator()(std::string const& a, std::string const& b) const
