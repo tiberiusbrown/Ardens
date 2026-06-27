@@ -899,6 +899,47 @@ static std::string load_bin(arduboy_t& a, std::string const& fname, bool save)
 
 #ifndef ARDENS_NO_ARDUBOY_FILE
 
+static constexpr size_t ARDUBOY_INFO_JSON_MAX_BYTES = 1024 * 1024;
+static constexpr size_t ARDUBOY_HEX_MAX_BYTES = 512 * 1024;
+
+static bool zip_uncomp_size_too_large(mz_uint64 uncomp_size, size_t max_size)
+{
+    return
+        uncomp_size > max_size ||
+        uncomp_size > (mz_uint64)std::numeric_limits<size_t>::max();
+}
+
+static std::string extract_zip_file(
+    mz_zip_archive* z,
+    char const* filename,
+    char const* missing_error,
+    char const* stat_error,
+    char const* too_large_error,
+    char const* extract_error,
+    size_t max_size,
+    std::vector<uint8_t>& out)
+{
+    int i = mz_zip_reader_locate_file(z, filename, nullptr, 0);
+    if(i == -1)
+        return missing_error;
+
+    mz_zip_archive_file_stat stat{};
+    if(MZ_FALSE == mz_zip_reader_file_stat(z, i, &stat))
+        return stat_error;
+
+    if(zip_uncomp_size_too_large(stat.m_uncomp_size, max_size))
+        return too_large_error;
+
+    out.resize((size_t)stat.m_uncomp_size);
+    if(MZ_FALSE == mz_zip_reader_extract_to_mem(
+        z, i, out.empty() ? nullptr : out.data(), out.size(), 0))
+    {
+        return extract_error;
+    }
+
+    return "";
+}
+
 static std::string load_arduboy(arduboy_t& a, std::istream& f)
 {
     std::vector<uint8_t> fdata(
@@ -912,24 +953,28 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
     };
     zip_t zip;
     auto* z = &zip.z;
-    mz_zip_reader_init_mem(z, fdata.data(), fdata.size(), 0);
+    if(MZ_FALSE == mz_zip_reader_init_mem(z, fdata.data(), fdata.size(), 0))
+        return "ARDUBOY: could not open archive";
 
-    std::vector<char> info;
+    std::vector<uint8_t> info;
     {
-        int i = mz_zip_reader_locate_file(z, "info.json", nullptr, 0);
-        if(i == -1)
-            return "ARDUBOY: No info.json file";
-        mz_zip_archive_file_stat stat{};
-        mz_zip_reader_file_stat(z, i, &stat);
-        info.resize((size_t)stat.m_uncomp_size);
-        mz_zip_reader_extract_to_mem(z, i, info.data(), info.size(), 0);
+        auto err = extract_zip_file(
+            z,
+            "info.json",
+            "ARDUBOY: No info.json file",
+            "ARDUBOY: could not stat info.json",
+            "ARDUBOY: info.json too large",
+            "ARDUBOY: could not extract info.json",
+            ARDUBOY_INFO_JSON_MAX_BYTES,
+            info);
+        if(!err.empty()) return err;
     }
 
     yyjson_read_err json_err{};
     yyjson_doc* doc;
     {
         // yyjson doesn't like BOM
-        char* raw_info = info.data();
+        char* raw_info = (char*)info.data();
         size_t raw_size = info.size();
         if(raw_size >= 3 &&
             raw_info[0] == (char)0xef &&
@@ -975,15 +1020,18 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
     if(title && yyjson_is_str(title))
         a.title = yyjson_get_str(title);
 
-    std::vector<char> data;
+    std::vector<uint8_t> data;
     {
-        int i = mz_zip_reader_locate_file(z, yyjson_get_str(hexfile), nullptr, 0);
-        if(i == -1)
-            return "ARDUBOY: missing hex file indicated in info.json";
-        mz_zip_archive_file_stat stat{};
-        mz_zip_reader_file_stat(z, i, &stat);
-        data.resize((size_t)stat.m_uncomp_size);
-        mz_zip_reader_extract_to_mem(z, i, data.data(), data.size(), 0);
+        auto err = extract_zip_file(
+            z,
+            yyjson_get_str(hexfile),
+            "ARDUBOY: missing hex file indicated in info.json",
+            "ARDUBOY: could not stat hex file",
+            "ARDUBOY: hex file too large",
+            "ARDUBOY: could not extract hex file",
+            ARDUBOY_HEX_MAX_BYTES,
+            data);
+        if(!err.empty()) return err;
     }
 
     {
@@ -1005,13 +1053,16 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
             return "ARDUBOY: FX data filename not string type";
 
         {
-            int i = mz_zip_reader_locate_file(z, yyjson_get_str(binfile), nullptr, 0);
-            if(i == -1)
-                return "ARDUBOY: missing FX data file indicated in info.json";
-            mz_zip_archive_file_stat stat{};
-            mz_zip_reader_file_stat(z, i, &stat);
-            a.fxdata.resize((size_t)stat.m_uncomp_size);
-            mz_zip_reader_extract_to_mem(z, i, a.fxdata.data(), a.fxdata.size(), 0);
+            auto err = extract_zip_file(
+                z,
+                yyjson_get_str(binfile),
+                "ARDUBOY: missing FX data file indicated in info.json",
+                "ARDUBOY: could not stat FX data file",
+                "ARDUBOY: FX data file too large",
+                "ARDUBOY: could not extract FX data file",
+                w25q128_t::DATA_BYTES,
+                a.fxdata);
+            if(!err.empty()) return err;
         }
 
         // check for save bin
@@ -1022,13 +1073,23 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                 return "ARDUBOY: FX save filename not string type";
 
             {
-                int i = mz_zip_reader_locate_file(z, yyjson_get_str(savefile), nullptr, 0);
-                if(i == -1)
-                    return "ARDUBOY: missing FX save file indicated in info.json";
-                mz_zip_archive_file_stat stat{};
-                mz_zip_reader_file_stat(z, i, &stat);
-                a.fxsave.resize((size_t)stat.m_uncomp_size);
-                mz_zip_reader_extract_to_mem(z, i, a.fxsave.data(), a.fxsave.size(), 0);
+                size_t fxdata_bytes = 0;
+                if(round_up(a.fxdata.size(), 256, fxdata_bytes) ||
+                    fxdata_bytes > w25q128_t::DATA_BYTES)
+                {
+                    return "ARDUBOY: FX data file too large";
+                }
+
+                auto err = extract_zip_file(
+                    z,
+                    yyjson_get_str(savefile),
+                    "ARDUBOY: missing FX save file indicated in info.json",
+                    "ARDUBOY: could not stat FX save file",
+                    "ARDUBOY: FX save file too large",
+                    "ARDUBOY: could not extract FX save file",
+                    w25q128_t::DATA_BYTES - fxdata_bytes,
+                    a.fxsave);
+                if(!err.empty()) return err;
             }
         }
 
