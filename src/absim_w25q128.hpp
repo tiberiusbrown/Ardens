@@ -13,6 +13,20 @@ void w25q128_t::erase_all_data()
     for(auto& s : sectors) s.reset();
     write_bytes(0, ARDENS_BOOT_FLASHCART, sizeof(ARDENS_BOOT_FLASHCART));
     sectors_modified.reset();
+    set_empty_page_range();
+}
+
+void w25q128_t::set_empty_page_range()
+{
+    min_page = EMPTY_PAGE_SENTINEL;
+    max_page = EMPTY_PAGE_SENTINEL;
+}
+
+bool w25q128_t::has_empty_page_range() const
+{
+    return
+        min_page == EMPTY_PAGE_SENTINEL &&
+        max_page == EMPTY_PAGE_SENTINEL;
 }
 
 uint8_t w25q128_t::read_byte(size_t addr)
@@ -131,9 +145,17 @@ ARDENS_FORCEINLINE void w25q128_t::advance(uint64_t ps)
 ARDENS_FORCEINLINE void w25q128_t::track_page()
 {
     current_addr &= 0xffffff;
-    uint32_t page = current_addr / 256;
-    min_page = std::min(min_page, page);
-    max_page = std::max(max_page, page);
+    uint32_t page = current_addr / PAGE_BYTES;
+    if(has_empty_page_range())
+    {
+        min_page = page;
+        max_page = page;
+    }
+    else
+    {
+        min_page = std::min(min_page, page);
+        max_page = std::max(max_page, page);
+    }
 }
 
 ARDENS_FORCEINLINE uint8_t w25q128_t::spi_transceive(uint8_t byte)

@@ -33,31 +33,40 @@ void arduboy_t::reload_fx()
     if(flashcart_loaded)
     {
         fx.min_page = 0;
-        fx.max_page = uint32_t((fxdata.size() + 255) / 256 - 1);
+        fx.max_page =
+            uint32_t((fxdata.size() + w25q128_t::PAGE_BYTES - 1) /
+                w25q128_t::PAGE_BYTES - 1);
         fx.write_bytes(0, fxdata.data(), fxdata.size());
         fxsave.clear();
         update_game_hash();
     }
     else
     {
-        size_t fxsave_bytes = (fxsave.size() + 4095) & ~4095;
-        size_t fxdata_bytes = (fxdata.size() + 255) & ~255;
-        size_t fxsave_offset = w25q128_t::DATA_BYTES - fxsave_bytes;
-        size_t fxdata_offset = fxsave_offset - fxdata_bytes;
+        w25q128_t::fx_data_save_layout_t layout{};
+        bool layout_valid = w25q128_t::make_data_save_layout(
+            fxdata.size(), fxsave.size(), layout);
+        assert(layout_valid);
 
-        fx.min_page = uint32_t(fxdata_offset / 256);
-        fx.max_page = 0xffff;
+        if(layout.has_payload())
+        {
+            fx.min_page = layout.min_page();
+            fx.max_page = w25q128_t::LAST_PAGE;
+        }
+        else
+        {
+            fx.set_empty_page_range();
+        }
 
-        fx.write_bytes(fxdata_offset, fxdata.data(), fxdata.size());
+        fx.write_bytes(layout.data_offset, fxdata.data(), fxdata.size());
         update_game_hash();
-        fx.write_bytes(fxsave_offset, fxsave.data(), fxsave.size());
+        fx.write_bytes(layout.save_offset, fxsave.data(), fxsave.size());
     }
 
     for(size_t i = 0; i < fx.NUM_SECTORS; ++i)
     {
         auto const& s = fx.sectors_modified_data[i];
         if(!s) continue;
-        fx.write_bytes(i * 4096, s->data(), s->size());
+        fx.write_bytes(i * w25q128_t::SECTOR_BYTES, s->data(), s->size());
     }
 }
 
@@ -69,7 +78,7 @@ void arduboy_t::update_game_hash()
     uint64_t h = OFFSET;
     if(!flashcart_loaded)
     {
-        for(size_t i = 0; i < 29 * 1024; ++i)
+        for(size_t i = 0; i < atmega32u4_t::PROGRAM_FLASH_BYTES; ++i)
         {
             uint8_t byte = cpu.prog[i];
             h ^= byte;
@@ -942,16 +951,16 @@ void arduboy_t::advance(uint64_t ps)
             auto& s = savedata.fx_sectors[(uint32_t)i];
             auto const& fxs = fx.sectors[i];
             if(!fxs)
-                memset(s.data(), 0xff, 4096);
+                memset(s.data(), 0xff, w25q128_t::SECTOR_BYTES);
             else
-                memcpy(s.data(), fxs->data(), 4096);
+                memcpy(s.data(), fxs->data(), w25q128_t::SECTOR_BYTES);
             auto& fxsm = fx.sectors_modified_data[i];
             if(!fxsm)
                 fxsm = std::make_unique<w25q128_t::sector_t>();
             if(!fxs)
-                memset(fxsm->data(), 0xff, 4096);
+                memset(fxsm->data(), 0xff, w25q128_t::SECTOR_BYTES);
             else
-                memcpy(fxsm->data(), fxs->data(), 4096);
+                memcpy(fxsm->data(), fxs->data(), w25q128_t::SECTOR_BYTES);
         }
         fx.sectors_dirty = false;
         if(is_present_state())

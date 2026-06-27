@@ -30,7 +30,8 @@ static int hex_value(char const* c)
 static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
     (void)user;
-    if(off + arduboy.fx.min_page * 256 == arduboy.fx.current_addr)
+    if(off + arduboy.fx.min_page * absim::w25q128_t::PAGE_BYTES ==
+        arduboy.fx.current_addr)
     {
         if(arduboy.fx.reading || arduboy.fx.programming)
         {
@@ -99,28 +100,31 @@ void window_fx_data(bool& open)
             load_savedata();
         }
 
-        maxpage = std::min<uint32_t>(maxpage, 0xffff);
+        maxpage = std::min<uint32_t>(maxpage, absim::w25q128_t::LAST_PAGE);
         minpage = std::min<uint32_t>(minpage, maxpage);
         memed_fx.OptAddrDigitsCount = 6;
         if(fx_data_scroll_addr >= 0)
-            memed_fx.GotoAddr = (size_t)(fx_data_scroll_addr - minpage * 256);
+            memed_fx.GotoAddr = (size_t)(fx_data_scroll_addr -
+                minpage * absim::w25q128_t::PAGE_BYTES);
         fx_data_scroll_addr = -1;
         memed_fx.BgColorFn = bgcolor_func;
         memed_fx.ReadFn = [](ImU8 const* data, size_t off, void* user) {
             (void)data;
             (void)user;
-            return arduboy.fx.read_byte(off + minpage * 256);
+            return arduboy.fx.read_byte(
+                off + minpage * absim::w25q128_t::PAGE_BYTES);
         };
         memed_fx.WriteFn = [](ImU8* data, size_t off, ImU8 d, void* user) {
             (void)data;
             (void)user;
-            arduboy.fx.write_byte(off + minpage * 256, d);
+            arduboy.fx.write_byte(
+                off + minpage * absim::w25q128_t::PAGE_BYTES, d);
         };
         memed_fx.ReadOnly = !arduboy.is_present_state();
         memed_fx.DrawContents(
             nullptr,
-            size_t((maxpage - minpage + 1) * 256),
-            minpage * 256);
+            size_t((maxpage - minpage + 1) * absim::w25q128_t::PAGE_BYTES),
+            minpage * absim::w25q128_t::PAGE_BYTES);
     }
     End();
 }

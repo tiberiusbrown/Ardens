@@ -695,8 +695,7 @@ void init()
     arduboy.fx.erase_all_data();
     arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
     arduboy.reset();
-    arduboy.fx.min_page = 0xffff;
-    arduboy.fx.max_page = 0xffff;
+    arduboy.fx.set_empty_page_range();
 
     ms_since_start = 0;
     ms_since_touch = MS_SHOW_TOUCH_CONTROLS;

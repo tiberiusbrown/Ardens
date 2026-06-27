@@ -255,7 +255,7 @@ static std::string load_hex(arduboy_t& a, std::istream& f, bool bootloader = fal
     auto& cpu = a.cpu;
     if(!bootloader)
     {
-        memset(&cpu.prog, 0, 29 * 1024);
+        memset(&cpu.prog, 0, atmega32u4_t::PROGRAM_FLASH_BYTES);
         memset(&cpu.decoded_prog, 0, sizeof(cpu.decoded_prog));
         memset(&cpu.disassembled_prog, 0, sizeof(cpu.disassembled_prog));
         memset(&cpu.eeprom, 0xff, sizeof(cpu.eeprom));
@@ -879,23 +879,11 @@ static std::string load_elf(arduboy_t& a, std::string const& fname)
 }
 #endif
 
-static bool round_up(size_t size, size_t align, size_t& rounded)
-{
-    if(size > std::numeric_limits<size_t>::max() - (align - 1))
-        return true;
-    rounded = (size + align - 1) & ~(align - 1);
-    return false;
-}
-
 static bool fx_payload_too_large(size_t fxdata_size, size_t fxsave_size)
 {
-    size_t fxdata_bytes = 0;
-    size_t fxsave_bytes = 0;
-    return
-        round_up(fxdata_size, 256, fxdata_bytes) ||
-        round_up(fxsave_size, 4096, fxsave_bytes) ||
-        fxdata_bytes > w25q128_t::DATA_BYTES ||
-        fxsave_bytes > w25q128_t::DATA_BYTES - fxdata_bytes;
+    w25q128_t::fx_data_save_layout_t layout{};
+    return !w25q128_t::make_data_save_layout(
+        fxdata_size, fxsave_size, layout);
 }
 
 static std::string load_bin(arduboy_t& a, std::istream& f, bool save)
@@ -1108,9 +1096,9 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                 return "ARDUBOY: FX save filename not string type";
 
             {
-                size_t fxdata_bytes = 0;
-                if(round_up(a.fxdata.size(), 256, fxdata_bytes) ||
-                    fxdata_bytes > w25q128_t::DATA_BYTES)
+                w25q128_t::fx_data_save_layout_t layout{};
+                if(!w25q128_t::make_data_save_layout(
+                    a.fxdata.size(), 0, layout))
                 {
                     return "ARDUBOY: FX data file too large";
                 }
@@ -1122,7 +1110,7 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
                     "ARDUBOY: could not stat FX save file",
                     "ARDUBOY: FX save file too large",
                     "ARDUBOY: could not extract FX save file",
-                    w25q128_t::DATA_BYTES - fxdata_bytes,
+                    layout.data_offset,
                     a.fxsave);
                 if(!err.empty()) return err;
             }

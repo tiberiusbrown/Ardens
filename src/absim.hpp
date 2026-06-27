@@ -15,6 +15,7 @@
 #include <istream>
 #include <ostream>
 #include <algorithm>
+#include <limits>
 
 #include <stdint.h>
 #include <string.h>
@@ -87,6 +88,9 @@ struct avr_instr_t
 struct atmega32u4_t
 {
     static constexpr size_t PROG_SIZE_BYTES = 32 * 1024;
+    static constexpr size_t BOOTLOADER_FLASH_BYTES = 3 * 1024;
+    static constexpr size_t PROGRAM_FLASH_BYTES =
+        PROG_SIZE_BYTES - BOOTLOADER_FLASH_BYTES;
     static constexpr size_t DATA_SIZE_BYTES = 2560 + 256;
 
     std::array<uint8_t, DATA_SIZE_BYTES> data;
@@ -936,6 +940,60 @@ struct w25q128_t
     static constexpr size_t NUM_SECTORS = 4096;
     static constexpr size_t SECTOR_BYTES = 4096;
     static constexpr size_t DATA_BYTES = NUM_SECTORS * SECTOR_BYTES;
+    static constexpr size_t PAGE_BYTES = 256;
+    static constexpr uint32_t NUM_PAGES = uint32_t(DATA_BYTES / PAGE_BYTES);
+    static constexpr uint32_t LAST_PAGE = NUM_PAGES - 1;
+    static constexpr uint32_t EMPTY_PAGE_SENTINEL = LAST_PAGE;
+
+    struct fx_data_save_layout_t
+    {
+        size_t data_bytes;
+        size_t save_bytes;
+        size_t data_offset;
+        size_t save_offset;
+
+        bool has_payload() const
+        {
+            return data_bytes != 0 || save_bytes != 0;
+        }
+
+        uint32_t min_page() const
+        {
+            return has_payload() ?
+                uint32_t(data_offset / PAGE_BYTES) :
+                EMPTY_PAGE_SENTINEL;
+        }
+    };
+
+    static bool round_up_bytes(size_t size, size_t align, size_t& rounded)
+    {
+        if(size > std::numeric_limits<size_t>::max() - (align - 1))
+            return true;
+        rounded = (size + align - 1) & ~(align - 1);
+        return false;
+    }
+
+    static bool make_data_save_layout(
+        size_t data_size,
+        size_t save_size,
+        fx_data_save_layout_t& layout)
+    {
+        size_t data_bytes = 0;
+        size_t save_bytes = 0;
+        if(round_up_bytes(data_size, PAGE_BYTES, data_bytes) ||
+            round_up_bytes(save_size, SECTOR_BYTES, save_bytes) ||
+            data_bytes > DATA_BYTES ||
+            save_bytes > DATA_BYTES - data_bytes)
+        {
+            return false;
+        }
+
+        layout.data_bytes = data_bytes;
+        layout.save_bytes = save_bytes;
+        layout.save_offset = DATA_BYTES - save_bytes;
+        layout.data_offset = layout.save_offset - data_bytes;
+        return true;
+    }
 
     using sector_t = std::array<uint8_t, SECTOR_BYTES>;
     std::array<std::unique_ptr<sector_t>, NUM_SECTORS> sectors;
@@ -981,6 +1039,8 @@ struct w25q128_t
 
     void reset();
     void erase_all_data();
+    void set_empty_page_range();
+    bool has_empty_page_range() const;
 
     uint8_t read_byte(size_t addr);
     void write_byte(size_t addr, uint8_t data);
