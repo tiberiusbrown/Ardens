@@ -444,6 +444,7 @@ if(ARDENS_DEBUGGER)
         src/modal_about.cpp
         src/common.hpp
         src/common.cpp
+        src/capture_serial.cpp
         src/view_debugger.cpp
         src/view_player.cpp
         src/record_gif.cpp
@@ -520,6 +521,7 @@ if(ARDENS_PLAYER)
         src/settings.cpp
         src/common.hpp
         src/common.cpp
+        src/capture_serial.cpp
         src/view_player.cpp
         src/record_gif.cpp
         src/record_wav.cpp

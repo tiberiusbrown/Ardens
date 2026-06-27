@@ -315,6 +315,13 @@ int main(int argc, char** argv)
         d.argv = argv;
         sargs_setup(&d);
 
+        if(capture_serial_requested())
+        {
+            int r = capture_serial_run();
+            sargs_shutdown();
+            return r;
+        }
+
         for(int i = 0; i < sargs_num_args(); ++i)
         {
             char const* k = sargs_key_at(i);
@@ -389,27 +396,8 @@ int main(int argc, char** argv)
 #if !defined(__EMSCRIPTEN__)
     for(int i = 0; i < sargs_num_args(); ++i)
     {
-        char const* value = sargs_value_at(i);
-        if(!setparam(sargs_key_at(i), value))
-        {
-#if !defined(ARDENS_DIST)
-            std::ifstream f(value, std::ios::in | std::ios::binary);
-            if(f)
-            {
-                bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy.load_file(value, f, save);
-                autoset_from_device_type();
-                if(dropfile_err.empty())
-                {
-                    load_savedata();
-                    if(!save) file_watch(value);
-                }
-            }
-            else
-                dropfile_err = std::string("Could not open file: \"") + value + "\"";
-#endif
+        process_cli_arg(sargs_key_at(i), sargs_value_at(i));
     }
-}
 #endif
     
 #ifdef __EMSCRIPTEN__

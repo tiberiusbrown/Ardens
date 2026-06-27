@@ -416,6 +416,35 @@ extern "C" int setparam(char const* name, char const* value)
     return r;
 }
 
+void process_cli_arg(char const* key, char const* value)
+{
+    if(setparam(key, value))
+        return;
+
+    if(!strcmp(key, "size"))
+        return;
+
+#if !defined(ARDENS_DIST)
+    std::ifstream f(value, std::ios::in | std::ios::binary);
+    if(f)
+    {
+        bool save = !strcmp(key, "save");
+        dropfile_err = arduboy.load_file(value, f, save);
+        autoset_from_device_type();
+        if(dropfile_err.empty())
+        {
+            load_savedata();
+            if(!save) file_watch(value);
+        }
+    }
+    else
+        dropfile_err = std::string("Could not open file: \"") + value + "\"";
+#else
+    (void)key;
+    (void)value;
+#endif
+}
+
 extern "C" void postsyncfs()
 {
     fs_ready = true;
@@ -643,13 +672,78 @@ std::string preferred_title()
     return ARDENS_TITLE;
 }
 
+void apply_emulation_settings(bool allow_debugger_breaks)
+{
+    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
+    arduboy.cpu.enabled_autobreaks.reset();
+#ifndef ARDENS_NO_GUI
+    if(allow_debugger_breaks)
+    {
+        arduboy.cpu.enabled_autobreaks.set(absim::AB_BREAK);
+        for(int i = 1; i < absim::AB_NUM; ++i)
+            if(settings.ab.index(i))
+                arduboy.cpu.enabled_autobreaks.set(i);
+    }
+#else
+    (void)allow_debugger_breaks;
+#endif
+
+    arduboy.allow_nonstep_breakpoints =
+        allow_debugger_breaks &&
+        (arduboy.break_step == 0xffffffff || settings.enable_step_breaks);
+    arduboy.display.enable_filter = settings.display_auto_filter;
+
+    arduboy.display.enable_current_limiting = (settings.display_current_modeling != 0);
+    arduboy.display.ref_segment_current = 0.195f;
+    switch(settings.display_current_modeling)
+    {
+    case 0:  arduboy.display.current_limit_slope = 0.f;   break;
+    case 1:  arduboy.display.current_limit_slope = 0.75f; break;
+    case 2:  arduboy.display.current_limit_slope = 0.45f; break;
+    case 3:  arduboy.display.current_limit_slope = 0.f;   break;
+    default: arduboy.display.current_limit_slope = 0.f;   break;
+    }
+
+    switch(settings.fxport)
+    {
+    case FXPORT_D1:
+        arduboy.fxport_reg = 0x2b;
+        arduboy.fxport_mask = 1 << 1;
+        break;
+    case FXPORT_D2:
+        arduboy.fxport_reg = 0x2b;
+        arduboy.fxport_mask = 1 << 2;
+        break;
+    case FXPORT_E2:
+        arduboy.fxport_reg = 0x2e;
+        arduboy.fxport_mask = 1 << 2;
+        break;
+    default:
+        break;
+    }
+
+    switch(settings.display)
+    {
+    case DISPLAY_SSD1306:
+        arduboy.display.type = absim::display_t::SSD1306;
+        break;
+    case DISPLAY_SSD1309:
+        arduboy.display.type = absim::display_t::SSD1309;
+        break;
+    case DISPLAY_SH1106:
+        arduboy.display.type = absim::display_t::SH1106;
+        break;
+    default:
+        break;
+    }
+}
+
 void frame_logic()
 {
     sfetch_dowork();
 
     ImGuiIO& io = ImGui::GetIO();
 
-    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
     if(!touch_points.empty())
         ms_since_touch = 0;
 
@@ -716,61 +810,7 @@ void frame_logic()
         bool prev_paused = arduboy.paused;
         arduboy.frame_bytes_total = 1024;
 
-        arduboy.cpu.enabled_autobreaks.reset();
-#ifndef ARDENS_NO_GUI
-        arduboy.cpu.enabled_autobreaks.set(absim::AB_BREAK);
-        for(int i = 1; i < absim::AB_NUM; ++i)
-            if(settings.ab.index(i))
-                arduboy.cpu.enabled_autobreaks.set(i);
-#endif
-
-        arduboy.allow_nonstep_breakpoints =
-            arduboy.break_step == 0xffffffff || settings.enable_step_breaks;
-        arduboy.display.enable_filter = settings.display_auto_filter;
-
-        arduboy.display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy.display.ref_segment_current = 0.195f;
-        switch(settings.display_current_modeling)
-        {
-        case 0:  arduboy.display.current_limit_slope = 0.f;   break;
-        case 1:  arduboy.display.current_limit_slope = 0.75f; break;
-        case 2:  arduboy.display.current_limit_slope = 0.45f; break;
-        case 3:  arduboy.display.current_limit_slope = 0.f;   break;
-        default: arduboy.display.current_limit_slope = 0.f;   break;
-        }
-
-        switch(settings.fxport)
-        {
-        case FXPORT_D1:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 1;
-            break;
-        case FXPORT_D2:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 2;
-            break;
-        case FXPORT_E2:
-            arduboy.fxport_reg = 0x2e;
-            arduboy.fxport_mask = 1 << 2;
-            break;
-        default:
-            break;
-        }
-
-        switch(settings.display)
-        {
-        case DISPLAY_SSD1306:
-            arduboy.display.type = absim::display_t::SSD1306;
-            break;
-        case DISPLAY_SSD1309:
-            arduboy.display.type = absim::display_t::SSD1309;
-            break;
-        case DISPLAY_SH1106:
-            arduboy.display.type = absim::display_t::SH1106;
-            break;
-        default:
-            break;
-        }
+        apply_emulation_settings(true);
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;
         uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;

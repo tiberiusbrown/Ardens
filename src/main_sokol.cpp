@@ -4,9 +4,9 @@
 
 #include <fstream>
 #include <cstdio>
+#include <cstdlib>
 
 #include <imgui.h>
-#include <fmt/format.h>
 
 #if defined(__EMSCRIPTEN__)
 #define SOKOL_GLES3
@@ -128,26 +128,7 @@ static void app_init()
 #ifndef __EMSCRIPTEN__
     for(int i = 0; i < sargs_num_args(); ++i)
     {
-        char const* value = sargs_value_at(i);
-        if(!setparam(sargs_key_at(i), value))
-        {
-#if !defined(ARDENS_DIST)
-            std::ifstream f(value, std::ios::in | std::ios::binary);
-            if(f)
-            {
-                bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy.load_file(value, f, save);
-                autoset_from_device_type();
-                if(dropfile_err.empty())
-                {
-                    load_savedata();
-                    if(!save) file_watch(value);
-                }
-            }
-            else
-                dropfile_err = fmt::format("Could not open file: \"{}\"", value);
-#endif
-        }
+        process_cli_arg(sargs_key_at(i), sargs_value_at(i));
     }
 #endif
 }
@@ -417,6 +398,13 @@ sapp_desc sokol_main(int argc, char** argv)
         d.argc = argc;
         d.argv = argv;
         sargs_setup(&d);
+
+        if(capture_serial_requested())
+        {
+            int r = capture_serial_run();
+            sargs_shutdown();
+            std::exit(r);
+        }
     }
 #endif
 

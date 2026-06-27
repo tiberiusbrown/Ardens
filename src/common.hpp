@@ -83,6 +83,7 @@ extern "C" int setparam(char const* name, char const* value);
 extern "C" int load_file(
     char const* param, char const* filename, uint8_t const* data, size_t size);
 extern "C" int get_led_state(int component);
+void process_cli_arg(char const* key, char const* value);
 void init();
 void shutdown();
 void frame_logic();
@@ -95,9 +96,15 @@ void save_screenshot();
 void toggle_recording();
 void take_snapshot();
 std::string preferred_title();
+void apply_emulation_settings(bool allow_debugger_breaks);
 
 float volume_gain();
 bool ends_with(std::string const& str, std::string const& end);
+
+#ifndef __EMSCRIPTEN__
+bool capture_serial_requested();
+int capture_serial_run();
+#endif
 
 // platform-specific functionality
 void platform_destroy_texture(texture_t t);
