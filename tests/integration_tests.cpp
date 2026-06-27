@@ -4,6 +4,7 @@
 #include <fstream>
 #include <memory>
 #include <sstream>
+#include <string>
 
 #include "../src/absim_strstream.hpp"
 
@@ -50,6 +51,78 @@ static int test(char const* name)
     bool pass = (d.size() == 1 && d[0] == 'P');
 
     printf("   %-30s : %s\n", name, pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
+static std::string normalize_line_endings(std::string const& s)
+{
+    std::string r;
+    r.reserve(s.size());
+    for(size_t i = 0; i < s.size(); ++i)
+    {
+        if(s[i] == '\r')
+        {
+            if(i + 1 < s.size() && s[i + 1] == '\n')
+                ++i;
+            r.push_back('\n');
+        }
+        else
+        {
+            r.push_back(s[i]);
+        }
+    }
+    return r;
+}
+
+static std::string serial_bytes_to_string(std::vector<uint8_t> const& bytes)
+{
+    return std::string(bytes.begin(), bytes.end());
+}
+
+static bool serial_has_end(std::vector<uint8_t> const& bytes)
+{
+    auto output = normalize_line_endings(serial_bytes_to_string(bytes));
+    return output == "END\n" ||
+        output.size() >= 5 && output.compare(output.size() - 5, 5, "\nEND\n") == 0;
+}
+
+static int serial_output_test(char const* name, char const* expected_filename)
+{
+    std::string hex_name =
+        std::string(TESTS_DIR "/") + name + "/" + name + ".ino-arduboy-fx.hex";
+    std::ifstream hex(hex_name);
+    auto err = arduboy->load_file("test.hex", hex);
+    if(!err.empty())
+    {
+        printf("   %-30s : FAIL\n", name);
+        return 1;
+    }
+
+    std::string expected_name =
+        std::string(TESTS_DIR "/") + name + "/" + expected_filename;
+    std::ifstream expected_file(expected_name);
+    std::stringstream expected_stream;
+    expected_stream << expected_file.rdbuf();
+    auto expected = normalize_line_endings(expected_stream.str());
+
+    arduboy->reset();
+    auto const& d = arduboy->core_state.cpu.serial_bytes;
+    for(int i = 0; i < 10000; ++i) // up to ten seconds
+    {
+        arduboy->advance(1'000'000'000ull); // 1 ms
+        if(serial_has_end(d)) break;
+        arduboy->core_state.cpu.sound_buffer.clear();
+    }
+
+    auto actual = normalize_line_endings(serial_bytes_to_string(d));
+    bool pass = (actual == expected);
+
+    printf("   %-30s : %s\n", name, pass ? "PASS" : "FAIL");
+    if(!pass)
+    {
+        printf("      expected:\n%s", expected.c_str());
+        printf("      actual:\n%s", actual.c_str());
+    }
     return pass ? 0 : 1;
 }
 
@@ -774,6 +847,7 @@ int main(int argc, char** argv)
     r |= test("instructions");
     r |= test("signature");
     r |= test("timer_tcnt_write");
+    r |= serial_output_test("timer_cycle_accuracy", "expected_serial.txt");
 
     printf("\nHEX parser tests...\n");
     r |= hex_malformed_input_test();
