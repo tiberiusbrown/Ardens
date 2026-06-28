@@ -112,7 +112,7 @@ ARDENS_FORCEINLINE static void update_timer8_state(
         }
         else if(tcnt > top)
         {
-            uint32_t t = 16;
+            uint32_t t = 256;
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt += t;
@@ -132,7 +132,7 @@ ARDENS_FORCEINLINE static void update_timer8_state(
             if(tcnt == top + 1)
             {
                 if(phase_correct)
-                    count_down = true;
+                    count_down = true, tcnt -= 2;
                 else
                 {
                     if(top == 0xff)
@@ -155,6 +155,8 @@ ARDENS_FORCEINLINE static void update_timer8_state(
 
 void atmega32u4_t::update_timer0()
 {
+    uint32_t old_divider = timer0.divider;
+
     // first compute what happened to tcnt/tifr during the cycles
     if(!(timer0.divider == 0 || (data[0x64] & (1 << 5))))
     {
@@ -181,7 +183,7 @@ void atmega32u4_t::update_timer0()
     uint32_t wgm = (tccr0a & 0x3) | ((tccr0b >> 1) & 0x4);
 
     uint32_t wgm_mask = 1 << wgm;
-    if(wgm_mask & 0x5) // update ocrN immediately
+    if(old_divider == 0 || (wgm_mask & 0x5)) // update ocrN immediately
         timer8_update_ocrN(*this, timer0);
     timer0.update_ocrN_at_top = ((wgm_mask & 0xaa) != 0);
 
@@ -210,6 +212,8 @@ void atmega32u4_t::update_timer0()
             update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.tov - timer0.tcnt + 1);
         update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNa - timer0.tcnt);
         update_tcycles = min_nonzero(update_tcycles, timer0.top, timer0.ocrNb - timer0.tcnt);
+        if(timer0.tcnt == timer0.top && timer0.top != 0)
+            update_tcycles = 1;
     }
     if(update_tcycles == UINT32_MAX)
     {
