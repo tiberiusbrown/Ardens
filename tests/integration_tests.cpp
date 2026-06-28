@@ -105,7 +105,16 @@ static int serial_output_test(char const* name, char const* expected_filename)
     expected_stream << expected_file.rdbuf();
     auto expected = normalize_line_endings(expected_stream.str());
 
+    arduboy->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
+    arduboy->program_state.cfg.fxport_reg = 0x2b;
+    arduboy->program_state.cfg.fxport_mask = 1 << 1;
+    arduboy->program_state.cfg.bootloader = true;
+    arduboy->program_state.cfg.boot_to_menu = false;
     arduboy->reset();
+    arduboy->core_state.cpu.data[0x23] = 0x10;
+    arduboy->core_state.cpu.data[0x2c] = 0x40;
+    arduboy->core_state.cpu.data[0x2f] = 0xf0;
+
     auto const& d = arduboy->core_state.cpu.serial_bytes;
     for(int i = 0; i < 10000; ++i) // up to ten seconds
     {

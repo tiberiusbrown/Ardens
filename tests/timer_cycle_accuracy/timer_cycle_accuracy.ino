@@ -1102,4 +1102,7 @@ void setup()
 
 void loop()
 {
+  if(!arduboy.nextFrame())
+    return;
+  arduboy.display();
 }

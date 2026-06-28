@@ -156,7 +156,8 @@ void atmega32u4_t::usb_st_handler(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
     }
     case ADDR_UEDATX:
         //ep.write(cpu, x);
-        cpu.serial_bytes.push_back(x);
+        if(x != 0)
+            cpu.serial_bytes.push_back(x);
         break;
     case ADDR_UEBCLX:
     case ADDR_UEBCHX:

@@ -126,6 +126,8 @@ void atmega32u4_t::soft_reset()
     data[0x25] |= 0x01;
     data[0x2b] |= 0x20;
 
+    PLLFRQ() = 0x04;
+
     pc = BOOTRST() ? bootloader_address() : 0;
     executing_instr_pc = pc;
 

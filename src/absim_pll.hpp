@@ -25,7 +25,7 @@ void atmega32u4_t::pll_handle_st_pllcsr(
         cpu.pll_busy = true;
     }
 
-    uint8_t& csr = cpu.data[0x49];
+    uint8_t& csr = cpu.PLLCSR();
 
     // PLOCK is read only
     x &= ~PLOCK;
@@ -53,7 +53,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_pll()
     uint32_t cycles = uint32_t(cycle_count - pll_prev_cycle);
     pll_prev_cycle = cycle_count;
 
-    uint8_t& csr = data[0x49];
+    uint8_t& csr = PLLCSR();
 
     constexpr uint8_t PLOCK = 1 << 0;
 
@@ -63,7 +63,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_pll()
         pll_busy = false;
 
         // compute pll numerator
-        uint32_t frq = data[0x52];
+        uint32_t frq = PLLFRQ();
 
         uint32_t divider = frq & 0xf;
 
