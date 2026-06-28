@@ -340,21 +340,21 @@ ARDENS_FORCEINLINE static void toggle_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.update_sound();
-    cpu.data[0x28] ^= (1 << 6);
+    cpu.data[0x26] ^= (1 << 6);
 }
 
 ARDENS_FORCEINLINE static void clear_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.update_sound();
-    cpu.data[0x28] &= ~(1 << 6);
+    cpu.data[0x26] &= ~(1 << 6);
 }
 
 ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu)
 {
     if(!(cpu.data[0x27] & 0x40)) return;
     cpu.update_sound();
-    cpu.data[0x28] |= (1 << 6);
+    cpu.data[0x26] |= (1 << 6);
 }
 
 ARDENS_FORCEINLINE static void update_timer16_state(
@@ -394,10 +394,21 @@ ARDENS_FORCEINLINE static void update_timer16_state(
         else if(tcnt == top)
         {
             if(phase_correct)
-                count_down = true, --tcnt;
+            {
+                count_down = true;
+                --tcnt;
+                if(timer.top_source_icr)
+                    tifr |= 0x20;
+            }
             else
             {
-                if(top == 0xffff)
+                if(timer.fast_pwm)
+                {
+                    tifr |= 0x1;
+                    if(timer.top_source_icr)
+                        tifr |= 0x20;
+                }
+                else if(top == 0xffff)
                     tifr |= 0x1;
                 tcnt = 0;
             }
@@ -460,6 +471,7 @@ static void update_timer16(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer)
 {
+    uint32_t old_divider = timer.divider;
     // first compute what happened to tcnt/tifr during the cycles
     if(!(timer.divider == 0 || (cpu.data[timer.prr_addr] & timer.prr_mask)) &&
         cpu.cycle_count > timer.prev_update_cycle)
@@ -489,10 +501,12 @@ static void update_timer16(
     uint32_t wgm = (tccrNa & 0x3) | ((tccrNb >> 1) & 0xc);
 
     uint32_t wgm_mask = 1 << wgm;
-    if(wgm_mask & 0x1011) // update ocrN immediately
+    if(old_divider == 0 || (wgm_mask & 0x1011)) // update ocrN immediately
         timer16_update_ocrN(cpu, timer, addr);
     timer.update_ocrN_at_bottom = ((wgm_mask & 0x0300) != 0);
     timer.update_ocrN_at_top = ((wgm_mask & 0xccee) != 0);
+    timer.fast_pwm = (wgm_mask & 0xC0E0) != 0;
+    timer.top_source_icr = (wgm_mask & 0x4500) != 0;
 
     if(timer.update_ocrN_at_bottom && timer.tcnt == 0)
         timer16_update_ocrN(cpu, timer, addr);
@@ -573,11 +587,11 @@ ARDENS_FORCEINLINE static void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
     if(c7) c |= 0x80;
     uint8_t m = cpu.data[0x27];
     c &= m;
-    uint8_t t = cpu.data[0x28];
+    uint8_t t = cpu.data[0x26];
     t &= ~m;
     t |= c;
     cpu.update_sound();
-    cpu.data[0x28] = t;
+    cpu.data[0x26] = t;
 }
 
 ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu, bool c6)
@@ -586,11 +600,11 @@ ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu, bool c6)
     if(c6) c |= 0x40;
     if(!(cpu.data[0x27] & 0x40)) return;
     c &= 0x40;
-    uint8_t t = cpu.data[0x28];
+    uint8_t t = cpu.data[0x26];
     t &= ~0x40;
     t |= c;
     cpu.update_sound();
-    cpu.data[0x28] = t;
+    cpu.data[0x26] = t;
 }
 
 ARDENS_FORCEINLINE static void set_portc7(atmega32u4_t& cpu, bool c7)
@@ -599,11 +613,11 @@ ARDENS_FORCEINLINE static void set_portc7(atmega32u4_t& cpu, bool c7)
     if(c7) c |= 0x80;
     if(!(cpu.data[0x27] & 0x80)) return;
     c &= 0x80;
-    uint8_t t = cpu.data[0x28];
+    uint8_t t = cpu.data[0x26];
     t &= ~0x80;
     t |= c;
     cpu.update_sound();
-    cpu.data[0x28] = t;
+    cpu.data[0x26] = t;
 }
 
 ARDENS_FORCEINLINE static void update_timer10_state(
@@ -642,8 +656,6 @@ ARDENS_FORCEINLINE static void update_timer10_state(
     auto tov = timer.tov;
     auto top = timer.top;
     uint8_t tifr = 0;
-    uint8_t& portc = cpu.data[0x28];
-    uint8_t portc_mask = cpu.data[0x27];
 
     while(timer_cycles > 0)
     {
@@ -921,6 +933,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_timer3()
 static void timer16_handle_st_regs(
     atmega32u4_t& cpu, atmega32u4_t::timer16_t& timer, uint16_t ptr, uint8_t x)
 {
+    uint32_t old_divider = timer.divider;
     // give an extra cycle to timer
     // (reg write should hit at the end of the cycle)
     timer.prev_update_cycle -= 1;
@@ -962,6 +975,7 @@ static void timer16_handle_st_regs(
     }
     cpu.data[ptr] = x;
     update_timer16(cpu, timer);
+    timer.prev_update_cycle += (old_divider == 0 && timer.divider != 0 ? 1 : 0);
 }
 
 void atmega32u4_t::timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)

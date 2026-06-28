@@ -46,7 +46,7 @@ void atmega32u4_t::reset()
     st_handlers[0x2f] = st_handle_pin;
 
     //st_handlers[0x25] = st_handle_port;
-    //st_handlers[0x28] = st_handle_port;
+    st_handlers[0x28] = st_handle_port;
     //st_handlers[0x2b] = st_handle_port;
     //st_handlers[0x2e] = st_handle_port;
     //st_handlers[0x31] = st_handle_port;

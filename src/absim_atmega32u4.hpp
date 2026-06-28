@@ -27,6 +27,8 @@ void atmega32u4_t::st_handle_pin(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     cpu.data[ptr + 2] ^= x;
+    if(ptr == 0x26)
+        cpu.data[0x26] = cpu.data[0x28];
 }
 
 void atmega32u4_t::st_handle_port(
@@ -34,6 +36,8 @@ void atmega32u4_t::st_handle_port(
 {
     // TODO: handle pullup behavior
     cpu.data[ptr] = x;
+    if(ptr == 0x28)
+        cpu.data[0x26] = x;
 }
 
 void atmega32u4_t::st_handle_mcucr(

@@ -341,7 +341,9 @@ static bool same_timer16(absim::atmega32u4_t::timer16_t const& a, absim::atmega3
         a.phase_correct == b.phase_correct &&
         a.count_down == b.count_down &&
         a.update_ocrN_at_top == b.update_ocrN_at_top &&
-        a.update_ocrN_at_bottom == b.update_ocrN_at_bottom;
+        a.update_ocrN_at_bottom == b.update_ocrN_at_bottom &&
+        a.fast_pwm == b.fast_pwm &&
+        a.top_source_icr == b.top_source_icr;
 }
 
 static bool same_timer10(absim::atmega32u4_t::timer10_t const& a, absim::atmega32u4_t::timer10_t const& b)

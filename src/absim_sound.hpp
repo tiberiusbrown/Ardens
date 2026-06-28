@@ -16,6 +16,8 @@ void atmega32u4_t::sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_
         cpu.sound_enabled = e;
     }
     cpu.data[ptr] = x;
+    if(ptr == 0x27)
+        cpu.data[0x26] = cpu.data[0x28];
 }
     
 ARDENS_FORCEINLINE void atmega32u4_t::update_sound()
@@ -45,7 +47,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_sound()
     if(!sound_pwm)
     {
         x = 0;
-        uint8_t portc = data[0x28];
+        uint8_t portc = data[0x26];
         if(pins & (1 << 0))
             x += (portc & (1 << 6)) ? SOUND_GAIN / 2 : -SOUND_GAIN / 2;
         if(pins & (1 << 1))

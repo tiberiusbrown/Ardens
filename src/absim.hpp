@@ -569,6 +569,8 @@ struct atmega32u4_t
         bool count_down;
         bool update_ocrN_at_top;
         bool update_ocrN_at_bottom;
+        bool fast_pwm;
+        bool top_source_icr;
         template<class A> void serialize(A& a)
         {
             a(prev_update_cycle, next_update_cycle);
@@ -578,6 +580,7 @@ struct atmega32u4_t
             a(temp);
             a(phase_correct, count_down);
             a(update_ocrN_at_top, update_ocrN_at_bottom);
+            a(fast_pwm, top_source_icr);
         }
     };
     static void timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
