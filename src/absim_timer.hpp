@@ -171,6 +171,7 @@ void atmega32u4_t::update_timer0()
 
     if(timer0.divider == 0 || (data[0x64] & (1 << 5)))
     {
+        timer0.prescaler_cycle = 0;
         timer0.next_update_cycle = UINT64_MAX;
         return;
     }
@@ -473,6 +474,7 @@ static void update_timer16(
 
     if(timer.divider == 0 || (cpu.data[timer.prr_addr] & timer.prr_mask))
     {
+        timer.prescaler_cycle = 0;
         timer.next_update_cycle = UINT64_MAX;
         return;
     }
@@ -739,6 +741,8 @@ void atmega32u4_t::update_timer4()
 
     if(timer4.divider == 0 || (data[0x65] & 0x10))
     {
+        timer4.divider_cycle = 0;
+        timer4.async_cycle = 0;
         timer4.next_update_cycle = UINT64_MAX;
         return;
     }
