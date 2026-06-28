@@ -621,6 +621,11 @@ struct atmega32u4_t
         bool count_down;
         bool update_ocrN_at_top;
         bool update_ocrN_at_bottom;
+        bool compare_block_next_tick;
+        bool tcnt_write_pending;
+        bool tcnt_write_pending_seen;
+        uint32_t start_delay_cycles;
+        uint32_t tcnt_write_value;
         template<class A> void serialize(A& a)
         {
             a(prev_update_cycle, next_update_cycle);
@@ -633,6 +638,9 @@ struct atmega32u4_t
             a(async_cycle, com4a);
             a(tlock, enhc, phase_correct, count_down);
             a(update_ocrN_at_top, update_ocrN_at_bottom);
+            a(compare_block_next_tick, tcnt_write_pending, tcnt_write_pending_seen);
+            a(start_delay_cycles);
+            a(tcnt_write_value);
         }
     };
     static void timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);

@@ -626,7 +626,7 @@ ARDENS_FORCEINLINE static void update_timer10_state(
     uint64_t cycles)
 {
     // find out how many timer cycles happened after prescaler
-    
+
     // modify timer cycles by async clock
     if(cpu.pll_num12 > 0)
     {
@@ -656,12 +656,21 @@ ARDENS_FORCEINLINE static void update_timer10_state(
     auto tov = timer.tov;
     auto top = timer.top;
     uint8_t tifr = 0;
+    bool compare_allowed = true;
+    if(timer.compare_block_next_tick && timer_cycles > 0)
+    {
+        compare_allowed = false;
+        timer.compare_block_next_tick = false;
+    }
 
     while(timer_cycles > 0)
     {
-        if(tcnt == ocrNa) tifr |= 0x40;
-        if(tcnt == ocrNb) tifr |= 0x20;
-        if(tcnt == ocrNd) tifr |= 0x80;
+        if(compare_allowed)
+        {
+            if(tcnt == ocrNa) tifr |= 0x40;
+            if(tcnt == ocrNb) tifr |= 0x20;
+            if(tcnt == ocrNd) tifr |= 0x80;
+        }
         if(count_down)
         {
             uint32_t stop = 0;
@@ -714,12 +723,13 @@ ARDENS_FORCEINLINE static void update_timer10_state(
             timer_cycles -= t;
             tcnt += t;
         }
-        if(tcnt == ocrNa)
+        if(compare_allowed && tcnt == ocrNa)
         {
             if(com4a == 1) set_portc(cpu, false, true);
             if(com4a == 2) set_portc7(cpu, false);
             if(com4a == 3) set_portc7(cpu, true);
         }
+        compare_allowed = true;
     }
 
     timer.tcnt = tcnt;
@@ -732,6 +742,25 @@ ARDENS_FORCEINLINE static void update_timer10_state(
 
 void atmega32u4_t::update_timer4()
 {
+    uint32_t old_divider = timer4.divider;
+
+    if(timer4.start_delay_cycles > 0)
+    {
+        uint64_t cycles = cycle_count - timer4.prev_update_cycle;
+        if(cycles < timer4.start_delay_cycles)
+        {
+            timer4.start_delay_cycles -= uint32_t(cycles);
+            timer4.prev_update_cycle = cycle_count;
+            timer4.next_update_cycle = cycle_count + timer4.start_delay_cycles;
+            peripheral_queue.schedule(timer4.next_update_cycle, PQ_TIMER4);
+            return;
+        }
+
+        cycles -= timer4.start_delay_cycles;
+        timer4.start_delay_cycles = 0;
+        timer4.prev_update_cycle = cycle_count - cycles;
+    }
+
     // first compute what happened to tcnt/tifr during the cycles
     if(!(timer4.divider == 0 || (data[0x65] & 0x10)))
     {
@@ -754,13 +783,12 @@ void atmega32u4_t::update_timer4()
 
     uint32_t cs = tccr4b & 0xf;
     timer4.divider = (cs == 0 ? 0 : 1 << (cs - 1));
+    bool timer_stopped = (timer4.divider == 0 || (data[0x65] & 0x10));
 
-    if(timer4.divider == 0 || (data[0x65] & 0x10))
+    if(timer_stopped)
     {
         timer4.divider_cycle = 0;
         timer4.async_cycle = 0;
-        timer4.next_update_cycle = UINT64_MAX;
-        return;
     }
 
     bool pwm4x = ((tccr4b & 0x80) != 0);
@@ -791,12 +819,29 @@ void atmega32u4_t::update_timer4()
     if(pwm4x)
         timer4.top = std::max<uint32_t>(3, timer4.top);
     timer4.tov = timer4.top;
-    if(pwm4x && (wgm & 0x1))
-        timer4.tov = 0;
 
-    timer4.phase_correct = (pwm4x && wgm == 1);
+    timer4.phase_correct = false;
     if(!timer4.phase_correct)
         timer4.count_down = false;
+
+    if(old_divider == 0 && timer4.divider == 1 && !timer_stopped)
+    {
+        timer4.start_delay_cycles = 3;
+        timer4.next_update_cycle = cycle_count + timer4.start_delay_cycles;
+        peripheral_queue.schedule(timer4.next_update_cycle, PQ_TIMER4);
+        return;
+    }
+
+    if(timer_stopped)
+    {
+        // Keep buffered OCR values synchronized while stopped so the next
+        // timer start sees the latest top and compare values.
+        timer10_update_ocrN(*this, timer4);
+        timer4.divider_cycle = 0;
+        timer4.async_cycle = 0;
+        timer4.next_update_cycle = UINT64_MAX;
+        return;
+    }
 
     // determine whether we are pwm-ing to sound pins
     // (pins connected and freq at least 20 kHz)
@@ -831,13 +876,6 @@ void atmega32u4_t::update_timer4()
     }
 
     // compute next update cycle
-
-    // shortcut: if no interrupts are enabled, just update occasionally
-    if(timsk4() == 0 && timer4.com4a == 0)
-    {
-        timer4.next_update_cycle = cycle_count + 65536;
-        return;
-    }
 
     uint32_t update_tcycles = UINT32_MAX;
     if(timer4.count_down)
@@ -1047,7 +1085,22 @@ void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
     if(ptr == 0xbe)
     {
         uint32_t hi = cpu.data[0xbf] & (cpu.timer4.enhc ? 0x07 : 0x03);
-        cpu.timer4.tcnt = ((hi << 8) | x) & 0x7ff;
+        uint32_t tcnt = ((hi << 8) | x) & 0x7ff;
+        cpu.timer4.compare_block_next_tick = true;
+        if(cpu.timer4.divider == 0 || (cpu.data[0x65] & 0x10))
+        {
+            cpu.timer4.tcnt = tcnt;
+            cpu.data[0xbe] = uint8_t(tcnt >> 0);
+            cpu.timer4.tcnt_write_pending = false;
+            cpu.timer4.tcnt_write_pending_seen = false;
+        }
+        else
+        {
+            cpu.timer4.tcnt_write_pending = true;
+            cpu.timer4.tcnt_write_pending_seen = false;
+            cpu.timer4.tcnt_write_value = tcnt;
+            cpu.data[0xbe] = uint8_t(cpu.timer4.tcnt >> 0);
+        }
     }
     cpu.update_timer4();
 
@@ -1076,7 +1129,18 @@ void atmega32u4_t::timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_
 
 uint8_t atmega32u4_t::timer4_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
 {
+    if(cpu.timer4.tcnt_write_pending && cpu.timer4.tcnt_write_pending_seen)
+    {
+        cpu.timer4.prev_update_cycle = cpu.cycle_count;
+        cpu.timer4.tcnt = cpu.timer4.tcnt_write_value;
+        cpu.timer4.compare_block_next_tick = true;
+        cpu.timer4.tcnt_write_pending = false;
+        cpu.timer4.tcnt_write_pending_seen = false;
+        cpu.data[0xbe] = uint8_t(cpu.timer4.tcnt >> 0);
+    }
     cpu.update_timer4();
+    if(cpu.timer4.tcnt_write_pending)
+        cpu.timer4.tcnt_write_pending_seen = true;
     return cpu.data[ptr];
 }
 

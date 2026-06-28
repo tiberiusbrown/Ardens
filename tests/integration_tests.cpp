@@ -370,7 +370,12 @@ static bool same_timer10(absim::atmega32u4_t::timer10_t const& a, absim::atmega3
         a.phase_correct == b.phase_correct &&
         a.count_down == b.count_down &&
         a.update_ocrN_at_top == b.update_ocrN_at_top &&
-        a.update_ocrN_at_bottom == b.update_ocrN_at_bottom;
+        a.update_ocrN_at_bottom == b.update_ocrN_at_bottom &&
+        a.compare_block_next_tick == b.compare_block_next_tick &&
+        a.tcnt_write_pending == b.tcnt_write_pending &&
+        a.tcnt_write_pending_seen == b.tcnt_write_pending_seen &&
+        a.start_delay_cycles == b.start_delay_cycles &&
+        a.tcnt_write_value == b.tcnt_write_value;
 }
 
 static bool same_cpu_state(absim::atmega32u4_t const& a, absim::atmega32u4_t const& b)
