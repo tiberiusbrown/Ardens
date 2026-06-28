@@ -117,7 +117,7 @@ ARDENS_FORCEINLINE static void update_timer8_state(
             timer_cycles -= t;
             tcnt += t;
             tcnt &= 0xff;
-            if(tcnt < 0x100)
+            if(timer.update_ocrN_at_top || top == 0xff)
                 tifr |= 0x1;
         }
         else
@@ -134,7 +134,11 @@ ARDENS_FORCEINLINE static void update_timer8_state(
                 if(phase_correct)
                     count_down = true;
                 else
-                    tifr |= 0x1, tcnt = 0;
+                {
+                    if(top == 0xff)
+                        tifr |= 0x1;
+                    tcnt = 0;
+                }
             }
         }
         if(tcnt == ocrNa) tifr |= 0x2;
@@ -387,7 +391,11 @@ ARDENS_FORCEINLINE static void update_timer16_state(
             if(phase_correct)
                 count_down = true, --tcnt;
             else
-                tifr |= 0x1, tcnt = 0;
+            {
+                if(timer.update_ocrN_at_top || top == 0xffff)
+                    tifr |= 0x1;
+                tcnt = 0;
+            }
             timer_cycles -= 1;
             if(timer.update_ocrN_at_top)
             {
@@ -406,7 +414,8 @@ ARDENS_FORCEINLINE static void update_timer16_state(
             timer_cycles -= t;
             tcnt += t;
             tcnt &= 0xffff;
-            if(tcnt < 0x10000) tifr |= 0x1;
+            if(top == 0xffff)
+                tifr |= 0x1;
         }
         else
         {
@@ -882,10 +891,13 @@ uint8_t atmega32u4_t::timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
 
 void atmega32u4_t::timer0_handle_st_tcnt(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
+    // Match the end-of-cycle write timing used by the wider timers.
+    cpu.timer0.prev_update_cycle -= 1;
     cpu.update_timer0();
     cpu.data[ptr] = x;
     cpu.timer0.tcnt = x;
     cpu.update_timer0();
+    cpu.timer0.prev_update_cycle += 1;
 }
 
 ARDENS_FORCEINLINE void atmega32u4_t::update_timer1()
@@ -1010,6 +1022,11 @@ void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
     if(ptr == 0x39)
         x = (cpu.data[0x39] & ~x);
     cpu.data[ptr] = x;
+    if(ptr == 0xbe)
+    {
+        uint32_t hi = cpu.data[0xbf] & (cpu.timer4.enhc ? 0x07 : 0x03);
+        cpu.timer4.tcnt = ((hi << 8) | x) & 0x7ff;
+    }
     cpu.update_timer4();
 
     // take cycle back
