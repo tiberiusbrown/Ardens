@@ -117,7 +117,7 @@ ARDENS_FORCEINLINE static void update_timer8_state(
             timer_cycles -= t;
             tcnt += t;
             tcnt &= 0xff;
-            if(timer.update_ocrN_at_top || top == 0xff)
+            if(top == 0xff)
                 tifr |= 0x1;
         }
         else
@@ -392,7 +392,7 @@ ARDENS_FORCEINLINE static void update_timer16_state(
                 count_down = true, --tcnt;
             else
             {
-                if(timer.update_ocrN_at_top || top == 0xffff)
+                if(top == 0xffff)
                     tifr |= 0x1;
                 tcnt = 0;
             }
