@@ -1028,6 +1028,7 @@ int main(int argc, char** argv)
     r |= test("signature");
     r |= test("timer_tcnt_write");
     r |= serial_output_test("timer_cycle_accuracy", "expected_serial.txt");
+    r |= serial_output_test("timer_shared_prescaler", "expected_serial.txt");
 
     printf("\nHEX parser tests...\n");
     r |= hex_malformed_input_test();
