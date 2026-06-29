@@ -19,7 +19,7 @@ void atmega32u4_t::st_handle_prr0(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     assert(ptr == reg::addr::PRR0);
-    cpu.update_sync_timers();
+    sync_write_barrier(cpu);
     cpu.data[reg::addr::PRR0] = x;
     cpu.update_sync_timers();
     cpu.adc_handle_prr0(x);
@@ -29,8 +29,8 @@ void atmega32u4_t::st_handle_prr1(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     assert(ptr == reg::addr::PRR1);
-    cpu.update_sync_timers();
-    cpu.update_timer4();
+    sync_write_barrier(cpu);
+    timer4_write_barrier(cpu);
     cpu.data[reg::addr::PRR1] = x;
     cpu.update_sync_timers();
     cpu.update_timer4();

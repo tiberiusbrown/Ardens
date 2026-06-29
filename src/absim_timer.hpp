@@ -165,6 +165,35 @@ static void timer0_refresh_config(atmega32u4_t& cpu, bool force_active)
         timer.count_down = false;
 }
 
+ARDENS_FORCEINLINE static void toggle_pinb7(atmega32u4_t& cpu)
+{
+    if(!(cpu.data[reg::addr::DDRB] & reg::bit::DDRB::DDB7)) return;
+    cpu.data[reg::addr::PINB] ^= reg::bit::PINB::PINB7;
+}
+
+ARDENS_FORCEINLINE static void clear_pinb7(atmega32u4_t& cpu)
+{
+    if(!(cpu.data[reg::addr::DDRB] & reg::bit::DDRB::DDB7)) return;
+    cpu.data[reg::addr::PINB] &= ~reg::bit::PINB::PINB7;
+}
+
+ARDENS_FORCEINLINE static void set_pinb7(atmega32u4_t& cpu)
+{
+    if(!(cpu.data[reg::addr::DDRB] & reg::bit::DDRB::DDB7)) return;
+    cpu.data[reg::addr::PINB] |= reg::bit::PINB::PINB7;
+}
+
+ARDENS_FORCEINLINE static void timer0_apply_oc0a(atmega32u4_t& cpu)
+{
+    switch(cpu.data[reg::addr::TCCR0A] >> 6)
+    {
+    case 1: toggle_pinb7(cpu); break;
+    case 2: clear_pinb7(cpu); break;
+    case 3: set_pinb7(cpu); break;
+    default: break;
+    }
+}
+
 ARDENS_FORCEINLINE static void timer0_tick_compare_blocked(
     atmega32u4_t& cpu, uint8_t& tifr)
 {
@@ -266,7 +295,11 @@ static void timer0_advance_ticks(atmega32u4_t& cpu, uint64_t ticks)
                 }
             }
         }
-        if(tcnt == ocrNa) tifr |= reg::bit::TIFR0::OCF0A;
+        if(tcnt == ocrNa)
+        {
+            timer0_apply_oc0a(cpu);
+            tifr |= reg::bit::TIFR0::OCF0A;
+        }
         if(tcnt == ocrNb) tifr |= reg::bit::TIFR0::OCF0B;
     }
 
@@ -478,7 +511,8 @@ static void timer16_tick_compare_blocked(
 static void timer16_advance_ticks(
     atmega32u4_t& cpu, atmega32u4_t::timer16_t& timer, uint64_t ticks)
 {
-    uint8_t tifr = 0;
+    uint8_t tifr = timer.delayed_tifr_flags;
+    timer.delayed_tifr_flags = 0;
 
     if(timer.compare_block_next_tick && ticks != 0)
     {
@@ -497,6 +531,7 @@ static void timer16_advance_ticks(
 
     while(ticks > 0)
     {
+        bool reached_phase_bottom = false;
         if(count_down)
         {
             uint32_t stop = 0;
@@ -507,7 +542,13 @@ static void timer16_advance_ticks(
             t = std::min(t, ticks);
             ticks -= t;
             tcnt -= uint32_t(t);
-            if(tcnt == 0) tifr |= reg::bit::TIFR1::TOV1, count_down = false;
+            if(tcnt == 0)
+            {
+                reached_phase_bottom = timer.phase_correct;
+                if(!reached_phase_bottom)
+                    tifr |= reg::bit::TIFR1::TOV1;
+                count_down = false;
+            }
         }
         else if(tcnt == top)
         {
@@ -568,15 +609,20 @@ static void timer16_advance_ticks(
             tcnt += uint32_t(t);
         }
 
+        uint8_t compare_flags = 0;
         if(&timer == &cpu.timer3 && tcnt == ocrNa)
         {
             if(com3a == 1) toggle_portc6(cpu);
             if(com3a == 2) clear_portc6(cpu);
             if(com3a == 3) set_portc6(cpu);
         }
-        if(tcnt == ocrNa) tifr |= reg::bit::TIFR1::OCF1A;
-        if(tcnt == ocrNb) tifr |= reg::bit::TIFR1::OCF1B;
-        if(tcnt == ocrNc) tifr |= reg::bit::TIFR1::OCF1C;
+        if(tcnt == ocrNa) compare_flags |= reg::bit::TIFR1::OCF1A;
+        if(tcnt == ocrNb) compare_flags |= reg::bit::TIFR1::OCF1B;
+        if(tcnt == ocrNc) compare_flags |= reg::bit::TIFR1::OCF1C;
+        if(reached_phase_bottom)
+            timer.delayed_tifr_flags |= compare_flags | reg::bit::TIFR1::TOV1;
+        else
+            tifr |= compare_flags;
     }
 
     timer.tcnt = tcnt & 0xffff;
@@ -734,7 +780,11 @@ void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
 {
     sync_write_barrier(cpu);
     if(ptr == reg::addr::TCCR0B)
+    {
+        if(x & reg::bit::TCCR0B::FOC0A)
+            timer0_apply_oc0a(cpu);
         x &= ~(reg::bit::TCCR0B::FOC0A | reg::bit::TCCR0B::FOC0B);
+    }
     cpu.data[ptr] = x;
     sync_refresh_configs(cpu, false);
     sync_reschedule(cpu);
@@ -759,7 +809,7 @@ void atmega32u4_t::timer0_handle_st_tcnt(atmega32u4_t& cpu, uint16_t ptr, uint8_
     sync_write_barrier(cpu);
     cpu.data[ptr] = x;
     cpu.timer0.tcnt = x;
-    cpu.timer0.compare_block_next_tick = true;
+    cpu.timer0.compare_block_next_tick = timer0_running(cpu);
     sync_refresh_configs(cpu, false);
     sync_reschedule(cpu);
 }
@@ -787,7 +837,7 @@ static void timer16_handle_st_regs(
         if(ptr == timer.base_addr + 0x4)
         {
             timer.tcnt = val;
-            timer.compare_block_next_tick = true;
+            timer.compare_block_next_tick = timer16_running(cpu, timer);
         }
         sync_refresh_configs(cpu, false);
         sync_reschedule(cpu);
@@ -795,7 +845,19 @@ static void timer16_handle_st_regs(
     }
 
     if(ptr == timer.base_addr + 0x2)
+    {
+        if(&timer == &cpu.timer3 && (x & reg::bit::TCCR3C::FOC3A))
+        {
+            bool was_high = (cpu.data[reg::addr::PINC] & reg::bit::PINC::PINC6) != 0;
+            uint32_t com3a = cpu.data[reg::addr::TCCR3A] >> 6;
+            if(com3a == 1) toggle_portc6(cpu);
+            if(com3a == 2) clear_portc6(cpu);
+            if(com3a == 3) set_portc6(cpu);
+            if(was_high)
+                cpu.data[reg::addr::TIFR3] |= reg::bit::TIFR3::ICF3;
+        }
         x = 0; // force-compare bits are strobes and read back as zero
+    }
 
     cpu.data[ptr] = x;
     sync_refresh_configs(cpu, false);
@@ -811,6 +873,7 @@ void atmega32u4_t::timer1_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_
 {
     assert(ptr == reg::addr::TIFR1);
     cpu.data[reg::addr::TIFR1] &= ~x;
+    cpu.timer1.delayed_tifr_flags &= ~x;
     cpu.schedule_interrupt_check();
 }
 
@@ -823,6 +886,7 @@ void atmega32u4_t::timer3_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_
 {
     assert(ptr == reg::addr::TIFR3);
     cpu.data[reg::addr::TIFR3] &= ~x;
+    cpu.timer3.delayed_tifr_flags &= ~x;
     cpu.schedule_interrupt_check();
 }
 
@@ -876,7 +940,8 @@ ARDENS_FORCEINLINE static void timer10_update_ocrN(
 
 ARDENS_FORCEINLINE static bool timer4_powered(atmega32u4_t const& cpu)
 {
-    return (cpu.data[reg::addr::PRR1] & reg::bit::PRR1::PRTIM4) == 0;
+    (void)cpu;
+    return true;
 }
 
 ARDENS_FORCEINLINE static bool timer4_running(atmega32u4_t const& cpu)
@@ -934,7 +999,6 @@ static void timer4_refresh_config(atmega32u4_t& cpu, bool force_active)
     uint32_t tccr4d = cpu.data[reg::addr::TCCR4D];
     uint32_t tccr4e = cpu.data[reg::addr::TCCR4E];
 
-    bool old_tlock = timer.tlock;
     timer.tlock = (tccr4e & reg::bit::TCCR4E::TLOCK4) != 0;
     timer.enhc = (tccr4e & reg::bit::TCCR4E::ENHC4) != 0;
 
@@ -956,7 +1020,7 @@ static void timer4_refresh_config(atmega32u4_t& cpu, bool force_active)
         timer.count_down = false;
 
     bool stopped = !timer4_powered(cpu) || timer.divider == 0;
-    if(force_active || stopped || old_divider == 0 || !buffered_pwm_updates || (old_tlock && !timer.tlock))
+    if(force_active || stopped || old_divider == 0 || !buffered_pwm_updates)
         timer10_update_ocrN(cpu, timer);
     if(timer.update_ocrN_at_bottom && timer.tcnt == 0)
         timer10_update_ocrN(cpu, timer);
@@ -1080,9 +1144,8 @@ static void timer4_tick_compare_blocked(atmega32u4_t& cpu, uint8_t& tifr)
     }
     else if(tcnt > timer.top)
     {
-        tcnt = (tcnt + 1) & 0x07ff;
-        if(tcnt < 0x800)
-            tifr |= reg::bit::TIFR4::TOV4;
+        tcnt = 0;
+        tifr |= reg::bit::TIFR4::TOV4;
     }
     else
     {
@@ -1151,12 +1214,9 @@ static void timer4_advance_ticks(atmega32u4_t& cpu, uint64_t ticks)
         }
         else if(tcnt > top)
         {
-            uint64_t t = 256;
-            t = std::min(t, ticks);
-            ticks -= t;
-            tcnt += uint32_t(t);
-            tcnt &= 0x07ff;
-            if(tcnt < 0x800) tifr |= reg::bit::TIFR4::TOV4;
+            ticks -= 1;
+            tcnt = 0;
+            tifr |= reg::bit::TIFR4::TOV4;
         }
         else
         {
@@ -1191,6 +1251,8 @@ static uint64_t timer4_next_ticks(atmega32u4_t const& cpu)
     if(!timer4_running(cpu))
         return UINT64_MAX;
     if(timer.compare_block_next_tick)
+        return 1;
+    if(timer.tcnt > timer.top)
         return 1;
 
     uint32_t ocrNa = timer.enhc ? timer.ocrNa / 2 : timer.ocrNa;

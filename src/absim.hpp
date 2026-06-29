@@ -408,6 +408,7 @@ struct atmega32u4_t
         uint32_t base_addr;
         uint32_t com3a;
         uint8_t temp; // reg for 16-bit access
+        uint8_t delayed_tifr_flags;
         bool phase_correct;
         bool count_down;
         bool update_ocrN_at_top;
@@ -422,7 +423,7 @@ struct atmega32u4_t
             a(top, tov, tcnt, ocrNa, ocrNb, ocrNc);
             a(ocrNa_buffer, ocrNb_buffer, ocrNc_buffer, icrN);
             a(tifrN_addr, timskN_addr, prr_addr, prr_mask, base_addr);
-            a(com3a, temp);
+            a(com3a, temp, delayed_tifr_flags);
             a(phase_correct, count_down);
             a(update_ocrN_at_top, update_ocrN_at_bottom);
             a(fast_pwm, top_source_icr, compare_block_next_tick);

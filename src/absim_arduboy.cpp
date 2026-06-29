@@ -127,6 +127,10 @@ void arduboy_t::reset()
         core_state.cpu.fuse_hi &= ~(1 << 0);
     core_state.cpu.reset();
 
+    // Arduboy bootloaders leave sketches with the USB PLL frequency setup visible.
+    if(program_state.flashcart_loaded || program_state.cfg.bootloader)
+        core_state.cpu.data[reg::addr::PLLFRQ] = 0x4a;
+
     peripherals.display.reset();
     peripherals.display.type = program_state.cfg.display_type;
     peripherals.fx.reset();
