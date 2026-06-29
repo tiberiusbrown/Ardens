@@ -187,22 +187,6 @@ namespace addr
     static constexpr uint8_t UEINT   = 0xf4;
 }
 
-struct register_info_t
-{
-    char const* name;
-    uint8_t read_mask;
-    uint8_t write_mask;
-    uint8_t reset_value;
-    std::array<char const*, 8> bits;
-};
-
-constexpr std::array<char const*, 8> make_bits(
-    char const* b7, char const* b6, char const* b5, char const* b4,
-    char const* b3, char const* b2, char const* b1, char const* b0)
-{
-    return {{ b0, b1, b2, b3, b4, b5, b6, b7 }};
-}
-
 namespace bit
 {
     namespace SREG
@@ -1112,6 +1096,22 @@ namespace bit
         static constexpr uint8_t SP14 = 1u << 6;
         static constexpr uint8_t SP15 = 1u << 7;
     }
+}
+
+struct register_info_t
+{
+    char const* name;
+    uint8_t read_mask;
+    uint8_t write_mask;
+    uint8_t reset_value;
+    std::array<char const*, 8> bits;
+};
+
+constexpr std::array<char const*, 8> make_bits(
+    char const* b7, char const* b6, char const* b5, char const* b4,
+    char const* b3, char const* b2, char const* b1, char const* b0)
+{
+    return {{ b0, b1, b2, b3, b4, b5, b6, b7 }};
 }
 
 static constexpr std::array<register_info_t, 256> REGISTER_INFO = {{

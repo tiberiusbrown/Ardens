@@ -290,7 +290,7 @@ void hover_data_space(uint16_t addr)
                             uint8_t mask = 0x80 >> i;
                             if(app.emulator.core_state.cpu.data[addr] & mask)
                                 TableSetBgColor(ImGuiTableBgTarget_CellBg, BIT_SET);
-                            Text("%s %s", bit, bit_access_label(r, mask));
+                            Text("%s\n%s", bit, bit_access_label(r, mask));
                         }
                         else
                             TableSetBgColor(ImGuiTableBgTarget_CellBg, UNUSED);
