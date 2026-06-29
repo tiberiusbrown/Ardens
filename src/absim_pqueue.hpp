@@ -17,7 +17,7 @@ enum pqueue_type
 {
     PQ_DUMMY,
     PQ_SPI,
-    PQ_TIMER0,
+    PQ_TIMER_SYNC,
     PQ_TIMER1,
     PQ_TIMER3,
     PQ_TIMER4,
@@ -52,6 +52,16 @@ struct pqueue
                 least_index = type;
             }
         }
+    }
+
+    ARDENS_FORCEINLINE void reschedule(uint64_t cycle, pqueue_type type)
+    {
+        cycles[type] = cycle;
+        if(cycle == UINT64_MAX)
+            scheduled &= ~(1 << type);
+        else
+            scheduled |= (1 << type);
+        update_least();
     }
 
     ARDENS_FORCEINLINE pqueue_item next() const

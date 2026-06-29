@@ -440,27 +440,36 @@ static bool same_usb_endpoint(
         a.length == b.length;
 }
 
-static bool same_timer8(absim::atmega32u4_t::timer8_t const& a, absim::atmega32u4_t::timer8_t const& b)
+static bool same_timer_sync(
+    absim::atmega32u4_t::timer_sync_t const& a,
+    absim::atmega32u4_t::timer_sync_t const& b)
 {
     return a.prev_update_cycle == b.prev_update_cycle &&
         a.next_update_cycle == b.next_update_cycle &&
-        a.prescaler_cycle == b.prescaler_cycle &&
+        a.prescaler_cycle == b.prescaler_cycle;
+}
+
+static bool same_timer8(absim::atmega32u4_t::timer8_t const& a, absim::atmega32u4_t::timer8_t const& b)
+{
+    return a.next_update_cycle == b.next_update_cycle &&
         a.divider == b.divider &&
         a.top == b.top &&
         a.tov == b.tov &&
         a.tcnt == b.tcnt &&
         a.ocrNa == b.ocrNa &&
         a.ocrNb == b.ocrNb &&
+        a.ocrNa_buffer == b.ocrNa_buffer &&
+        a.ocrNb_buffer == b.ocrNb_buffer &&
         a.phase_correct == b.phase_correct &&
+        a.fast_pwm == b.fast_pwm &&
         a.count_down == b.count_down &&
-        a.update_ocrN_at_top == b.update_ocrN_at_top;
+        a.update_ocrN_at_top == b.update_ocrN_at_top &&
+        a.compare_block_next_tick == b.compare_block_next_tick;
 }
 
 static bool same_timer16(absim::atmega32u4_t::timer16_t const& a, absim::atmega32u4_t::timer16_t const& b)
 {
-    return a.prev_update_cycle == b.prev_update_cycle &&
-        a.next_update_cycle == b.next_update_cycle &&
-        a.prescaler_cycle == b.prescaler_cycle &&
+    return a.next_update_cycle == b.next_update_cycle &&
         a.divider == b.divider &&
         a.top == b.top &&
         a.tov == b.tov &&
@@ -468,24 +477,31 @@ static bool same_timer16(absim::atmega32u4_t::timer16_t const& a, absim::atmega3
         a.ocrNa == b.ocrNa &&
         a.ocrNb == b.ocrNb &&
         a.ocrNc == b.ocrNc &&
+        a.ocrNa_buffer == b.ocrNa_buffer &&
+        a.ocrNb_buffer == b.ocrNb_buffer &&
+        a.ocrNc_buffer == b.ocrNc_buffer &&
+        a.icrN == b.icrN &&
         a.tifrN_addr == b.tifrN_addr &&
         a.timskN_addr == b.timskN_addr &&
         a.prr_addr == b.prr_addr &&
         a.prr_mask == b.prr_mask &&
         a.base_addr == b.base_addr &&
+        a.com3a == b.com3a &&
         a.temp == b.temp &&
         a.phase_correct == b.phase_correct &&
         a.count_down == b.count_down &&
         a.update_ocrN_at_top == b.update_ocrN_at_top &&
         a.update_ocrN_at_bottom == b.update_ocrN_at_bottom &&
         a.fast_pwm == b.fast_pwm &&
-        a.top_source_icr == b.top_source_icr;
+        a.top_source_icr == b.top_source_icr &&
+        a.compare_block_next_tick == b.compare_block_next_tick;
 }
 
 static bool same_timer10(absim::atmega32u4_t::timer10_t const& a, absim::atmega32u4_t::timer10_t const& b)
 {
     return a.prev_update_cycle == b.prev_update_cycle &&
         a.next_update_cycle == b.next_update_cycle &&
+        a.source_cycle == b.source_cycle &&
         a.divider_cycle == b.divider_cycle &&
         a.divider == b.divider &&
         a.top == b.top &&
@@ -499,8 +515,8 @@ static bool same_timer10(absim::atmega32u4_t::timer10_t const& a, absim::atmega3
         a.ocrNc_next == b.ocrNc_next &&
         a.ocrNd == b.ocrNd &&
         a.ocrNd_next == b.ocrNd_next &&
-        a.async_cycle == b.async_cycle &&
         a.com4a == b.com4a &&
+        a.tc4h_latch == b.tc4h_latch &&
         a.tlock == b.tlock &&
         a.enhc == b.enhc &&
         a.phase_correct == b.phase_correct &&
@@ -536,6 +552,7 @@ static bool same_cpu_state(absim::atmega32u4_t const& a, absim::atmega32u4_t con
         a.fuse_lo == b.fuse_lo &&
         a.fuse_hi == b.fuse_hi &&
         a.fuse_ext == b.fuse_ext &&
+        same_timer_sync(a.timer_sync, b.timer_sync) &&
         same_timer8(a.timer0, b.timer0) &&
         same_timer16(a.timer1, b.timer1) &&
         same_timer16(a.timer3, b.timer3) &&

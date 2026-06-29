@@ -331,32 +331,51 @@ struct atmega32u4_t
     static void st_handle_port(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void st_handle_prr1(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void st_handle_gtccr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     pqueue peripheral_queue;
 
     static void st_handler_timsk(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
-    // timer0
-    struct timer8_t
+    // timer0/1/3 shared synchronous timer domain
+    struct timer_sync_t
     {
         uint64_t prev_update_cycle;
         uint64_t next_update_cycle;
         uint32_t prescaler_cycle;
+        template<class A> void serialize(A& a)
+        {
+            a(prev_update_cycle, next_update_cycle, prescaler_cycle);
+        }
+    };
+    timer_sync_t timer_sync;
+
+    // timer0
+    struct timer8_t
+    {
+        uint64_t next_update_cycle;
         uint32_t divider;
         uint32_t top;
         uint32_t tov;
         uint32_t tcnt;
         uint32_t ocrNa;
         uint32_t ocrNb;
+        uint32_t ocrNa_buffer;
+        uint32_t ocrNb_buffer;
         bool phase_correct;
+        bool fast_pwm;
         bool count_down;
         bool update_ocrN_at_top;
+        bool compare_block_next_tick;
         template<class A> void serialize(A& a)
         {
-            a(prev_update_cycle, next_update_cycle);
-            a(prescaler_cycle, divider);
+            a(next_update_cycle);
+            a(divider);
             a(top, tov, tcnt, ocrNa, ocrNb);
-            a(phase_correct, count_down, update_ocrN_at_top);
+            a(ocrNa_buffer, ocrNb_buffer);
+            a(phase_correct, fast_pwm, count_down);
+            a(update_ocrN_at_top, compare_block_next_tick);
         }
     };
     timer8_t timer0;
@@ -364,14 +383,13 @@ struct atmega32u4_t
     static void timer0_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void timer0_handle_st_tcnt(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr);
+    void update_sync_timers();
     void update_timer0();
 
     // timer 1 or 3
     struct timer16_t
     {
-        uint64_t prev_update_cycle;
         uint64_t next_update_cycle;
-        uint32_t prescaler_cycle;
         uint32_t divider;
         uint32_t top;
         uint32_t tov;
@@ -379,6 +397,10 @@ struct atmega32u4_t
         uint32_t ocrNa;
         uint32_t ocrNb;
         uint32_t ocrNc;
+        uint32_t ocrNa_buffer;
+        uint32_t ocrNb_buffer;
+        uint32_t ocrNc_buffer;
+        uint32_t icrN;
         uint32_t tifrN_addr;
         uint32_t timskN_addr;
         uint32_t prr_addr;
@@ -392,16 +414,18 @@ struct atmega32u4_t
         bool update_ocrN_at_bottom;
         bool fast_pwm;
         bool top_source_icr;
+        bool compare_block_next_tick;
         template<class A> void serialize(A& a)
         {
-            a(prev_update_cycle, next_update_cycle);
-            a(prescaler_cycle, divider);
+            a(next_update_cycle);
+            a(divider);
             a(top, tov, tcnt, ocrNa, ocrNb, ocrNc);
+            a(ocrNa_buffer, ocrNb_buffer, ocrNc_buffer, icrN);
             a(tifrN_addr, timskN_addr, prr_addr, prr_mask, base_addr);
-            a(temp);
+            a(com3a, temp);
             a(phase_correct, count_down);
             a(update_ocrN_at_top, update_ocrN_at_bottom);
-            a(fast_pwm, top_source_icr);
+            a(fast_pwm, top_source_icr, compare_block_next_tick);
         }
     };
     static void timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -421,6 +445,7 @@ struct atmega32u4_t
     {
         uint64_t prev_update_cycle;
         uint64_t next_update_cycle;
+        uint32_t source_cycle;
         uint32_t divider_cycle;
         uint32_t divider;
         uint32_t top;
@@ -434,8 +459,8 @@ struct atmega32u4_t
         uint32_t ocrNb;
         uint32_t ocrNc;
         uint32_t ocrNd;
-        uint32_t async_cycle;
         uint32_t com4a;
+        uint8_t tc4h_latch;
         bool tlock;
         bool enhc;
         bool phase_correct;
@@ -450,13 +475,13 @@ struct atmega32u4_t
         template<class A> void serialize(A& a)
         {
             a(prev_update_cycle, next_update_cycle);
-            a(divider_cycle, divider);
+            a(source_cycle, divider_cycle, divider);
             a(top, tov, tcnt);
             a(ocrNa, ocrNa_next);
             a(ocrNb, ocrNb_next);
             a(ocrNc, ocrNc_next);
             a(ocrNd, ocrNd_next);
-            a(async_cycle, com4a);
+            a(com4a, tc4h_latch);
             a(tlock, enhc, phase_correct, count_down);
             a(update_ocrN_at_top, update_ocrN_at_bottom);
             a(compare_block_next_tick, tcnt_write_pending, tcnt_write_pending_seen);

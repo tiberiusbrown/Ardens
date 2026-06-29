@@ -37,6 +37,8 @@ void atmega32u4_t::reset()
     st_handlers[reg::addr::SPSR] = spi_handle_st_spcr_or_spsr;
     st_handlers[reg::addr::SPDR] = spi_handle_st_spdr;
     st_handlers[reg::addr::PRR0] = st_handle_prr0;
+    st_handlers[reg::addr::PRR1] = st_handle_prr1;
+    st_handlers[reg::addr::GTCCR] = st_handle_gtccr;
     st_handlers[reg::addr::ADCSRA] = adc_st_handle_adcsra;
 
     st_handlers[reg::addr::PINB] = st_handle_pin;
@@ -148,6 +150,7 @@ void atmega32u4_t::soft_reset()
     timer1 = {};
     timer3 = {};
     timer4 = {};
+    timer_sync = {};
 
     data[reg::addr::OCR4C] = timer4.ocrNc = timer4.ocrNc_next = timer4.top = 0xff;
 
@@ -162,11 +165,10 @@ void atmega32u4_t::soft_reset()
     timer1.prr_mask = reg::bit::PRR0::PRTIM1;
     timer3.prr_mask = reg::bit::PRR1::PRTIM3;
 
-    timer0.prev_update_cycle = cycle_count;
-    timer1.prev_update_cycle = cycle_count;
-    timer3.prev_update_cycle = cycle_count;
+    timer_sync.prev_update_cycle = cycle_count;
     timer4.prev_update_cycle = cycle_count;
 
+    timer_sync.next_update_cycle = UINT64_MAX;
     timer0.next_update_cycle = UINT64_MAX;
     timer1.next_update_cycle = UINT64_MAX;
     timer3.next_update_cycle = UINT64_MAX;

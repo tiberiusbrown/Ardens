@@ -19,8 +19,21 @@ void atmega32u4_t::st_handle_prr0(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     assert(ptr == reg::addr::PRR0);
+    cpu.update_sync_timers();
     cpu.data[reg::addr::PRR0] = x;
+    cpu.update_sync_timers();
     cpu.adc_handle_prr0(x);
+}
+
+void atmega32u4_t::st_handle_prr1(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == reg::addr::PRR1);
+    cpu.update_sync_timers();
+    cpu.update_timer4();
+    cpu.data[reg::addr::PRR1] = x;
+    cpu.update_sync_timers();
+    cpu.update_timer4();
 }
 
 void atmega32u4_t::st_handle_pin(
@@ -424,9 +437,9 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         switch(qi.type)
         {
         case PQ_SPI: update_spi(); break;
-        case PQ_TIMER0: update_timer0(); break;
-        case PQ_TIMER1: update_timer1(); break;
-        case PQ_TIMER3: update_timer3(); break;
+        case PQ_TIMER_SYNC: update_sync_timers(); break;
+        case PQ_TIMER1: break;
+        case PQ_TIMER3: break;
         case PQ_TIMER4: update_timer4(); break;
         case PQ_USB: update_usb(); break;
         case PQ_WATCHDOG: update_watchdog(); break;
@@ -540,9 +553,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
 void atmega32u4_t::update_all()
 {
-    update_timer0();
-    update_timer1();
-    update_timer3();
+    update_sync_timers();
     update_timer4();
     update_usb();
     update_sound();
