@@ -165,8 +165,8 @@ static void timer0_refresh_config(atmega32u4_t& cpu, bool force_active)
         timer.count_down = false;
 }
 
-ARDENS_FORCEINLINE static void timer0_tick(
-    atmega32u4_t& cpu, bool compare_allowed, uint8_t& tifr)
+ARDENS_FORCEINLINE static void timer0_tick_compare_blocked(
+    atmega32u4_t& cpu, uint8_t& tifr)
 {
     auto& timer = cpu.timer0;
     uint32_t tcnt = timer.tcnt;
@@ -201,11 +201,6 @@ ARDENS_FORCEINLINE static void timer0_tick(
     }
 
     timer.tcnt = tcnt & 0xff;
-    if(compare_allowed)
-    {
-        if(timer.tcnt == timer.ocrNa) tifr |= reg::bit::TIFR0::OCF0A;
-        if(timer.tcnt == timer.ocrNb) tifr |= reg::bit::TIFR0::OCF0B;
-    }
 }
 
 static void timer0_advance_ticks(atmega32u4_t& cpu, uint64_t ticks)
@@ -215,7 +210,7 @@ static void timer0_advance_ticks(atmega32u4_t& cpu, uint64_t ticks)
 
     if(timer.compare_block_next_tick && ticks != 0)
     {
-        timer0_tick(cpu, false, tifr);
+        timer0_tick_compare_blocked(cpu, tifr);
         timer.compare_block_next_tick = false;
         --ticks;
     }
@@ -429,10 +424,9 @@ ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu)
     cpu.data[reg::addr::PINC] |= reg::bit::PINC::PINC6;
 }
 
-static void timer16_tick(
+static void timer16_tick_compare_blocked(
     atmega32u4_t& cpu,
     atmega32u4_t::timer16_t& timer,
-    bool compare_allowed,
     uint8_t& tifr)
 {
     uint32_t tcnt = timer.tcnt;
@@ -479,18 +473,6 @@ static void timer16_tick(
     }
 
     timer.tcnt = tcnt & 0xffff;
-    if(&timer == &cpu.timer3 && timer.tcnt == timer.ocrNa)
-    {
-        if(timer.com3a == 1) toggle_portc6(cpu);
-        if(timer.com3a == 2) clear_portc6(cpu);
-        if(timer.com3a == 3) set_portc6(cpu);
-    }
-    if(compare_allowed)
-    {
-        if(timer.tcnt == timer.ocrNa) tifr |= reg::bit::TIFR1::OCF1A;
-        if(timer.tcnt == timer.ocrNb) tifr |= reg::bit::TIFR1::OCF1B;
-        if(timer.tcnt == timer.ocrNc) tifr |= reg::bit::TIFR1::OCF1C;
-    }
 }
 
 static void timer16_advance_ticks(
@@ -500,7 +482,7 @@ static void timer16_advance_ticks(
 
     if(timer.compare_block_next_tick && ticks != 0)
     {
-        timer16_tick(cpu, timer, false, tifr);
+        timer16_tick_compare_blocked(cpu, timer, tifr);
         timer.compare_block_next_tick = false;
         --ticks;
     }
@@ -1069,20 +1051,13 @@ ARDENS_FORCEINLINE static uint64_t source_until_timer4_ticks(
     return first + (ticks - 1) * divider;
 }
 
-static void timer4_tick(atmega32u4_t& cpu, bool compare_allowed, uint8_t& tifr)
+static void timer4_tick_compare_blocked(atmega32u4_t& cpu, uint8_t& tifr)
 {
     auto& timer = cpu.timer4;
     uint32_t tcnt = timer.tcnt;
     uint32_t ocrNa = timer.enhc ? timer.ocrNa / 2 : timer.ocrNa;
     uint32_t ocrNb = timer.enhc ? timer.ocrNb / 2 : timer.ocrNb;
     uint32_t ocrNd = timer.enhc ? timer.ocrNd / 2 : timer.ocrNd;
-
-    if(compare_allowed)
-    {
-        if(tcnt == ocrNa) tifr |= reg::bit::TIFR4::OCF4A;
-        if(tcnt == ocrNb) tifr |= reg::bit::TIFR4::OCF4B;
-        if(tcnt == ocrNd) tifr |= reg::bit::TIFR4::OCF4D;
-    }
 
     if(timer.count_down)
     {
@@ -1115,12 +1090,6 @@ static void timer4_tick(atmega32u4_t& cpu, bool compare_allowed, uint8_t& tifr)
     }
 
     timer.tcnt = tcnt & 0x07ff;
-    if(compare_allowed && timer.tcnt == ocrNa)
-    {
-        if(timer.com4a == 1) set_portc(cpu, false, true);
-        if(timer.com4a == 2) set_portc7(cpu, false);
-        if(timer.com4a == 3) set_portc7(cpu, true);
-    }
 }
 
 static void timer4_advance_ticks(atmega32u4_t& cpu, uint64_t ticks)
@@ -1130,7 +1099,7 @@ static void timer4_advance_ticks(atmega32u4_t& cpu, uint64_t ticks)
 
     if(timer.compare_block_next_tick && ticks != 0)
     {
-        timer4_tick(cpu, false, tifr);
+        timer4_tick_compare_blocked(cpu, tifr);
         timer.compare_block_next_tick = false;
         --ticks;
     }
