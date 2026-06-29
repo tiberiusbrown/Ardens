@@ -152,20 +152,26 @@ void arduboy_t::reset()
         size_t size = 0;
         if(program_state.flashcart_loaded || program_state.cfg.boot_to_menu)
         {
-            if(program_state.cfg.fxport_reg == 0x2b && program_state.cfg.fxport_mask == 1 << 1)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD1)
                 ptr = ARDENS_BOOT_MENU_D1, size = sizeof(ARDENS_BOOT_MENU_D1);
-            if(program_state.cfg.fxport_reg == 0x2b && program_state.cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD2)
                 ptr = ARDENS_BOOT_MENU_D2, size = sizeof(ARDENS_BOOT_MENU_D2);
-            if(program_state.cfg.fxport_reg == 0x2e && program_state.cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTE &&
+                program_state.cfg.fxport_mask == reg::bit::PORTE::PORTE2)
                 ptr = ARDENS_BOOT_MENU_E2, size = sizeof(ARDENS_BOOT_MENU_E2);
         }
         else
         {
-            if(program_state.cfg.fxport_reg == 0x2b && program_state.cfg.fxport_mask == 1 << 1)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD1)
                 ptr = ARDENS_BOOT_GAME_D1, size = sizeof(ARDENS_BOOT_GAME_D1);
-            if(program_state.cfg.fxport_reg == 0x2b && program_state.cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD2)
                 ptr = ARDENS_BOOT_GAME_D2, size = sizeof(ARDENS_BOOT_GAME_D2);
-            if(program_state.cfg.fxport_reg == 0x2e && program_state.cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTE &&
+                program_state.cfg.fxport_mask == reg::bit::PORTE::PORTE2)
                 ptr = ARDENS_BOOT_GAME_E2, size = sizeof(ARDENS_BOOT_GAME_E2);
         }
         if(ptr != nullptr && size != 0)
@@ -448,7 +454,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     assert(core_state.cpu.decoded);
 
     bool vsync = false;
-    uint8_t displayport = core_state.cpu.data[0x2b];
+    uint8_t displayport = core_state.cpu.data[reg::addr::PORTD];
     uint8_t fxport = core_state.cpu.data[peripherals.fxport_reg];
 
     uint32_t cycles = core_state.cpu.advance_cycle();
@@ -504,7 +510,7 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     {
         auto cycles_ps = cycles * CYCLE_PS;
         bool actual_vsync = false;
-        if((core_state.cpu.PORTD() & (1 << 7)) != 0)
+        if((core_state.cpu.data[reg::addr::PORTD] & reg::bit::PORTD::PORTD7) != 0)
         {
             actual_vsync = peripherals.display.advance(cycles_ps);
             peripherals.prev_display_reset = false;
@@ -622,9 +628,9 @@ void arduboy_t::update_history()
     {
         inputs_t state;
         state.cycle = core_state.cpu.cycle_count;
-        state.pinb = core_state.cpu.PINB();
-        state.pine = core_state.cpu.PINE();
-        state.pinf = core_state.cpu.PINF();
+        state.pinb = core_state.cpu.data[reg::addr::PINB];
+        state.pine = core_state.cpu.data[reg::addr::PINE];
+        state.pinf = core_state.cpu.data[reg::addr::PINF];
         if(debugger_state.input_history.empty() ||
             debugger_state.input_history.back().pinb != state.pinb ||
             debugger_state.input_history.back().pine != state.pine ||
@@ -721,9 +727,9 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
             p.cycle = a.core_state.cpu.cycle_count;
             p.pc = a.core_state.cpu.pc;
             p.stack_depth = (uint16_t)a.core_state.cpu.num_stack_frames;
-            a.core_state.cpu.PINB() = p.pinb = input.pinb;
-            a.core_state.cpu.PINE() = p.pine = input.pine;
-            a.core_state.cpu.PINF() = p.pinf = input.pinf;
+            a.core_state.cpu.data[reg::addr::PINB] = p.pinb = input.pinb;
+            a.core_state.cpu.data[reg::addr::PINE] = p.pine = input.pine;
+            a.core_state.cpu.data[reg::addr::PINF] = p.pinf = input.pinf;
             pcs.push_back(p);
             travel_back_advance_instr(a);
         }
@@ -736,9 +742,9 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
                 a.load_state_from_vector(state.state);
                 for(size_t i = 0; i < pi; ++i)
                 {
-                    a.core_state.cpu.PINB() = pcs[i].pinb;
-                    a.core_state.cpu.PINE() = pcs[i].pine;
-                    a.core_state.cpu.PINF() = pcs[i].pinf;
+                    a.core_state.cpu.data[reg::addr::PINB] = pcs[i].pinb;
+                    a.core_state.cpu.data[reg::addr::PINE] = pcs[i].pine;
+                    a.core_state.cpu.data[reg::addr::PINF] = pcs[i].pinf;
                     travel_back_advance_instr(a);
                 }
                 a.core_state.cpu.update_all();
@@ -825,9 +831,13 @@ static void set_button_pins_from_history(arduboy_t& a)
     uint64_t cycle = a.core_state.cpu.cycle_count;
     auto const& inputs = a.debugger_state.input_history;
     size_t n = inputs.size();
-    uint8_t pinb = 0x10;
-    uint8_t pine = 0x40;
-    uint8_t pinf = 0xf0;
+    uint8_t pinb = reg::bit::PINB::PINB4;
+    uint8_t pine = reg::bit::PINE::PINE6;
+    uint8_t pinf =
+        reg::bit::PINF::PINF7 |
+        reg::bit::PINF::PINF6 |
+        reg::bit::PINF::PINF5 |
+        reg::bit::PINF::PINF4;
     while(n-- > 0)
     {
         auto const& i = inputs[n];
@@ -839,9 +849,9 @@ static void set_button_pins_from_history(arduboy_t& a)
             break;
         }
     }
-    a.core_state.cpu.PINB() = pinb;
-    a.core_state.cpu.PINE() = pine;
-    a.core_state.cpu.PINF() = pinf;
+    a.core_state.cpu.data[reg::addr::PINB] = pinb;
+    a.core_state.cpu.data[reg::addr::PINE] = pine;
+    a.core_state.cpu.data[reg::addr::PINF] = pinf;
 }
 
 void arduboy_t::advance_instr()

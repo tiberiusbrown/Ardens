@@ -69,11 +69,11 @@ ARDENS_FORCEINLINE static void timer8_update_ocrN(
     atmega32u4_t& cpu,
     atmega32u4_t::timer8_t& timer)
 {
-    timer.ocrNa = cpu.data[0x47];
-    timer.ocrNb = cpu.data[0x48];
+    timer.ocrNa = cpu.data[reg::addr::OCR0A];
+    timer.ocrNb = cpu.data[reg::addr::OCR0B];
 
-    uint32_t tccr0a = cpu.data[0x44];
-    uint32_t tccr0b = cpu.data[0x45];
+    uint32_t tccr0a = cpu.data[reg::addr::TCCR0A];
+    uint32_t tccr0b = cpu.data[reg::addr::TCCR0B];
     uint32_t wgm = (tccr0a & 0x3) | ((tccr0b >> 1) & 0x4);
     process_wgm8(wgm, timer.top, timer.tov, timer.ocrNa);
 }
@@ -107,8 +107,8 @@ ARDENS_FORCEINLINE static void update_timer8_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt -= t;
-            if(tcnt == 0)
-                tifr |= 0x1, count_down = false;
+        if(tcnt == 0)
+            tifr |= reg::bit::TIFR0::TOV0, count_down = false;
         }
         else if(tcnt > top)
         {
@@ -118,7 +118,7 @@ ARDENS_FORCEINLINE static void update_timer8_state(
             tcnt += t;
             tcnt &= 0xff;
             if(top == 0xff)
-                tifr |= 0x1;
+                tifr |= reg::bit::TIFR0::TOV0;
         }
         else
         {
@@ -136,21 +136,21 @@ ARDENS_FORCEINLINE static void update_timer8_state(
                 else
                 {
                     if(top == 0xff)
-                        tifr |= 0x1;
+                        tifr |= reg::bit::TIFR0::TOV0;
                     tcnt = 0;
                 }
             }
         }
-        if(tcnt == ocrNa) tifr |= 0x2;
-        if(tcnt == ocrNb) tifr |= 0x4;
+        if(tcnt == ocrNa) tifr |= reg::bit::TIFR0::OCF0A;
+        if(tcnt == ocrNb) tifr |= reg::bit::TIFR0::OCF0B;
     }
 
     timer.tcnt = tcnt;
     timer.count_down = count_down;
     if(tifr)
         cpu.schedule_interrupt_check();
-    cpu.data[0x35] |= tifr;
-    cpu.data[0x46] = uint8_t(tcnt);
+    cpu.data[reg::addr::TIFR0] |= tifr;
+    cpu.data[reg::addr::TCNT0] = uint8_t(tcnt);
 }
 
 void atmega32u4_t::update_timer0()
@@ -158,7 +158,7 @@ void atmega32u4_t::update_timer0()
     uint32_t old_divider = timer0.divider;
 
     // first compute what happened to tcnt/tifr during the cycles
-    if(!(timer0.divider == 0 || (data[0x64] & (1 << 5))))
+    if(!(timer0.divider == 0 || (data[reg::addr::PRR0] & reg::bit::PRR0::PRTIM0)))
     {
         // timer clock is running and timer is not powered down...
         uint64_t cycles = cycle_count - timer0.prev_update_cycle;
@@ -168,18 +168,19 @@ void atmega32u4_t::update_timer0()
 
     // now set up timer state for next update
 
-    uint32_t cs = data[0x45] & 0x7;
+    uint32_t cs = data[reg::addr::TCCR0B] &
+        (reg::bit::TCCR0B::CS00 | reg::bit::TCCR0B::CS01 | reg::bit::TCCR0B::CS02);
     timer0.divider = get_divider(cs);
 
-    if(timer0.divider == 0 || (data[0x64] & (1 << 5)))
+    if(timer0.divider == 0 || (data[reg::addr::PRR0] & reg::bit::PRR0::PRTIM0))
     {
         timer0.prescaler_cycle = 0;
         timer0.next_update_cycle = UINT64_MAX;
         return;
     }
 
-    uint32_t tccr0a = data[0x44];
-    uint32_t tccr0b = data[0x45];
+    uint32_t tccr0a = data[reg::addr::TCCR0A];
+    uint32_t tccr0b = data[reg::addr::TCCR0B];
     uint32_t wgm = (tccr0a & 0x3) | ((tccr0b >> 1) & 0x4);
 
     uint32_t wgm_mask = 1 << wgm;
@@ -329,32 +330,32 @@ ARDENS_FORCEINLINE static uint32_t timer16_period(
 {
     uint32_t period = UINT32_MAX;
     uint32_t timsk = cpu.data[timer.timskN_addr];
-    if(timsk & 0x01) period = std::min(period, timer.tov);
-    if(timsk & 0x02) period = std::min(period, timer.ocrNa);
-    if(timsk & 0x04) period = std::min(period, timer.ocrNb);
-    if(timsk & 0x08) period = std::min(period, timer.ocrNc);
+    if(timsk & reg::bit::TIMSK1::TOIE1) period = std::min(period, timer.tov);
+    if(timsk & reg::bit::TIMSK1::OCIE1A) period = std::min(period, timer.ocrNa);
+    if(timsk & reg::bit::TIMSK1::OCIE1B) period = std::min(period, timer.ocrNb);
+    if(timsk & reg::bit::TIMSK1::OCIE1C) period = std::min(period, timer.ocrNc);
     return period;
 }
 
 ARDENS_FORCEINLINE static void toggle_portc6(atmega32u4_t& cpu)
 {
-    if(!(cpu.data[0x27] & 0x40)) return;
+    if(!(cpu.data[reg::addr::DDRC] & reg::bit::DDRC::DDC6)) return;
     cpu.update_sound();
-    cpu.data[0x26] ^= (1 << 6);
+    cpu.data[reg::addr::PINC] ^= (1 << 6);
 }
 
 ARDENS_FORCEINLINE static void clear_portc6(atmega32u4_t& cpu)
 {
-    if(!(cpu.data[0x27] & 0x40)) return;
+    if(!(cpu.data[reg::addr::DDRC] & reg::bit::DDRC::DDC6)) return;
     cpu.update_sound();
-    cpu.data[0x26] &= ~(1 << 6);
+    cpu.data[reg::addr::PINC] &= ~(1 << 6);
 }
 
 ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu)
 {
-    if(!(cpu.data[0x27] & 0x40)) return;
+    if(!(cpu.data[reg::addr::DDRC] & reg::bit::DDRC::DDC6)) return;
     cpu.update_sound();
-    cpu.data[0x26] |= (1 << 6);
+    cpu.data[reg::addr::PINC] |= (1 << 6);
 }
 
 ARDENS_FORCEINLINE static void update_timer16_state(
@@ -389,7 +390,7 @@ ARDENS_FORCEINLINE static void update_timer16_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt -= t;
-            if(tcnt == 0) tifr |= 0x1, count_down = false;
+            if(tcnt == 0) tifr |= reg::bit::TIFR1::TOV1, count_down = false;
         }
         else if(tcnt == top)
         {
@@ -398,18 +399,18 @@ ARDENS_FORCEINLINE static void update_timer16_state(
                 count_down = true;
                 --tcnt;
                 if(timer.top_source_icr)
-                    tifr |= 0x20;
+                    tifr |= reg::bit::TIFR1::ICF1;
             }
             else
             {
                 if(timer.fast_pwm)
                 {
-                    tifr |= 0x1;
+                    tifr |= reg::bit::TIFR1::TOV1;
                     if(timer.top_source_icr)
-                        tifr |= 0x20;
+                        tifr |= reg::bit::TIFR1::ICF1;
                 }
                 else if(top == 0xffff)
-                    tifr |= 0x1;
+                    tifr |= reg::bit::TIFR1::TOV1;
                 tcnt = 0;
             }
             timer_cycles -= 1;
@@ -431,7 +432,7 @@ ARDENS_FORCEINLINE static void update_timer16_state(
             tcnt += t;
             tcnt &= 0xffff;
             if(top == 0xffff)
-                tifr |= 0x1;
+                tifr |= reg::bit::TIFR1::TOV1;
         }
         else
         {
@@ -451,11 +452,11 @@ ARDENS_FORCEINLINE static void update_timer16_state(
             if(com3a == 3) set_portc6(cpu);
         }
         if(tcnt == ocrNa)
-            tifr |= 0x2;
+            tifr |= reg::bit::TIFR1::OCF1A;
         if(tcnt == ocrNb)
-            tifr |= 0x4;
+            tifr |= reg::bit::TIFR1::OCF1B;
         if(tcnt == ocrNc)
-            tifr |= 0x8;
+            tifr |= reg::bit::TIFR1::OCF1C;
     }
 
     timer.tcnt = tcnt;
@@ -573,51 +574,51 @@ ARDENS_FORCEINLINE static void timer10_update_ocrN(
         timer.ocrNc = timer.ocrNc_next;
         timer.ocrNd = timer.ocrNd_next;
 
-        cpu.data[0xcf] = (uint8_t)timer.ocrNa;
-        cpu.data[0xd0] = (uint8_t)timer.ocrNb;
-        cpu.data[0xd1] = (uint8_t)timer.ocrNc;
-        cpu.data[0xd2] = (uint8_t)timer.ocrNd;
+        cpu.data[reg::addr::OCR4A] = (uint8_t)timer.ocrNa;
+        cpu.data[reg::addr::OCR4B] = (uint8_t)timer.ocrNb;
+        cpu.data[reg::addr::OCR4C] = (uint8_t)timer.ocrNc;
+        cpu.data[reg::addr::OCR4D] = (uint8_t)timer.ocrNd;
     }
 }
 
 ARDENS_FORCEINLINE static void set_portc(atmega32u4_t& cpu, bool c6, bool c7)
 {
     uint8_t c = 0;
-    if(c6) c |= 0x40;
-    if(c7) c |= 0x80;
-    uint8_t m = cpu.data[0x27];
+    if(c6) c |= reg::bit::PINC::PINC6;
+    if(c7) c |= reg::bit::PINC::PINC7;
+    uint8_t m = cpu.data[reg::addr::DDRC];
     c &= m;
-    uint8_t t = cpu.data[0x26];
+    uint8_t t = cpu.data[reg::addr::PINC];
     t &= ~m;
     t |= c;
     cpu.update_sound();
-    cpu.data[0x26] = t;
+    cpu.data[reg::addr::PINC] = t;
 }
 
 ARDENS_FORCEINLINE static void set_portc6(atmega32u4_t& cpu, bool c6)
 {
     uint8_t c = 0;
-    if(c6) c |= 0x40;
-    if(!(cpu.data[0x27] & 0x40)) return;
-    c &= 0x40;
-    uint8_t t = cpu.data[0x26];
-    t &= ~0x40;
+    if(c6) c |= reg::bit::PINC::PINC6;
+    if(!(cpu.data[reg::addr::DDRC] & reg::bit::DDRC::DDC6)) return;
+    c &= reg::bit::PINC::PINC6;
+    uint8_t t = cpu.data[reg::addr::PINC];
+    t &= ~reg::bit::PINC::PINC6;
     t |= c;
     cpu.update_sound();
-    cpu.data[0x26] = t;
+    cpu.data[reg::addr::PINC] = t;
 }
 
 ARDENS_FORCEINLINE static void set_portc7(atmega32u4_t& cpu, bool c7)
 {
     uint8_t c = 0;
-    if(c7) c |= 0x80;
-    if(!(cpu.data[0x27] & 0x80)) return;
-    c &= 0x80;
-    uint8_t t = cpu.data[0x26];
-    t &= ~0x80;
+    if(c7) c |= reg::bit::PINC::PINC7;
+    if(!(cpu.data[reg::addr::DDRC] & reg::bit::DDRC::DDC7)) return;
+    c &= reg::bit::PINC::PINC7;
+    uint8_t t = cpu.data[reg::addr::PINC];
+    t &= ~reg::bit::PINC::PINC7;
     t |= c;
     cpu.update_sound();
-    cpu.data[0x26] = t;
+    cpu.data[reg::addr::PINC] = t;
 }
 
 ARDENS_FORCEINLINE static void update_timer10_state(
@@ -667,9 +668,9 @@ ARDENS_FORCEINLINE static void update_timer10_state(
     {
         if(compare_allowed)
         {
-            if(tcnt == ocrNa) tifr |= 0x40;
-            if(tcnt == ocrNb) tifr |= 0x20;
-            if(tcnt == ocrNd) tifr |= 0x80;
+            if(tcnt == ocrNa) tifr |= reg::bit::TIFR4::OCF4A;
+            if(tcnt == ocrNb) tifr |= reg::bit::TIFR4::OCF4B;
+            if(tcnt == ocrNd) tifr |= reg::bit::TIFR4::OCF4D;
         }
         if(count_down)
         {
@@ -681,7 +682,7 @@ ARDENS_FORCEINLINE static void update_timer10_state(
             t = std::min(t, timer_cycles);
             timer_cycles -= t;
             tcnt -= t;
-            if(tcnt == 0) tifr |= 0x4, count_down = false;
+            if(tcnt == 0) tifr |= reg::bit::TIFR4::TOV4, count_down = false;
         }
         else if(tcnt == top)
         {
@@ -710,7 +711,7 @@ ARDENS_FORCEINLINE static void update_timer10_state(
             timer_cycles -= t;
             tcnt += t;
             tcnt &= 0x07ff;
-            if(tcnt < 0x800) tifr |= 0x4;
+            if(tcnt < 0x800) tifr |= reg::bit::TIFR4::TOV4;
         }
         else
         {
@@ -736,8 +737,8 @@ ARDENS_FORCEINLINE static void update_timer10_state(
     timer.count_down = count_down;
     if(tifr)
         cpu.schedule_interrupt_check();
-    cpu.data[0x39] |= tifr;
-    cpu.data[0xbe] = uint8_t(tcnt >> 0);
+    cpu.data[reg::addr::TIFR4] |= tifr;
+    cpu.data[reg::addr::TCNT4] = uint8_t(tcnt >> 0);
 }
 
 void atmega32u4_t::update_timer4()
@@ -762,7 +763,7 @@ void atmega32u4_t::update_timer4()
     }
 
     // first compute what happened to tcnt/tifr during the cycles
-    if(!(timer4.divider == 0 || (data[0x65] & 0x10)))
+    if(!(timer4.divider == 0 || (data[reg::addr::PRR1] & reg::bit::PRR1::PRTIM4)))
     {
         // timer clock is running and timer is not powered down...
         uint64_t cycles = cycle_count - timer4.prev_update_cycle;
@@ -772,18 +773,18 @@ void atmega32u4_t::update_timer4()
 
     // now set up timer state for next update
 
-    uint32_t tccr4a = data[0xc0];
-    uint32_t tccr4b = data[0xc1];
-    uint32_t tccr4c = data[0xc2];
-    uint32_t tccr4d = data[0xc3];
-    uint32_t tccr4e = data[0xc4];
+    uint32_t tccr4a = data[reg::addr::TCCR4A];
+    uint32_t tccr4b = data[reg::addr::TCCR4B];
+    uint32_t tccr4c = data[reg::addr::TCCR4C];
+    uint32_t tccr4d = data[reg::addr::TCCR4D];
+    uint32_t tccr4e = data[reg::addr::TCCR4E];
 
-    timer4.tlock = ((tccr4e & 0x80) != 0);
-    timer4.enhc = ((tccr4e & 0x40) != 0);
+    timer4.tlock = ((tccr4e & reg::bit::TCCR4E::TLOCK4) != 0);
+    timer4.enhc = ((tccr4e & reg::bit::TCCR4E::ENHC4) != 0);
 
     uint32_t cs = tccr4b & 0xf;
     timer4.divider = (cs == 0 ? 0 : 1 << (cs - 1));
-    bool timer_stopped = (timer4.divider == 0 || (data[0x65] & 0x10));
+    bool timer_stopped = (timer4.divider == 0 || (data[reg::addr::PRR1] & reg::bit::PRR1::PRTIM4));
 
     if(timer_stopped)
     {
@@ -791,7 +792,7 @@ void atmega32u4_t::update_timer4()
         timer4.async_cycle = 0;
     }
 
-    bool pwm4x = ((tccr4b & 0x80) != 0);
+    bool pwm4x = ((tccr4b & reg::bit::TCCR4B::PWM4X) != 0);
 
     // for some reason, on actual Arduboys, pwm4x behaves as though it
     // were always set, not according to the datasheet. WHY??
@@ -848,7 +849,7 @@ void atmega32u4_t::update_timer4()
     update_sound();
     sound_pwm = false;
     uint32_t com = timer4.com4a = tccr4a >> 6;
-    if((tccr4a & 0xc0) != 0 && (tccr4a & 0x2) != 0)
+    if((tccr4a & (reg::bit::TCCR4A::COM4A1 | reg::bit::TCCR4A::COM4A0)) != 0 && (tccr4a & reg::bit::TCCR4A::PWM4A) != 0)
     {
         uint32_t period = (timer4.top + 1) * timer4.divider;
         if(!pwm4x || wgm != 0) period *= 2; // not fast PWM
@@ -936,9 +937,9 @@ void atmega32u4_t::timer0_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
 
 void atmega32u4_t::timer0_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x35);
-    x = (cpu.data[0x35] & ~x);
-    cpu.data[0x35] = x;
+    assert(ptr == reg::addr::TIFR0);
+    x = (cpu.data[reg::addr::TIFR0] & ~x);
+    cpu.data[reg::addr::TIFR0] = x;
 }
 
 uint8_t atmega32u4_t::timer0_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
@@ -1023,9 +1024,9 @@ void atmega32u4_t::timer1_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
 
 void atmega32u4_t::timer1_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x36);
-    x = (cpu.data[0x36] & ~x);
-    cpu.data[0x36] = x;
+    assert(ptr == reg::addr::TIFR1);
+    x = (cpu.data[reg::addr::TIFR1] & ~x);
+    cpu.data[reg::addr::TIFR1] = x;
 }
 
 void atmega32u4_t::timer3_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
@@ -1035,9 +1036,9 @@ void atmega32u4_t::timer3_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
 
 void atmega32u4_t::timer3_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x38);
-    x = (cpu.data[0x38] & ~x);
-    cpu.data[0x38] = x;
+    assert(ptr == reg::addr::TIFR3);
+    x = (cpu.data[reg::addr::TIFR3] & ~x);
+    cpu.data[reg::addr::TIFR3] = x;
 }
 
 static uint8_t timer16_handle_ld_reg16(
@@ -1079,18 +1080,18 @@ void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
     cpu.timer4.prev_update_cycle -= 1;
     cpu.update_timer4();
 
-    if(ptr == 0x39)
-        x = (cpu.data[0x39] & ~x);
+    if(ptr == reg::addr::TIFR4)
+        x = (cpu.data[reg::addr::TIFR4] & ~x);
     cpu.data[ptr] = x;
-    if(ptr == 0xbe)
+    if(ptr == reg::addr::TCNT4)
     {
-        uint32_t hi = cpu.data[0xbf] & (cpu.timer4.enhc ? 0x07 : 0x03);
+        uint32_t hi = cpu.data[reg::addr::TC4H] & (cpu.timer4.enhc ? (reg::bit::TC4H::TC4H0 | reg::bit::TC4H::TC4H1 | reg::bit::TC4H::TC4H2) : (reg::bit::TC4H::TC4H0 | reg::bit::TC4H::TC4H1));
         uint32_t tcnt = ((hi << 8) | x) & 0x7ff;
         cpu.timer4.compare_block_next_tick = true;
-        if(cpu.timer4.divider == 0 || (cpu.data[0x65] & 0x10))
+        if(cpu.timer4.divider == 0 || (cpu.data[reg::addr::PRR1] & reg::bit::PRR1::PRTIM4))
         {
             cpu.timer4.tcnt = tcnt;
-            cpu.data[0xbe] = uint8_t(tcnt >> 0);
+            cpu.data[reg::addr::TCNT4] = uint8_t(tcnt >> 0);
             cpu.timer4.tcnt_write_pending = false;
             cpu.timer4.tcnt_write_pending_seen = false;
         }
@@ -1099,7 +1100,7 @@ void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
             cpu.timer4.tcnt_write_pending = true;
             cpu.timer4.tcnt_write_pending_seen = false;
             cpu.timer4.tcnt_write_value = tcnt;
-            cpu.data[0xbe] = uint8_t(cpu.timer4.tcnt >> 0);
+            cpu.data[reg::addr::TCNT4] = uint8_t(cpu.timer4.tcnt >> 0);
         }
     }
     cpu.update_timer4();
@@ -1110,20 +1111,20 @@ void atmega32u4_t::timer4_handle_st_regs(atmega32u4_t& cpu, uint16_t ptr, uint8_
 
 void atmega32u4_t::timer4_handle_st_tifr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x39);
-    x = (cpu.data[0x39] & ~x);
-    cpu.data[0x39] = x;
+    assert(ptr == reg::addr::TIFR4);
+    x = (cpu.data[reg::addr::TIFR4] & ~x);
+    cpu.data[reg::addr::TIFR4] = x;
 }
 
 void atmega32u4_t::timer4_handle_st_ocrN(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    uint16_t ocr = ((uint16_t)cpu.data[0xbf] << 8);
+    uint16_t ocr = ((uint16_t)cpu.data[reg::addr::TC4H] << 8);
     ocr &= (cpu.timer4.enhc ? 0x700 : 0x300);
     ocr |= x;
-    if(ptr == 0xcf) cpu.timer4.ocrNa_next = ocr;
-    if(ptr == 0xd0) cpu.timer4.ocrNb_next = ocr;
-    if(ptr == 0xd1) cpu.timer4.ocrNc_next = ocr;
-    if(ptr == 0xd2) cpu.timer4.ocrNd_next = ocr;
+    if(ptr == reg::addr::OCR4A) cpu.timer4.ocrNa_next = ocr;
+    if(ptr == reg::addr::OCR4B) cpu.timer4.ocrNb_next = ocr;
+    if(ptr == reg::addr::OCR4C) cpu.timer4.ocrNc_next = ocr;
+    if(ptr == reg::addr::OCR4D) cpu.timer4.ocrNd_next = ocr;
     cpu.update_timer4();
 }
 
@@ -1136,7 +1137,7 @@ uint8_t atmega32u4_t::timer4_handle_ld_tcnt(atmega32u4_t& cpu, uint16_t ptr)
         cpu.timer4.compare_block_next_tick = true;
         cpu.timer4.tcnt_write_pending = false;
         cpu.timer4.tcnt_write_pending_seen = false;
-        cpu.data[0xbe] = uint8_t(cpu.timer4.tcnt >> 0);
+        cpu.data[reg::addr::TCNT4] = uint8_t(cpu.timer4.tcnt >> 0);
     }
     cpu.update_timer4();
     if(cpu.timer4.tcnt_write_pending)

@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include "absim_regs.hpp"
 
 #include "imgui.h"
 
@@ -399,16 +400,16 @@ void modal_settings()
         switch(settings.fxport)
         {
         case FXPORT_D1:
-            app.emulator.program_state.cfg.fxport_reg = 0x2b;
-            app.emulator.program_state.cfg.fxport_mask = 1 << 1;
+            app.emulator.program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+            app.emulator.program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
             break;
         case FXPORT_D2:
-            app.emulator.program_state.cfg.fxport_reg = 0x2b;
-            app.emulator.program_state.cfg.fxport_mask = 1 << 2;
+            app.emulator.program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+            app.emulator.program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD2;
             break;
         case FXPORT_E2:
-            app.emulator.program_state.cfg.fxport_reg = 0x2e;
-            app.emulator.program_state.cfg.fxport_mask = 1 << 2;
+            app.emulator.program_state.cfg.fxport_reg = absim::reg::addr::PORTE;
+            app.emulator.program_state.cfg.fxport_mask = absim::reg::bit::PORTE::PORTE2;
             break;
         default:
             break;

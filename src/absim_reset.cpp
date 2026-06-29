@@ -12,7 +12,7 @@ void atmega32u4_t::reset()
     soft_reset();
 
     // power-on reset flag
-    MCUSR() |= (1 << 0);
+    data[reg::addr::MCUSR] |= reg::bit::MCUSR::PORF;
 
     for(auto& byte : eeprom) byte = 0xff;
 
@@ -31,80 +31,80 @@ void atmega32u4_t::reset()
 
     sound_buffer.clear();
 
-    st_handlers[0x3f] = eeprom_handle_st_eecr;
-    st_handlers[0x49] = pll_handle_st_pllcsr;
-    st_handlers[0x4c] = spi_handle_st_spcr_or_spsr;
-    st_handlers[0x4d] = spi_handle_st_spcr_or_spsr;
-    st_handlers[0x4e] = spi_handle_st_spdr;
-    st_handlers[0x64] = st_handle_prr0;
-    st_handlers[0x7a] = adc_st_handle_adcsra;
+    st_handlers[reg::addr::EECR] = eeprom_handle_st_eecr;
+    st_handlers[reg::addr::PLLCSR] = pll_handle_st_pllcsr;
+    st_handlers[reg::addr::SPCR] = spi_handle_st_spcr_or_spsr;
+    st_handlers[reg::addr::SPSR] = spi_handle_st_spcr_or_spsr;
+    st_handlers[reg::addr::SPDR] = spi_handle_st_spdr;
+    st_handlers[reg::addr::PRR0] = st_handle_prr0;
+    st_handlers[reg::addr::ADCSRA] = adc_st_handle_adcsra;
 
-    st_handlers[0x23] = st_handle_pin;
-    st_handlers[0x26] = st_handle_pin;
-    st_handlers[0x29] = st_handle_pin;
-    st_handlers[0x2c] = st_handle_pin;
-    st_handlers[0x2f] = st_handle_pin;
+    st_handlers[reg::addr::PINB] = st_handle_pin;
+    st_handlers[reg::addr::PINC] = st_handle_pin;
+    st_handlers[reg::addr::PIND] = st_handle_pin;
+    st_handlers[reg::addr::PINE] = st_handle_pin;
+    st_handlers[reg::addr::PINF] = st_handle_pin;
 
-    //st_handlers[0x25] = st_handle_port;
-    st_handlers[0x28] = st_handle_port;
-    //st_handlers[0x2b] = st_handle_port;
-    //st_handlers[0x2e] = st_handle_port;
-    //st_handlers[0x31] = st_handle_port;
+    //st_handlers[reg::addr::PORTB] = st_handle_port;
+    st_handlers[reg::addr::PORTC] = st_handle_port;
+    //st_handlers[reg::addr::PORTD] = st_handle_port;
+    //st_handlers[reg::addr::PORTE] = st_handle_port;
+    //st_handlers[reg::addr::PORTF] = st_handle_port;
 
-    for(int i = 0x44; i <= 0x48; ++i)
+    for(int i = reg::addr::TCCR0A; i <= reg::addr::OCR0B; ++i)
         st_handlers[i] = timer0_handle_st_regs;
-    st_handlers[0x46] = timer0_handle_st_tcnt;
+    st_handlers[reg::addr::TCNT0] = timer0_handle_st_tcnt;
 
-    for(int i = 0x80; i <= 0x8d; ++i)
+    for(int i = reg::addr::TCCR1A; i <= reg::addr::OCR1CH; ++i)
         st_handlers[i] = timer1_handle_st_regs;
-    for(int i = 0x90; i <= 0x9d; ++i)
+    for(int i = reg::addr::TCCR3A; i <= reg::addr::OCR3CH; ++i)
         st_handlers[i] = timer3_handle_st_regs;
-    for(int i = 0xbe; i <= 0xc4; ++i)
+    for(int i = reg::addr::TCNT4; i <= reg::addr::TCCR4E; ++i)
         st_handlers[i] = timer4_handle_st_regs;
-    for(int i = 0xcf; i <= 0xd2; ++i)
+    for(int i = reg::addr::OCR4A; i <= reg::addr::OCR4D; ++i)
         st_handlers[i] = timer4_handle_st_ocrN;
 
     // TIMSK4
-    st_handlers[0x72] = timer4_handle_st_regs;
+    st_handlers[reg::addr::TIMSK4] = timer4_handle_st_regs;
 
-    st_handlers[0x35] = timer0_handle_st_tifr;
-    st_handlers[0x36] = timer1_handle_st_tifr;
-    st_handlers[0x38] = timer3_handle_st_tifr;
-    st_handlers[0x39] = timer4_handle_st_tifr;
+    st_handlers[reg::addr::TIFR0] = timer0_handle_st_tifr;
+    st_handlers[reg::addr::TIFR1] = timer1_handle_st_tifr;
+    st_handlers[reg::addr::TIFR3] = timer3_handle_st_tifr;
+    st_handlers[reg::addr::TIFR4] = timer4_handle_st_tifr;
 
-    st_handlers[0x27] = sound_st_handler_ddrc;
+    st_handlers[reg::addr::DDRC] = sound_st_handler_ddrc;
 
-    ld_handlers[0x4d] = spi_handle_ld_spsr;
-    ld_handlers[0x4e] = spi_handle_ld_spdr;
-    ld_handlers[0x46] = timer0_handle_ld_tcnt;
+    ld_handlers[reg::addr::SPSR] = spi_handle_ld_spsr;
+    ld_handlers[reg::addr::SPDR] = spi_handle_ld_spdr;
+    ld_handlers[reg::addr::TCNT0] = timer0_handle_ld_tcnt;
 
-    st_handlers[0x54] = st_handle_mcusr;
-    st_handlers[0x55] = st_handle_mcucr;
-    st_handlers[0x57] = st_handle_spmcsr;
-    st_handlers[0x60] = st_handle_wdtcsr;
+    st_handlers[reg::addr::MCUSR] = st_handle_mcusr;
+    st_handlers[reg::addr::MCUCR] = st_handle_mcucr;
+    st_handlers[reg::addr::SPMCSR] = st_handle_spmcsr;
+    st_handlers[reg::addr::WDTCSR] = st_handle_wdtcsr;
 
-    st_handlers[0x63] = st_handler_timsk;
-    st_handlers[0x6f] = st_handler_timsk;
-    st_handlers[0x71] = st_handler_timsk;
-    st_handlers[0x72] = st_handler_timsk;
+    st_handlers[reg::addr::TIMSK0] = st_handler_timsk;
+    st_handlers[reg::addr::TIMSK1] = st_handler_timsk;
+    st_handlers[reg::addr::TIMSK3] = st_handler_timsk;
+    st_handlers[reg::addr::TIMSK4] = st_handler_timsk;
 
-    for(int i = 0x84; i <= 0x8d; ++i)
+    for(int i = reg::addr::TCNT1L; i <= reg::addr::OCR1CH; ++i)
         ld_handlers[i] = timer1_handle_ld_regs;
-    for(int i = 0x94; i <= 0x9d; ++i)
+    for(int i = reg::addr::TCNT3L; i <= reg::addr::OCR3CH; ++i)
         ld_handlers[i] = timer3_handle_ld_regs;
-    ld_handlers[0xbe] = timer4_handle_ld_tcnt;
-    ld_handlers[0xbf] = timer4_handle_ld_tcnt;
+    ld_handlers[reg::addr::TCNT4] = timer4_handle_ld_tcnt;
+    ld_handlers[reg::addr::TC4H] = timer4_handle_ld_tcnt;
 
-    st_handlers[0xd7] = usb_st_handler;
-    st_handlers[0xd8] = usb_st_handler;
-    st_handlers[0xd9] = usb_st_handler;
-    st_handlers[0xda] = usb_st_handler;
-    for(int i = 0xe0; i <= 0xe6; ++i)
+    st_handlers[reg::addr::UHWCON] = usb_st_handler;
+    st_handlers[reg::addr::USBCON] = usb_st_handler;
+    st_handlers[reg::addr::USBSTA] = usb_st_handler;
+    st_handlers[reg::addr::USBINT] = usb_st_handler;
+    for(int i = reg::addr::UDCON; i <= reg::addr::UDMFN; ++i)
         st_handlers[i] = usb_st_handler;
-    for(int i = 0xe8; i <= 0xf4; ++i)
+    for(int i = reg::addr::UEINTX; i <= reg::addr::UEINT; ++i)
         st_handlers[i] = usb_st_handler;
 
-    ld_handlers[0xf1] = usb_ld_handler_uedatx;
+    ld_handlers[reg::addr::UEDATX] = usb_ld_handler_uedatx;
 }
 
 void atmega32u4_t::soft_reset()
@@ -112,21 +112,21 @@ void atmega32u4_t::soft_reset()
     // clear all registers and RAM, reset state
 
     // preserve button pins
-    uint8_t pinb = data[0x23];
-    uint8_t pine = data[0x2c];
-    uint8_t pinf = data[0x2f];
+    uint8_t pinb = data[reg::addr::PINB];
+    uint8_t pine = data[reg::addr::PINE];
+    uint8_t pinf = data[reg::addr::PINF];
 
     data = {};
 
-    data[0x23] = pinb;
-    data[0x2c] = pine;
-    data[0x2f] = pinf;
+    data[reg::addr::PINB] = pinb;
+    data[reg::addr::PINE] = pine;
+    data[reg::addr::PINF] = pinf;
 
     // turn off TX/RX LEDs at reset (assume bootloader has turned them off)
-    data[0x25] |= 0x01;
-    data[0x2b] |= 0x20;
+    data[reg::addr::PORTB] |= reg::bit::PORTB::PORTB0;
+    data[reg::addr::PORTD] |= reg::bit::PORTD::PORTD5;
 
-    PLLFRQ() = 0x04;
+    data[reg::addr::PLLFRQ] = reg::bit::PLLFRQ::PDIV2;
 
     pc = BOOTRST() ? bootloader_address() : 0;
     executing_instr_pc = pc;
@@ -149,18 +149,18 @@ void atmega32u4_t::soft_reset()
     timer3 = {};
     timer4 = {};
 
-    data[0xd1] = timer4.ocrNc = timer4.ocrNc_next = timer4.top = 0xff;
+    data[reg::addr::OCR4C] = timer4.ocrNc = timer4.ocrNc_next = timer4.top = 0xff;
 
-    timer1.base_addr = 0x80;
-    timer3.base_addr = 0x90;
-    timer1.tifrN_addr = 0x36;
-    timer3.tifrN_addr = 0x38;
-    timer1.timskN_addr = 0x6f;
-    timer3.timskN_addr = 0x71;
-    timer1.prr_addr = 0x64;
-    timer3.prr_addr = 0x65;
-    timer1.prr_mask = 1 << 3;
-    timer3.prr_mask = 1 << 3;
+    timer1.base_addr = reg::addr::TCCR1A;
+    timer3.base_addr = reg::addr::TCCR3A;
+    timer1.tifrN_addr = reg::addr::TIFR1;
+    timer3.tifrN_addr = reg::addr::TIFR3;
+    timer1.timskN_addr = reg::addr::TIMSK1;
+    timer3.timskN_addr = reg::addr::TIMSK3;
+    timer1.prr_addr = reg::addr::PRR0;
+    timer3.prr_addr = reg::addr::PRR1;
+    timer1.prr_mask = reg::bit::PRR0::PRTIM1;
+    timer3.prr_mask = reg::bit::PRR1::PRTIM3;
 
     timer0.prev_update_cycle = cycle_count;
     timer1.prev_update_cycle = cycle_count;
@@ -227,7 +227,7 @@ void atmega32u4_t::soft_reset()
     watchdog_next_cycle = cycle_count + watchdog_divider;
     peripheral_queue.schedule(watchdog_next_cycle, PQ_WATCHDOG);
 
-    OSCCAL() = 0x6d;
+    data[reg::addr::OSCCAL] = 0x6d;
 
     peripheral_queue.clear();
 }

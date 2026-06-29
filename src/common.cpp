@@ -875,9 +875,13 @@ void frame_logic()
         // PINF: 4,5,6,7=D,L,R,U
         // PINE: 6=A
         // PINB: 4=B
-        uint8_t pinf = 0xf0;
-        uint8_t pine = 0x40;
-        uint8_t pinb = 0x10;
+        uint8_t pinf =
+            absim::reg::bit::PINF::PINF7 |
+            absim::reg::bit::PINF::PINF6 |
+            absim::reg::bit::PINF::PINF5 |
+            absim::reg::bit::PINF::PINF4;
+        uint8_t pine = absim::reg::bit::PINE::PINE6;
+        uint8_t pinb = absim::reg::bit::PINB::PINB4;
 
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
@@ -897,24 +901,24 @@ void frame_logic()
             std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
             std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
 
-            if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~0x80;
-            if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~0x40;
-            if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~0x10;
-            if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~0x20;
+            if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~absim::reg::bit::PINF::PINF7;
+            if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~absim::reg::bit::PINF::PINF6;
+            if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~absim::reg::bit::PINF::PINF4;
+            if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~absim::reg::bit::PINF::PINF5;
 
             if( ImGui::IsKeyDown(ImGuiKey_A) ||
                 ImGui::IsKeyDown(ImGuiKey_Z) ||
                 touch.btns[TOUCH_A])
-                pine &= ~0x40;
+                pine &= ~absim::reg::bit::PINE::PINE6;
             if( ImGui::IsKeyDown(ImGuiKey_B) ||
                 ImGui::IsKeyDown(ImGuiKey_S) ||
                 ImGui::IsKeyDown(ImGuiKey_X) ||
                 touch.btns[TOUCH_B])
-                pinb &= ~0x10;
+                pinb &= ~absim::reg::bit::PINB::PINB4;
 
-            app.emulator.core_state.cpu.data[0x23] = pinb;
-            app.emulator.core_state.cpu.data[0x2c] = pine;
-            app.emulator.core_state.cpu.data[0x2f] = pinf;
+            app.emulator.core_state.cpu.data[absim::reg::addr::PINB] = pinb;
+            app.emulator.core_state.cpu.data[absim::reg::addr::PINE] = pine;
+            app.emulator.core_state.cpu.data[absim::reg::addr::PINF] = pinf;
         }
 
         bool prev_paused = app.emulator.debugger_state.paused;
@@ -946,16 +950,16 @@ void frame_logic()
         switch(settings.fxport)
         {
         case FXPORT_D1:
-            app.emulator.peripherals.fxport_reg = 0x2b;
-            app.emulator.peripherals.fxport_mask = 1 << 1;
+            app.emulator.peripherals.fxport_reg = absim::reg::addr::PORTD;
+            app.emulator.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD1;
             break;
         case FXPORT_D2:
-            app.emulator.peripherals.fxport_reg = 0x2b;
-            app.emulator.peripherals.fxport_mask = 1 << 2;
+            app.emulator.peripherals.fxport_reg = absim::reg::addr::PORTD;
+            app.emulator.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD2;
             break;
         case FXPORT_E2:
-            app.emulator.peripherals.fxport_reg = 0x2e;
-            app.emulator.peripherals.fxport_mask = 1 << 2;
+            app.emulator.peripherals.fxport_reg = absim::reg::addr::PORTE;
+            app.emulator.peripherals.fxport_mask = absim::reg::bit::PORTE::PORTE2;
             break;
         default:
             break;

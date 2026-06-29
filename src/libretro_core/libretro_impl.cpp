@@ -199,25 +199,29 @@ void retro_run()
     bool btn_A = func_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
     bool btn_B = func_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
 
-    uint8_t pinf = 0xf0;
-    uint8_t pine = 0x40;
-    uint8_t pinb = 0x10;
+    uint8_t pinf =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
+    uint8_t pine = absim::reg::bit::PINE::PINE6;
+    uint8_t pinb = absim::reg::bit::PINB::PINB4;
     
     std::array<bool, 4> keys = { btn_U, btn_R, btn_D, btn_L, };
     unsigned orientation = 0;
     std::rotate(keys.begin(), keys.begin() + orientation, keys.end());
 
-    if(keys[0]) pinf &= ~0x80;
-    if(keys[1]) pinf &= ~0x40;
-    if(keys[2]) pinf &= ~0x10;
-    if(keys[3]) pinf &= ~0x20;
+    if(keys[0]) pinf &= ~absim::reg::bit::PINF::PINF7;
+    if(keys[1]) pinf &= ~absim::reg::bit::PINF::PINF6;
+    if(keys[2]) pinf &= ~absim::reg::bit::PINF::PINF4;
+    if(keys[3]) pinf &= ~absim::reg::bit::PINF::PINF5;
 
-    if(btn_A) pine &= ~0x40;
-    if(btn_B) pinb &= ~0x10;
+    if(btn_A) pine &= ~absim::reg::bit::PINE::PINE6;
+    if(btn_B) pinb &= ~absim::reg::bit::PINB::PINB4;
 
-    arduboy->core_state.cpu.data[0x23] = pinb;
-    arduboy->core_state.cpu.data[0x2c] = pine;
-    arduboy->core_state.cpu.data[0x2f] = pinf;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINB] = pinb;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINE] = pine;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINF] = pinf;
 
     arduboy->profiler_state.frame_bytes_total = 1024;
     arduboy->core_state.cpu.enabled_autobreaks = 0;

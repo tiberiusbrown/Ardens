@@ -145,6 +145,16 @@ static bool dwarf_symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& 
 #endif
 }
 
+static char const* bit_access_label(absim::reg::register_info_t const& r, uint8_t mask)
+{
+    bool can_read = (r.read_mask & mask) != 0;
+    bool can_write = (r.write_mask & mask) != 0;
+    if(can_read && can_write) return "R/W";
+    if(can_read) return "R";
+    if(can_write) return "W";
+    return "R0";
+}
+
 void symbol_tooltip(uint16_t addr, absim::elf_data_symbol_t const& sym, bool prog)
 {
     using namespace ImGui;
@@ -221,7 +231,7 @@ static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
     }
     else if(off < 0x100)
     {
-        r = absim::REG_INFO[off].name ?
+        r = absim::reg::REGISTER_INFO[off].name ?
             IM_COL32(50, 50, 20, 255) :
             IM_COL32(0, 0, 0, 255);
     }
@@ -253,12 +263,15 @@ void hover_data_space(uint16_t addr)
     BeginTooltip();
     if(addr < 256)
     {
-        auto const& r = absim::REG_INFO[addr];
+        auto const& r = absim::reg::REGISTER_INFO[addr];
         if(r.name)
         {
             constexpr auto UNUSED = IM_COL32(50, 50, 50, 255);
             constexpr auto BIT_SET = IM_COL32(30, 30, 100, 255);
             Text("0x%02x: %s", addr, r.name);
+            Text("Read mask:  0x%02x", r.read_mask);
+            Text("Write mask: 0x%02x", r.write_mask);
+            Text("Reset:      0x%02x", r.reset_value);
             if(addr >= 32)
             {
                 Separator();
@@ -277,7 +290,7 @@ void hover_data_space(uint16_t addr)
                             uint8_t mask = 0x80 >> i;
                             if(app.emulator.core_state.cpu.data[addr] & mask)
                                 TableSetBgColor(ImGuiTableBgTarget_CellBg, BIT_SET);
-                            TextUnformatted(bit);
+                            Text("%s %s", bit, bit_access_label(r, mask));
                         }
                         else
                             TableSetBgColor(ImGuiTableBgTarget_CellBg, UNUSED);
@@ -287,7 +300,12 @@ void hover_data_space(uint16_t addr)
             }
         }
         else
-            Text("0x%02x: Reserved", addr);
+        {
+            Text("0x%02x: reserved/unimplemented", addr);
+            Text("Read mask:  0x%02x", r.read_mask);
+            Text("Write mask: 0x%02x", r.write_mask);
+            Text("Reset:      0x%02x", r.reset_value);
+        }
     }
     else if(sym)
     {

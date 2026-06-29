@@ -106,14 +106,18 @@ static int serial_output_test(char const* name, char const* expected_filename)
     auto expected = normalize_line_endings(expected_stream.str());
 
     arduboy->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
-    arduboy->program_state.cfg.fxport_reg = 0x2b;
-    arduboy->program_state.cfg.fxport_mask = 1 << 1;
+    arduboy->program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+    arduboy->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
     arduboy->program_state.cfg.bootloader = true;
     arduboy->program_state.cfg.boot_to_menu = false;
     arduboy->reset();
-    arduboy->core_state.cpu.data[0x23] = 0x10;
-    arduboy->core_state.cpu.data[0x2c] = 0x40;
-    arduboy->core_state.cpu.data[0x2f] = 0xf0;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINB] = absim::reg::bit::PINB::PINB4;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINF] =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
 
     auto const& d = arduboy->core_state.cpu.serial_bytes;
     for(int i = 0; i < 10000; ++i) // up to ten seconds
@@ -173,28 +177,38 @@ static int image_test(char const* dir, char const* game)
     int r = 0;
     if(!err.empty()) r = 1;
     arduboy->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
-    arduboy->program_state.cfg.fxport_reg = 0x2b;
-    arduboy->program_state.cfg.fxport_mask = 1 << 1;
+    arduboy->program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+    arduboy->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
     arduboy->program_state.cfg.bootloader = true;
     arduboy->program_state.cfg.boot_to_menu = false;
     arduboy->reset();
 
     int n = 0;
 
-    arduboy->core_state.cpu.data[0x23] = 0x10;
-    arduboy->core_state.cpu.data[0x2c] = 0x40;
-    arduboy->core_state.cpu.data[0x2f] = 0xf0;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINB] = absim::reg::bit::PINB::PINB4;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINF] =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
     advance(1000);
     r |= compare_image(dir, n++);
     for(int i = 0; i < 9; ++i)
     {
         advance(1000);
-        arduboy->core_state.cpu.data[0x2c] = 0x00;
+        arduboy->core_state.cpu.data[absim::reg::addr::PINE] = 0x00;
         if(i != 0)
-            arduboy->core_state.cpu.data[0x2f] = 0xa0;
+            arduboy->core_state.cpu.data[absim::reg::addr::PINF] =
+                absim::reg::bit::PINF::PINF7 |
+                absim::reg::bit::PINF::PINF5;
         advance(100);
-        arduboy->core_state.cpu.data[0x2c] = 0x40;
-        arduboy->core_state.cpu.data[0x2f] = 0xf0;
+        arduboy->core_state.cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
+        arduboy->core_state.cpu.data[absim::reg::addr::PINF] =
+            absim::reg::bit::PINF::PINF7 |
+            absim::reg::bit::PINF::PINF6 |
+            absim::reg::bit::PINF::PINF5 |
+            absim::reg::bit::PINF::PINF4;
         advance(1000);
         r |= compare_image(dir, n++);
     }
@@ -208,6 +222,128 @@ static std::string load_rom(absim::arduboy_t& a, char const* dir, char const* ga
 {
     std::ifstream f(std::string(TESTS_DIR "/") + dir + "/" + game, std::ios::binary);
     return a.load_file(game, f);
+}
+
+static bool register_info_matches(
+    uint8_t addr,
+    char const* expected_name,
+    uint8_t expected_read_mask,
+    uint8_t expected_write_mask,
+    uint8_t expected_reset_value,
+    std::array<char const*, 8> const& expected_bits)
+{
+    auto const& r = absim::reg::REGISTER_INFO[addr];
+    if(r.name == nullptr || strcmp(r.name, expected_name) != 0)
+    {
+        printf("      addr 0x%02x name mismatch: got %s expected %s\n",
+            addr, r.name ? r.name : "(null)", expected_name);
+        return false;
+    }
+    if(r.read_mask != expected_read_mask ||
+        r.write_mask != expected_write_mask ||
+        r.reset_value != expected_reset_value)
+    {
+        printf("      addr 0x%02x masks mismatch: got r=%02x w=%02x reset=%02x expected r=%02x w=%02x reset=%02x\n",
+            addr, r.read_mask, r.write_mask, r.reset_value,
+            expected_read_mask, expected_write_mask, expected_reset_value);
+        return false;
+    }
+    for(size_t i = 0; i < expected_bits.size(); ++i)
+    {
+        if((r.bits[i] == nullptr) != (expected_bits[i] == nullptr))
+        {
+            printf("      addr 0x%02x bit %zu null mismatch: got %s expected %s\n",
+                addr, i, r.bits[i] ? r.bits[i] : "(null)", expected_bits[i] ? expected_bits[i] : "(null)");
+            return false;
+        }
+        if(r.bits[i] != nullptr && strcmp(r.bits[i], expected_bits[i]) != 0)
+        {
+            printf("      addr 0x%02x bit %zu mismatch: got %s expected %s\n",
+                addr, i, r.bits[i], expected_bits[i]);
+            return false;
+        }
+    }
+    return true;
+}
+
+static int register_metadata_test()
+{
+    bool pass = true;
+
+    pass &= register_info_matches(
+        absim::reg::addr::SREG,
+        "SREG",
+        0xff,
+        0xff,
+        0x00,
+        std::array<char const*, 8>{ "C", "Z", "N", "V", "S", "H", "T", "I" });
+
+    pass &= register_info_matches(
+        absim::reg::addr::PLLCSR,
+        "PLLCSR",
+        absim::reg::bit::PLLCSR::PLOCK |
+        absim::reg::bit::PLLCSR::PLLE |
+        absim::reg::bit::PLLCSR::PINDIV,
+        absim::reg::bit::PLLCSR::PLLE |
+        absim::reg::bit::PLLCSR::PINDIV,
+        0x00,
+        std::array<char const*, 8>{ "PLOCK", "PLLE", nullptr, nullptr, "PINDIV", nullptr, nullptr, nullptr });
+
+    pass &= register_info_matches(
+        absim::reg::addr::TWCR,
+        "TWCR",
+        0xfd,
+        0xf5,
+        0x00,
+        std::array<char const*, 8>{ "TWIE", nullptr, "TWEN", "TWWC", "TWSTO", "TWSTA", "TWEA", "TWINT" });
+
+    pass &= register_info_matches(
+        absim::reg::addr::WDTCSR,
+        "WDTCSR",
+        0xff,
+        0xff,
+        0x00,
+        std::array<char const*, 8>{ "WDP0", "WDP1", "WDP2", "WDE", "WDCE", "WDP3", "WDIE", "WDIF" });
+
+    pass &= register_info_matches(
+        absim::reg::addr::USBCON,
+        "USBCON",
+        absim::reg::bit::USBCON::USBE |
+        absim::reg::bit::USBCON::FRZCLK |
+        absim::reg::bit::USBCON::OTGPADE |
+        absim::reg::bit::USBCON::VBUSTE,
+        absim::reg::bit::USBCON::USBE |
+        absim::reg::bit::USBCON::FRZCLK |
+        absim::reg::bit::USBCON::OTGPADE |
+        absim::reg::bit::USBCON::VBUSTE,
+        0x20,
+        std::array<char const*, 8>{ "VBUSTE", nullptr, nullptr, nullptr, "OTGPADE", "FRZCLK", nullptr, "USBE" });
+
+    pass &= register_info_matches(
+        absim::reg::addr::UEINTX,
+        "UEINTX",
+        0xff,
+        uint8_t(0xff & ~absim::reg::bit::UEINTX::RWAL),
+        0x00,
+        std::array<char const*, 8>{ "TXINI", "STALLEDI", "RXOUTI", "RXSTPI", "NAKOUTI", "RWAL", "NAKINI", "FIFOCON" });
+
+    pass &= register_info_matches(
+        absim::reg::addr::UCSR1C,
+        "UCSR1C",
+        0xff,
+        0xff,
+        0x06,
+        std::array<char const*, 8>{ "UCPOL1", "UCSZ10", "UCSZ11", "USBS1", "UPM10", "UPM11", "UMSEL10", "UMSEL11" });
+
+    auto const& alias = absim::reg::REGISTER_INFO[absim::reg::addr::OCDR];
+    pass &= alias.name != nullptr && strcmp(alias.name, "OCDR/MONDR") == 0;
+    pass &= alias.read_mask == 0xff && alias.write_mask == 0xff && alias.reset_value == 0x00;
+
+    auto const& empty = absim::reg::REGISTER_INFO[0x00];
+    pass &= empty.name == nullptr && empty.read_mask == 0 && empty.write_mask == 0 && empty.reset_value == 0;
+
+    printf("   %-30s : %s\n", "register metadata", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
 }
 
 static int hex_malformed_input_test()
@@ -679,14 +815,18 @@ static int grouped_state_roundtrip_test()
     original->reset();
     restored->reset();
     original->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
-    original->program_state.cfg.fxport_reg = 0x2b;
-    original->program_state.cfg.fxport_mask = 1 << 1;
+    original->program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+    original->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
     original->program_state.cfg.bootloader = true;
     original->program_state.cfg.boot_to_menu = false;
     original->peripherals.display.enable_filter = true;
-    original->core_state.cpu.data[0x23] = 0x10;
-    original->core_state.cpu.data[0x2c] = 0x40;
-    original->core_state.cpu.data[0x2f] = 0xf0;
+    original->core_state.cpu.data[absim::reg::addr::PINB] = absim::reg::bit::PINB::PINB4;
+    original->core_state.cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
+    original->core_state.cpu.data[absim::reg::addr::PINF] =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
     advance(*original, 250);
 
     std::stringstream state;
@@ -800,8 +940,8 @@ static int full_snapshot_test()
     auto restored = std::make_unique<absim::arduboy_t>();
 
     original->program_state.cfg.display_type = absim::display_t::type_t::SSD1306;
-    original->program_state.cfg.fxport_reg = 0x2b;
-    original->program_state.cfg.fxport_mask = 1 << 1;
+    original->program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+    original->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
     original->program_state.cfg.bootloader = true;
     original->program_state.cfg.boot_to_menu = false;
 
@@ -813,9 +953,13 @@ static int full_snapshot_test()
     }
 
     original->reset();
-    original->core_state.cpu.data[0x23] = 0x10;
-    original->core_state.cpu.data[0x2c] = 0x40;
-    original->core_state.cpu.data[0x2f] = 0xf0;
+    original->core_state.cpu.data[absim::reg::addr::PINB] = absim::reg::bit::PINB::PINB4;
+    original->core_state.cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
+    original->core_state.cpu.data[absim::reg::addr::PINF] =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
     advance(*original, 500);
 
     std::stringstream snapshot;
@@ -857,6 +1001,9 @@ int main(int argc, char** argv)
     r |= savestate_snapshot_test();
     r |= savestate_libretro_roundtrip_test();
     r |= full_snapshot_test();
+
+    printf("\nRegister metadata tests...\n");
+    r |= register_metadata_test();
 
     printf("\nIntegration tests...\n");
     r |= test("float");

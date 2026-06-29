@@ -1241,17 +1241,17 @@ static bool check_for_fx_usage_in_prog_helper(arduboy_t& a, uint8_t fxport, uint
 
 static void check_for_fx_usage_in_prog(arduboy_t& a)
 {
-    if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 1))
+    if(check_for_fx_usage_in_prog_helper(a, reg::addr::PORTD, reg::bit::PORTD::PORTD1))
     {
         a.program_state.device_type = "ArduboyFX";
         return;
     }
-    else if(check_for_fx_usage_in_prog_helper(a, 0x2e, 1 << 2))
+    else if(check_for_fx_usage_in_prog_helper(a, reg::addr::PORTE, reg::bit::PORTE::PORTE2))
     {
         a.program_state.device_type = "ArduboyMini";
         return;
     }
-    else if(check_for_fx_usage_in_prog_helper(a, 0x2b, 1 << 2))
+    else if(check_for_fx_usage_in_prog_helper(a, reg::addr::PORTD, reg::bit::PORTD::PORTD2))
     {
         a.program_state.device_type = "ArduboyFXDevKit";
         return;
