@@ -1,10 +1,7 @@
 #pragma once
 
 #include <array>
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
-#include <utility>
 
 namespace absim
 {
@@ -190,145 +187,6 @@ namespace addr
     static constexpr uint8_t UEINT   = 0xf4;
 }
 
-constexpr bool is_space(char c)
-{
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
-}
-
-constexpr bool starts_with(char const* text, char const* prefix)
-{
-    return *prefix == '\0' ||
-        (*text == *prefix && starts_with(text + 1, prefix + 1));
-}
-
-constexpr void skip_spaces(char const*& text)
-{
-    while(*text && is_space(*text))
-        ++text;
-}
-
-constexpr void skip_token(char const*& text)
-{
-    while(*text && !is_space(*text))
-        ++text;
-}
-
-constexpr uint8_t parse_reset_value(char const* text)
-{
-    if(!text)
-        return 0;
-    if(starts_with(text, "0x"))
-    {
-        uint8_t value = 0;
-        char const* p = text + 2;
-        while(*p)
-        {
-            char c = *p++;
-            value = uint8_t(value << 4);
-            if(c >= '0' && c <= '9')
-                value |= uint8_t(c - '0');
-            else if(c >= 'a' && c <= 'f')
-                value |= uint8_t(c - 'a' + 10);
-            else if(c >= 'A' && c <= 'F')
-                value |= uint8_t(c - 'A' + 10);
-            else
-                return 0;
-        }
-        return value;
-    }
-    if(starts_with(text, "0b"))
-    {
-        uint8_t value = 0;
-        char const* p = text + 2;
-        while(*p)
-        {
-            char c = *p++;
-            if(c == 'x' || c == 'X')
-                return 0;
-            value = uint8_t(value << 1);
-            if(c == '0')
-                continue;
-            if(c == '1')
-                value |= 1u;
-            else
-                return 0;
-        }
-        return value;
-    }
-    return 0;
-}
-
-constexpr uint8_t parse_access_mask(char const* text, bool write_mask)
-{
-    if(!text)
-        return 0;
-
-    uint8_t mask = 0;
-    char const* p = text;
-    int bit = 7;
-    bool last_r = false;
-    bool last_w = false;
-
-    while(*p && bit >= 0)
-    {
-        skip_spaces(p);
-        if(!*p)
-            break;
-
-        if(starts_with(p, "x8"))
-        {
-            while(bit >= 0)
-            {
-                if(write_mask ? last_w : last_r)
-                    mask |= uint8_t(1u << bit);
-                --bit;
-            }
-            break;
-        }
-
-        bool r = false;
-        bool w = false;
-        if(starts_with(p, "R/W*"))
-        {
-            r = true;
-            w = true;
-            p += 4;
-        }
-        else if(starts_with(p, "R/W"))
-        {
-            r = true;
-            w = true;
-            p += 3;
-        }
-        else if(starts_with(p, "R0"))
-        {
-            p += 2;
-        }
-        else if(starts_with(p, "R"))
-        {
-            r = true;
-            ++p;
-        }
-        else if(starts_with(p, "W"))
-        {
-            w = true;
-            ++p;
-        }
-        else
-        {
-            skip_token(p);
-        }
-
-        last_r = r;
-        last_w = w;
-        if(write_mask ? w : r)
-            mask |= uint8_t(1u << bit);
-        --bit;
-    }
-
-    return mask;
-}
-
 struct register_info_t
 {
     char const* name;
@@ -343,26 +201,6 @@ constexpr std::array<char const*, 8> make_bits(
     char const* b3, char const* b2, char const* b1, char const* b0)
 {
     return {{ b0, b1, b2, b3, b4, b5, b6, b7 }};
-}
-
-constexpr std::array<char const*, 8> empty_bits()
-{
-    return make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
-}
-
-constexpr register_info_t make_reg(
-    char const* name,
-    char const* access,
-    char const* reset,
-    std::array<char const*, 8> bits = empty_bits())
-{
-    return register_info_t{
-        name,
-        parse_access_mask(access, false),
-        parse_access_mask(access, true),
-        parse_reset_value(reset),
-        bits,
-    };
 }
 
 namespace bit
@@ -1276,384 +1114,1010 @@ namespace bit
     }
 }
 
-constexpr register_info_t register_info_at(uint8_t data_addr)
-{
-    switch(data_addr)
-    {
-
-    case addr::PINB: return make_reg(
-        "PINB", "R/W* x8", "N/A",
+static constexpr std::array<register_info_t, 256> REGISTER_INFO = {{
+    /* 0x00 */ {},
+    /* 0x01 */ {},
+    /* 0x02 */ {},
+    /* 0x03 */ {},
+    /* 0x04 */ {},
+    /* 0x05 */ {},
+    /* 0x06 */ {},
+    /* 0x07 */ {},
+    /* 0x08 */ {},
+    /* 0x09 */ {},
+    /* 0x0a */ {},
+    /* 0x0b */ {},
+    /* 0x0c */ {},
+    /* 0x0d */ {},
+    /* 0x0e */ {},
+    /* 0x0f */ {},
+    /* 0x10 */ {},
+    /* 0x11 */ {},
+    /* 0x12 */ {},
+    /* 0x13 */ {},
+    /* 0x14 */ {},
+    /* 0x15 */ {},
+    /* 0x16 */ {},
+    /* 0x17 */ {},
+    /* 0x18 */ {},
+    /* 0x19 */ {},
+    /* 0x1a */ {},
+    /* 0x1b */ {},
+    /* 0x1c */ {},
+    /* 0x1d */ {},
+    /* 0x1e */ {},
+    /* 0x1f */ {},
+    /* 0x20 */ {},
+    /* 0x21 */ {},
+    /* 0x22 */ {},
+    /* 0x23 PINB */ {
+        "PINB", 0xff, 0xff, 0x00,
         make_bits(
             "PINB7", "PINB6", "PINB5", "PINB4",
-            "PINB3", "PINB2", "PINB1", "PINB0"));
-    case addr::DDRB: return make_reg(
-        "DDRB", "R/W x8", "0x00",
+            "PINB3", "PINB2", "PINB1", "PINB0"),
+    },
+    /* 0x24 DDRB */ {
+        "DDRB", 0xff, 0xff, 0x00,
         make_bits(
             "DDB7", "DDB6", "DDB5", "DDB4",
-            "DDB3", "DDB2", "DDB1", "DDB0"));
-    case addr::PORTB: return make_reg(
-        "PORTB", "R/W x8", "0x00",
+            "DDB3", "DDB2", "DDB1", "DDB0"),
+    },
+    /* 0x25 PORTB */ {
+        "PORTB", 0xff, 0xff, 0x00,
         make_bits(
             "PORTB7", "PORTB6", "PORTB5", "PORTB4",
-            "PORTB3", "PORTB2", "PORTB1", "PORTB0"));
-    case addr::PINC: return make_reg(
-        "PINC", "R/W* R/W* R0 R0 R0 R0 R0 R0", "N/A",
+            "PORTB3", "PORTB2", "PORTB1", "PORTB0"),
+    },
+    /* 0x26 PINC */ {
+        "PINC", 0xc0, 0xc0, 0x00,
         make_bits(
-            "PINC7", "PINC6", nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
-    case addr::DDRC: return make_reg(
-        "DDRC", "R/W R/W R0 R0 R0 R0 R0 R0", "0x00",
+            "PINC7", "PINC6", nullptr, nullptr,
+            nullptr, nullptr, nullptr, nullptr),
+    },
+    /* 0x27 DDRC */ {
+        "DDRC", 0xc0, 0xc0, 0x00,
         make_bits(
-            "DDC7", "DDC6", nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
-    case addr::PORTC: return make_reg(
-        "PORTC", "R/W R/W R0 R0 R0 R0 R0 R0", "0x00",
+            "DDC7", "DDC6", nullptr, nullptr,
+            nullptr, nullptr, nullptr, nullptr),
+    },
+    /* 0x28 PORTC */ {
+        "PORTC", 0xc0, 0xc0, 0x00,
         make_bits(
-            "PORTC7", "PORTC6", nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
-    case addr::PIND: return make_reg(
-        "PIND", "R/W* x8", "N/A",
+            "PORTC7", "PORTC6", nullptr, nullptr,
+            nullptr, nullptr, nullptr, nullptr),
+    },
+    /* 0x29 PIND */ {
+        "PIND", 0xff, 0xff, 0x00,
         make_bits(
             "PIND7", "PIND6", "PIND5", "PIND4",
-            "PIND3", "PIND2", "PIND1", "PIND0"));
-    case addr::DDRD: return make_reg(
-        "DDRD", "R/W x8", "0x00",
+            "PIND3", "PIND2", "PIND1", "PIND0"),
+    },
+    /* 0x2a DDRD */ {
+        "DDRD", 0xff, 0xff, 0x00,
         make_bits(
             "DDD7", "DDD6", "DDD5", "DDD4",
-            "DDD3", "DDD2", "DDD1", "DDD0"));
-    case addr::PORTD: return make_reg(
-        "PORTD", "R/W x8", "0x00",
+            "DDD3", "DDD2", "DDD1", "DDD0"),
+    },
+    /* 0x2b PORTD */ {
+        "PORTD", 0xff, 0xff, 0x00,
         make_bits(
             "PORTD7", "PORTD6", "PORTD5", "PORTD4",
-            "PORTD3", "PORTD2", "PORTD1", "PORTD0"));
-    case addr::PINE: return make_reg(
-        "PINE", "R0 R/W* R0 R0 R0 R/W* R0 R0", "N/A",
+            "PORTD3", "PORTD2", "PORTD1", "PORTD0"),
+    },
+    /* 0x2c PINE */ {
+        "PINE", 0x44, 0x44, 0x00,
         make_bits(
-            nullptr, "PINE6", nullptr, nullptr, nullptr, "PINE2", nullptr, nullptr));
-    case addr::DDRE: return make_reg(
-        "DDRE", "R0 R/W R0 R0 R0 R/W R0 R0", "0x00",
+            nullptr, "PINE6", nullptr, nullptr,
+            nullptr, "PINE2", nullptr, nullptr),
+    },
+    /* 0x2d DDRE */ {
+        "DDRE", 0x44, 0x44, 0x00,
         make_bits(
-            nullptr, "DDE6", nullptr, nullptr, nullptr, "DDE2", nullptr, nullptr));
-    case addr::PORTE: return make_reg(
-        "PORTE", "R0 R/W R0 R0 R0 R/W R0 R0", "0x00",
+            nullptr, "DDE6", nullptr, nullptr,
+            nullptr, "DDE2", nullptr, nullptr),
+    },
+    /* 0x2e PORTE */ {
+        "PORTE", 0x44, 0x44, 0x00,
         make_bits(
-            nullptr, "PORTE6", nullptr, nullptr, nullptr, "PORTE2", nullptr, nullptr));
-    case addr::PINF: return make_reg(
-        "PINF", "R/W* R/W* R/W* R/W* R0 R0 R/W* R/W*", "N/A",
+            nullptr, "PORTE6", nullptr, nullptr,
+            nullptr, "PORTE2", nullptr, nullptr),
+    },
+    /* 0x2f PINF */ {
+        "PINF", 0xf3, 0xf3, 0x00,
         make_bits(
-            "PINF7", "PINF6", "PINF5", "PINF4", nullptr, nullptr, "PINF1", "PINF0"));
-    case addr::DDRF: return make_reg(
-        "DDRF", "R/W R/W R/W R/W R0 R0 R/W R/W", "0x00",
+            "PINF7", "PINF6", "PINF5", "PINF4",
+            nullptr, nullptr, "PINF1", "PINF0"),
+    },
+    /* 0x30 DDRF */ {
+        "DDRF", 0xf3, 0xf3, 0x00,
         make_bits(
-            "DDF7", "DDF6", "DDF5", "DDF4", nullptr, nullptr, "DDF1", "DDF0"));
-    case addr::PORTF: return make_reg(
-        "PORTF", "R/W R/W R/W R/W R0 R0 R/W R/W", "0x00",
+            "DDF7", "DDF6", "DDF5", "DDF4",
+            nullptr, nullptr, "DDF1", "DDF0"),
+    },
+    /* 0x31 PORTF */ {
+        "PORTF", 0xf3, 0xf3, 0x00,
         make_bits(
-            "PORTF7", "PORTF6", "PORTF5", "PORTF4", nullptr, nullptr, "PORTF1", "PORTF0"));
-
-    case addr::TIFR0: return make_reg(
-        "TIFR0", "R0 R0 R0 R0 R0 R/W* R/W* R/W*", "0x00",
+            "PORTF7", "PORTF6", "PORTF5", "PORTF4",
+            nullptr, nullptr, "PORTF1", "PORTF0"),
+    },
+    /* 0x32 */ {},
+    /* 0x33 */ {},
+    /* 0x34 */ {},
+    /* 0x35 TIFR0 */ {
+        "TIFR0", 0x07, 0x07, 0x00,
         make_bits(
-            nullptr, nullptr, nullptr, nullptr, nullptr, "OCF0B", "OCF0A", "TOV0"));
-    case addr::TIFR1: return make_reg(
-        "TIFR1", "R0 R0 R/W* R0 R/W* R/W* R/W* R/W*", "0x00",
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, "OCF0B", "OCF0A", "TOV0"),
+    },
+    /* 0x36 TIFR1 */ {
+        "TIFR1", 0x2f, 0x2f, 0x00,
         make_bits(
-            nullptr, nullptr, "ICF1", nullptr, "OCF1C", "OCF1B", "OCF1A", "TOV1"));
-    case addr::TIFR3: return make_reg(
-        "TIFR3", "R0 R0 R/W* R0 R/W* R/W* R/W* R/W*", "0x00",
+            nullptr, nullptr, "ICF1", nullptr,
+            "OCF1C", "OCF1B", "OCF1A", "TOV1"),
+    },
+    /* 0x37 */ {},
+    /* 0x38 TIFR3 */ {
+        "TIFR3", 0x2f, 0x2f, 0x00,
         make_bits(
-            nullptr, nullptr, "ICF3", nullptr, "OCF3C", "OCF3B", "OCF3A", "TOV3"));
-    case addr::TIFR4: return make_reg(
-        "TIFR4", "R/W* R/W* R/W* R0 R0 R/W* R0 R0", "0x00",
+            nullptr, nullptr, "ICF3", nullptr,
+            "OCF3C", "OCF3B", "OCF3A", "TOV3"),
+    },
+    /* 0x39 TIFR4 */ {
+        "TIFR4", 0xe4, 0xe4, 0x00,
         make_bits(
-            "OCF4D", "OCF4A", "OCF4B", nullptr, nullptr, "TOV4", nullptr, nullptr));
-    case addr::PCIFR: return make_reg(
-        "PCIFR", "R0 R0 R0 R0 R0 R0 R0 R/W*", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "PCIF0"));
-    case addr::EIFR: return make_reg(
-        "EIFR", "R0 R/W* R0 R0 R/W* R/W* R/W* R/W*", "0x00",
-        make_bits(nullptr, "INTF6", nullptr, nullptr, "INTF3", "INTF2", "INTF1", "INTF0"));
-    case addr::EIMSK: return make_reg(
-        "EIMSK", "R0 R/W R0 R0 R/W R/W R/W R/W", "0x00",
-        make_bits(nullptr, "INT6", nullptr, nullptr, "INT3", "INT2", "INT1", "INT0"));
+            "OCF4D", "OCF4A", "OCF4B", nullptr,
+            nullptr, "TOV4", nullptr, nullptr),
+    },
+    /* 0x3a */ {},
+    /* 0x3b PCIFR */ {
+        "PCIFR", 0x01, 0x01, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, "PCIF0"),
+    },
+    /* 0x3c EIFR */ {
+        "EIFR", 0x4f, 0x4f, 0x00,
+        make_bits(
+            nullptr, "INTF6", nullptr, nullptr,
+            "INTF3", "INTF2", "INTF1", "INTF0"),
+    },
+    /* 0x3d EIMSK */ {
+        "EIMSK", 0x4f, 0x4f, 0x00,
+        make_bits(
+            nullptr, "INT6", nullptr, nullptr,
+            "INT3", "INT2", "INT1", "INT0"),
+    },
+    /* 0x3e */ {},
+    /* 0x3f EECR */ {
+        "EECR", 0x3f, 0x3f, 0x00,
+        make_bits(
+            nullptr, nullptr, "EEPM1", "EEPM0",
+            "EERIE", "EEMPE", "EEPE", "EERE"),
+    },
+    /* 0x40 EEDR */ {
+        "EEDR", 0xff, 0xff, 0x00,
+        make_bits(
+            "EEDR7", "EEDR6", "EEDR5", "EEDR4",
+            "EEDR3", "EEDR2", "EEDR1", "EEDR0"),
+    },
+    /* 0x41 EEARL */ {
+        "EEARL", 0xff, 0xff, 0x00,
+        make_bits(
+            "EEAR7", "EEAR6", "EEAR5", "EEAR4",
+            "EEAR3", "EEAR2", "EEAR1", "EEAR0"),
+    },
+    /* 0x42 EEARH */ {
+        "EEARH", 0x0f, 0x0f, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            "EEAR11", "EEAR10", "EEAR9", "EEAR8"),
+    },
+    /* 0x43 GTCCR */ {
+        "GTCCR", 0x83, 0x83, 0x00,
+        make_bits(
+            "TSM", nullptr, nullptr, nullptr,
+            nullptr, nullptr, "PSRASY", "PSRSYNC"),
+    },
+    /* 0x44 TCCR0A */ {
+        "TCCR0A", 0xff, 0xff, 0x00,
+        make_bits(
+            "COM0A1", "COM0A0", "COM0B1", "COM0B0",
+            nullptr, nullptr, "WGM01", "WGM00"),
+    },
+    /* 0x45 TCCR0B */ {
+        "TCCR0B", 0x0f, 0xcf, 0x00,
+        make_bits(
+            "FOC0A", "FOC0B", nullptr, nullptr,
+            "WGM02", "CS02", "CS01", "CS00"),
+    },
+    /* 0x46 TCNT0 */ {
+        "TCNT0", 0xff, 0xff, 0x00,
+        make_bits(
+            "TCNT0[7]", "TCNT0[6]", "TCNT0[5]", "TCNT0[4]",
+            "TCNT0[3]", "TCNT0[2]", "TCNT0[1]", "TCNT0[0]"),
+    },
+    /* 0x47 OCR0A */ {
+        "OCR0A", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR0A[7]", "OCR0A[6]", "OCR0A[5]", "OCR0A[4]",
+            "OCR0A[3]", "OCR0A[2]", "OCR0A[1]", "OCR0A[0]"),
+    },
+    /* 0x48 OCR0B */ {
+        "OCR0B", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR0B[7]", "OCR0B[6]", "OCR0B[5]", "OCR0B[4]",
+            "OCR0B[3]", "OCR0B[2]", "OCR0B[1]", "OCR0B[0]"),
+    },
+    /* 0x49 PLLCSR */ {
+        "PLLCSR", 0x13, 0x12, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, "PINDIV",
+            nullptr, nullptr, "PLLE", "PLOCK"),
+    },
+    /* 0x4a GPIOR1 */ {
+        "GPIOR1", 0xff, 0xff, 0x00,
+        make_bits(
+            "GPIOR17", "GPIOR16", "GPIOR15", "GPIOR14",
+            "GPIOR13", "GPIOR12", "GPIOR11", "GPIOR10"),
+    },
+    /* 0x4b GPIOR2 */ {
+        "GPIOR2", 0xff, 0xff, 0x00,
+        make_bits(
+            "GPIOR27", "GPIOR26", "GPIOR25", "GPIOR24",
+            "GPIOR23", "GPIOR22", "GPIOR21", "GPIOR20"),
+    },
+    /* 0x4c SPCR */ {
+        "SPCR", 0xff, 0xff, 0x00,
+        make_bits(
+            "SPIE", "SPE", "DORD", "MSTR",
+            "CPOL", "CPHA", "SPR1", "SPR0"),
+    },
+    /* 0x4d SPSR */ {
+        "SPSR", 0xc1, 0x01, 0x00,
+        make_bits(
+            "SPIF", "WCOL", nullptr, nullptr,
+            nullptr, nullptr, nullptr, "SPI2X"),
+    },
+    /* 0x4e SPDR */ {
+        "SPDR", 0xff, 0xff, 0x00,
+        make_bits(
+            "SPDR7", "SPDR6", "SPDR5", "SPDR4",
+            "SPDR3", "SPDR2", "SPDR1", "SPDR0"),
+    },
+    /* 0x4f */ {},
+    /* 0x50 ACSR */ {
+        "ACSR", 0xff, 0xdf, 0x00,
+        make_bits(
+            "ACD", "ACBG", "ACO", "ACI",
+            "ACIE", "ACIC", "ACIS1", "ACIS0"),
+    },
+    /* 0x51 OCDR */ {
+        "OCDR/MONDR", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCDR7", "OCDR6", "OCDR5", "OCDR4",
+            "OCDR3", "OCDR2", "OCDR1", "OCDR0"),
+    },
+    /* 0x52 PLLFRQ */ {
+        "PLLFRQ", 0xff, 0xff, 0x04,
+        make_bits(
+            "PINMUX", "PLLUSB", "PLLTM1", "PLLTM0",
+            "PDIV3", "PDIV2", "PDIV1", "PDIV0"),
+    },
+    /* 0x53 SMCR */ {
+        "SMCR", 0x0f, 0x0f, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            "SM2", "SM1", "SM0", "SE"),
+    },
+    /* 0x54 MCUSR */ {
+        "MCUSR", 0x3f, 0x3f, 0x00,
+        make_bits(
+            nullptr, nullptr, "USBRF", "JTRF",
+            "WDRF", "BORF", "EXTRF", "PORF"),
+    },
+    /* 0x55 MCUCR */ {
+        "MCUCR", 0x93, 0x93, 0x00,
+        make_bits(
+            "JTD", nullptr, nullptr, "PUD",
+            nullptr, nullptr, "IVSEL", "IVCE"),
+    },
+    /* 0x56 */ {},
+    /* 0x57 SPMCSR */ {
+        "SPMCSR", 0xff, 0xbf, 0x00,
+        make_bits(
+            "SPMIE", "RWWSB", "SIGRD", "RWWSRE",
+            "BLBSET", "PGWRT", "PGERS", "SPMEN"),
+    },
+    /* 0x58 */ {},
+    /* 0x59 */ {},
+    /* 0x5a */ {},
+    /* 0x5b RAMPZ */ {
+        "RAMPZ", 0x03, 0x03, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, "RAMPZ1", "RAMPZ0"),
+    },
+    /* 0x5c */ {},
+    /* 0x5d SPL */ {
+        "SPL", 0xff, 0xff, 0xff,
+        make_bits(
+            "SP7", "SP6", "SP5", "SP4",
+            "SP3", "SP2", "SP1", "SP0"),
+    },
+    /* 0x5e SPH */ {
+        "SPH", 0xff, 0xff, 0x0a,
+        make_bits(
+            "SP15", "SP14", "SP13", "SP12",
+            "SP11", "SP10", "SP9", "SP8"),
+    },
+    /* 0x5f SREG */ {
+        "SREG", 0xff, 0xff, 0x00,
+        make_bits(
+            "I", "T", "H", "S",
+            "V", "N", "Z", "C"),
+    },
+    /* 0x60 WDTCSR */ {
+        "WDTCSR", 0xff, 0xff, 0x00,
+        make_bits(
+            "WDIF", "WDIE", "WDP3", "WDCE",
+            "WDE", "WDP2", "WDP1", "WDP0"),
+    },
+    /* 0x61 CLKPR */ {
+        "CLKPR", 0x8f, 0x8f, 0x00,
+        make_bits(
+            "CLKPCE", nullptr, nullptr, nullptr,
+            "CLKPS3", "CLKPS2", "CLKPS1", "CLKPS0"),
+    },
+    /* 0x62 */ {},
+    /* 0x63 */ {},
+    /* 0x64 PRR0 */ {
+        "PRR0", 0xad, 0xad, 0x00,
+        make_bits(
+            "PRTWI", nullptr, "PRTIM0", nullptr,
+            "PRTIM1", "PRSPI", nullptr, "PRADC"),
+    },
+    /* 0x65 PRR1 */ {
+        "PRR1", 0x99, 0x99, 0x00,
+        make_bits(
+            "PRUSB", nullptr, nullptr, "PRTIM4",
+            "PRTIM3", nullptr, nullptr, "PRUSART1"),
+    },
+    /* 0x66 OSCCAL */ {
+        "OSCCAL", 0xff, 0xff, 0x00,
+        make_bits(
+            "CAL7", "CAL6", "CAL5", "CAL4",
+            "CAL3", "CAL2", "CAL1", "CAL0"),
+    },
+    /* 0x67 RCCTRL */ {
+        "RCCTRL", 0x01, 0x01, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, "RCFREQ"),
+    },
+    /* 0x68 PCICR */ {
+        "PCICR", 0x01, 0x01, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, "PCIE0"),
+    },
+    /* 0x69 EICRA */ {
+        "EICRA", 0xff, 0xff, 0x00,
+        make_bits(
+            "ISC31", "ISC30", "ISC21", "ISC20",
+            "ISC11", "ISC10", "ISC01", "ISC00"),
+    },
+    /* 0x6a EICRB */ {
+        "EICRB", 0x30, 0x30, 0x00,
+        make_bits(
+            nullptr, nullptr, "ISC61", "ISC60",
+            nullptr, nullptr, nullptr, nullptr),
+    },
+    /* 0x6b PCMSK0 */ {
+        "PCMSK0", 0xff, 0xff, 0x00,
+        make_bits(
+            "PCINT7", "PCINT6", "PCINT5", "PCINT4",
+            "PCINT3", "PCINT2", "PCINT1", "PCINT0"),
+    },
+    /* 0x6c */ {},
+    /* 0x6d */ {},
+    /* 0x6e TIMSK0 */ {
+        "TIMSK0", 0x07, 0x07, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, "OCIE0B", "OCIE0A", "TOIE0"),
+    },
+    /* 0x6f TIMSK1 */ {
+        "TIMSK1", 0x2f, 0x2f, 0x00,
+        make_bits(
+            nullptr, nullptr, "ICIE1", nullptr,
+            "OCIE1C", "OCIE1B", "OCIE1A", "TOIE1"),
+    },
+    /* 0x70 */ {},
+    /* 0x71 TIMSK3 */ {
+        "TIMSK3", 0x2f, 0x2f, 0x00,
+        make_bits(
+            nullptr, nullptr, "ICIE3", nullptr,
+            "OCIE3C", "OCIE3B", "OCIE3A", "TOIE3"),
+    },
+    /* 0x72 TIMSK4 */ {
+        "TIMSK4", 0xe4, 0xe4, 0x00,
+        make_bits(
+            "OCIE4D", "OCIE4A", "OCIE4B", nullptr,
+            nullptr, "TOIE4", nullptr, nullptr),
+    },
+    /* 0x73 */ {},
+    /* 0x74 */ {},
+    /* 0x75 */ {},
+    /* 0x76 */ {},
+    /* 0x77 */ {},
+    /* 0x78 ADCL */ {
+        "ADCL", 0xff, 0x00, 0x00,
+        make_bits(
+            "ADC[7]", "ADC[6]", "ADC[5]", "ADC[4]",
+            "ADC[3]", "ADC[2]", "ADC[1]", "ADC[0]"),
+    },
+    /* 0x79 ADCH */ {
+        "ADCH", 0xff, 0x00, 0x00,
+        make_bits(
+            "ADC high", "ADC high", "ADC high", "ADC high",
+            "ADC high", "ADC high", "ADC high", "ADC high"),
+    },
+    /* 0x7a ADCSRA */ {
+        "ADCSRA", 0xff, 0xff, 0x00,
+        make_bits(
+            "ADEN", "ADSC", "ADATE", "ADIF",
+            "ADIE", "ADPS2", "ADPS1", "ADPS0"),
+    },
+    /* 0x7b ADCSRB */ {
+        "ADCSRB", 0xef, 0x6f, 0x00,
+        make_bits(
+            "ADHSM", "ACME", "MUX5", nullptr,
+            "ADTS3", "ADTS2", "ADTS1", "ADTS0"),
+    },
+    /* 0x7c ADMUX */ {
+        "ADMUX", 0xff, 0xff, 0x00,
+        make_bits(
+            "REFS1", "REFS0", "ADLAR", "MUX4",
+            "MUX3", "MUX2", "MUX1", "MUX0"),
+    },
+    /* 0x7d DIDR2 */ {
+        "DIDR2", 0x3f, 0x3f, 0x00,
+        make_bits(
+            "ADC13D", "ADC12D", "ADC11D", "ADC10D",
+            "ADC9D", "ADC8D", nullptr, nullptr),
+    },
+    /* 0x7e DIDR0 */ {
+        "DIDR0", 0xf3, 0xf3, 0x00,
+        make_bits(
+            "ADC7D", "ADC6D", "ADC5D", "ADC4D",
+            nullptr, nullptr, "ADC1D", "ADC0D"),
+    },
+    /* 0x7f DIDR1 */ {
+        "DIDR1", 0x01, 0x01, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, "AIN0D"),
+    },
+    /* 0x80 TCCR1A */ {
+        "TCCR1A", 0xff, 0xff, 0x00,
+        make_bits(
+            "COM1A1", "COM1A0", "COM1B1", "COM1B0",
+            "COM1C1", "COM1C0", "WGM11", "WGM10"),
+    },
+    /* 0x81 TCCR1B */ {
+        "TCCR1B", 0xdf, 0xdf, 0x00,
+        make_bits(
+            "ICNC1", "ICES1", nullptr, "WGM13",
+            "WGM12", "CS12", "CS11", "CS10"),
+    },
+    /* 0x82 TCCR1C */ {
+        "TCCR1C", 0x00, 0xe0, 0x00,
+        make_bits(
+            "FOC1A", "FOC1B", "FOC1C", nullptr,
+            nullptr, nullptr, nullptr, nullptr),
+    },
+    /* 0x83 */ {},
+    /* 0x84 TCNT1L */ {
+        "TCNT1L", 0xff, 0xff, 0x00,
+        make_bits(
+            "TCNT1[7]", "TCNT1[6]", "TCNT1[5]", "TCNT1[4]",
+            "TCNT1[3]", "TCNT1[2]", "TCNT1[1]", "TCNT1[0]"),
+    },
+    /* 0x85 TCNT1H */ {
+        "TCNT1H", 0xff, 0xff, 0x00,
+        make_bits(
+            "TCNT1[15]", "TCNT1[14]", "TCNT1[13]", "TCNT1[12]",
+            "TCNT1[11]", "TCNT1[10]", "TCNT1[9]", "TCNT1[8]"),
+    },
+    /* 0x86 ICR1L */ {
+        "ICR1L", 0xff, 0xff, 0x00,
+        make_bits(
+            "ICR1[7]", "ICR1[6]", "ICR1[5]", "ICR1[4]",
+            "ICR1[3]", "ICR1[2]", "ICR1[1]", "ICR1[0]"),
+    },
+    /* 0x87 ICR1H */ {
+        "ICR1H", 0xff, 0xff, 0x00,
+        make_bits(
+            "ICR1[15]", "ICR1[14]", "ICR1[13]", "ICR1[12]",
+            "ICR1[11]", "ICR1[10]", "ICR1[9]", "ICR1[8]"),
+    },
+    /* 0x88 OCR1AL */ {
+        "OCR1AL", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR1A[7]", "OCR1A[6]", "OCR1A[5]", "OCR1A[4]",
+            "OCR1A[3]", "OCR1A[2]", "OCR1A[1]", "OCR1A[0]"),
+    },
+    /* 0x89 OCR1AH */ {
+        "OCR1AH", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR1A[15]", "OCR1A[14]", "OCR1A[13]", "OCR1A[12]",
+            "OCR1A[11]", "OCR1A[10]", "OCR1A[9]", "OCR1A[8]"),
+    },
+    /* 0x8a OCR1BL */ {
+        "OCR1BL", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR1B[7]", "OCR1B[6]", "OCR1B[5]", "OCR1B[4]",
+            "OCR1B[3]", "OCR1B[2]", "OCR1B[1]", "OCR1B[0]"),
+    },
+    /* 0x8b OCR1BH */ {
+        "OCR1BH", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR1B[15]", "OCR1B[14]", "OCR1B[13]", "OCR1B[12]",
+            "OCR1B[11]", "OCR1B[10]", "OCR1B[9]", "OCR1B[8]"),
+    },
+    /* 0x8c OCR1CL */ {
+        "OCR1CL", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR1C[7]", "OCR1C[6]", "OCR1C[5]", "OCR1C[4]",
+            "OCR1C[3]", "OCR1C[2]", "OCR1C[1]", "OCR1C[0]"),
+    },
+    /* 0x8d OCR1CH */ {
+        "OCR1CH", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR1C[15]", "OCR1C[14]", "OCR1C[13]", "OCR1C[12]",
+            "OCR1C[11]", "OCR1C[10]", "OCR1C[9]", "OCR1C[8]"),
+    },
+    /* 0x8e */ {},
+    /* 0x8f */ {},
+    /* 0x90 TCCR3A */ {
+        "TCCR3A", 0xff, 0xff, 0x00,
+        make_bits(
+            "COM3A1", "COM3A0", "COM3B1", "COM3B0",
+            "COM3C1", "COM3C0", "WGM31", "WGM30"),
+    },
+    /* 0x91 TCCR3B */ {
+        "TCCR3B", 0xdf, 0xdf, 0x00,
+        make_bits(
+            "ICNC3", "ICES3", nullptr, "WGM33",
+            "WGM32", "CS32", "CS31", "CS30"),
+    },
+    /* 0x92 TCCR3C */ {
+        "TCCR3C", 0x00, 0x80, 0x00,
+        make_bits(
+            "FOC3A", nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, nullptr),
+    },
+    /* 0x93 */ {},
+    /* 0x94 TCNT3L */ {
+        "TCNT3L", 0xff, 0xff, 0x00,
+        make_bits(
+            "TCNT3[7]", "TCNT3[6]", "TCNT3[5]", "TCNT3[4]",
+            "TCNT3[3]", "TCNT3[2]", "TCNT3[1]", "TCNT3[0]"),
+    },
+    /* 0x95 TCNT3H */ {
+        "TCNT3H", 0xff, 0xff, 0x00,
+        make_bits(
+            "TCNT3[15]", "TCNT3[14]", "TCNT3[13]", "TCNT3[12]",
+            "TCNT3[11]", "TCNT3[10]", "TCNT3[9]", "TCNT3[8]"),
+    },
+    /* 0x96 ICR3L */ {
+        "ICR3L", 0xff, 0xff, 0x00,
+        make_bits(
+            "ICR3[7]", "ICR3[6]", "ICR3[5]", "ICR3[4]",
+            "ICR3[3]", "ICR3[2]", "ICR3[1]", "ICR3[0]"),
+    },
+    /* 0x97 ICR3H */ {
+        "ICR3H", 0xff, 0xff, 0x00,
+        make_bits(
+            "ICR3[15]", "ICR3[14]", "ICR3[13]", "ICR3[12]",
+            "ICR3[11]", "ICR3[10]", "ICR3[9]", "ICR3[8]"),
+    },
+    /* 0x98 OCR3AL */ {
+        "OCR3AL", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR3A[7]", "OCR3A[6]", "OCR3A[5]", "OCR3A[4]",
+            "OCR3A[3]", "OCR3A[2]", "OCR3A[1]", "OCR3A[0]"),
+    },
+    /* 0x99 OCR3AH */ {
+        "OCR3AH", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR3A[15]", "OCR3A[14]", "OCR3A[13]", "OCR3A[12]",
+            "OCR3A[11]", "OCR3A[10]", "OCR3A[9]", "OCR3A[8]"),
+    },
+    /* 0x9a OCR3BL */ {
+        "OCR3BL", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR3B[7]", "OCR3B[6]", "OCR3B[5]", "OCR3B[4]",
+            "OCR3B[3]", "OCR3B[2]", "OCR3B[1]", "OCR3B[0]"),
+    },
+    /* 0x9b OCR3BH */ {
+        "OCR3BH", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR3B[15]", "OCR3B[14]", "OCR3B[13]", "OCR3B[12]",
+            "OCR3B[11]", "OCR3B[10]", "OCR3B[9]", "OCR3B[8]"),
+    },
+    /* 0x9c OCR3CL */ {
+        "OCR3CL", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR3C[7]", "OCR3C[6]", "OCR3C[5]", "OCR3C[4]",
+            "OCR3C[3]", "OCR3C[2]", "OCR3C[1]", "OCR3C[0]"),
+    },
+    /* 0x9d OCR3CH */ {
+        "OCR3CH", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR3C[15]", "OCR3C[14]", "OCR3C[13]", "OCR3C[12]",
+            "OCR3C[11]", "OCR3C[10]", "OCR3C[9]", "OCR3C[8]"),
+    },
+    /* 0x9e */ {},
+    /* 0x9f */ {},
+    /* 0xa0 */ {},
+    /* 0xa1 */ {},
+    /* 0xa2 */ {},
+    /* 0xa3 */ {},
+    /* 0xa4 */ {},
+    /* 0xa5 */ {},
+    /* 0xa6 */ {},
+    /* 0xa7 */ {},
+    /* 0xa8 */ {},
+    /* 0xa9 */ {},
+    /* 0xaa */ {},
+    /* 0xab */ {},
+    /* 0xac */ {},
+    /* 0xad */ {},
+    /* 0xae */ {},
+    /* 0xaf */ {},
+    /* 0xb0 */ {},
+    /* 0xb1 */ {},
+    /* 0xb2 */ {},
+    /* 0xb3 */ {},
+    /* 0xb4 */ {},
+    /* 0xb5 */ {},
+    /* 0xb6 */ {},
+    /* 0xb7 */ {},
+    /* 0xb8 TWBR */ {
+        "TWBR", 0xff, 0xff, 0x00,
+        make_bits(
+            "TWBR7", "TWBR6", "TWBR5", "TWBR4",
+            "TWBR3", "TWBR2", "TWBR1", "TWBR0"),
+    },
+    /* 0xb9 TWSR */ {
+        "TWSR", 0xfb, 0x03, 0xf8,
+        make_bits(
+            "TWS7", "TWS6", "TWS5", "TWS4",
+            "TWS3", nullptr, "TWPS1", "TWPS0"),
+    },
+    /* 0xba TWAR */ {
+        "TWAR", 0xff, 0xff, 0xfe,
+        make_bits(
+            "TWA6", "TWA5", "TWA4", "TWA3",
+            "TWA2", "TWA1", "TWA0", "TWGCE"),
+    },
+    /* 0xbb TWDR */ {
+        "TWDR", 0xff, 0xff, 0xff,
+        make_bits(
+            "TWD7", "TWD6", "TWD5", "TWD4",
+            "TWD3", "TWD2", "TWD1", "TWD0"),
+    },
+    /* 0xbc TWCR */ {
+        "TWCR", 0xfd, 0xf5, 0x00,
+        make_bits(
+            "TWINT", "TWEA", "TWSTA", "TWSTO",
+            "TWWC", "TWEN", nullptr, "TWIE"),
+    },
+    /* 0xbd TWAMR */ {
+        "TWAMR", 0xfe, 0xfe, 0x00,
+        make_bits(
+            nullptr, "TWAM0", "TWAM1", "TWAM2",
+            "TWAM3", "TWAM4", "TWAM5", "TWAM6"),
+    },
+    /* 0xbe TCNT4 */ {
+        "TCNT4", 0xff, 0xff, 0x00,
+        make_bits(
+            "TCNT4[7]", "TCNT4[6]", "TCNT4[5]", "TCNT4[4]",
+            "TCNT4[3]", "TCNT4[2]", "TCNT4[1]", "TCNT4[0]"),
+    },
+    /* 0xbf TC4H */ {
+        "TC4H", 0x07, 0x07, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, "TC4H2", "TC4H1", "TC4H0"),
+    },
+    /* 0xc0 TCCR4A */ {
+        "TCCR4A", 0xf3, 0xff, 0x00,
+        make_bits(
+            "COM4A1", "COM4A0", "COM4B1", "COM4B0",
+            "FOC4A", "FOC4B", "PWM4A", "PWM4B"),
+    },
+    /* 0xc1 TCCR4B */ {
+        "TCCR4B", 0xff, 0xff, 0x00,
+        make_bits(
+            "PWM4X", "PSR4", "DTPS41", "DTPS40",
+            "CS43", "CS42", "CS41", "CS40"),
+    },
+    /* 0xc2 TCCR4C */ {
+        "TCCR4C", 0xfd, 0xff, 0x00,
+        make_bits(
+            "COM4A1S", "COM4A0S", "COM4B1S", "COM4B0S",
+            "COM4D1S", "COM4D0S", "FOC4D", "PWM4D"),
+    },
+    /* 0xc3 TCCR4D */ {
+        "TCCR4D", 0xff, 0xff, 0x00,
+        make_bits(
+            "FPIE4", "FPEN4", "FPNC4", "FPES4",
+            "FPAC4", "FPF4", "WGM41", "WGM40"),
+    },
+    /* 0xc4 TCCR4E */ {
+        "TCCR4E", 0xff, 0xff, 0x00,
+        make_bits(
+            "TLOCK4", "ENHC4", "OC4OE5", "OC4OE4",
+            "OC4OE3", "OC4OE2", "OC4OE1", "OC4OE0"),
+    },
+    /* 0xc5 CLKSEL0 */ {
+        "CLKSEL0", 0xfd, 0xfd, 0x00,
+        make_bits(
+            "RCSUT1", "RCSUT0", "EXSUT1", "EXSUT0",
+            "RCE", "EXTE", nullptr, "CLKS"),
+    },
+    /* 0xc6 CLKSEL1 */ {
+        "CLKSEL1", 0xff, 0xff, 0x20,
+        make_bits(
+            "RCCKSEL3", "RCCKSEL2", "RCCKSEL1", "RCCKSEL0",
+            "EXCKSEL3", "EXCKSEL2", "EXCKSEL1", "EXCKSEL0"),
+    },
+    /* 0xc7 CLKSTA */ {
+        "CLKSTA", 0x03, 0x00, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, "RCON", "EXTON"),
+    },
+    /* 0xc8 UCSR1A */ {
+        "UCSR1A", 0xff, 0x43, 0x20,
+        make_bits(
+            "RXC1", "TXC1", "UDRE1", "FE1",
+            "DOR1", "PE1", "U2X1", "MPCM1"),
+    },
+    /* 0xc9 UCSR1B */ {
+        "UCSR1B", 0xff, 0xff, 0x00,
+        make_bits(
+            "RXCIE1", "TXCIE1", "UDRIE1", "RXEN1",
+            "TXEN1", "UCSZ12", "RXB81", "TXB81"),
+    },
+    /* 0xca UCSR1C */ {
+        "UCSR1C", 0xff, 0xff, 0x06,
+        make_bits(
+            "UMSEL11", "UMSEL10", "UPM11", "UPM10",
+            "USBS1", "UCSZ11", "UCSZ10", "UCPOL1"),
+    },
+    /* 0xcb UCSR1D */ {
+        "UCSR1D", 0x03, 0x03, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, "CTSEN", "RTSEN"),
+    },
+    /* 0xcc UBRR1L */ {
+        "UBRR1L", 0xff, 0xff, 0x00,
+        make_bits(
+            "UBRR1[7]", "UBRR1[6]", "UBRR1[5]", "UBRR1[4]",
+            "UBRR1[3]", "UBRR1[2]", "UBRR1[1]", "UBRR1[0]"),
+    },
+    /* 0xcd UBRR1H */ {
+        "UBRR1H", 0x0f, 0x0f, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            "UBRR1[11]", "UBRR1[10]", "UBRR1[9]", "UBRR1[8]"),
+    },
+    /* 0xce UDR1 */ {
+        "UDR1", 0xff, 0xff, 0x00,
+        make_bits(
+            "UDR1[7]", "UDR1[6]", "UDR1[5]", "UDR1[4]",
+            "UDR1[3]", "UDR1[2]", "UDR1[1]", "UDR1[0]"),
+    },
+    /* 0xcf OCR4A */ {
+        "OCR4A", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR4A7", "OCR4A6", "OCR4A5", "OCR4A4",
+            "OCR4A3", "OCR4A2", "OCR4A1", "OCR4A0"),
+    },
+    /* 0xd0 OCR4B */ {
+        "OCR4B", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR4B7", "OCR4B6", "OCR4B5", "OCR4B4",
+            "OCR4B3", "OCR4B2", "OCR4B1", "OCR4B0"),
+    },
+    /* 0xd1 OCR4C */ {
+        "OCR4C", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR4C7", "OCR4C6", "OCR4C5", "OCR4C4",
+            "OCR4C3", "OCR4C2", "OCR4C1", "OCR4C0"),
+    },
+    /* 0xd2 OCR4D */ {
+        "OCR4D", 0xff, 0xff, 0x00,
+        make_bits(
+            "OCR4D7", "OCR4D6", "OCR4D5", "OCR4D4",
+            "OCR4D3", "OCR4D2", "OCR4D1", "OCR4D0"),
+    },
+    /* 0xd3 */ {},
+    /* 0xd4 DT4 */ {
+        "DT4", 0xff, 0xff, 0x00,
+        make_bits(
+            "DT4H3", "DT4H2", "DT4H1", "DT4H0",
+            "DT4L3", "DT4L2", "DT4L1", "DT4L0"),
+    },
+    /* 0xd5 */ {},
+    /* 0xd6 */ {},
+    /* 0xd7 UHWCON */ {
+        "UHWCON", 0x01, 0x01, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, "UVREGE"),
+    },
+    /* 0xd8 USBCON */ {
+        "USBCON", 0xb1, 0xb1, 0x20,
+        make_bits(
+            "USBE", nullptr, "FRZCLK", "OTGPADE",
+            nullptr, nullptr, nullptr, "VBUSTE"),
+    },
+    /* 0xd9 USBSTA */ {
+        "USBSTA", 0x03, 0x00, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, "ID", "VBUS"),
+    },
+    /* 0xda USBINT */ {
+        "USBINT", 0x01, 0x01, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, nullptr, nullptr, "VBUSTI"),
+    },
+    /* 0xdb */ {},
+    /* 0xdc */ {},
+    /* 0xdd */ {},
+    /* 0xde */ {},
+    /* 0xdf */ {},
+    /* 0xe0 UDCON */ {
+        "UDCON", 0x0f, 0x0f, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            "RSTCPU", "LSM", "RMWKUP", "DETACH"),
+    },
+    /* 0xe1 UDINT */ {
+        "UDINT", 0x7f, 0x7f, 0x00,
+        make_bits(
+            nullptr, "UPRSMI", "EORSMI", "WAKEUPI",
+            "EORSTI", "SOFI", "MSOFI", "SUSPI"),
+    },
+    /* 0xe2 UDIEN */ {
+        "UDIEN", 0x7f, 0x7f, 0x00,
+        make_bits(
+            nullptr, "UPRSME", "EORSME", "WAKEUPE",
+            "EORSTE", "SOFE", "MSOFE", "SUSPE"),
+    },
+    /* 0xe3 UDADDR */ {
+        "UDADDR", 0xff, 0xff, 0x00,
+        make_bits(
+            "ADDEN", "UADD6", "UADD5", "UADD4",
+            "UADD3", "UADD2", "UADD1", "UADD0"),
+    },
+    /* 0xe4 UDFNUML */ {
+        "UDFNUML", 0xff, 0x00, 0x00,
+        make_bits(
+            "FNUM7", "FNUM6", "FNUM5", "FNUM4",
+            "FNUM3", "FNUM2", "FNUM1", "FNUM0"),
+    },
+    /* 0xe5 UDFNUMH */ {
+        "UDFNUMH", 0x07, 0x00, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, "FNUM10", "FNUM9", "FNUM8"),
+    },
+    /* 0xe6 UDMFN */ {
+        "UDMFN", 0x10, 0x10, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, "FNCERR",
+            nullptr, nullptr, nullptr, nullptr),
+    },
+    /* 0xe7 */ {},
+    /* 0xe8 UEINTX */ {
+        "UEINTX", 0xff, 0xdf, 0x00,
+        make_bits(
+            "FIFOCON", "NAKINI", "RWAL", "NAKOUTI",
+            "RXSTPI", "RXOUTI", "STALLEDI", "TXINI"),
+    },
+    /* 0xe9 UENUM */ {
+        "UENUM", 0x07, 0x07, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, "EPNUM2", "EPNUM1", "EPNUM0"),
+    },
+    /* 0xea UERST */ {
+        "UERST", 0x7f, 0x7f, 0x00,
+        make_bits(
+            nullptr, "EPRST6", "EPRST5", "EPRST4",
+            "EPRST3", "EPRST2", "EPRST1", "EPRST0"),
+    },
+    /* 0xeb UECONX */ {
+        "UECONX", 0x39, 0x39, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, "STALLRQ",
+            "STALLRQC", "RSTDT", nullptr, "EPEN"),
+    },
+    /* 0xec UECFG0X */ {
+        "UECFG0X", 0xc1, 0xc1, 0x00,
+        make_bits(
+            "EPTYPE1", "EPTYPE0", nullptr, nullptr,
+            nullptr, nullptr, nullptr, "EPDIR"),
+    },
+    /* 0xed UECFG1X */ {
+        "UECFG1X", 0xfc, 0xfc, 0x00,
+        make_bits(
+            "EPSIZE2", "EPSIZE1", "EPSIZE0", "EPBK1",
+            "EPBK0", "ALLOC", nullptr, nullptr),
+    },
+    /* 0xee UESTA0X */ {
+        "UESTA0X", 0xef, 0x60, 0x00,
+        make_bits(
+            "CFGOK", "OVERFI", "UNDERFI", nullptr,
+            "DTSEQ1", "DTSEQ0", "NBUSYBK1", "NBUSYBK0"),
+    },
+    /* 0xef UESTA1X */ {
+        "UESTA1X", 0x07, 0x00, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, "CTRLDIR", "CURRBK1", "CURRBK0"),
+    },
+    /* 0xf0 UEIENX */ {
+        "UEIENX", 0xdf, 0xdf, 0x00,
+        make_bits(
+            "FLERRE", "NAKINE", nullptr, "NAKOUTE",
+            "RXSTPE", "RXOUTE", "STALLEDE", "TXINE"),
+    },
+    /* 0xf1 UEDATX */ {
+        "UEDATX", 0xff, 0xff, 0x00,
+        make_bits(
+            "DAT7", "DAT6", "DAT5", "DAT4",
+            "DAT3", "DAT2", "DAT1", "DAT0"),
+    },
+    /* 0xf2 UEBCLX */ {
+        "UEBCLX", 0xff, 0x00, 0x00,
+        make_bits(
+            "BYCT7", "BYCT6", "BYCT5", "BYCT4",
+            "BYCT3", "BYCT2", "BYCT1", "BYCT0"),
+    },
+    /* 0xf3 UEBCHX */ {
+        "UEBCHX", 0x07, 0x00, 0x00,
+        make_bits(
+            nullptr, nullptr, nullptr, nullptr,
+            nullptr, "BYCT10", "BYCT9", "BYCT8"),
+    },
+    /* 0xf4 UEINT */ {
+        "UEINT", 0x7f, 0x00, 0x00,
+        make_bits(
+            nullptr, "EPINT6", "EPINT5", "EPINT4",
+            "EPINT3", "EPINT2", "EPINT1", "EPINT0"),
+    },
+    /* 0xf5 */ {},
+    /* 0xf6 */ {},
+    /* 0xf7 */ {},
+    /* 0xf8 */ {},
+    /* 0xf9 */ {},
+    /* 0xfa */ {},
+    /* 0xfb */ {},
+    /* 0xfc */ {},
+    /* 0xfd */ {},
+    /* 0xfe */ {},
+    /* 0xff */ {},
+}};
 
-    case addr::EECR: return make_reg(
-        "EECR", "R0 R0 R/W R/W R/W R/W* R/W* R/W*", "0x00",
-        make_bits(nullptr, nullptr, "EEPM1", "EEPM0", "EERIE", "EEMPE", "EEPE", "EERE"));
-    case addr::EEDR: return make_reg("EEDR", "R/W x8", "0x00",
-        make_bits("EEDR7", "EEDR6", "EEDR5", "EEDR4", "EEDR3", "EEDR2", "EEDR1", "EEDR0"));
-    case addr::EEARL: return make_reg("EEARL", "R/W x8", "0x00",
-        make_bits("EEAR7", "EEAR6", "EEAR5", "EEAR4", "EEAR3", "EEAR2", "EEAR1", "EEAR0"));
-    case addr::EEARH: return make_reg(
-        "EEARH", "R0 R0 R0 R0 R/W R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, "EEAR11", "EEAR10", "EEAR9", "EEAR8"));
-    case addr::GTCCR: return make_reg(
-        "GTCCR", "R/W R0 R0 R0 R0 R0 R/W* R/W*", "0x00",
-        make_bits("TSM", nullptr, nullptr, nullptr, nullptr, nullptr, "PSRASY", "PSRSYNC"));
-    case addr::TCCR0A: return make_reg(
-        "TCCR0A", "R/W x8", "0x00",
-        make_bits("COM0A1", "COM0A0", "COM0B1", "COM0B0", nullptr, nullptr, "WGM01", "WGM00"));
-    case addr::TCCR0B: return make_reg(
-        "TCCR0B", "W W R0 R0 R/W R/W R/W R/W", "0x00",
-        make_bits("FOC0A", "FOC0B", nullptr, nullptr, "WGM02", "CS02", "CS01", "CS00"));
-    case addr::TCNT0: return make_reg("TCNT0", "R/W x8", "0x00",
-        make_bits("TCNT0[7]", "TCNT0[6]", "TCNT0[5]", "TCNT0[4]", "TCNT0[3]", "TCNT0[2]", "TCNT0[1]", "TCNT0[0]"));
-    case addr::OCR0A: return make_reg("OCR0A", "R/W x8", "0x00",
-        make_bits("OCR0A[7]", "OCR0A[6]", "OCR0A[5]", "OCR0A[4]", "OCR0A[3]", "OCR0A[2]", "OCR0A[1]", "OCR0A[0]"));
-    case addr::OCR0B: return make_reg("OCR0B", "R/W x8", "0x00",
-        make_bits("OCR0B[7]", "OCR0B[6]", "OCR0B[5]", "OCR0B[4]", "OCR0B[3]", "OCR0B[2]", "OCR0B[1]", "OCR0B[0]"));
-    case addr::PLLCSR: return make_reg(
-        "PLLCSR", "R0 R0 R0 R/W R0 R0 R/W R", "0x00",
-        make_bits(nullptr, nullptr, nullptr, "PINDIV", nullptr, nullptr, "PLLE", "PLOCK"));
-    case addr::GPIOR1: return make_reg("GPIOR1", "R/W x8", "0x00",
-        make_bits("GPIOR17", "GPIOR16", "GPIOR15", "GPIOR14", "GPIOR13", "GPIOR12", "GPIOR11", "GPIOR10"));
-    case addr::GPIOR2: return make_reg("GPIOR2", "R/W x8", "0x00",
-        make_bits("GPIOR27", "GPIOR26", "GPIOR25", "GPIOR24", "GPIOR23", "GPIOR22", "GPIOR21", "GPIOR20"));
-    case addr::SPCR: return make_reg("SPCR", "R/W x8", "0x00",
-        make_bits("SPIE", "SPE", "DORD", "MSTR", "CPOL", "CPHA", "SPR1", "SPR0"));
-    case addr::SPSR: return make_reg("SPSR", "R R R0 R0 R0 R0 R0 R/W", "0x00",
-        make_bits("SPIF", "WCOL", nullptr, nullptr, nullptr, nullptr, nullptr, "SPI2X"));
-    case addr::SPDR: return make_reg("SPDR", "R/W x8", "0x00",
-        make_bits("SPDR7", "SPDR6", "SPDR5", "SPDR4", "SPDR3", "SPDR2", "SPDR1", "SPDR0"));
-    case addr::ACSR: return make_reg("ACSR", "R/W R/W R R/W* R/W R/W R/W R/W", "0b00x00000",
-        make_bits("ACD", "ACBG", "ACO", "ACI", "ACIE", "ACIC", "ACIS1", "ACIS0"));
-    case addr::OCDR: return make_reg("OCDR/MONDR", "R/W x8", "N/A",
-        make_bits("OCDR7", "OCDR6", "OCDR5", "OCDR4", "OCDR3", "OCDR2", "OCDR1", "OCDR0"));
-    case addr::PLLFRQ: return make_reg("PLLFRQ", "R/W x8", "0x04",
-        make_bits("PINMUX", "PLLUSB", "PLLTM1", "PLLTM0", "PDIV3", "PDIV2", "PDIV1", "PDIV0"));
-    case addr::SMCR: return make_reg("SMCR", "R0 R0 R0 R0 R/W R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, "SM2", "SM1", "SM0", "SE"));
-    case addr::MCUSR: return make_reg("MCUSR", "R0 R0 R/W* R/W* R/W* R/W* R/W* R/W*", "reset-cause",
-        make_bits(nullptr, nullptr, "USBRF", "JTRF", "WDRF", "BORF", "EXTRF", "PORF"));
-    case addr::MCUCR: return make_reg("MCUCR", "R/W R0 R0 R/W R0 R0 R/W R/W*", "0x00",
-        make_bits("JTD", nullptr, nullptr, "PUD", nullptr, nullptr, "IVSEL", "IVCE"));
-    case addr::SPMCSR: return make_reg("SPMCSR", "R/W R R/W* R/W* R/W* R/W* R/W* R/W*", "0x00",
-        make_bits("SPMIE", "RWWSB", "SIGRD", "RWWSRE", "BLBSET", "PGWRT", "PGERS", "SPMEN"));
-
-    case addr::RAMPZ: return make_reg("RAMPZ", "R0 R0 R0 R0 R0 R0 R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "RAMPZ1", "RAMPZ0"));
-    case addr::SPL: return make_reg("SPL", "R/W x8", "0xFF",
-        make_bits("SP7", "SP6", "SP5", "SP4", "SP3", "SP2", "SP1", "SP0"));
-    case addr::SPH: return make_reg("SPH", "R/W x8", "0x0A",
-        make_bits("SP15", "SP14", "SP13", "SP12", "SP11", "SP10", "SP9", "SP8"));
-    case addr::SREG: return make_reg("SREG", "R/W x8", "0x00",
-        make_bits("I", "T", "H", "S", "V", "N", "Z", "C"));
-
-    case addr::WDTCSR: return make_reg("WDTCSR", "R/W* R/W R/W R/W* R/W R/W R/W R/W", "0x00",
-        make_bits("WDIF", "WDIE", "WDP3", "WDCE", "WDE", "WDP2", "WDP1", "WDP0"));
-    case addr::CLKPR: return make_reg("CLKPR", "R/W* R0 R0 R0 R/W R/W R/W R/W", "fuse-dependent",
-        make_bits("CLKPCE", nullptr, nullptr, nullptr, "CLKPS3", "CLKPS2", "CLKPS1", "CLKPS0"));
-    case addr::PRR0: return make_reg("PRR0", "R/W R0 R/W R0 R/W R/W R0 R/W", "0x00",
-        make_bits("PRTWI", nullptr, "PRTIM0", nullptr, "PRTIM1", "PRSPI", nullptr, "PRADC"));
-    case addr::PRR1: return make_reg("PRR1", "R/W R0 R0 R/W R/W R0 R0 R/W", "0x00",
-        make_bits("PRUSB", nullptr, nullptr, "PRTIM4", "PRTIM3", nullptr, nullptr, "PRUSART1"));
-    case addr::OSCCAL: return make_reg("OSCCAL", "R/W x8", "calibration",
-        make_bits("CAL7", "CAL6", "CAL5", "CAL4", "CAL3", "CAL2", "CAL1", "CAL0"));
-    case addr::RCCTRL: return make_reg("RCCTRL", "R0 R0 R0 R0 R0 R0 R0 R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "RCFREQ"));
-    case addr::PCICR: return make_reg("PCICR", "R0 R0 R0 R0 R0 R0 R0 R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "PCIE0"));
-    case addr::EICRA: return make_reg("EICRA", "R/W x8", "0x00",
-        make_bits("ISC31", "ISC30", "ISC21", "ISC20", "ISC11", "ISC10", "ISC01", "ISC00"));
-    case addr::EICRB: return make_reg("EICRB", "R0 R0 R/W R/W R0 R0 R0 R0", "0x00",
-        make_bits(nullptr, nullptr, "ISC61", "ISC60", nullptr, nullptr, nullptr, nullptr));
-    case addr::PCMSK0: return make_reg("PCMSK0", "R/W x8", "0x00",
-        make_bits("PCINT7", "PCINT6", "PCINT5", "PCINT4", "PCINT3", "PCINT2", "PCINT1", "PCINT0"));
-    case addr::TIMSK0: return make_reg("TIMSK0", "R0 R0 R0 R0 R0 R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, "OCIE0B", "OCIE0A", "TOIE0"));
-    case addr::TIMSK1: return make_reg("TIMSK1", "R0 R0 R/W R0 R/W R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, "ICIE1", nullptr, "OCIE1C", "OCIE1B", "OCIE1A", "TOIE1"));
-    case addr::TIMSK3: return make_reg("TIMSK3", "R0 R0 R/W R0 R/W R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, "ICIE3", nullptr, "OCIE3C", "OCIE3B", "OCIE3A", "TOIE3"));
-    case addr::TIMSK4: return make_reg("TIMSK4", "R/W R/W R/W R0 R0 R/W R0 R0", "0x00",
-        make_bits("OCIE4D", "OCIE4A", "OCIE4B", nullptr, nullptr, "TOIE4", nullptr, nullptr));
-
-    case addr::ADCL: return make_reg("ADCL", "R x8", "0x00",
-        make_bits("ADC[7]", "ADC[6]", "ADC[5]", "ADC[4]", "ADC[3]", "ADC[2]", "ADC[1]", "ADC[0]"));
-    case addr::ADCH: return make_reg("ADCH", "R x8", "0x00",
-        make_bits("ADC high", "ADC high", "ADC high", "ADC high", "ADC high", "ADC high", "ADC high", "ADC high"));
-    case addr::ADCSRA: return make_reg("ADCSRA", "R/W R/W* R/W R/W* R/W R/W R/W R/W", "0x00",
-        make_bits("ADEN", "ADSC", "ADATE", "ADIF", "ADIE", "ADPS2", "ADPS1", "ADPS0"));
-    case addr::ADCSRB: return make_reg("ADCSRB", "R R/W R/W R0 R/W R/W R/W R/W", "0x00",
-        make_bits("ADHSM", "ACME", "MUX5", nullptr, "ADTS3", "ADTS2", "ADTS1", "ADTS0"));
-    case addr::ADMUX: return make_reg("ADMUX", "R/W x8", "0x00",
-        make_bits("REFS1", "REFS0", "ADLAR", "MUX4", "MUX3", "MUX2", "MUX1", "MUX0"));
-    case addr::DIDR2: return make_reg("DIDR2", "R0 R0 R/W R/W R/W R/W R/W R/W", "0x00",
-        make_bits("ADC13D", "ADC12D", "ADC11D", "ADC10D", "ADC9D", "ADC8D", nullptr, nullptr));
-    case addr::DIDR0: return make_reg("DIDR0", "R/W R/W R/W R/W R0 R0 R/W R/W", "0x00",
-        make_bits("ADC7D", "ADC6D", "ADC5D", "ADC4D", nullptr, nullptr, "ADC1D", "ADC0D"));
-    case addr::DIDR1: return make_reg("DIDR1", "R0 R0 R0 R0 R0 R0 R0 R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "AIN0D"));
-
-    case addr::TCCR1A: return make_reg("TCCR1A", "R/W x8", "0x00",
-        make_bits("COM1A1", "COM1A0", "COM1B1", "COM1B0", "COM1C1", "COM1C0", "WGM11", "WGM10"));
-    case addr::TCCR1B: return make_reg("TCCR1B", "R/W R/W R0 R/W R/W R/W R/W R/W", "0x00",
-        make_bits("ICNC1", "ICES1", nullptr, "WGM13", "WGM12", "CS12", "CS11", "CS10"));
-    case addr::TCCR1C: return make_reg("TCCR1C", "W W W R0 R0 R0 R0 R0", "0x00",
-        make_bits("FOC1A", "FOC1B", "FOC1C", nullptr, nullptr, nullptr, nullptr, nullptr));
-    case addr::TCNT1L: return make_reg("TCNT1L", "R/W x8", "0x00",
-        make_bits("TCNT1[7]", "TCNT1[6]", "TCNT1[5]", "TCNT1[4]", "TCNT1[3]", "TCNT1[2]", "TCNT1[1]", "TCNT1[0]"));
-    case addr::TCNT1H: return make_reg("TCNT1H", "R/W x8", "0x00",
-        make_bits("TCNT1[15]", "TCNT1[14]", "TCNT1[13]", "TCNT1[12]", "TCNT1[11]", "TCNT1[10]", "TCNT1[9]", "TCNT1[8]"));
-    case addr::ICR1L: return make_reg("ICR1L", "R/W x8", "0x00",
-        make_bits("ICR1[7]", "ICR1[6]", "ICR1[5]", "ICR1[4]", "ICR1[3]", "ICR1[2]", "ICR1[1]", "ICR1[0]"));
-    case addr::ICR1H: return make_reg("ICR1H", "R/W x8", "0x00",
-        make_bits("ICR1[15]", "ICR1[14]", "ICR1[13]", "ICR1[12]", "ICR1[11]", "ICR1[10]", "ICR1[9]", "ICR1[8]"));
-    case addr::OCR1AL: return make_reg("OCR1AL", "R/W x8", "0x00",
-        make_bits("OCR1A[7]", "OCR1A[6]", "OCR1A[5]", "OCR1A[4]", "OCR1A[3]", "OCR1A[2]", "OCR1A[1]", "OCR1A[0]"));
-    case addr::OCR1AH: return make_reg("OCR1AH", "R/W x8", "0x00",
-        make_bits("OCR1A[15]", "OCR1A[14]", "OCR1A[13]", "OCR1A[12]", "OCR1A[11]", "OCR1A[10]", "OCR1A[9]", "OCR1A[8]"));
-    case addr::OCR1BL: return make_reg("OCR1BL", "R/W x8", "0x00",
-        make_bits("OCR1B[7]", "OCR1B[6]", "OCR1B[5]", "OCR1B[4]", "OCR1B[3]", "OCR1B[2]", "OCR1B[1]", "OCR1B[0]"));
-    case addr::OCR1BH: return make_reg("OCR1BH", "R/W x8", "0x00",
-        make_bits("OCR1B[15]", "OCR1B[14]", "OCR1B[13]", "OCR1B[12]", "OCR1B[11]", "OCR1B[10]", "OCR1B[9]", "OCR1B[8]"));
-    case addr::OCR1CL: return make_reg("OCR1CL", "R/W x8", "0x00",
-        make_bits("OCR1C[7]", "OCR1C[6]", "OCR1C[5]", "OCR1C[4]", "OCR1C[3]", "OCR1C[2]", "OCR1C[1]", "OCR1C[0]"));
-    case addr::OCR1CH: return make_reg("OCR1CH", "R/W x8", "0x00",
-        make_bits("OCR1C[15]", "OCR1C[14]", "OCR1C[13]", "OCR1C[12]", "OCR1C[11]", "OCR1C[10]", "OCR1C[9]", "OCR1C[8]"));
-
-    case addr::TCCR3A: return make_reg("TCCR3A", "R/W x8", "0x00",
-        make_bits("COM3A1", "COM3A0", "COM3B1", "COM3B0", "COM3C1", "COM3C0", "WGM31", "WGM30"));
-    case addr::TCCR3B: return make_reg("TCCR3B", "R/W R/W R0 R/W R/W R/W R/W R/W", "0x00",
-        make_bits("ICNC3", "ICES3", nullptr, "WGM33", "WGM32", "CS32", "CS31", "CS30"));
-    case addr::TCCR3C: return make_reg("TCCR3C", "W R0 R0 R0 R0 R0 R0 R0", "0x00",
-        make_bits("FOC3A", nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr));
-    case addr::TCNT3L: return make_reg("TCNT3L", "R/W x8", "0x00",
-        make_bits("TCNT3[7]", "TCNT3[6]", "TCNT3[5]", "TCNT3[4]", "TCNT3[3]", "TCNT3[2]", "TCNT3[1]", "TCNT3[0]"));
-    case addr::TCNT3H: return make_reg("TCNT3H", "R/W x8", "0x00",
-        make_bits("TCNT3[15]", "TCNT3[14]", "TCNT3[13]", "TCNT3[12]", "TCNT3[11]", "TCNT3[10]", "TCNT3[9]", "TCNT3[8]"));
-    case addr::ICR3L: return make_reg("ICR3L", "R/W x8", "0x00",
-        make_bits("ICR3[7]", "ICR3[6]", "ICR3[5]", "ICR3[4]", "ICR3[3]", "ICR3[2]", "ICR3[1]", "ICR3[0]"));
-    case addr::ICR3H: return make_reg("ICR3H", "R/W x8", "0x00",
-        make_bits("ICR3[15]", "ICR3[14]", "ICR3[13]", "ICR3[12]", "ICR3[11]", "ICR3[10]", "ICR3[9]", "ICR3[8]"));
-    case addr::OCR3AL: return make_reg("OCR3AL", "R/W x8", "0x00",
-        make_bits("OCR3A[7]", "OCR3A[6]", "OCR3A[5]", "OCR3A[4]", "OCR3A[3]", "OCR3A[2]", "OCR3A[1]", "OCR3A[0]"));
-    case addr::OCR3AH: return make_reg("OCR3AH", "R/W x8", "0x00",
-        make_bits("OCR3A[15]", "OCR3A[14]", "OCR3A[13]", "OCR3A[12]", "OCR3A[11]", "OCR3A[10]", "OCR3A[9]", "OCR3A[8]"));
-    case addr::OCR3BL: return make_reg("OCR3BL", "R/W x8", "0x00",
-        make_bits("OCR3B[7]", "OCR3B[6]", "OCR3B[5]", "OCR3B[4]", "OCR3B[3]", "OCR3B[2]", "OCR3B[1]", "OCR3B[0]"));
-    case addr::OCR3BH: return make_reg("OCR3BH", "R/W x8", "0x00",
-        make_bits("OCR3B[15]", "OCR3B[14]", "OCR3B[13]", "OCR3B[12]", "OCR3B[11]", "OCR3B[10]", "OCR3B[9]", "OCR3B[8]"));
-    case addr::OCR3CL: return make_reg("OCR3CL", "R/W x8", "0x00",
-        make_bits("OCR3C[7]", "OCR3C[6]", "OCR3C[5]", "OCR3C[4]", "OCR3C[3]", "OCR3C[2]", "OCR3C[1]", "OCR3C[0]"));
-    case addr::OCR3CH: return make_reg("OCR3CH", "R/W x8", "0x00",
-        make_bits("OCR3C[15]", "OCR3C[14]", "OCR3C[13]", "OCR3C[12]", "OCR3C[11]", "OCR3C[10]", "OCR3C[9]", "OCR3C[8]"));
-
-    case addr::TWBR: return make_reg("TWBR", "R/W x8", "0x00",
-        make_bits("TWBR7", "TWBR6", "TWBR5", "TWBR4", "TWBR3", "TWBR2", "TWBR1", "TWBR0"));
-    case addr::TWSR: return make_reg("TWSR", "R R R R R R0 R/W R/W", "0xF8",
-        make_bits("TWS7", "TWS6", "TWS5", "TWS4", "TWS3", nullptr, "TWPS1", "TWPS0"));
-    case addr::TWAR: return make_reg("TWAR", "R/W x8", "0xFE",
-        make_bits("TWA6", "TWA5", "TWA4", "TWA3", "TWA2", "TWA1", "TWA0", "TWGCE"));
-    case addr::TWDR: return make_reg("TWDR", "R/W x8", "0xFF",
-        make_bits("TWD7", "TWD6", "TWD5", "TWD4", "TWD3", "TWD2", "TWD1", "TWD0"));
-    case addr::TWCR: return make_reg("TWCR", "R/W* R/W R/W* R/W* R R/W R0 R/W", "0x00",
-        make_bits("TWINT", "TWEA", "TWSTA", "TWSTO", "TWWC", "TWEN", nullptr, "TWIE"));
-    case addr::TWAMR: return make_reg("TWAMR", "R/W R/W R/W R/W R/W R/W R/W R0", "0x00",
-        make_bits(nullptr, "TWAM0", "TWAM1", "TWAM2", "TWAM3", "TWAM4", "TWAM5", "TWAM6"));
-
-    case addr::TCNT4: return make_reg("TCNT4", "R/W x8", "0x00",
-        make_bits("TCNT4[7]", "TCNT4[6]", "TCNT4[5]", "TCNT4[4]", "TCNT4[3]", "TCNT4[2]", "TCNT4[1]", "TCNT4[0]"));
-    case addr::TC4H: return make_reg("TC4H", "R0 R0 R0 R0 R0 R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, "TC4H2", "TC4H1", "TC4H0"));
-    case addr::TCCR4A: return make_reg("TCCR4A", "R/W R/W R/W R/W W W R/W R/W", "0x00",
-        make_bits("COM4A1", "COM4A0", "COM4B1", "COM4B0", "FOC4A", "FOC4B", "PWM4A", "PWM4B"));
-    case addr::TCCR4B: return make_reg("TCCR4B", "R/W R/W* R/W R/W R/W R/W R/W R/W", "0x00",
-        make_bits("PWM4X", "PSR4", "DTPS41", "DTPS40", "CS43", "CS42", "CS41", "CS40"));
-    case addr::TCCR4C: return make_reg("TCCR4C", "R/W R/W R/W R/W R/W R/W W R/W", "0x00",
-        make_bits("COM4A1S", "COM4A0S", "COM4B1S", "COM4B0S", "COM4D1S", "COM4D0S", "FOC4D", "PWM4D"));
-    case addr::TCCR4D: return make_reg("TCCR4D", "R/W R/W R/W R/W R/W R/W* R/W R/W", "0x00",
-        make_bits("FPIE4", "FPEN4", "FPNC4", "FPES4", "FPAC4", "FPF4", "WGM41", "WGM40"));
-    case addr::TCCR4E: return make_reg("TCCR4E", "R/W x8", "0x00",
-        make_bits("TLOCK4", "ENHC4", "OC4OE5", "OC4OE4", "OC4OE3", "OC4OE2", "OC4OE1", "OC4OE0"));
-    case addr::CLKSEL0: return make_reg("CLKSEL0", "R/W R/W R/W R/W R/W R/W R0 R/W", "fuse-dependent",
-        make_bits("RCSUT1", "RCSUT0", "EXSUT1", "EXSUT0", "RCE", "EXTE", nullptr, "CLKS"));
-    case addr::CLKSEL1: return make_reg("CLKSEL1", "R/W x8", "0x20",
-        make_bits("RCCKSEL3", "RCCKSEL2", "RCCKSEL1", "RCCKSEL0", "EXCKSEL3", "EXCKSEL2", "EXCKSEL1", "EXCKSEL0"));
-    case addr::CLKSTA: return make_reg("CLKSTA", "R0 R0 R0 R0 R0 R0 R R", "clock-state",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "RCON", "EXTON"));
-    case addr::UCSR1A: return make_reg("UCSR1A", "R R/W* R R R R R/W R/W", "0x20",
-        make_bits("RXC1", "TXC1", "UDRE1", "FE1", "DOR1", "PE1", "U2X1", "MPCM1"));
-    case addr::UCSR1B: return make_reg("UCSR1B", "R/W x8", "0x00",
-        make_bits("RXCIE1", "TXCIE1", "UDRIE1", "RXEN1", "TXEN1", "UCSZ12", "RXB81", "TXB81"));
-    case addr::UCSR1C: return make_reg("UCSR1C", "R/W x8", "0x06",
-        make_bits("UMSEL11", "UMSEL10", "UPM11", "UPM10", "USBS1", "UCSZ11", "UCSZ10", "UCPOL1"));
-    case addr::UCSR1D: return make_reg("UCSR1D", "R0 R0 R0 R0 R0 R0 R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "CTSEN", "RTSEN"));
-    case addr::UBRR1L: return make_reg("UBRR1L", "R/W x8", "0x00",
-        make_bits("UBRR1[7]", "UBRR1[6]", "UBRR1[5]", "UBRR1[4]", "UBRR1[3]", "UBRR1[2]", "UBRR1[1]", "UBRR1[0]"));
-    case addr::UBRR1H: return make_reg("UBRR1H", "R0 R0 R0 R0 R/W R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, "UBRR1[11]", "UBRR1[10]", "UBRR1[9]", "UBRR1[8]"));
-    case addr::UDR1: return make_reg("UDR1", "R/W* x8", "0x00",
-        make_bits("UDR1[7]", "UDR1[6]", "UDR1[5]", "UDR1[4]", "UDR1[3]", "UDR1[2]", "UDR1[1]", "UDR1[0]"));
-    case addr::OCR4A: return make_reg("OCR4A", "R/W x8", "0x00",
-        make_bits("OCR4A7", "OCR4A6", "OCR4A5", "OCR4A4", "OCR4A3", "OCR4A2", "OCR4A1", "OCR4A0"));
-    case addr::OCR4B: return make_reg("OCR4B", "R/W x8", "0x00",
-        make_bits("OCR4B7", "OCR4B6", "OCR4B5", "OCR4B4", "OCR4B3", "OCR4B2", "OCR4B1", "OCR4B0"));
-    case addr::OCR4C: return make_reg("OCR4C", "R/W x8", "0x00",
-        make_bits("OCR4C7", "OCR4C6", "OCR4C5", "OCR4C4", "OCR4C3", "OCR4C2", "OCR4C1", "OCR4C0"));
-    case addr::OCR4D: return make_reg("OCR4D", "R/W x8", "0x00",
-        make_bits("OCR4D7", "OCR4D6", "OCR4D5", "OCR4D4", "OCR4D3", "OCR4D2", "OCR4D1", "OCR4D0"));
-    case addr::DT4: return make_reg("DT4", "R/W x8", "0x00",
-        make_bits("DT4H3", "DT4H2", "DT4H1", "DT4H0", "DT4L3", "DT4L2", "DT4L1", "DT4L0"));
-    case addr::UHWCON: return make_reg("UHWCON", "R0 R0 R0 R0 R0 R0 R0 R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "UVREGE"));
-    case addr::USBCON: return make_reg("USBCON", "R/W R0 R/W R/W R0 R0 R0 R/W", "0x20",
-        make_bits("USBE", nullptr, "FRZCLK", "OTGPADE", nullptr, nullptr, nullptr, "VBUSTE"));
-    case addr::USBSTA: return make_reg("USBSTA", "R0 R0 R0 R0 R0 R0 R R", "pin-state",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "ID", "VBUS"));
-    case addr::USBINT: return make_reg("USBINT", "R0 R0 R0 R0 R0 R0 R0 R/W*", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "VBUSTI"));
-    case addr::UDCON: return make_reg("UDCON", "R0 R0 R0 R0 R/W R/W R/W* R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, "RSTCPU", "LSM", "RMWKUP", "DETACH"));
-    case addr::UDINT: return make_reg("UDINT", "R0 R/W* R/W* R/W* R/W* R/W* R/W* R/W*", "0x00",
-        make_bits(nullptr, "UPRSMI", "EORSMI", "WAKEUPI", "EORSTI", "SOFI", "MSOFI", "SUSPI"));
-    case addr::UDIEN: return make_reg("UDIEN", "R0 R/W R/W R/W R/W R/W R/W R/W", "0x00",
-        make_bits(nullptr, "UPRSME", "EORSME", "WAKEUPE", "EORSTE", "SOFE", "MSOFE", "SUSPE"));
-    case addr::UDADDR: return make_reg("UDADDR", "R/W x8", "0x00",
-        make_bits("ADDEN", "UADD6", "UADD5", "UADD4", "UADD3", "UADD2", "UADD1", "UADD0"));
-    case addr::UDFNUML: return make_reg("UDFNUML", "R x8", "0x00",
-        make_bits("FNUM7", "FNUM6", "FNUM5", "FNUM4", "FNUM3", "FNUM2", "FNUM1", "FNUM0"));
-    case addr::UDFNUMH: return make_reg("UDFNUMH", "R0 R0 R0 R0 R0 R R R", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, "FNUM10", "FNUM9", "FNUM8"));
-    case addr::UDMFN: return make_reg("UDMFN", "R0 R0 R0 R/W* R0 R0 R0 R0", "0x00",
-        make_bits(nullptr, nullptr, nullptr, "FNCERR", nullptr, nullptr, nullptr, nullptr));
-    case addr::UEINTX: return make_reg("UEINTX", "R/W* R/W* R R/W* R/W* R/W* R/W* R/W*", "0x00",
-        make_bits("FIFOCON", "NAKINI", "RWAL", "NAKOUTI", "RXSTPI", "RXOUTI", "STALLEDI", "TXINI"));
-    case addr::UENUM: return make_reg("UENUM", "R0 R0 R0 R0 R0 R/W R/W R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, "EPNUM2", "EPNUM1", "EPNUM0"));
-    case addr::UERST: return make_reg("UERST", "R0 R/W* R/W* R/W* R/W* R/W* R/W* R/W*", "0x00",
-        make_bits(nullptr, "EPRST6", "EPRST5", "EPRST4", "EPRST3", "EPRST2", "EPRST1", "EPRST0"));
-    case addr::UECONX: return make_reg("UECONX", "R0 R0 R/W* R/W* R/W* R0 R0 R/W", "0x00",
-        make_bits(nullptr, nullptr, nullptr, "STALLRQ", "STALLRQC", "RSTDT", nullptr, "EPEN"));
-    case addr::UECFG0X: return make_reg("UECFG0X", "R/W R/W R0 R0 R0 R0 R0 R/W", "0x00",
-        make_bits("EPTYPE1", "EPTYPE0", nullptr, nullptr, nullptr, nullptr, nullptr, "EPDIR"));
-    case addr::UECFG1X: return make_reg("UECFG1X", "R/W R/W R/W R/W R/W R/W R0 R0", "0x00",
-        make_bits("EPSIZE2", "EPSIZE1", "EPSIZE0", "EPBK1", "EPBK0", "ALLOC", nullptr, nullptr));
-    case addr::UESTA0X: return make_reg("UESTA0X", "R R/W* R/W* R0 R R R R", "0x00",
-        make_bits("CFGOK", "OVERFI", "UNDERFI", nullptr, "DTSEQ1", "DTSEQ0", "NBUSYBK1", "NBUSYBK0"));
-    case addr::UESTA1X: return make_reg("UESTA1X", "R0 R0 R0 R0 R0 R R R", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, "CTRLDIR", "CURRBK1", "CURRBK0"));
-    case addr::UEIENX: return make_reg("UEIENX", "R/W R/W R0 R/W R/W R/W R/W R/W", "0x00",
-        make_bits("FLERRE", "NAKINE", nullptr, "NAKOUTE", "RXSTPE", "RXOUTE", "STALLEDE", "TXINE"));
-    case addr::UEDATX: return make_reg("UEDATX", "R/W* x8", "FIFO-state",
-        make_bits("DAT7", "DAT6", "DAT5", "DAT4", "DAT3", "DAT2", "DAT1", "DAT0"));
-    case addr::UEBCLX: return make_reg("UEBCLX", "R x8", "0x00",
-        make_bits("BYCT7", "BYCT6", "BYCT5", "BYCT4", "BYCT3", "BYCT2", "BYCT1", "BYCT0"));
-    case addr::UEBCHX: return make_reg("UEBCHX", "R0 R0 R0 R0 R0 R R R", "0x00",
-        make_bits(nullptr, nullptr, nullptr, nullptr, nullptr, "BYCT10", "BYCT9", "BYCT8"));
-    case addr::UEINT: return make_reg("UEINT", "R0 R R R R R R R", "0x00",
-        make_bits(nullptr, "EPINT6", "EPINT5", "EPINT4", "EPINT3", "EPINT2", "EPINT1", "EPINT0"));
-
-    default:
-        return register_info_t{};
-    }
-}
-
-template <std::size_t... Indexes>
-constexpr std::array<register_info_t, 256> build_register_info_impl(std::index_sequence<Indexes...>)
-{
-    return {{ register_info_at(static_cast<uint8_t>(Indexes))... }};
-}
-
-static constexpr std::array<register_info_t, 256> REGISTER_INFO = build_register_info_impl(std::make_index_sequence<256>{});
 
 } // namespace reg
 } // namespace absim
