@@ -264,6 +264,22 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.core_state.cpu.spi_transmit_zero_cycle);
     ar(a.core_state.cpu.spi_clock_cycles);
 
+    ar(a.core_state.cpu.twi_prev_cycle);
+    ar(a.core_state.cpu.twi_done_cycle);
+    ar(a.core_state.cpu.twi_mode);
+    ar(a.core_state.cpu.twi_pending);
+    ar(a.core_state.cpu.twi_status);
+    ar(a.core_state.cpu.twi_address);
+    ar(a.core_state.cpu.twi_busy);
+    ar(a.core_state.cpu.twi_started);
+    ar(a.core_state.cpu.twi_repeated_start);
+    ar(a.core_state.cpu.twi_reading);
+    ar(a.core_state.cpu.twi_general_call);
+    ar(a.core_state.cpu.twi_pull_scl_low);
+    ar(a.core_state.cpu.twi_pull_sda_low);
+    ar(a.core_state.cpu.twi_external_scl_low);
+    ar(a.core_state.cpu.twi_external_sda_low);
+
     ar(a.core_state.cpu.eeprom_prev_cycle);
     ar(a.core_state.cpu.eeprom_clear_eempe_cycles);
     ar(a.core_state.cpu.eeprom_write_addr);

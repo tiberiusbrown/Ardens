@@ -5,6 +5,7 @@
 #include "absim_adc.hpp"
 #include "absim_pll.hpp"
 #include "absim_spi.hpp"
+#include "absim_twi.hpp"
 #include "absim_eeprom.hpp"
 #include "absim_w25q128.hpp"
 #include "absim_sound.hpp"
@@ -23,6 +24,7 @@ void atmega32u4_t::st_handle_prr0(
     cpu.data[reg::addr::PRR0] = x;
     cpu.update_sync_timers();
     cpu.adc_handle_prr0(x);
+    cpu.twi_handle_prr0(x);
 }
 
 void atmega32u4_t::st_handle_prr1(
@@ -44,13 +46,22 @@ void atmega32u4_t::st_handle_pin(
         cpu.data[reg::addr::PINC] = cpu.data[reg::addr::PORTC];
 }
 
+void atmega32u4_t::st_handle_ddrd(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    cpu.data[ptr] = x;
+    if(cpu.twi_link)
+        cpu.twi_link->sync_lines();
+}
+
 void atmega32u4_t::st_handle_port(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    // TODO: handle pullup behavior
     cpu.data[ptr] = x;
     if(ptr == reg::addr::PORTC)
         cpu.data[reg::addr::PINC] = x;
+    if(ptr == reg::addr::PORTD && cpu.twi_link)
+        cpu.twi_link->sync_lines();
 }
 
 void atmega32u4_t::st_handle_mcucr(
@@ -393,6 +404,17 @@ ARDENS_FORCEINLINE void atmega32u4_t::check_all_interrupts()
         if(check_interrupt(0x46, i & reg::bit::TIFR3::TOV3, tifr3)) return; // TIMER3 OVF
     }
 
+    auto const& twcr = data[reg::addr::TWCR];
+    i = (twcr & (reg::bit::TWCR::TWINT | reg::bit::TWCR::TWIE)) ==
+        (reg::bit::TWCR::TWINT | reg::bit::TWCR::TWIE) ?
+        reg::bit::TWCR::TWINT :
+        0;
+    if(i)
+    {
+        uint8_t dummy = i;
+        if(check_interrupt(0x48, i, dummy)) return; // TWI
+    }
+
     i = tifr4 & timsk4;
     if(i)
     {
@@ -447,6 +469,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         case PQ_PLL: update_pll(); break;
         case PQ_ADC: update_adc(); break;
         case PQ_SPM: update_spm(); break;
+        case PQ_TWI: update_twi(); break;
         case PQ_INTERRUPT: check_all_interrupts(); break;
         default: break;
         }
@@ -556,6 +579,7 @@ void atmega32u4_t::update_all()
     update_sync_timers();
     update_timer4();
     update_usb();
+    update_twi();
     update_sound();
 }
 

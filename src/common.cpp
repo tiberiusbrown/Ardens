@@ -236,11 +236,260 @@ void platform_set_title(char const* title)
         platform_services.set_title(title);
 }
 
+bool linked_secondary_arduboy_connected()
+{
+    return app.linked_secondary_arduboy != nullptr;
+}
+
+static void set_unpressed_buttons(absim::arduboy_t& a)
+{
+    auto& cpu = a.core_state.cpu;
+    cpu.data[absim::reg::addr::PINB] = absim::reg::bit::PINB::PINB4;
+    cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
+    cpu.data[absim::reg::addr::PINF] =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
+}
+
+static void set_current_buttons(absim::arduboy_t& a)
+{
+    // PINF: 4,5,6,7=D,L,R,U
+    // PINE: 6=A
+    // PINB: 4=B
+    uint8_t pinf =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
+    uint8_t pine = absim::reg::bit::PINE::PINE6;
+    uint8_t pinb = absim::reg::bit::PINB::PINB4;
+
+    std::array<ImGuiKey, 4> keys =
+    {
+        ImGuiKey_UpArrow,
+        ImGuiKey_RightArrow,
+        ImGuiKey_DownArrow,
+        ImGuiKey_LeftArrow,
+    };
+    std::array<int, 4> tkeys =
+    {
+        TOUCH_U, TOUCH_R, TOUCH_D, TOUCH_L,
+    };
+    auto touch = touched_buttons();
+
+    std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
+    std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
+
+    if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~absim::reg::bit::PINF::PINF7;
+    if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~absim::reg::bit::PINF::PINF6;
+    if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~absim::reg::bit::PINF::PINF4;
+    if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~absim::reg::bit::PINF::PINF5;
+
+    if( ImGui::IsKeyDown(ImGuiKey_A) ||
+        ImGui::IsKeyDown(ImGuiKey_Z) ||
+        touch.btns[TOUCH_A])
+        pine &= ~absim::reg::bit::PINE::PINE6;
+    if( ImGui::IsKeyDown(ImGuiKey_B) ||
+        ImGui::IsKeyDown(ImGuiKey_S) ||
+        ImGui::IsKeyDown(ImGuiKey_X) ||
+        touch.btns[TOUCH_B])
+        pinb &= ~absim::reg::bit::PINB::PINB4;
+
+    auto& cpu = a.core_state.cpu;
+    cpu.data[absim::reg::addr::PINB] = pinb;
+    cpu.data[absim::reg::addr::PINE] = pine;
+    cpu.data[absim::reg::addr::PINF] = pinf;
+}
+
+void apply_runtime_settings(absim::arduboy_t& a)
+{
+    a.core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    a.profiler_state.frame_bytes_total = 1024;
+    a.debugger_state.allow_nonstep_breakpoints =
+        a.debugger_state.break_step == 0xffffffff || settings.enable_step_breaks;
+
+    auto& display = a.peripherals.display;
+    display.enable_filter = settings.display_auto_filter;
+    display.enable_current_limiting = (settings.display_current_modeling != 0);
+    display.ref_segment_current = 0.195f;
+    switch(settings.display_current_modeling)
+    {
+    case 0:  display.current_limit_slope = 0.f;   break;
+    case 1:  display.current_limit_slope = 0.75f; break;
+    case 2:  display.current_limit_slope = 0.45f; break;
+    case 3:  display.current_limit_slope = 0.f;   break;
+    default: display.current_limit_slope = 0.f;   break;
+    }
+
+    switch(settings.fxport)
+    {
+    case FXPORT_D1:
+        a.peripherals.fxport_reg = absim::reg::addr::PORTD;
+        a.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD1;
+        break;
+    case FXPORT_D2:
+        a.peripherals.fxport_reg = absim::reg::addr::PORTD;
+        a.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD2;
+        break;
+    case FXPORT_E2:
+        a.peripherals.fxport_reg = absim::reg::addr::PORTE;
+        a.peripherals.fxport_mask = absim::reg::bit::PORTE::PORTE2;
+        break;
+    default:
+        break;
+    }
+
+    switch(settings.display)
+    {
+    case DISPLAY_SSD1306:
+        display.type = absim::display_t::SSD1306;
+        break;
+    case DISPLAY_SSD1309:
+        display.type = absim::display_t::SSD1309;
+        break;
+    case DISPLAY_SH1106:
+        display.type = absim::display_t::SH1106;
+        break;
+    default:
+        break;
+    }
+}
+
+void disconnect_linked_secondary_arduboy()
+{
+    app.linked_secondary_input_focus = false;
+    app.linked_i2c_cable.disconnect();
+
+    platform_destroy_texture(app.linked_secondary_display_texture);
+    app.linked_secondary_display_texture = {};
+    app.linked_secondary_display_texture_zoom = -1;
+    app.linked_secondary_arduboy.reset();
+}
+
+static void preroll_linked_secondary_arduboy()
+{
+    if(!app.linked_secondary_arduboy) return;
+
+    apply_runtime_settings(*app.linked_secondary_arduboy);
+    set_unpressed_buttons(*app.linked_secondary_arduboy);
+    app.linked_secondary_arduboy->debugger_state.paused = false;
+    app.linked_i2c_cable.update_lines();
+    app.linked_secondary_arduboy->advance(50ull * 1000000000ull);
+    app.linked_i2c_cable.update_lines();
+}
+
+static bool load_linked_secondary_arduboy(bool preroll)
+{
+    auto& primary = app.emulator;
+    if(!primary.core_state.cpu.decoded || primary.program_state.prog_filedata.empty())
+        return false;
+
+    auto secondary = std::make_unique<absim::arduboy_t>();
+    secondary->program_state.cfg = primary.program_state.cfg;
+    absim::istrstream f(
+        (char const*)primary.program_state.prog_filedata.data(),
+        (int)primary.program_state.prog_filedata.size());
+    std::string err = secondary->load_file(primary.program_state.prog_filename.c_str(), f);
+    if(!err.empty())
+    {
+        app.dropfile_err = err;
+        return false;
+    }
+
+    app.linked_secondary_arduboy = std::move(secondary);
+    app.linked_i2c_cable.connect({ &primary, app.linked_secondary_arduboy.get() });
+    app.linked_i2c_cable.update_lines();
+    if(preroll)
+        preroll_linked_secondary_arduboy();
+    return true;
+}
+
+bool connect_linked_secondary_arduboy()
+{
+    disconnect_linked_secondary_arduboy();
+    return load_linked_secondary_arduboy(false);
+}
+
+static void reset_linked_secondary_arduboy()
+{
+    if(!app.linked_secondary_arduboy) return;
+
+    app.linked_i2c_cable.disconnect();
+    app.linked_secondary_arduboy.reset();
+
+    load_linked_secondary_arduboy(true);
+}
+
+void reset_primary_simulation()
+{
+    app.emulator.reset();
+    load_savedata();
+    reset_linked_secondary_arduboy();
+}
+
+static void advance_linked_secondary(uint64_t ps)
+{
+    if(!app.linked_secondary_arduboy || ps == 0) return;
+
+    bool prev_paused = app.linked_secondary_arduboy->debugger_state.paused;
+    app.linked_secondary_arduboy->debugger_state.paused = false;
+    apply_runtime_settings(*app.linked_secondary_arduboy);
+    if(!app.linked_secondary_input_focus)
+        set_unpressed_buttons(*app.linked_secondary_arduboy);
+    app.linked_secondary_arduboy->advance(ps);
+    app.linked_secondary_arduboy->debugger_state.paused = prev_paused;
+}
+
+void advance_primary(uint64_t ps)
+{
+    if(!app.linked_secondary_arduboy)
+    {
+        app.emulator.advance(ps);
+        return;
+    }
+
+    constexpr uint64_t LINK_UPDATE_PS = 10ull * 1000000ull;
+    while(ps > 0 && !app.emulator.debugger_state.paused)
+    {
+        uint64_t chunk = std::min<uint64_t>(ps, LINK_UPDATE_PS);
+        uint64_t before = app.emulator.core_state.cpu.cycle_count;
+
+        app.linked_i2c_cable.update_lines();
+        app.emulator.advance(chunk);
+        app.linked_i2c_cable.update_lines();
+
+        uint64_t cycles = app.emulator.core_state.cpu.cycle_count - before;
+        advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
+        app.linked_i2c_cable.update_lines();
+
+        if(cycles == 0 && chunk >= ps)
+            break;
+        ps -= chunk;
+    }
+}
+
+void advance_primary_instr()
+{
+    uint64_t before = app.emulator.core_state.cpu.cycle_count;
+    app.emulator.advance_instr();
+    uint64_t cycles = app.emulator.core_state.cpu.cycle_count - before;
+    if(app.linked_secondary_arduboy)
+    {
+        app.linked_i2c_cable.update_lines();
+        advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
+        app.linked_i2c_cable.update_lines();
+    }
+}
+
 extern "C" int load_file(
     char const* param, char const* filename, uint8_t const* data, size_t size)
 {
     absim::istrstream f((char const*)data, size);
     bool save = !strcmp(param, "save");
+    if(!save)
+        disconnect_linked_secondary_arduboy();
     app.dropfile_err = app.emulator.load_file(filename, f, save);
     autoset_from_device_type();
     if(app.dropfile_err.empty())
@@ -872,57 +1121,29 @@ void frame_logic()
     if(dt > 100) dt = 100;
     if(app.emulator.core_state.cpu.decoded && !app.emulator.debugger_state.paused)
     {
-        // PINF: 4,5,6,7=D,L,R,U
-        // PINE: 6=A
-        // PINB: 4=B
-        uint8_t pinf =
-            absim::reg::bit::PINF::PINF7 |
-            absim::reg::bit::PINF::PINF6 |
-            absim::reg::bit::PINF::PINF5 |
-            absim::reg::bit::PINF::PINF4;
-        uint8_t pine = absim::reg::bit::PINE::PINE6;
-        uint8_t pinb = absim::reg::bit::PINB::PINB4;
-
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
-            std::array<ImGuiKey, 4> keys =
+            bool input_to_secondary =
+                !settings.fullzoom &&
+                settings.open_linked_secondary_arduboy &&
+                app.linked_secondary_input_focus &&
+                app.linked_secondary_arduboy != nullptr;
+
+            if(input_to_secondary)
             {
-                ImGuiKey_UpArrow,
-                ImGuiKey_RightArrow,
-                ImGuiKey_DownArrow,
-                ImGuiKey_LeftArrow,
-            };
-            std::array<int, 4> tkeys =
+                set_unpressed_buttons(app.emulator);
+                set_current_buttons(*app.linked_secondary_arduboy);
+            }
+            else
             {
-                TOUCH_U, TOUCH_R, TOUCH_D, TOUCH_L,
-            };
-            auto touch = touched_buttons();
-
-            std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
-            std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
-
-            if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~absim::reg::bit::PINF::PINF7;
-            if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~absim::reg::bit::PINF::PINF6;
-            if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~absim::reg::bit::PINF::PINF4;
-            if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~absim::reg::bit::PINF::PINF5;
-
-            if( ImGui::IsKeyDown(ImGuiKey_A) ||
-                ImGui::IsKeyDown(ImGuiKey_Z) ||
-                touch.btns[TOUCH_A])
-                pine &= ~absim::reg::bit::PINE::PINE6;
-            if( ImGui::IsKeyDown(ImGuiKey_B) ||
-                ImGui::IsKeyDown(ImGuiKey_S) ||
-                ImGui::IsKeyDown(ImGuiKey_X) ||
-                touch.btns[TOUCH_B])
-                pinb &= ~absim::reg::bit::PINB::PINB4;
-
-            app.emulator.core_state.cpu.data[absim::reg::addr::PINB] = pinb;
-            app.emulator.core_state.cpu.data[absim::reg::addr::PINE] = pine;
-            app.emulator.core_state.cpu.data[absim::reg::addr::PINF] = pinf;
+                set_current_buttons(app.emulator);
+                if(app.linked_secondary_arduboy)
+                    set_unpressed_buttons(*app.linked_secondary_arduboy);
+            }
         }
 
         bool prev_paused = app.emulator.debugger_state.paused;
-        app.emulator.profiler_state.frame_bytes_total = 1024;
+        apply_runtime_settings(app.emulator);
 
         app.emulator.core_state.cpu.enabled_autobreaks.reset();
 #ifndef ARDENS_NO_GUI
@@ -932,54 +1153,6 @@ void frame_logic()
                 app.emulator.core_state.cpu.enabled_autobreaks.set(i);
 #endif
 
-        app.emulator.debugger_state.allow_nonstep_breakpoints =
-            app.emulator.debugger_state.break_step == 0xffffffff || settings.enable_step_breaks;
-        app.emulator.peripherals.display.enable_filter = settings.display_auto_filter;
-
-        app.emulator.peripherals.display.enable_current_limiting = (settings.display_current_modeling != 0);
-        app.emulator.peripherals.display.ref_segment_current = 0.195f;
-        switch(settings.display_current_modeling)
-        {
-        case 0:  app.emulator.peripherals.display.current_limit_slope = 0.f;   break;
-        case 1:  app.emulator.peripherals.display.current_limit_slope = 0.75f; break;
-        case 2:  app.emulator.peripherals.display.current_limit_slope = 0.45f; break;
-        case 3:  app.emulator.peripherals.display.current_limit_slope = 0.f;   break;
-        default: app.emulator.peripherals.display.current_limit_slope = 0.f;   break;
-        }
-
-        switch(settings.fxport)
-        {
-        case FXPORT_D1:
-            app.emulator.peripherals.fxport_reg = absim::reg::addr::PORTD;
-            app.emulator.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD1;
-            break;
-        case FXPORT_D2:
-            app.emulator.peripherals.fxport_reg = absim::reg::addr::PORTD;
-            app.emulator.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD2;
-            break;
-        case FXPORT_E2:
-            app.emulator.peripherals.fxport_reg = absim::reg::addr::PORTE;
-            app.emulator.peripherals.fxport_mask = absim::reg::bit::PORTE::PORTE2;
-            break;
-        default:
-            break;
-        }
-
-        switch(settings.display)
-        {
-        case DISPLAY_SSD1306:
-            app.emulator.peripherals.display.type = absim::display_t::SSD1306;
-            break;
-        case DISPLAY_SSD1309:
-            app.emulator.peripherals.display.type = absim::display_t::SSD1309;
-            break;
-        case DISPLAY_SH1106:
-            app.emulator.peripherals.display.type = absim::display_t::SH1106;
-            break;
-        default:
-            break;
-        }
-
         constexpr uint64_t MS_TO_PS = 1000000000ull;
         uint64_t dtps = dt * MS_TO_PS * 1000 / app.simulation_slowdown;
         if(gif_recording)
@@ -988,7 +1161,7 @@ void frame_logic()
             uint64_t ps = DT_20_MS - gif_ps_rem;
             while(dtps >= ps)
             {
-                app.emulator.advance(ps);
+                advance_primary(ps);
                 send_gif_frame(2, recording_pixels(false));
                 dtps -= ps;
                 ps = DT_20_MS;
@@ -997,7 +1170,7 @@ void frame_logic()
             gif_ps_rem += dtps;
         }
         if(dtps > 0)
-            app.emulator.advance(dtps * SPEEDUP);
+            advance_primary(dtps * SPEEDUP);
 
         check_save_savedata();
 
@@ -1024,11 +1197,9 @@ void frame_logic()
     if(app.emulator.core_state.cpu.decoded)
     {
         recreate_display_texture();
-        int z = app.display_texture_zoom;
-        std::vector<uint8_t> pixels;
-        pixels.resize(128 * 64 * 4 * z * z);
-        scalenx(pixels.data(), app.emulator.peripherals.display.filtered_pixels.data(), true);
-        platform_update_texture(app.display_texture, pixels.data(), pixels.size());
+        update_display_texture(
+            app.display_texture,
+            app.emulator.peripherals.display.filtered_pixels.data());
 
 #if ALLOW_SCREENSHOTS
         if(app.emulator.core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
@@ -1057,8 +1228,7 @@ void frame_logic()
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
     {
-        app.emulator.reset();
-        load_savedata();
+        reset_primary_simulation();
     }
 
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))

@@ -650,11 +650,11 @@ namespace bit
     namespace TWCR
     {
         static constexpr uint8_t TWIE = 1u << 0;
-        static constexpr uint8_t TWEA = 1u << 1;
-        static constexpr uint8_t TWSTA = 1u << 2;
-        static constexpr uint8_t TWSTO = 1u << 3;
-        static constexpr uint8_t TWWC = 1u << 4;
-        static constexpr uint8_t TWEN = 1u << 5;
+        static constexpr uint8_t TWEN = 1u << 2;
+        static constexpr uint8_t TWWC = 1u << 3;
+        static constexpr uint8_t TWSTO = 1u << 4;
+        static constexpr uint8_t TWSTA = 1u << 5;
+        static constexpr uint8_t TWEA = 1u << 6;
         static constexpr uint8_t TWINT = 1u << 7;
     }
 

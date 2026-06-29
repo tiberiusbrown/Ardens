@@ -36,8 +36,7 @@ void window_simulation(bool& open)
         if(Button("Reset"))
         {
             app.emulator.debugger_state.paused = false;
-            app.emulator.reset();
-            load_savedata();
+            reset_primary_simulation();
         }
         SameLine();
         if(app.emulator.debugger_state.paused)
@@ -70,7 +69,7 @@ void window_simulation(bool& open)
         SameLine();
         if(Button("Step Into"))
         {
-            app.emulator.advance_instr();
+            advance_primary_instr();
             app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
         }
         if(IsItemHovered())
@@ -95,7 +94,7 @@ void window_simulation(bool& open)
             }
             else
             {
-                app.emulator.advance_instr();
+                advance_primary_instr();
                 app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
             }
         }

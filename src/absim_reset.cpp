@@ -40,6 +40,11 @@ void atmega32u4_t::reset()
     st_handlers[reg::addr::PRR1] = st_handle_prr1;
     st_handlers[reg::addr::GTCCR] = st_handle_gtccr;
     st_handlers[reg::addr::ADCSRA] = adc_st_handle_adcsra;
+    st_handlers[reg::addr::TWSR] = twi_handle_st_twsr;
+    st_handlers[reg::addr::TWAR] = twi_handle_st_twar_or_twamr;
+    st_handlers[reg::addr::TWDR] = twi_handle_st_twdr;
+    st_handlers[reg::addr::TWCR] = twi_handle_st_twcr;
+    st_handlers[reg::addr::TWAMR] = twi_handle_st_twar_or_twamr;
 
     st_handlers[reg::addr::PINB] = st_handle_pin;
     st_handlers[reg::addr::PINC] = st_handle_pin;
@@ -49,7 +54,8 @@ void atmega32u4_t::reset()
 
     //st_handlers[reg::addr::PORTB] = st_handle_port;
     st_handlers[reg::addr::PORTC] = st_handle_port;
-    //st_handlers[reg::addr::PORTD] = st_handle_port;
+    st_handlers[reg::addr::DDRD] = st_handle_ddrd;
+    st_handlers[reg::addr::PORTD] = st_handle_port;
     //st_handlers[reg::addr::PORTE] = st_handle_port;
     //st_handlers[reg::addr::PORTF] = st_handle_port;
 
@@ -79,6 +85,7 @@ void atmega32u4_t::reset()
     ld_handlers[reg::addr::SPSR] = spi_handle_ld_spsr;
     ld_handlers[reg::addr::SPDR] = spi_handle_ld_spdr;
     ld_handlers[reg::addr::TCNT0] = timer0_handle_ld_tcnt;
+    ld_handlers[reg::addr::PIND] = twi_handle_ld_pind;
 
     st_handlers[reg::addr::MCUSR] = st_handle_mcusr;
     st_handlers[reg::addr::MCUCR] = st_handle_mcucr;
@@ -189,6 +196,30 @@ void atmega32u4_t::soft_reset()
     spi_clock_cycles = 4;
     spi_done_cycle = UINT64_MAX;
     spi_transmit_zero_cycle = UINT64_MAX;
+
+    twi_link = nullptr;
+    twi_link_endpoint = i2c_link_cable_t::BROADCAST_ENDPOINT;
+    twi_prev_cycle = cycle_count;
+    twi_done_cycle = UINT64_MAX;
+    twi_mode = TWI_MODE_IDLE;
+    twi_pending = TWI_PENDING_NONE;
+    twi_status = 0xf8;
+    twi_address = 0;
+    twi_busy = false;
+    twi_started = false;
+    twi_repeated_start = false;
+    twi_reading = false;
+    twi_general_call = false;
+    twi_pull_scl_low = false;
+    twi_pull_sda_low = false;
+    twi_external_scl_low = false;
+    twi_external_sda_low = false;
+    data[reg::addr::TWBR] = 0x00;
+    data[reg::addr::TWSR] = 0xf8;
+    data[reg::addr::TWAR] = 0xfe;
+    data[reg::addr::TWDR] = 0xff;
+    data[reg::addr::TWCR] = 0x00;
+    data[reg::addr::TWAMR] = 0x00;
 
     eeprom_prev_cycle = cycle_count;
     eeprom_clear_eempe_cycles = 0;

@@ -30,6 +30,7 @@ static void settings_read_line(
     } while(0)
     
     ARDENS_BOOL_SETTING(open_display);
+    ARDENS_BOOL_SETTING(open_linked_secondary_arduboy);
     ARDENS_BOOL_SETTING(open_display_buffer);
     ARDENS_BOOL_SETTING(open_display_internals);
     ARDENS_BOOL_SETTING(open_simulation);
@@ -103,6 +104,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     buf->appendf(#n__ "=%d\n", settings.n__)
 
     ARDENS_BOOL_SETTING(open_display);
+    ARDENS_BOOL_SETTING(open_linked_secondary_arduboy);
     ARDENS_BOOL_SETTING(open_display_buffer);
     ARDENS_BOOL_SETTING(open_display_internals);
     ARDENS_BOOL_SETTING(open_simulation);

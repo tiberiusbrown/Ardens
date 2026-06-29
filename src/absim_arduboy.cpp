@@ -1,7 +1,6 @@
 #include "absim.hpp"
 
 #include <algorithm>
-#include <iostream>
 
 #include <sstream>
 #include <tuple>
@@ -184,6 +183,568 @@ void arduboy_t::reset()
 
     if(core_state.cpu.program_loaded)
         core_state.cpu.decode();
+}
+
+twi_wire_state_t arduboy_t::twi_wire_state() const
+{
+    return core_state.cpu.twi_wire_state();
+}
+
+twi_wire_state_t arduboy_t::twi_drive_state() const
+{
+    return core_state.cpu.twi_drive_state();
+}
+
+void arduboy_t::set_twi_external_lines(bool scl_low, bool sda_low)
+{
+    core_state.cpu.set_twi_external_lines(scl_low, sda_low);
+}
+
+bool i2c_link_cable_t::endpoint_active(uint8_t endpoint) const
+{
+    return endpoint < num_endpoints && endpoints[endpoint].active;
+}
+
+void i2c_link_cable_t::reset_endpoint(endpoint_t& endpoint)
+{
+    endpoint = {};
+    endpoint.id = BROADCAST_ENDPOINT;
+}
+
+uint8_t i2c_link_cable_t::attach_endpoint()
+{
+    if(num_endpoints >= MAX_ENDPOINTS)
+        return BROADCAST_ENDPOINT;
+
+    uint8_t id = num_endpoints++;
+    auto& endpoint = endpoints[id];
+    reset_endpoint(endpoint);
+    endpoint.active = true;
+    endpoint.id = id;
+    return id;
+}
+
+void i2c_link_cable_t::disconnect()
+{
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        detach_endpoint(i);
+        reset_endpoint(endpoints[i]);
+    }
+    num_endpoints = 0;
+    updating_lines = false;
+    next_request_id = 1;
+    reset_transport();
+}
+
+void i2c_link_cable_t::sync_lines()
+{
+    refresh_lines();
+    poll_packets();
+}
+
+void i2c_link_cable_t::refresh_lines()
+{
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(!endpoint_active(i))
+            continue;
+
+        uint64_t sample_cycle = 0;
+        if(!endpoint_sample_cycle(i, sample_cycle))
+            continue;
+
+        bool external_scl_low = false;
+        bool external_sda_low = false;
+        for(uint8_t j = 0; j < num_endpoints; ++j)
+        {
+            if(i == j || !endpoint_active(j))
+                continue;
+            twi_wire_state_t drive{};
+            if(!endpoint_drive_state(j, sample_cycle, drive))
+                continue;
+            external_scl_low = external_scl_low || drive.scl_low;
+            external_sda_low = external_sda_low || drive.sda_low;
+        }
+        endpoint_set_external_lines(i, external_scl_low, external_sda_low);
+    }
+}
+
+void i2c_link_cable_t::update_lines()
+{
+    if(updating_lines)
+        return;
+    updating_lines = true;
+    refresh_lines();
+    poll_packets();
+    refresh_lines();
+    updating_lines = false;
+}
+
+void i2c_link_cable_t::master_start(uint8_t endpoint, bool repeated)
+{
+    (void)repeated;
+    if(!endpoint_active(endpoint))
+        return;
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(i != endpoint && endpoint_active(i))
+            pump_endpoint(i);
+    }
+    endpoints[endpoint].targets.clear();
+    poll_packets();
+}
+
+std::vector<uint8_t> i2c_link_cable_t::route_address_targets(
+    uint8_t endpoint, uint8_t address, bool& address_busy)
+{
+    std::vector<uint8_t> targets;
+    bool general_call = address == 0;
+    uint8_t nonzero_claims = 0;
+    address_busy = false;
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(!endpoint_active(i))
+            continue;
+        if(i != endpoint)
+            pump_endpoint(i);
+
+        bool claims = endpoint_claims_address(i, address, general_call);
+        if(!general_call && claims)
+            nonzero_claims++;
+
+        if(i == endpoint)
+            continue;
+
+        if(endpoint_can_address(i, address, general_call))
+            targets.push_back(i);
+        else if(claims)
+            address_busy = true;
+    }
+
+    if(!general_call && nonzero_claims != 1)
+    {
+        address_busy = false;
+        targets.clear();
+    }
+    return targets;
+}
+
+void i2c_link_cable_t::begin_request(
+    endpoint_t& endpoint,
+    pending_op_t op,
+    std::vector<uint8_t> const& targets,
+    packet_t const& packet)
+{
+    endpoint.pending_op = op;
+    endpoint.pending_request_id = next_request_id++;
+    endpoint.pending_targets = targets;
+    endpoint.pending_responses.clear();
+    endpoint.pending_address = packet.address;
+    endpoint.pending_data = packet.data;
+    endpoint.pending_read = packet.read;
+    endpoint.pending_master_ack = packet.master_ack;
+
+    packet_t p = packet;
+    p.request_id = endpoint.pending_request_id;
+    for(uint8_t target : targets)
+    {
+        p.to = target;
+        send_packet(p);
+    }
+}
+
+i2c_link_cable_t::result_t i2c_link_cable_t::finish_request(endpoint_t& endpoint)
+{
+    result_t result;
+    if(endpoint.pending_responses.size() < endpoint.pending_targets.size())
+    {
+        result.pending = true;
+        return result;
+    }
+
+    for(auto const& response : endpoint.pending_responses)
+    {
+        result.ack = result.ack || response.ack;
+        if(response.ack)
+            result.data = response.data;
+    }
+
+    endpoint.pending_op = I2C_PENDING_NONE;
+    endpoint.pending_request_id = 0;
+    endpoint.pending_targets.clear();
+    endpoint.pending_responses.clear();
+    return result;
+}
+
+i2c_link_cable_t::result_t i2c_link_cable_t::master_address(
+    uint8_t endpoint, uint8_t address, bool read)
+{
+    if(!endpoint_active(endpoint))
+        return {};
+
+    auto& e = endpoints[endpoint];
+    if(e.pending_op == I2C_PENDING_NONE)
+    {
+        bool address_busy = false;
+        auto targets = route_address_targets(endpoint, address, address_busy);
+        e.targets.clear();
+        if(targets.empty())
+        {
+            if(address_busy)
+            {
+                result_t result;
+                result.pending = true;
+                return result;
+            }
+            return {};
+        }
+
+        packet_t packet;
+        packet.type = packet_t::ADDRESS;
+        packet.from = endpoint;
+        packet.address = address & 0x7f;
+        packet.read = read;
+        packet.ack = false;
+        begin_request(e, I2C_PENDING_ADDRESS, targets, packet);
+    }
+
+    poll_packets();
+    auto targets = e.pending_targets;
+    auto result = finish_request(e);
+    if(!result.pending)
+    {
+        if(result.ack)
+            e.targets = targets;
+        else
+            e.targets.clear();
+    }
+    return result;
+}
+
+i2c_link_cable_t::result_t i2c_link_cable_t::master_write(
+    uint8_t endpoint, uint8_t address, uint8_t data)
+{
+    (void)address;
+    if(!endpoint_active(endpoint))
+        return {};
+
+    auto& e = endpoints[endpoint];
+    if(e.pending_op == I2C_PENDING_NONE)
+    {
+        if(e.targets.empty())
+            return {};
+        packet_t packet;
+        packet.type = packet_t::WRITE;
+        packet.from = endpoint;
+        packet.address = address & 0x7f;
+        packet.data = data;
+        begin_request(e, I2C_PENDING_WRITE, e.targets, packet);
+    }
+
+    poll_packets();
+    return finish_request(e);
+}
+
+i2c_link_cable_t::result_t i2c_link_cable_t::master_read(
+    uint8_t endpoint, uint8_t address, bool master_ack)
+{
+    (void)address;
+    if(!endpoint_active(endpoint))
+        return {};
+
+    auto& e = endpoints[endpoint];
+    if(e.pending_op == I2C_PENDING_NONE)
+    {
+        if(e.targets.empty())
+            return {};
+        std::vector<uint8_t> targets;
+        targets.push_back(e.targets.front());
+        packet_t packet;
+        packet.type = packet_t::READ;
+        packet.from = endpoint;
+        packet.address = address & 0x7f;
+        packet.master_ack = master_ack;
+        begin_request(e, I2C_PENDING_READ, targets, packet);
+    }
+
+    poll_packets();
+    return finish_request(e);
+}
+
+void i2c_link_cable_t::master_stop(uint8_t endpoint)
+{
+    if(!endpoint_active(endpoint))
+        return;
+
+    auto& e = endpoints[endpoint];
+    packet_t packet;
+    packet.type = packet_t::STOP;
+    packet.from = endpoint;
+    packet.request_id = next_request_id++;
+    for(uint8_t target : e.targets)
+    {
+        if(endpoint_active(target))
+        {
+            packet.to = target;
+            send_packet(packet);
+        }
+    }
+    e.targets.clear();
+    e.pending_op = I2C_PENDING_NONE;
+    e.pending_targets.clear();
+    e.pending_responses.clear();
+    poll_packets();
+}
+
+bool i2c_link_cable_t::drain_packets_once()
+{
+    bool progressed = false;
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(!endpoint_active(i))
+            continue;
+        packet_t packet;
+        while(receive_packet(i, packet))
+        {
+            handle_packet(i, packet);
+            progressed = true;
+        }
+    }
+    return progressed;
+}
+
+void i2c_link_cable_t::poll_packets()
+{
+    for(int i = 0; i < 20000 && drain_packets_once(); ++i)
+        refresh_lines();
+}
+
+void i2c_link_cable_t::pump_endpoint(uint8_t endpoint)
+{
+    if(!endpoint_active(endpoint))
+        return;
+    auto& endpoint_state = endpoints[endpoint];
+    if(endpoint_state.pumping)
+        return;
+
+    endpoint_state.pumping = true;
+    for(int i = 0; i < 20000 && endpoint_needs_pump(endpoint); ++i)
+    {
+        refresh_lines();
+        endpoint_pump_cycle(endpoint);
+        drain_packets_once();
+    }
+    refresh_lines();
+    endpoint_state.pumping = false;
+}
+
+void i2c_link_cable_t::handle_packet(uint8_t endpoint, packet_t const& packet)
+{
+    if(packet.type == packet_t::RESPONSE)
+    {
+        auto& e = endpoints[endpoint];
+        if(e.pending_op != I2C_PENDING_NONE &&
+            e.pending_request_id == packet.request_id)
+            e.pending_responses.push_back(packet);
+        return;
+    }
+
+    if(!endpoint_active(endpoint))
+        return;
+
+    packet_t response;
+    response.type = packet_t::RESPONSE;
+    response.from = endpoint;
+    response.to = packet.from;
+    response.address = packet.address;
+    response.request_id = packet.request_id;
+
+    switch(packet.type)
+    {
+    case packet_t::ADDRESS:
+        response.ack = endpoint_address(
+            endpoint, packet.address, packet.read, packet.address == 0);
+        if(response.ack)
+            pump_endpoint(endpoint);
+        send_packet(response);
+        break;
+
+    case packet_t::WRITE:
+        response.ack = endpoint_write(endpoint, packet.data);
+        if(response.ack)
+            pump_endpoint(endpoint);
+        send_packet(response);
+        break;
+
+    case packet_t::READ:
+        response.ack = true;
+        response.data = endpoint_read(endpoint, packet.master_ack);
+        pump_endpoint(endpoint);
+        send_packet(response);
+        break;
+
+    case packet_t::STOP:
+        endpoint_stop(endpoint);
+        pump_endpoint(endpoint);
+        break;
+
+    default:
+        break;
+    }
+}
+
+void i2c_local_link_cable_t::connect(std::vector<arduboy_t*> const& devices)
+{
+    disconnect();
+    for(auto* device : devices)
+    {
+        if(!device)
+            continue;
+
+        uint8_t endpoint = attach_endpoint();
+        if(endpoint == BROADCAST_ENDPOINT)
+            continue;
+
+        local_cpus[endpoint] = &device->core_state.cpu;
+        device->core_state.cpu.attach_i2c_link(this, endpoint);
+    }
+    refresh_lines();
+}
+
+void i2c_local_link_cable_t::reset_transport()
+{
+    for(auto& queue : queues)
+        queue.clear();
+}
+
+void i2c_local_link_cable_t::send_packet(packet_t const& packet)
+{
+    if(packet.to == BROADCAST_ENDPOINT)
+    {
+        for(uint8_t i = 0; i < num_endpoints; ++i)
+        {
+            if(i == packet.from || !endpoint_active(i))
+                continue;
+            packet_t p = packet;
+            p.to = i;
+            queues[i].push_back(p);
+        }
+    }
+    else if(packet.to < MAX_ENDPOINTS)
+    {
+        queues[packet.to].push_back(packet);
+    }
+}
+
+bool i2c_local_link_cable_t::receive_packet(uint8_t endpoint, packet_t& packet)
+{
+    if(endpoint >= MAX_ENDPOINTS || queues[endpoint].empty())
+        return false;
+    packet = queues[endpoint].front();
+    queues[endpoint].pop_front();
+    return true;
+}
+
+void i2c_local_link_cable_t::detach_endpoint(uint8_t endpoint)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return;
+
+    cpu->attach_i2c_link(nullptr, BROADCAST_ENDPOINT);
+    cpu->set_twi_external_lines(false, false);
+    local_cpus[endpoint] = nullptr;
+}
+
+bool i2c_local_link_cable_t::endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return false;
+    cycle = cpu->cycle_count;
+    return true;
+}
+
+bool i2c_local_link_cable_t::endpoint_drive_state(
+    uint8_t endpoint, uint64_t sample_cycle, twi_wire_state_t& state)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return false;
+    state = cpu->twi_drive_state_at(sample_cycle);
+    return true;
+}
+
+void i2c_local_link_cable_t::endpoint_set_external_lines(
+    uint8_t endpoint, bool scl_low, bool sda_low)
+{
+    if(auto* cpu = local_cpu(endpoint))
+        cpu->set_twi_external_lines(scl_low, sda_low);
+}
+
+bool i2c_local_link_cable_t::endpoint_needs_pump(uint8_t endpoint)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && (
+        cpu->twi_busy ||
+        (cpu->data[reg::addr::TWCR] & reg::bit::TWCR::TWINT));
+}
+
+void i2c_local_link_cable_t::endpoint_pump_cycle(uint8_t endpoint)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return;
+    cpu->advance_cycle();
+    cpu->update_all();
+    cpu->sound_buffer.clear();
+}
+
+bool i2c_local_link_cable_t::endpoint_claims_address(
+    uint8_t endpoint, uint8_t address, bool general_call)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_claims_address(address, general_call);
+}
+
+bool i2c_local_link_cable_t::endpoint_can_address(
+    uint8_t endpoint, uint8_t address, bool general_call)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_can_address(address, general_call);
+}
+
+bool i2c_local_link_cable_t::endpoint_address(
+    uint8_t endpoint, uint8_t address, bool read, bool general_call)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_address(address, read, general_call);
+}
+
+bool i2c_local_link_cable_t::endpoint_write(uint8_t endpoint, uint8_t data)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_write(data);
+}
+
+uint8_t i2c_local_link_cable_t::endpoint_read(uint8_t endpoint, bool master_ack)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu ? cpu->twi_slave_read(master_ack) : 0xff;
+}
+
+void i2c_local_link_cable_t::endpoint_stop(uint8_t endpoint)
+{
+    if(auto* cpu = local_cpu(endpoint))
+        cpu->twi_slave_stop();
+}
+
+atmega32u4_t* i2c_local_link_cable_t::local_cpu(uint8_t endpoint) const
+{
+    if(endpoint >= MAX_ENDPOINTS)
+        return nullptr;
+    return local_cpus[endpoint];
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(

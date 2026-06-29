@@ -12,6 +12,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <deque>
 #include <istream>
 #include <ostream>
 #include <algorithm>
@@ -65,6 +66,285 @@ struct int_vector_info_t
     char const* desc;
 };
 extern std::array<int_vector_info_t, 43> const INT_VECTOR_INFO;
+
+struct twi_wire_state_t
+{
+    bool scl_low;
+    bool sda_low;
+    bool scl;
+    bool sda;
+};
+
+struct arduboy_t;
+struct atmega32u4_t;
+
+// I2C/Qwiic-style link cable core. This owns the protocol and endpoint state;
+// subclasses provide endpoint adapters and the communication layer.
+//
+// A network-backed cable should be implemented as another subclass with
+// send_packet()/receive_packet() backed by a socket or other message transport
+// instead of in-process queues. The subclass would serialize packet_t as a small
+// transport message containing the packet type, source endpoint id, destination
+// endpoint id, 7-bit address, data byte, request id, and ACK/read/write flags.
+// The transport must preserve FIFO ordering for packets sent from one endpoint
+// to another; it can otherwise be asynchronous. If receive_packet() has nothing
+// available yet, it simply returns false and the master-side TWI state machine
+// will keep SCL stretched until the matching RESPONSE arrives.
+//
+// Endpoint ids are cable-local routing ids, not pointers to emulator objects.
+// A network implementation would negotiate or configure endpoint membership
+// during connection setup, then call attach_endpoint() for the endpoint(s) that
+// are represented in the current process. Remote endpoints are reached only by
+// sending packets through the transport. The remote process runs its own cable
+// object, delivers ADDRESS/WRITE/READ/STOP packets to its local Arduboy TWI
+// state machine, and sends RESPONSE packets back with the original request_id.
+// This keeps protocol behavior here and leaves TCP/UDP/WebRTC/etc. as a pure
+// packet-delivery concern.
+//
+// The endpoint_* virtual hooks are endpoint adapters, not an object-sharing
+// API. The process-local specialization below implements them by touching local
+// atmega32u4_t objects. A network transport would implement them by touching
+// only endpoints that exist in the current process and by keeping mirrored
+// metadata for remote endpoints, such as address claims, ready/busy state, and
+// wire drive state. Remote endpoints must never be represented here as
+// arduboy_t/CPU pointers.
+struct i2c_link_cable_t
+{
+    static constexpr uint8_t MAX_ENDPOINTS = 128;
+    static constexpr uint8_t BROADCAST_ENDPOINT = 0xff;
+
+    struct packet_t
+    {
+        enum type_t : uint8_t
+        {
+            ADDRESS,
+            WRITE,
+            READ,
+            STOP,
+            RESPONSE,
+        };
+
+        type_t type = RESPONSE;
+        uint8_t from = BROADCAST_ENDPOINT;
+        uint8_t to = BROADCAST_ENDPOINT;
+        uint8_t address = 0;
+        uint8_t data = 0xff;
+        uint32_t request_id = 0;
+        bool read = false;
+        bool repeated = false;
+        bool master_ack = false;
+        bool ack = false;
+    };
+
+    struct result_t
+    {
+        bool pending = false;
+        bool ack = false;
+        uint8_t data = 0xff;
+    };
+
+    virtual ~i2c_link_cable_t() = default;
+
+    void disconnect();
+    void sync_lines();
+    void refresh_lines();
+    void update_lines();
+
+    void master_start(uint8_t endpoint, bool repeated);
+    result_t master_address(uint8_t endpoint, uint8_t address, bool read);
+    result_t master_write(uint8_t endpoint, uint8_t address, uint8_t data);
+    result_t master_read(uint8_t endpoint, uint8_t address, bool master_ack);
+    void master_stop(uint8_t endpoint);
+
+protected:
+    enum pending_op_t : uint8_t
+    {
+        I2C_PENDING_NONE,
+        I2C_PENDING_ADDRESS,
+        I2C_PENDING_WRITE,
+        I2C_PENDING_READ,
+    };
+
+    struct endpoint_t
+    {
+        bool active = false;
+        uint8_t id = BROADCAST_ENDPOINT;
+        std::vector<uint8_t> targets;
+        std::vector<packet_t> pending_responses;
+        std::vector<uint8_t> pending_targets;
+        pending_op_t pending_op = I2C_PENDING_NONE;
+        uint32_t pending_request_id = 0;
+        uint8_t pending_address = 0;
+        uint8_t pending_data = 0xff;
+        bool pending_read = false;
+        bool pending_master_ack = false;
+        bool pumping = false;
+    };
+
+    std::array<endpoint_t, MAX_ENDPOINTS> endpoints;
+    uint8_t num_endpoints = 0;
+    bool updating_lines = false;
+    uint32_t next_request_id = 1;
+
+    uint8_t attach_endpoint();
+    bool endpoint_active(uint8_t endpoint) const;
+
+    // Called by disconnect() after all endpoints have been detached and the
+    // base protocol state has been cleared. A subclass should use this to drop
+    // transport-only state such as in-process packet queues, socket buffers, or
+    // mirrored remote endpoint metadata. It must not call back into the base
+    // cable or assume any endpoint ids are still active.
+    virtual void reset_transport() {}
+
+    // Called once for each active endpoint during disconnect(), before that
+    // endpoint's base state is cleared. A process-local implementation should
+    // detach any local CPU/TWI adapter and release external line levels. A
+    // network implementation should unregister the endpoint from its local
+    // adapter table and may notify the remote transport, but should tolerate
+    // being called while packets are still buffered.
+    virtual void detach_endpoint(uint8_t endpoint) { (void)endpoint; }
+
+    // Return the local cycle count to use when this endpoint samples the cable
+    // wires. The base uses the returned cycle to ask every other endpoint what
+    // it is driving at that observer-relative moment. Return false when the
+    // endpoint has no local wire observer in this process; the base will skip
+    // setting external line levels for that endpoint during refresh_lines().
+    virtual bool endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle) = 0;
+
+    // Report the open-drain SCL/SDA drive state asserted by this endpoint at
+    // sample_cycle, where sample_cycle is the observing endpoint's local cycle
+    // count. Implementations should set state.scl_low/state.sda_low to the
+    // actively-driven-low levels and state.scl/state.sda to their inverse wire
+    // levels. Return false if the endpoint's drive state is unknown or not
+    // represented in this process; the base will treat it as not driving.
+    virtual bool endpoint_drive_state(
+        uint8_t endpoint, uint64_t sample_cycle, twi_wire_state_t& state) = 0;
+
+    // Apply the aggregate external cable levels visible to this endpoint. The
+    // arguments mean another endpoint on the cable is pulling that line low.
+    // A local CPU adapter should store these as external SCL/SDA inputs. A
+    // remote-only endpoint may ignore this hook, because its process will
+    // compute its own local wire inputs.
+    virtual void endpoint_set_external_lines(
+        uint8_t endpoint, bool scl_low, bool sda_low) = 0;
+
+    // Return true while this endpoint has pending local TWI work that must be
+    // advanced for an in-flight transaction to make progress, such as TWINT
+    // being set for an interrupt handler or a scheduled TWI byte completing.
+    // The base calls endpoint_pump_cycle() repeatedly while this is true.
+    // Remote endpoints should normally return false and make progress by
+    // receiving/sending packets through the transport instead.
+    virtual bool endpoint_needs_pump(uint8_t endpoint) = 0;
+
+    // Advance one small unit of local endpoint work. For a local Arduboy this
+    // usually means advancing the CPU enough for pending TWI interrupts and
+    // peripheral updates to run. This hook may cause more packets to be queued
+    // or consumed, but it should not block on network I/O.
+    virtual void endpoint_pump_cycle(uint8_t endpoint) = 0;
+
+    // Return true if this endpoint currently claims the given 7-bit I2C address,
+    // even if it is not ready to ACK right now. The base uses this to distinguish
+    // an unowned address from a busy owned address, and to detect contested
+    // nonzero addresses. For address 0, general_call tells the implementation
+    // whether the transaction is the standard general-call path.
+    virtual bool endpoint_claims_address(
+        uint8_t endpoint, uint8_t address, bool general_call) = 0;
+
+    // Return true if this endpoint is ready to ACK an address phase for the
+    // given 7-bit address. This should imply endpoint_claims_address() is true,
+    // but also account for local readiness such as TWI enable, ACK enable, power
+    // state, and any emulated clock-stretch/busy condition.
+    virtual bool endpoint_can_address(
+        uint8_t endpoint, uint8_t address, bool general_call) = 0;
+
+    // Deliver an addressed slave transaction to this endpoint. read is true for
+    // SLA+R and false for SLA+W. Return true to ACK the address phase or false
+    // to NACK it. If this returns true, the endpoint should update its local TWI
+    // state as though hardware had accepted the address and should be prepared
+    // for subsequent endpoint_write(), endpoint_read(), or endpoint_stop() calls.
+    virtual bool endpoint_address(
+        uint8_t endpoint, uint8_t address, bool read, bool general_call) = 0;
+
+    // Deliver one data byte from the current master to an endpoint that ACKed a
+    // write address phase. Return true if the endpoint ACKs this byte. A false
+    // return is a data NACK and ends useful writes for the current transaction
+    // from the master's perspective.
+    virtual bool endpoint_write(uint8_t endpoint, uint8_t data) = 0;
+
+    // Fetch one data byte from an endpoint that ACKed a read address phase.
+    // master_ack is the ACK bit the master will send after receiving the byte;
+    // false means the master is NACKing the byte and generally ending the read.
+    // Return 0xff if no local endpoint can provide data.
+    virtual uint8_t endpoint_read(uint8_t endpoint, bool master_ack) = 0;
+
+    // Notify this endpoint that the current addressed transaction ended with a
+    // STOP. Implementations should update slave receive/transmit state and run
+    // any stop-condition behavior, but should not send a RESPONSE packet because
+    // STOP packets are one-way notifications in the cable protocol.
+    virtual void endpoint_stop(uint8_t endpoint) = 0;
+
+    // Queue packet for delivery to packet.to. BROADCAST_ENDPOINT means the
+    // transport should enqueue or transmit a copy to every active endpoint other
+    // than packet.from. This function must be non-blocking with respect to
+    // remote peers; if the underlying transport is asynchronous, buffer the
+    // packet and let receive_packet() surface responses later.
+    virtual void send_packet(packet_t const& packet) = 0;
+
+    // Try to receive the next packet addressed to endpoint. Return true and fill
+    // packet when one is available; return false immediately when none is ready.
+    // The base repeatedly polls this hook and uses pending RESPONSE packets to
+    // release SCL stretching on the master side, so implementations must preserve
+    // packet.request_id and FIFO ordering per sender/receiver pair.
+    virtual bool receive_packet(uint8_t endpoint, packet_t& packet) = 0;
+
+private:
+    void reset_endpoint(endpoint_t& endpoint);
+    void poll_packets();
+    bool drain_packets_once();
+    void handle_packet(uint8_t endpoint, packet_t const& packet);
+    void pump_endpoint(uint8_t endpoint);
+    std::vector<uint8_t> route_address_targets(
+        uint8_t endpoint, uint8_t address, bool& address_busy);
+    void begin_request(
+        endpoint_t& endpoint,
+        pending_op_t op,
+        std::vector<uint8_t> const& targets,
+        packet_t const& packet);
+    result_t finish_request(endpoint_t& endpoint);
+};
+
+struct i2c_local_link_cable_t : i2c_link_cable_t
+{
+    void connect(std::vector<arduboy_t*> const& devices);
+
+protected:
+    void reset_transport() override;
+    void send_packet(packet_t const& packet) override;
+    bool receive_packet(uint8_t endpoint, packet_t& packet) override;
+
+private:
+    std::array<atmega32u4_t*, MAX_ENDPOINTS> local_cpus{};
+    std::array<std::deque<packet_t>, MAX_ENDPOINTS> queues;
+
+    void detach_endpoint(uint8_t endpoint) override;
+    bool endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle) override;
+    bool endpoint_drive_state(
+        uint8_t endpoint, uint64_t sample_cycle, twi_wire_state_t& state) override;
+    void endpoint_set_external_lines(
+        uint8_t endpoint, bool scl_low, bool sda_low) override;
+    bool endpoint_needs_pump(uint8_t endpoint) override;
+    void endpoint_pump_cycle(uint8_t endpoint) override;
+    bool endpoint_claims_address(
+        uint8_t endpoint, uint8_t address, bool general_call) override;
+    bool endpoint_can_address(
+        uint8_t endpoint, uint8_t address, bool general_call) override;
+    bool endpoint_address(
+        uint8_t endpoint, uint8_t address, bool read, bool general_call) override;
+    bool endpoint_write(uint8_t endpoint, uint8_t data) override;
+    uint8_t endpoint_read(uint8_t endpoint, bool master_ack) override;
+    void endpoint_stop(uint8_t endpoint) override;
+    atmega32u4_t* local_cpu(uint8_t endpoint) const;
+};
 
 struct avr_instr_t
 {
@@ -328,6 +608,7 @@ struct atmega32u4_t
     size_t addr_to_disassembled_index(uint16_t addr);
 
     static void st_handle_pin(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void st_handle_ddrd(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static void st_handle_port(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     static void st_handle_prr0(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
@@ -527,6 +808,63 @@ struct atmega32u4_t
     static void spi_handle_st_spdr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
     static uint8_t spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr);
     static uint8_t spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr);
+
+    // TWI
+    enum
+    {
+        TWI_MODE_IDLE,
+        TWI_MODE_MASTER_TX,
+        TWI_MODE_MASTER_RX,
+        TWI_MODE_SLAVE_RX,
+        TWI_MODE_SLAVE_TX,
+    };
+    enum
+    {
+        TWI_PENDING_NONE,
+        TWI_PENDING_START,
+        TWI_PENDING_STOP,
+        TWI_PENDING_ADDRESS,
+        TWI_PENDING_WRITE,
+        TWI_PENDING_READ,
+    };
+    i2c_link_cable_t* twi_link;
+    uint8_t twi_link_endpoint;
+    uint64_t twi_prev_cycle;
+    uint64_t twi_done_cycle;
+    uint8_t twi_mode;
+    uint8_t twi_pending;
+    uint8_t twi_status;
+    uint8_t twi_address;
+    bool twi_busy;
+    bool twi_started;
+    bool twi_repeated_start;
+    bool twi_reading;
+    bool twi_general_call;
+    bool twi_pull_scl_low;
+    bool twi_pull_sda_low;
+    bool twi_external_scl_low;
+    bool twi_external_sda_low;
+    void update_twi();
+    void twi_schedule(uint8_t pending, uint32_t cycles);
+    void twi_finish_status(uint8_t status);
+    uint32_t twi_byte_cycles() const;
+    void twi_handle_prr0(uint8_t x);
+    twi_wire_state_t twi_wire_state() const;
+    twi_wire_state_t twi_drive_state() const;
+    twi_wire_state_t twi_drive_state_at(uint64_t sample_cycle) const;
+    void set_twi_external_lines(bool scl_low, bool sda_low);
+    void attach_i2c_link(i2c_link_cable_t* link, uint8_t endpoint);
+    static uint8_t twi_handle_ld_pind(atmega32u4_t& cpu, uint16_t ptr);
+    bool twi_slave_claims_address(uint8_t address, bool general_call) const;
+    bool twi_slave_can_address(uint8_t address, bool general_call) const;
+    bool twi_slave_address(uint8_t address, bool read, bool general_call);
+    bool twi_slave_write(uint8_t data);
+    uint8_t twi_slave_read(bool master_ack);
+    void twi_slave_stop();
+    static void twi_handle_st_twcr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void twi_handle_st_twsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void twi_handle_st_twdr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
+    static void twi_handle_st_twar_or_twamr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // EEPROM
     uint64_t eeprom_prev_cycle;
@@ -1230,6 +1568,10 @@ struct arduboy_t
     size_t max_savestate_size() const;
     std::string save_savestate(std::ostream& f);
     std::string load_savestate(std::istream& f);
+
+    twi_wire_state_t twi_wire_state() const;
+    twi_wire_state_t twi_drive_state() const;
+    void set_twi_external_lines(bool scl_low, bool sda_low);
 };
 
 

@@ -91,17 +91,22 @@ int recording_filter_zoom()
     return z;
 }
 
-void recreate_display_texture()
+void recreate_display_texture(texture_t& texture, int& texture_zoom)
 {
     int z = display_filter_zoom();
-    if(z == app.display_texture_zoom)
+    if(z == texture_zoom)
         return;
 
-    app.display_texture_zoom = z;
+    texture_zoom = z;
 
-    platform_destroy_texture(app.display_texture);
+    platform_destroy_texture(texture);
 
-    app.display_texture = platform_create_texture(128 * z, 64 * z);
+    texture = platform_create_texture(128 * z, 64 * z);
+}
+
+void recreate_display_texture()
+{
+    recreate_display_texture(app.display_texture, app.display_texture_zoom);
 }
 
 #ifndef ARDENS_NO_SCALING
@@ -322,6 +327,15 @@ void scalenx(uint8_t* dst, uint8_t const* src, bool rgba)
         dst, src,
         rgba,
         settings.display_palette);
+}
+
+void update_display_texture(texture_t texture, uint8_t const* src)
+{
+    int z = display_filter_zoom();
+    std::vector<uint8_t> pixels;
+    pixels.resize(128 * 64 * 4 * z * z);
+    scalenx(pixels.data(), src, true);
+    platform_update_texture(texture, pixels.data(), pixels.size());
 }
 
 
