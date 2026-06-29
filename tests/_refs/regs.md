@@ -188,7 +188,7 @@ For ports, the `PINx` registers are unusual: reads sample the physical synchroni
 |   — | `0xEA` | `UERST`   | `- EPRST6 EPRST5 EPRST4 EPRST3 EPRST2 EPRST1 EPRST0`                      | `R0 R/W* R/W* R/W* R/W* R/W* R/W* R/W*` |         `0x00` |
 |   — | `0xEB` | `UECONX`  | `- - STALLRQ STALLRQC RSTDT - - EPEN`                                     | `R0 R0 R/W* R/W* R/W* R0 R0 R/W`        |         `0x00` |
 |   — | `0xEC` | `UECFG0X` | `EPTYPE1 EPTYPE0 - - - - - EPDIR`                                         | `R/W R/W R0 R0 R0 R0 R0 R/W`            |         `0x00` |
-|   — | `0xED` | `UECFG1X` | `EPSIZE2 EPSIZE1 EPSIZE0 EPBK1 EPBK0 ALLOC - -`                           | `R/W R/W R/W R/W R/W R/W R0 R0`         |         `0x00` |
+|   — | `0xED` | `UECFG1X` | `- EPSIZE2 EPSIZE1 EPSIZE0 EPBK1 EPBK0 ALLOC -`                           | `R0 R/W R/W R/W R/W R/W R0 R0`         |         `0x00` |
 |   — | `0xEE` | `UESTA0X` | `CFGOK OVERFI UNDERFI - DTSEQ1 DTSEQ0 NBUSYBK1 NBUSYBK0`                  | `R R/W* R/W* R0 R R R R`                |         `0x00` |
 |   — | `0xEF` | `UESTA1X` | `- - - - - CTRLDIR CURRBK1 CURRBK0`                                       | `R0 R0 R0 R0 R0 R R R`                  |         `0x00` |
 |   — | `0xF0` | `UEIENX`  | `FLERRE NAKINE - NAKOUTE RXSTPE RXOUTE STALLEDE TXINE`                    | `R/W R/W R0 R/W R/W R/W R/W R/W`        |         `0x00` |

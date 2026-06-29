@@ -801,7 +801,7 @@ namespace bit
 
     namespace UDMFN
     {
-        static constexpr uint8_t FNCERR = 1u << 3;
+        static constexpr uint8_t FNCERR = 1u << 4;
     }
 
     namespace UEINTX
@@ -1583,8 +1583,8 @@ static constexpr std::array<register_info_t, 256> REGISTER_INFO = {{
     /* 0x7d DIDR2 */ {
         "DIDR2", 0x3f, 0x3f, 0x00,
         make_bits(
-            "ADC13D", "ADC12D", "ADC11D", "ADC10D",
-            "ADC9D", "ADC8D", nullptr, nullptr),
+            nullptr, nullptr, "ADC13D", "ADC12D",
+            "ADC11D", "ADC10D", "ADC9D", "ADC8D"),
     },
     /* 0x7e DIDR0 */ {
         "DIDR0", 0xf3, 0xf3, 0x00,
@@ -1817,8 +1817,8 @@ static constexpr std::array<register_info_t, 256> REGISTER_INFO = {{
     /* 0xbd TWAMR */ {
         "TWAMR", 0xfe, 0xfe, 0x00,
         make_bits(
-            nullptr, "TWAM0", "TWAM1", "TWAM2",
-            "TWAM3", "TWAM4", "TWAM5", "TWAM6"),
+            "TWAM6", "TWAM5", "TWAM4", "TWAM3",
+            "TWAM2", "TWAM1", "TWAM0", nullptr),
     },
     /* 0xbe TCNT4 */ {
         "TCNT4", 0xff, 0xff, 0x00,
@@ -2048,8 +2048,8 @@ static constexpr std::array<register_info_t, 256> REGISTER_INFO = {{
     /* 0xeb UECONX */ {
         "UECONX", 0x39, 0x39, 0x00,
         make_bits(
-            nullptr, nullptr, nullptr, "STALLRQ",
-            "STALLRQC", "RSTDT", nullptr, "EPEN"),
+            nullptr, nullptr, "STALLRQ", "STALLRQC",
+            "RSTDT", nullptr, nullptr, "EPEN"),
     },
     /* 0xec UECFG0X */ {
         "UECFG0X", 0xc1, 0xc1, 0x00,

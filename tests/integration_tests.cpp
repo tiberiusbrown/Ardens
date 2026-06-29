@@ -1083,7 +1083,7 @@ int main(int argc, char** argv)
     printf("\nGrouped state tests...\n");
     r |= grouped_state_roundtrip_test();
 
-    printf("\nIntegration tests...\n");
+    printf("\nSnapshot tests...\n");
     r |= savestate_snapshot_test();
     r |= savestate_libretro_roundtrip_test();
     r |= full_snapshot_test();
