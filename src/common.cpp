@@ -309,6 +309,10 @@ void apply_runtime_settings(absim::arduboy_t& a)
     a.profiler_state.frame_bytes_total = 1024;
     a.debugger_state.allow_nonstep_breakpoints =
         a.debugger_state.break_step == 0xffffffff || settings.enable_step_breaks;
+    a.program_state.cfg.usb_bus_state =
+        settings.usb_connected ?
+        absim::USB_BUS_CONNECTED :
+        absim::USB_BUS_DISCONNECTED;
 
     auto& display = a.peripherals.display;
     display.enable_filter = settings.display_auto_filter;
@@ -424,6 +428,7 @@ static void reset_linked_secondary_arduboy()
 
 void reset_primary_simulation()
 {
+    apply_runtime_settings(app.emulator);
     app.emulator.reset();
     load_savedata();
     reset_linked_secondary_arduboy();
@@ -855,6 +860,16 @@ extern "C" int setparam(char const* name, char const* value)
         }
         r = 1;
     }
+    else if(!strcmp(name, "usb") || !strcmp(name, "usb_connected"))
+    {
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.usb_connected = parsed;
+            update_settings();
+        }
+        r = 1;
+    }
     else if(!strcmp(name, "touch"))
     {
         bool parsed = false;
@@ -1005,6 +1020,7 @@ void init()
 
     app.emulator.peripherals.fx.erase_all_data();
     app.emulator.core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    apply_runtime_settings(app.emulator);
     app.emulator.reset();
     app.emulator.peripherals.fx.set_empty_page_range();
 

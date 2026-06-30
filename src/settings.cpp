@@ -62,6 +62,7 @@ static void settings_read_line(
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
     ARDENS_BOOL_SETTING(nondeterminism);
     ARDENS_BOOL_SETTING(frame_based_cpu_usage);
+    ARDENS_BOOL_SETTING(usb_connected);
 
     ARDENS_BOOL_SETTING(ab.stack_overflow);
     ARDENS_BOOL_SETTING(ab.null_deref);
@@ -137,6 +138,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
     ARDENS_BOOL_SETTING(nondeterminism);
     ARDENS_BOOL_SETTING(frame_based_cpu_usage);
+    ARDENS_BOOL_SETTING(usb_connected);
 
     ARDENS_BOOL_SETTING(ab.stack_overflow);
     ARDENS_BOOL_SETTING(ab.null_deref);

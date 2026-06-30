@@ -78,6 +78,7 @@ struct settings_t
     bool enable_step_breaks = true;
     bool nondeterminism = false;
     bool frame_based_cpu_usage = true;
+    bool usb_connected = true;
 
     struct
     {

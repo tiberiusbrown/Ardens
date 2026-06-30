@@ -45,6 +45,7 @@ static int test(char const* name)
 
     auto err = arduboy->load_file("test.hex", f);
     if(!err.empty()) return 1;
+    arduboy->program_state.cfg.usb_bus_state = absim::USB_BUS_CONNECTED;
     arduboy->reset();
     auto const& d = arduboy->core_state.cpu.serial_bytes;
     for(int i = 0; i < 10000; ++i) // up to ten seconds
@@ -116,6 +117,7 @@ static int serial_output_test(char const* name, char const* expected_filename)
     arduboy->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
     arduboy->program_state.cfg.bootloader = true;
     arduboy->program_state.cfg.boot_to_menu = false;
+    arduboy->program_state.cfg.usb_bus_state = absim::USB_BUS_CONNECTED;
     arduboy->reset();
     arduboy->core_state.cpu.data[absim::reg::addr::PINB] = absim::reg::bit::PINB::PINB4;
     arduboy->core_state.cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
@@ -187,6 +189,7 @@ static int image_test(char const* dir, char const* game)
     arduboy->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
     arduboy->program_state.cfg.bootloader = true;
     arduboy->program_state.cfg.boot_to_menu = false;
+    arduboy->program_state.cfg.usb_bus_state = absim::USB_BUS_DISCONNECTED;
     arduboy->reset();
 
     int n = 0;
@@ -222,6 +225,98 @@ static int image_test(char const* dir, char const* game)
     printf("   %-30s : %s\n", dir, r ? "FAIL" : "PASS");
 
     return r;
+}
+
+static int usb_direct_uedatx_fallback_test()
+{
+    absim::atmega32u4_t cpu = {};
+    cpu.usb.bus_state = absim::USB_BUS_CONNECTED;
+    cpu.reset();
+
+    cpu.st(absim::reg::addr::UEDATX, uint8_t('P'));
+
+    bool pass = cpu.serial_bytes.size() == 1 && cpu.serial_bytes[0] == 'P';
+    printf("   %-30s : %s\n", "usb direct UEDATX", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
+static int usb_disconnected_suppresses_test()
+{
+    absim::atmega32u4_t cpu = {};
+    cpu.usb.bus_state = absim::USB_BUS_DISCONNECTED;
+    cpu.reset();
+
+    cpu.st(absim::reg::addr::USBCON, absim::reg::bit::USBCON::USBE);
+    cpu.st(absim::reg::addr::UDCON, 0);
+    cpu.st(absim::reg::addr::UEDATX, uint8_t('P'));
+
+    bool pass = (cpu.ld(absim::reg::addr::USBSTA) &
+            absim::reg::bit::USBSTA::VBUS) == 0 &&
+        cpu.serial_bytes.empty() &&
+        !cpu.usb.host.attached;
+    printf("   %-30s : %s\n", "usb disconnected", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
+static int usb_endpoint_window_test()
+{
+    using namespace absim::reg;
+
+    absim::atmega32u4_t cpu = {};
+    cpu.reset();
+
+    uint8_t const bulk_in =
+        bit::UECFG0X::EPDIR |
+        bit::UECFG0X::EPTYPE1;
+    uint8_t const bulk_out = bit::UECFG0X::EPTYPE1;
+    uint8_t const size64 =
+        bit::UECFG1X::ALLOC |
+        bit::UECFG1X::EPSIZE0 |
+        bit::UECFG1X::EPSIZE1;
+    uint8_t const size8 = bit::UECFG1X::ALLOC;
+
+    cpu.st(addr::UENUM, 1);
+    cpu.st(addr::UECONX, bit::UECONX::EPEN);
+    cpu.st(addr::UECFG0X, bulk_in);
+    cpu.st(addr::UECFG1X, size64);
+    cpu.st(addr::UEIENX, bit::UEIENX::TXINE);
+
+    bool pass =
+        cpu.ld(addr::UENUM) == 1 &&
+        cpu.ld(addr::UECFG0X) == bulk_in &&
+        cpu.ld(addr::UECFG1X) == size64 &&
+        (cpu.ld(addr::UESTA0X) & bit::UESTA0X::CFGOK) != 0 &&
+        (cpu.ld(addr::UEINTX) &
+            (bit::UEINTX::TXINI | bit::UEINTX::RWAL)) ==
+            (bit::UEINTX::TXINI | bit::UEINTX::RWAL) &&
+        (cpu.ld(addr::UEINT) & uint8_t(1u << 1)) != 0;
+
+    cpu.st(addr::UEDATX, uint8_t('A'));
+    pass = pass &&
+        cpu.ld(addr::UEBCLX) == 1 &&
+        cpu.ld(addr::UEBCHX) == 0;
+
+    cpu.st(addr::UENUM, 2);
+    cpu.st(addr::UECONX, bit::UECONX::EPEN);
+    cpu.st(addr::UECFG0X, bulk_out);
+    cpu.st(addr::UECFG1X, size8);
+    pass = pass &&
+        cpu.ld(addr::UENUM) == 2 &&
+        cpu.ld(addr::UECFG0X) == bulk_out &&
+        cpu.ld(addr::UECFG1X) == size8 &&
+        (cpu.ld(addr::UESTA0X) & bit::UESTA0X::CFGOK) != 0 &&
+        cpu.ld(addr::UEBCLX) == 0;
+
+    cpu.st(addr::UENUM, 1);
+    pass = pass &&
+        cpu.ld(addr::UECFG0X) == bulk_in &&
+        cpu.ld(addr::UECFG1X) == size64 &&
+        cpu.ld(addr::UEBCLX) == 1 &&
+        cpu.usb.endpoints[1].size == 64 &&
+        cpu.usb.endpoints[2].size == 8;
+
+    printf("   %-30s : %s\n", "usb endpoint window", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
 }
 
 static std::string load_rom(absim::arduboy_t& a, char const* dir, char const* game)
@@ -500,13 +595,21 @@ static bool same_stack_frame(
     return a.cycle == b.cycle && a.pc == b.pc && a.sp == b.sp;
 }
 
+static bool same_usb_bank(
+    absim::atmega32u4_t::usb_bank_t const& a,
+    absim::atmega32u4_t::usb_bank_t const& b)
+{
+    return a.data == b.data &&
+        a.length == b.length &&
+        a.offset == b.offset &&
+        a.ready == b.ready;
+}
+
 static bool same_usb_endpoint(
     absim::atmega32u4_t::usb_endpoint_t const& a,
     absim::atmega32u4_t::usb_endpoint_t const& b)
 {
-    return a.uenum == b.uenum &&
-        a.ueintx == b.ueintx &&
-        a.uerst == b.uerst &&
+    return a.ueintx == b.ueintx &&
         a.ueconx == b.ueconx &&
         a.uecfg0x == b.uecfg0x &&
         a.uecfg1x == b.uecfg1x &&
@@ -515,10 +618,67 @@ static bool same_usb_endpoint(
         a.ueienx == b.ueienx &&
         a.uebclx == b.uebclx &&
         a.uebchx == b.uebchx &&
-        a.buffer == b.buffer &&
-        a.buffer_size == b.buffer_size &&
-        a.start == b.start &&
-        a.length == b.length;
+        same_usb_bank(a.banks[0], b.banks[0]) &&
+        same_usb_bank(a.banks[1], b.banks[1]) &&
+        a.size == b.size &&
+        a.dpram_offset == b.dpram_offset &&
+        a.bank_count == b.bank_count &&
+        a.cpu_bank == b.cpu_bank &&
+        a.allocated == b.allocated;
+}
+
+static bool same_usb_control_transfer(
+    absim::atmega32u4_t::usb_control_transfer_t const& a,
+    absim::atmega32u4_t::usb_control_transfer_t const& b)
+{
+    return a.setup == b.setup &&
+        a.out_data == b.out_data &&
+        a.out_length == b.out_length &&
+        a.out_offset == b.out_offset &&
+        a.in_expected == b.in_expected &&
+        a.in_drained == b.in_drained &&
+        a.request == b.request &&
+        a.stage == b.stage &&
+        a.active == b.active;
+}
+
+static bool same_usb_fake_host(
+    absim::atmega32u4_t::usb_fake_host_t const& a,
+    absim::atmega32u4_t::usb_fake_host_t const& b)
+{
+    return a.next_cycle == b.next_cycle &&
+        a.phase == b.phase &&
+        a.address == b.address &&
+        a.attached == b.attached &&
+        a.reset_sent == b.reset_sent &&
+        a.configured == b.configured &&
+        a.line_encoding_set == b.line_encoding_set &&
+        a.control_line_state_set == b.control_line_state_set;
+}
+
+static bool same_usb_state(
+    absim::atmega32u4_t::usb_state_t const& a,
+    absim::atmega32u4_t::usb_state_t const& b)
+{
+    if(a.bus_state != b.bus_state ||
+        !same_usb_control_transfer(a.control, b.control) ||
+        !same_usb_fake_host(a.host, b.host) ||
+        a.dpram != b.dpram ||
+        a.next_sof_cycle != b.next_sof_cycle ||
+        a.next_reset_cycle != b.next_reset_cycle ||
+        a.next_update_cycle != b.next_update_cycle ||
+        a.frame_number != b.frame_number ||
+        a.selected_endpoint != b.selected_endpoint ||
+        a.uerst != b.uerst)
+    {
+        return false;
+    }
+
+    for(size_t i = 0; i < a.endpoints.size(); ++i)
+        if(!same_usb_endpoint(a.endpoints[i], b.endpoints[i]))
+            return false;
+
+    return true;
 }
 
 static bool same_timer_sync(
@@ -686,13 +846,7 @@ static bool same_cpu_state(absim::atmega32u4_t const& a, absim::atmega32u4_t con
         a.sound_enabled == b.sound_enabled &&
         a.sound_pwm == b.sound_pwm &&
         a.sound_pwm_val == b.sound_pwm_val &&
-        a.usb_next_sofi_cycle == b.usb_next_sofi_cycle &&
-        a.usb_next_eorsti_cycle == b.usb_next_eorsti_cycle &&
-        a.usb_next_setconf_cycle == b.usb_next_setconf_cycle &&
-        a.usb_next_setlength_cycle == b.usb_next_setlength_cycle &&
-        a.usb_next_update_cycle == b.usb_next_update_cycle &&
-        a.usb_dpram == b.usb_dpram &&
-        a.usb_attached == b.usb_attached &&
+        same_usb_state(a.usb, b.usb) &&
         a.spm_prev_cycle == b.spm_prev_cycle &&
         a.spm_busy == b.spm_busy &&
         a.spm_en_cycles == b.spm_en_cycles &&
@@ -710,10 +864,6 @@ static bool same_cpu_state(absim::atmega32u4_t const& a, absim::atmega32u4_t con
 
     for(size_t i = 0; i < a.stack_frames.size(); ++i)
         if(!same_stack_frame(a.stack_frames[i], b.stack_frames[i]))
-            return false;
-
-    for(size_t i = 0; i < a.usb_ep.size(); ++i)
-        if(!same_usb_endpoint(a.usb_ep[i], b.usb_ep[i]))
             return false;
 
     return true;
@@ -851,6 +1001,7 @@ static bool same_snapshot_state(absim::arduboy_t const& a, absim::arduboy_t cons
         a.program_state.cfg.fxport_mask != b.program_state.cfg.fxport_mask ||
         a.program_state.cfg.bootloader != b.program_state.cfg.bootloader ||
         a.program_state.cfg.boot_to_menu != b.program_state.cfg.boot_to_menu ||
+        a.program_state.cfg.usb_bus_state != b.program_state.cfg.usb_bus_state ||
         a.program_state.flashcart_loaded != b.program_state.flashcart_loaded ||
         a.debugger_state.input_history.size() != b.debugger_state.input_history.size() ||
         a.debugger_state.state_history.size() != b.debugger_state.state_history.size() ||
@@ -1169,6 +1320,11 @@ int main(int argc, char** argv)
     printf("\nTWI/link tests...\n");
     r |= twi_register_semantics_test();
     r |= i2c_bus_line_visibility_test();
+
+    printf("\nUSB tests...\n");
+    r |= usb_direct_uedatx_fallback_test();
+    r |= usb_disconnected_suppresses_test();
+    r |= usb_endpoint_window_test();
 
     printf("\nIntegration tests...\n");
     r |= test("float");

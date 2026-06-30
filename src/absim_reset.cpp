@@ -108,12 +108,20 @@ void atmega32u4_t::reset()
     st_handlers[reg::addr::USBCON] = usb_st_handler;
     st_handlers[reg::addr::USBSTA] = usb_st_handler;
     st_handlers[reg::addr::USBINT] = usb_st_handler;
+    ld_handlers[reg::addr::UHWCON] = usb_ld_handler;
+    ld_handlers[reg::addr::USBCON] = usb_ld_handler;
+    ld_handlers[reg::addr::USBSTA] = usb_ld_handler;
+    ld_handlers[reg::addr::USBINT] = usb_ld_handler;
     for(int i = reg::addr::UDCON; i <= reg::addr::UDMFN; ++i)
+    {
         st_handlers[i] = usb_st_handler;
+        ld_handlers[i] = usb_ld_handler;
+    }
     for(int i = reg::addr::UEINTX; i <= reg::addr::UEINT; ++i)
+    {
         st_handlers[i] = usb_st_handler;
-
-    ld_handlers[reg::addr::UEDATX] = usb_ld_handler_uedatx;
+        ld_handlers[i] = usb_ld_handler;
+    }
 }
 
 void atmega32u4_t::soft_reset()
@@ -245,7 +253,6 @@ void atmega32u4_t::soft_reset()
     pushed_at_least_once = false;
 
     reset_usb();
-    usb_dpram = {};
 
     spm_prev_cycle = cycle_count;
     spm_busy = false;

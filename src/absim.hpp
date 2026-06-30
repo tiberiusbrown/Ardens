@@ -41,6 +41,12 @@ namespace object { class ObjectFile; }
 namespace absim
 {
 
+enum usb_bus_state_t
+{
+    USB_BUS_DISCONNECTED,
+    USB_BUS_CONNECTED,
+};
+
 enum autobreak_t
 {
     // special autobreak for the "break" instruction
@@ -913,11 +919,21 @@ struct atmega32u4_t
 
     // serial / USB
     std::vector<uint8_t> serial_bytes;
+    struct usb_bank_t
+    {
+        std::array<uint8_t, 512> data;
+        uint16_t length;
+        uint16_t offset;
+        bool ready;
+
+        template<class A> void serialize(A& a)
+        {
+            a(data, length, offset, ready);
+        }
+    };
     struct usb_endpoint_t
     {
-        uint8_t uenum;
         uint8_t ueintx;
-        uint8_t uerst;
         uint8_t ueconx;
         uint8_t uecfg0x;
         uint8_t uecfg1x;
@@ -926,33 +942,104 @@ struct atmega32u4_t
         uint8_t ueienx;
         uint8_t uebclx;
         uint8_t uebchx;
-        std::array<uint8_t, 512> buffer; // TODO: DPRAM modeling
-        uint32_t buffer_size;
-        uint32_t start;
-        uint32_t length;
-        void configure();
-        uint8_t read(atmega32u4_t& cpu);
-        void write(atmega32u4_t& cpu, uint8_t x);
-        void copy_regs(atmega32u4_t& cpu);
+        std::array<usb_bank_t, 2> banks;
+        uint16_t size;
+        uint16_t dpram_offset;
+        uint8_t bank_count;
+        uint8_t cpu_bank;
+        bool allocated;
+
         template<class A> void serialize(A& a)
         {
-            a(uenum, ueintx, uerst, ueconx);
+            a(ueintx, ueconx);
             a(uesta0x, uesta1x);
             a(uecfg0x, uecfg1x);
             a(ueienx, uebclx, uebchx);
-            a(buffer, buffer_size, start, length);
+            a(banks, size, dpram_offset, bank_count, cpu_bank, allocated);
         }
     };
-    std::array<usb_endpoint_t, 8> usb_ep;
-    uint64_t usb_next_sofi_cycle;
-    uint64_t usb_next_eorsti_cycle;
-    uint64_t usb_next_setconf_cycle;
-    uint64_t usb_next_setlength_cycle;
-    uint64_t usb_next_update_cycle;
-    std::array<uint8_t, 832> usb_dpram;
-    bool usb_attached;
+    struct usb_control_transfer_t
+    {
+        enum stage_t : uint8_t
+        {
+            STAGE_IDLE,
+            STAGE_SETUP,
+            STAGE_DATA_IN,
+            STAGE_DATA_OUT,
+            STAGE_STATUS_IN,
+            STAGE_STATUS_OUT,
+        };
+
+        std::array<uint8_t, 8> setup;
+        std::array<uint8_t, 64> out_data;
+        uint16_t out_length;
+        uint16_t out_offset;
+        uint16_t in_expected;
+        uint16_t in_drained;
+        uint8_t request;
+        uint8_t stage;
+        bool active;
+
+        template<class A> void serialize(A& a)
+        {
+            a(setup, out_data, out_length, out_offset);
+            a(in_expected, in_drained, request, stage, active);
+        }
+    };
+    struct usb_fake_host_t
+    {
+        enum phase_t : uint8_t
+        {
+            PHASE_IDLE,
+            PHASE_SET_ADDRESS,
+            PHASE_DEVICE_DESCRIPTOR,
+            PHASE_CONFIGURATION_HEADER,
+            PHASE_CONFIGURATION_DESCRIPTOR,
+            PHASE_SET_CONFIGURATION,
+            PHASE_SET_LINE_ENCODING,
+            PHASE_SET_CONTROL_LINE_STATE,
+            PHASE_ENUMERATED,
+        };
+
+        uint64_t next_cycle;
+        uint8_t phase;
+        uint8_t address;
+        bool attached;
+        bool reset_sent;
+        bool configured;
+        bool line_encoding_set;
+        bool control_line_state_set;
+
+        template<class A> void serialize(A& a)
+        {
+            a(next_cycle, phase, address, attached, reset_sent);
+            a(configured, line_encoding_set, control_line_state_set);
+        }
+    };
+    struct usb_state_t
+    {
+        usb_bus_state_t bus_state = USB_BUS_CONNECTED;
+        std::array<usb_endpoint_t, 8> endpoints;
+        usb_control_transfer_t control;
+        usb_fake_host_t host;
+        std::array<uint8_t, 832> dpram;
+        uint64_t next_sof_cycle;
+        uint64_t next_reset_cycle;
+        uint64_t next_update_cycle;
+        uint16_t frame_number;
+        uint8_t selected_endpoint;
+        uint8_t uerst;
+
+        template<class A> void serialize(A& a)
+        {
+            a(bus_state, endpoints, control, host, dpram);
+            a(next_sof_cycle, next_reset_cycle, next_update_cycle);
+            a(frame_number, selected_endpoint, uerst);
+        }
+    };
+    usb_state_t usb;
     static void usb_st_handler(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
-    static uint8_t usb_ld_handler_uedatx(atmega32u4_t& cpu, uint16_t ptr);
+    static uint8_t usb_ld_handler(atmega32u4_t& cpu, uint16_t ptr);
     void update_usb();
     void reset_usb();
 
@@ -1382,6 +1469,7 @@ struct arduboy_config_t
     uint8_t fxport_mask = reg::bit::PORTD::PORTD1;
     bool bootloader = true;
     bool boot_to_menu = false;
+    usb_bus_state_t usb_bus_state = USB_BUS_CONNECTED;
 };
 
 static constexpr size_t ARDUBOY_NUM_INSTRS =

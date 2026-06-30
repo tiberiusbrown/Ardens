@@ -128,6 +128,14 @@ void modal_settings()
                 if(Checkbox("##nondeterminism", &settings.nondeterminism))
                     update_settings();
 
+                TableNextRow();
+                TableSetColumnIndex(0);
+                AlignTextToFramePadding();
+                TextUnformatted("USB Connected");
+                TableSetColumnIndex(1);
+                if(Checkbox("##usbconnected", &settings.usb_connected))
+                    update_settings();
+
                 EndTable();
             }
             EndTabItem();
@@ -414,6 +422,10 @@ void modal_settings()
         default:
             break;
         }
+        app.emulator.program_state.cfg.usb_bus_state =
+            settings.usb_connected ?
+            absim::USB_BUS_CONNECTED :
+            absim::USB_BUS_DISCONNECTED;
         CloseCurrentPopup();
     }
 

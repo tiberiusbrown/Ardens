@@ -48,7 +48,7 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
-constexpr version_t SNAPSHOT_VERSION = { 0, 24, 19 };
+constexpr version_t SNAPSHOT_VERSION = { 0, 24, 20 };
 
 static std::string version_str(version_t const& v)
 {
@@ -302,14 +302,7 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
     ar(a.core_state.cpu.sound_pwm);
     ar(a.core_state.cpu.sound_pwm_val);
 
-    ar(a.core_state.cpu.usb_ep);
-    ar(a.core_state.cpu.usb_next_sofi_cycle);
-    ar(a.core_state.cpu.usb_next_eorsti_cycle);
-    ar(a.core_state.cpu.usb_next_setconf_cycle);
-    ar(a.core_state.cpu.usb_next_setlength_cycle);
-    ar(a.core_state.cpu.usb_next_update_cycle);
-    ar(a.core_state.cpu.usb_dpram);
-    ar(a.core_state.cpu.usb_attached);
+    ar(a.core_state.cpu.usb);
 
     ar(a.core_state.cpu.spm_prev_cycle);
     ar(a.core_state.cpu.spm_busy);
@@ -455,6 +448,7 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.program_state.cfg.fxport_mask);
     ar(a.program_state.cfg.bootloader);
     ar(a.program_state.cfg.boot_to_menu);
+    ar(a.program_state.cfg.usb_bus_state);
     ar(a.program_state.flashcart_loaded);
 
     serdes_savestate(ar, a);
