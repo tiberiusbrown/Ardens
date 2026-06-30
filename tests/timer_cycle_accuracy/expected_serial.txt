@@ -1,7 +1,6 @@
 ARDENS_TIMER_CYCLE_ACCURACY,1
 meta,f_cpu,16000000
 meta,pllcsr,19
-meta,pllfrq,74
 t0_normal,8,49,51,53,55,251,253,255,1,7
 t0_ctc_top,8,3,5,7,9,11,13,15,17,6
 t0_phase_ocra,8,8,6,4,2,0,2,4,6,7

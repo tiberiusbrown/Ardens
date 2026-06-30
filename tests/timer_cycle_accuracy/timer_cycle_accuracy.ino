@@ -65,8 +65,8 @@ static void emit_results()
   Serial.println(F_CPU);
   Serial.print(F("meta,pllcsr,"));
   Serial.println(pllcsr_after_wait);
-  Serial.print(F("meta,pllfrq,"));
-  Serial.println(pllfrq_after_wait);
+  //Serial.print(F("meta,pllfrq,"));
+  //Serial.println(pllfrq_after_wait);
 
   for(uint8_t i = 0; i < result_count; ++i)
     emit_result(results[i]);
