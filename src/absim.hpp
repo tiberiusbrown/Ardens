@@ -322,7 +322,7 @@ private:
     result_t finish_request(endpoint_t& endpoint);
 };
 
-struct remote_i2c_transaction_bridge_t : i2c_link_adapter_t
+struct local_i2c_transaction_bridge_t : i2c_link_adapter_t
 {
     void connect(std::vector<arduboy_t*> const& devices);
 

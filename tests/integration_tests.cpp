@@ -402,7 +402,7 @@ static int i2c_bus_line_visibility_test()
     a->reset();
     b->reset();
 
-    absim::remote_i2c_transaction_bridge_t bridge;
+    absim::local_i2c_transaction_bridge_t bridge;
     bridge.connect({ a.get(), b.get() });
 
     auto& acpu = a->core_state.cpu;
@@ -982,7 +982,7 @@ static int i2c_handshake_test_impl(const char* test_name, const char* rom_dir, c
 
     advance(*a, 50);
 
-    absim::remote_i2c_transaction_bridge_t link;
+    absim::local_i2c_transaction_bridge_t link;
     link.connect({ a.get(), b.get() });
 
     for(int i = 0; i < 100000 && !(serial_passed(*a) && serial_passed(*b)); ++i)

@@ -661,7 +661,7 @@ void i2c_link_adapter_t::handle_message(uint8_t endpoint, i2c_message_t const& p
     }
 }
 
-void remote_i2c_transaction_bridge_t::connect(std::vector<arduboy_t*> const& devices)
+void local_i2c_transaction_bridge_t::connect(std::vector<arduboy_t*> const& devices)
 {
     disconnect();
     for(auto* device : devices)
@@ -679,13 +679,13 @@ void remote_i2c_transaction_bridge_t::connect(std::vector<arduboy_t*> const& dev
     refresh_bus_lines();
 }
 
-void remote_i2c_transaction_bridge_t::reset_transport()
+void local_i2c_transaction_bridge_t::reset_transport()
 {
     for(auto& queue : queues)
         queue.clear();
 }
 
-void remote_i2c_transaction_bridge_t::send_message(i2c_message_t const& packet)
+void local_i2c_transaction_bridge_t::send_message(i2c_message_t const& packet)
 {
     if(packet.to == BROADCAST_ENDPOINT)
     {
@@ -704,7 +704,7 @@ void remote_i2c_transaction_bridge_t::send_message(i2c_message_t const& packet)
     }
 }
 
-bool remote_i2c_transaction_bridge_t::receive_message(uint8_t endpoint, i2c_message_t& packet)
+bool local_i2c_transaction_bridge_t::receive_message(uint8_t endpoint, i2c_message_t& packet)
 {
     if(endpoint >= MAX_ENDPOINTS || queues[endpoint].empty())
         return false;
@@ -713,7 +713,7 @@ bool remote_i2c_transaction_bridge_t::receive_message(uint8_t endpoint, i2c_mess
     return true;
 }
 
-void remote_i2c_transaction_bridge_t::detach_endpoint(uint8_t endpoint)
+void local_i2c_transaction_bridge_t::detach_endpoint(uint8_t endpoint)
 {
     auto* cpu = local_cpu(endpoint);
     if(!cpu)
@@ -724,7 +724,7 @@ void remote_i2c_transaction_bridge_t::detach_endpoint(uint8_t endpoint)
     local_cpus[endpoint] = nullptr;
 }
 
-bool remote_i2c_transaction_bridge_t::endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle)
+bool local_i2c_transaction_bridge_t::endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle)
 {
     auto* cpu = local_cpu(endpoint);
     if(!cpu)
@@ -733,7 +733,7 @@ bool remote_i2c_transaction_bridge_t::endpoint_sample_cycle(uint8_t endpoint, ui
     return true;
 }
 
-bool remote_i2c_transaction_bridge_t::endpoint_drive_state(
+bool local_i2c_transaction_bridge_t::endpoint_drive_state(
     uint8_t endpoint, uint64_t sample_cycle, twi_wire_state_t& state)
 {
     auto* cpu = local_cpu(endpoint);
@@ -743,14 +743,14 @@ bool remote_i2c_transaction_bridge_t::endpoint_drive_state(
     return true;
 }
 
-void remote_i2c_transaction_bridge_t::endpoint_set_external_lines(
+void local_i2c_transaction_bridge_t::endpoint_set_external_lines(
     uint8_t endpoint, bool scl_low, bool sda_low)
 {
     if(auto* cpu = local_cpu(endpoint))
         cpu->set_twi_external_lines(scl_low, sda_low);
 }
 
-bool remote_i2c_transaction_bridge_t::endpoint_needs_pump(uint8_t endpoint)
+bool local_i2c_transaction_bridge_t::endpoint_needs_pump(uint8_t endpoint)
 {
     auto* cpu = local_cpu(endpoint);
     return cpu && (
@@ -758,7 +758,7 @@ bool remote_i2c_transaction_bridge_t::endpoint_needs_pump(uint8_t endpoint)
         (cpu->data[reg::addr::TWCR] & reg::bit::TWCR::TWINT));
 }
 
-void remote_i2c_transaction_bridge_t::endpoint_pump_cycle(uint8_t endpoint)
+void local_i2c_transaction_bridge_t::endpoint_pump_cycle(uint8_t endpoint)
 {
     auto* cpu = local_cpu(endpoint);
     if(!cpu)
@@ -768,46 +768,46 @@ void remote_i2c_transaction_bridge_t::endpoint_pump_cycle(uint8_t endpoint)
     cpu->sound_buffer.clear();
 }
 
-bool remote_i2c_transaction_bridge_t::endpoint_claims_address(
+bool local_i2c_transaction_bridge_t::endpoint_claims_address(
     uint8_t endpoint, uint8_t address, bool general_call)
 {
     auto* cpu = local_cpu(endpoint);
     return cpu && cpu->twi_slave_claims_address(address, general_call);
 }
 
-bool remote_i2c_transaction_bridge_t::endpoint_can_address(
+bool local_i2c_transaction_bridge_t::endpoint_can_address(
     uint8_t endpoint, uint8_t address, bool general_call)
 {
     auto* cpu = local_cpu(endpoint);
     return cpu && cpu->twi_slave_can_address(address, general_call);
 }
 
-bool remote_i2c_transaction_bridge_t::endpoint_address(
+bool local_i2c_transaction_bridge_t::endpoint_address(
     uint8_t endpoint, uint8_t address, bool read, bool general_call)
 {
     auto* cpu = local_cpu(endpoint);
     return cpu && cpu->twi_slave_address(address, read, general_call);
 }
 
-bool remote_i2c_transaction_bridge_t::endpoint_write(uint8_t endpoint, uint8_t data)
+bool local_i2c_transaction_bridge_t::endpoint_write(uint8_t endpoint, uint8_t data)
 {
     auto* cpu = local_cpu(endpoint);
     return cpu && cpu->twi_slave_write(data);
 }
 
-uint8_t remote_i2c_transaction_bridge_t::endpoint_read(uint8_t endpoint, bool master_ack)
+uint8_t local_i2c_transaction_bridge_t::endpoint_read(uint8_t endpoint, bool master_ack)
 {
     auto* cpu = local_cpu(endpoint);
     return cpu ? cpu->twi_slave_read(master_ack) : 0xff;
 }
 
-void remote_i2c_transaction_bridge_t::endpoint_stop(uint8_t endpoint)
+void local_i2c_transaction_bridge_t::endpoint_stop(uint8_t endpoint)
 {
     if(auto* cpu = local_cpu(endpoint))
         cpu->twi_slave_stop();
 }
 
-atmega32u4_t* remote_i2c_transaction_bridge_t::local_cpu(uint8_t endpoint) const
+atmega32u4_t* local_i2c_transaction_bridge_t::local_cpu(uint8_t endpoint) const
 {
     if(endpoint >= MAX_ENDPOINTS)
         return nullptr;
