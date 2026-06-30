@@ -197,8 +197,8 @@ void atmega32u4_t::soft_reset()
     spi_done_cycle = UINT64_MAX;
     spi_transmit_zero_cycle = UINT64_MAX;
 
-    twi_link = nullptr;
-    twi_link_endpoint = i2c_link_cable_t::BROADCAST_ENDPOINT;
+    twi_adapter = nullptr;
+    twi_adapter_endpoint = i2c_link_adapter_t::BROADCAST_ENDPOINT;
     twi_prev_cycle = cycle_count;
     twi_done_cycle = UINT64_MAX;
     twi_mode = TWI_MODE_IDLE;

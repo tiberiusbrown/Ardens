@@ -360,7 +360,7 @@ void apply_runtime_settings(absim::arduboy_t& a)
 void disconnect_linked_secondary_arduboy()
 {
     app.linked_secondary_input_focus = false;
-    app.linked_i2c_cable.disconnect();
+    app.linked_i2c_bridge.disconnect();
 
     platform_destroy_texture(app.linked_secondary_display_texture);
     app.linked_secondary_display_texture = {};
@@ -375,9 +375,9 @@ static void preroll_linked_secondary_arduboy()
     apply_runtime_settings(*app.linked_secondary_arduboy);
     set_unpressed_buttons(*app.linked_secondary_arduboy);
     app.linked_secondary_arduboy->debugger_state.paused = false;
-    app.linked_i2c_cable.update_lines();
+    app.linked_i2c_bridge.update_bus_lines();
     app.linked_secondary_arduboy->advance(50ull * 1000000000ull);
-    app.linked_i2c_cable.update_lines();
+    app.linked_i2c_bridge.update_bus_lines();
 }
 
 static bool load_linked_secondary_arduboy(bool preroll)
@@ -399,8 +399,8 @@ static bool load_linked_secondary_arduboy(bool preroll)
     }
 
     app.linked_secondary_arduboy = std::move(secondary);
-    app.linked_i2c_cable.connect({ &primary, app.linked_secondary_arduboy.get() });
-    app.linked_i2c_cable.update_lines();
+    app.linked_i2c_bridge.connect({ &primary, app.linked_secondary_arduboy.get() });
+    app.linked_i2c_bridge.update_bus_lines();
     if(preroll)
         preroll_linked_secondary_arduboy();
     return true;
@@ -416,7 +416,7 @@ static void reset_linked_secondary_arduboy()
 {
     if(!app.linked_secondary_arduboy) return;
 
-    app.linked_i2c_cable.disconnect();
+    app.linked_i2c_bridge.disconnect();
     app.linked_secondary_arduboy.reset();
 
     load_linked_secondary_arduboy(true);
@@ -456,13 +456,13 @@ void advance_primary(uint64_t ps)
         uint64_t chunk = std::min<uint64_t>(ps, LINK_UPDATE_PS);
         uint64_t before = app.emulator.core_state.cpu.cycle_count;
 
-        app.linked_i2c_cable.update_lines();
+        app.linked_i2c_bridge.update_bus_lines();
         app.emulator.advance(chunk);
-        app.linked_i2c_cable.update_lines();
+        app.linked_i2c_bridge.update_bus_lines();
 
         uint64_t cycles = app.emulator.core_state.cpu.cycle_count - before;
         advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
-        app.linked_i2c_cable.update_lines();
+        app.linked_i2c_bridge.update_bus_lines();
 
         if(cycles == 0 && chunk >= ps)
             break;
@@ -477,9 +477,9 @@ void advance_primary_instr()
     uint64_t cycles = app.emulator.core_state.cpu.cycle_count - before;
     if(app.linked_secondary_arduboy)
     {
-        app.linked_i2c_cable.update_lines();
+        app.linked_i2c_bridge.update_bus_lines();
         advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
-        app.linked_i2c_cable.update_lines();
+        app.linked_i2c_bridge.update_bus_lines();
     }
 }
 

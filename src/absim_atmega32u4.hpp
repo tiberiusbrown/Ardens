@@ -50,8 +50,8 @@ void atmega32u4_t::st_handle_ddrd(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     cpu.data[ptr] = x;
-    if(cpu.twi_link)
-        cpu.twi_link->sync_lines();
+    if(cpu.twi_adapter)
+        cpu.twi_adapter->sync_bus_lines();
 }
 
 void atmega32u4_t::st_handle_port(
@@ -60,8 +60,8 @@ void atmega32u4_t::st_handle_port(
     cpu.data[ptr] = x;
     if(ptr == reg::addr::PORTC)
         cpu.data[reg::addr::PINC] = x;
-    if(ptr == reg::addr::PORTD && cpu.twi_link)
-        cpu.twi_link->sync_lines();
+    if(ptr == reg::addr::PORTD && cpu.twi_adapter)
+        cpu.twi_adapter->sync_bus_lines();
 }
 
 void atmega32u4_t::st_handle_mcucr(

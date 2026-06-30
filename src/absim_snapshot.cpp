@@ -48,7 +48,7 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
-constexpr version_t SNAPSHOT_VERSION = { 0, 24, 18 };
+constexpr version_t SNAPSHOT_VERSION = { 0, 24, 19 };
 
 static std::string version_str(version_t const& v)
 {

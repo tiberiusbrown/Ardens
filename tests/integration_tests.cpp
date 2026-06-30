@@ -352,6 +352,81 @@ static int register_metadata_test()
     return pass ? 0 : 1;
 }
 
+static int twi_register_semantics_test()
+{
+    auto a = std::make_unique<absim::arduboy_t>();
+    a->reset();
+    auto& cpu = a->core_state.cpu;
+
+    bool pass = true;
+
+    cpu.st(absim::reg::addr::TWCR,
+        absim::reg::bit::TWCR::TWEN |
+        absim::reg::bit::TWCR::TWEA);
+    cpu.st(absim::reg::addr::TWDR, 0x55);
+    pass &= cpu.data[absim::reg::addr::TWDR] == 0xff;
+    pass &= (cpu.data[absim::reg::addr::TWCR] & absim::reg::bit::TWCR::TWWC) != 0;
+
+    cpu.data[absim::reg::addr::TWCR] |= absim::reg::bit::TWCR::TWINT;
+    cpu.st(absim::reg::addr::TWDR, 0x42);
+    pass &= cpu.data[absim::reg::addr::TWDR] == 0x42;
+    pass &= (cpu.data[absim::reg::addr::TWCR] & absim::reg::bit::TWCR::TWWC) == 0;
+
+    cpu.st(absim::reg::addr::TWSR, 0xff);
+    pass &= cpu.data[absim::reg::addr::TWSR] == 0xfb;
+
+    cpu.st(absim::reg::addr::TWAMR, 0xff);
+    pass &= cpu.data[absim::reg::addr::TWAMR] == 0xfe;
+
+    printf("   %-30s : %s\n", "twi register semantics", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
+static int i2c_bus_line_visibility_test()
+{
+    absim::i2c_bus_participant_t p0{};
+    absim::i2c_bus_participant_t p1{};
+    absim::i2c_bus_t bus;
+    bus.attach(&p0);
+    bus.attach(&p1);
+
+    bool pass = true;
+    pass &= bus.resolve().scl && bus.resolve().sda;
+    p0.drive_scl_low = true;
+    pass &= bus.resolve().scl_low && !bus.resolve().scl;
+    p1.drive_sda_low = true;
+    pass &= bus.resolve().sda_low && !bus.resolve().sda;
+
+    auto a = std::make_unique<absim::arduboy_t>();
+    auto b = std::make_unique<absim::arduboy_t>();
+    a->reset();
+    b->reset();
+
+    absim::remote_i2c_transaction_bridge_t bridge;
+    bridge.connect({ a.get(), b.get() });
+
+    auto& acpu = a->core_state.cpu;
+    auto& bcpu = b->core_state.cpu;
+    acpu.data[absim::reg::addr::TWCR] = absim::reg::bit::TWCR::TWEN;
+    acpu.twi_pull_scl_low = true;
+    acpu.twi_pull_sda_low = true;
+    bridge.update_bus_lines();
+
+    uint8_t pind = bcpu.ld(absim::reg::addr::PIND);
+    pass &= (pind & absim::reg::bit::PIND::PIND0) == 0;
+    pass &= (pind & absim::reg::bit::PIND::PIND1) == 0;
+
+    acpu.twi_pull_scl_low = false;
+    acpu.twi_pull_sda_low = false;
+    bridge.update_bus_lines();
+    pind = bcpu.ld(absim::reg::addr::PIND);
+    pass &= (pind & absim::reg::bit::PIND::PIND0) != 0;
+    pass &= (pind & absim::reg::bit::PIND::PIND1) != 0;
+
+    printf("   %-30s : %s\n", "i2c bus line visibility", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
 static int hex_malformed_input_test()
 {
     struct test_case_t
@@ -907,15 +982,15 @@ static int i2c_handshake_test_impl(const char* test_name, const char* rom_dir, c
 
     advance(*a, 50);
 
-    absim::i2c_local_link_cable_t link;
+    absim::remote_i2c_transaction_bridge_t link;
     link.connect({ a.get(), b.get() });
 
     for(int i = 0; i < 100000 && !(serial_passed(*a) && serial_passed(*b)); ++i)
     {
-        link.update_lines();
+        link.update_bus_lines();
         a->advance(10'000'000ull);
         a->core_state.cpu.sound_buffer.clear();
-        link.update_lines();
+        link.update_bus_lines();
         b->advance(10'000'000ull);
         b->core_state.cpu.sound_buffer.clear();
     }
@@ -1090,6 +1165,10 @@ int main(int argc, char** argv)
 
     printf("\nRegister metadata tests...\n");
     r |= register_metadata_test();
+
+    printf("\nTWI/link tests...\n");
+    r |= twi_register_semantics_test();
+    r |= i2c_bus_line_visibility_test();
 
     printf("\nIntegration tests...\n");
     r |= test("float");

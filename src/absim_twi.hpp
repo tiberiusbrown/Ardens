@@ -27,8 +27,8 @@ ARDENS_FORCEINLINE void atmega32u4_t::twi_finish_status(uint8_t status)
     data[reg::addr::TWCR] &= uint8_t(~TWSTA);
     twi_pull_scl_low = true;
     schedule_interrupt_check();
-    if(twi_link)
-        twi_link->sync_lines();
+    if(twi_adapter)
+        twi_adapter->sync_bus_lines();
 }
 
 uint32_t atmega32u4_t::twi_byte_cycles() const
@@ -45,8 +45,8 @@ void atmega32u4_t::twi_schedule(uint8_t pending, uint32_t cycles)
     twi_done_cycle = cycle_count + std::max<uint32_t>(1u, cycles);
     twi_pull_scl_low = false;
     peripheral_queue.schedule(twi_done_cycle, PQ_TWI);
-    if(twi_link)
-        twi_link->sync_lines();
+    if(twi_adapter)
+        twi_adapter->sync_bus_lines();
 }
 
 void atmega32u4_t::twi_handle_prr0(uint8_t x)
@@ -59,8 +59,8 @@ void atmega32u4_t::twi_handle_prr0(uint8_t x)
         twi_started = false;
         twi_pull_scl_low = false;
         twi_pull_sda_low = false;
-        if(twi_link)
-            twi_link->sync_lines();
+        if(twi_adapter)
+            twi_adapter->sync_bus_lines();
     }
 }
 
@@ -69,8 +69,8 @@ static bool twi_wait_for_link_response(atmega32u4_t& cpu)
     cpu.twi_pull_scl_low = true;
     cpu.twi_done_cycle = cpu.cycle_count + 1;
     cpu.peripheral_queue.schedule(cpu.twi_done_cycle, PQ_TWI);
-    if(cpu.twi_link)
-        cpu.twi_link->sync_lines();
+    if(cpu.twi_adapter)
+        cpu.twi_adapter->sync_bus_lines();
     return true;
 }
 
@@ -88,8 +88,8 @@ void atmega32u4_t::update_twi()
     switch(twi_pending)
     {
     case TWI_PENDING_START:
-        if(twi_link)
-            twi_link->master_start(twi_link_endpoint, twi_started);
+        if(twi_adapter)
+            twi_adapter->on_local_start(twi_adapter_endpoint, twi_started);
         twi_repeated_start = twi_started;
         twi_started = true;
         twi_mode = TWI_MODE_IDLE;
@@ -98,8 +98,8 @@ void atmega32u4_t::update_twi()
         break;
 
     case TWI_PENDING_STOP:
-        if(twi_link)
-            twi_link->master_stop(twi_link_endpoint);
+        if(twi_adapter)
+            twi_adapter->on_local_stop(twi_adapter_endpoint);
         twi_busy = false;
         twi_pending = TWI_PENDING_NONE;
         twi_done_cycle = UINT64_MAX;
@@ -115,9 +115,9 @@ void atmega32u4_t::update_twi()
 
     case TWI_PENDING_ADDRESS:
     {
-        auto result = twi_link ?
-            twi_link->master_address(twi_link_endpoint, twi_address, twi_reading) :
-            i2c_link_cable_t::result_t{};
+        auto result = twi_adapter ?
+            twi_adapter->request_address_ack(twi_adapter_endpoint, twi_address, twi_reading) :
+            i2c_link_adapter_t::result_t{};
         if(result.pending && twi_wait_for_link_response(*this))
             return;
         bool ack = result.ack;
@@ -136,10 +136,10 @@ void atmega32u4_t::update_twi()
 
     case TWI_PENDING_WRITE:
     {
-        auto result = twi_link ?
-            twi_link->master_write(
-                twi_link_endpoint, twi_address, data[reg::addr::TWDR]) :
-            i2c_link_cable_t::result_t{};
+        auto result = twi_adapter ?
+            twi_adapter->request_write_ack(
+                twi_adapter_endpoint, twi_address, data[reg::addr::TWDR]) :
+            i2c_link_adapter_t::result_t{};
         if(result.pending && twi_wait_for_link_response(*this))
             return;
         bool ack = result.ack;
@@ -150,9 +150,9 @@ void atmega32u4_t::update_twi()
     case TWI_PENDING_READ:
     {
         bool master_ack = (data[reg::addr::TWCR] & TWEA) != 0;
-        auto result = twi_link ?
-            twi_link->master_read(twi_link_endpoint, twi_address, master_ack) :
-            i2c_link_cable_t::result_t{};
+        auto result = twi_adapter ?
+            twi_adapter->request_read_byte(twi_adapter_endpoint, twi_address, master_ack) :
+            i2c_link_adapter_t::result_t{};
         if(result.pending && twi_wait_for_link_response(*this))
             return;
         data[reg::addr::TWDR] = result.data;
@@ -185,9 +185,9 @@ static void twi_start_from_twcr(atmega32u4_t& cpu)
 
     if(twcr & TWSTA)
     {
-        if(!cpu.twi_started && cpu.twi_link)
+        if(!cpu.twi_started && cpu.twi_adapter)
         {
-            cpu.twi_link->sync_lines();
+            cpu.twi_adapter->sync_bus_lines();
             if(cpu.twi_external_scl_low || cpu.twi_external_sda_low)
             {
                 cpu.twi_mode = cpu.TWI_MODE_IDLE;
@@ -253,8 +253,8 @@ void atmega32u4_t::twi_handle_st_twcr(
         cpu.twi_pull_scl_low = false;
         cpu.twi_pull_sda_low = false;
         cpu.data[ptr] = uint8_t((nw & ~TWINT) | kept_flags);
-        if(cpu.twi_link)
-            cpu.twi_link->sync_lines();
+        if(cpu.twi_adapter)
+            cpu.twi_adapter->sync_bus_lines();
         return;
     }
 
@@ -266,8 +266,8 @@ void atmega32u4_t::twi_handle_st_twcr(
         cpu.data[ptr] = uint8_t((nw & ~TWINT) | kept_flags);
         cpu.twi_pull_scl_low = false;
         twi_start_from_twcr(cpu);
-        if(cpu.twi_link)
-            cpu.twi_link->sync_lines();
+        if(cpu.twi_adapter)
+            cpu.twi_adapter->sync_bus_lines();
     }
     else
     {
@@ -277,8 +277,8 @@ void atmega32u4_t::twi_handle_st_twcr(
             cpu.data[ptr] &= uint8_t(~TWINT);
             cpu.twi_pull_scl_low = false;
             twi_start_from_twcr(cpu);
-            if(cpu.twi_link)
-                cpu.twi_link->sync_lines();
+            if(cpu.twi_adapter)
+                cpu.twi_adapter->sync_bus_lines();
         }
     }
 }
@@ -302,13 +302,15 @@ void atmega32u4_t::twi_handle_st_twdr(
     }
     cpu.data[ptr] = x;
     cpu.data[reg::addr::TWCR] &= uint8_t(~TWWC);
-    if(cpu.twi_link)
-        cpu.twi_link->sync_lines();
+    if(cpu.twi_adapter)
+        cpu.twi_adapter->sync_bus_lines();
 }
 
 void atmega32u4_t::twi_handle_st_twar_or_twamr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
+    if(ptr == reg::addr::TWAMR)
+        x &= 0xfe;
     cpu.data[ptr] = x;
 }
 
@@ -347,17 +349,17 @@ void atmega32u4_t::set_twi_external_lines(bool scl_low, bool sda_low)
     twi_external_sda_low = sda_low;
 }
 
-void atmega32u4_t::attach_i2c_link(i2c_link_cable_t* link, uint8_t endpoint)
+void atmega32u4_t::attach_i2c_adapter(i2c_link_adapter_t* link, uint8_t endpoint)
 {
-    twi_link = link;
-    twi_link_endpoint = endpoint;
+    twi_adapter = link;
+    twi_adapter_endpoint = endpoint;
 }
 
 uint8_t atmega32u4_t::twi_handle_ld_pind(atmega32u4_t& cpu, uint16_t ptr)
 {
     assert(ptr == reg::addr::PIND);
-    if(cpu.twi_link)
-        cpu.twi_link->sync_lines();
+    if(cpu.twi_adapter)
+        cpu.twi_adapter->sync_bus_lines();
     uint8_t value = cpu.data[ptr];
     auto lines = cpu.twi_wire_state();
 
@@ -480,8 +482,8 @@ void atmega32u4_t::twi_slave_stop()
         twi_pull_scl_low = false;
         twi_pull_sda_low = false;
     }
-    if(twi_link)
-        twi_link->sync_lines();
+    if(twi_adapter)
+        twi_adapter->sync_bus_lines();
 }
 
 }
