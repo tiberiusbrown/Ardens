@@ -26,7 +26,6 @@ struct result_t
 
 static result_t current_result;
 static uint8_t pllcsr_after_wait;
-static uint8_t pllfrq_after_wait;
 
 static result_t& next_result(const char* label, uint8_t count)
 {
@@ -89,7 +88,6 @@ static void wait_for_pll_lock()
   {
   }
   pllcsr_after_wait = PLLCSR;
-  pllfrq_after_wait = PLLFRQ;
 }
 
 static void stop_timer0()
@@ -1250,7 +1248,7 @@ static void measure_t4_tc4h_latch()
 
 static void measure_t4_psr_tlock_buffer()
 {
-  result_t& r = next_result("t4_psr_tlock_buffer", 16);
+  result_t& r = next_result("t4_psr_tlock_buffer", 15);
   uint16_t* out = r.value;
 
   asm volatile(
@@ -1346,7 +1344,6 @@ static void measure_t4_psr_tlock_buffer()
     "lds r22, %[tc4h]\n\t"
     "andi r22, 7\n\t"
     "lds r23, %[tcnt4l]\n\t"
-    "lds r24, %[pllfrq]\n\t"
     "st X+, r20\n\t"
     "st X+, r19\n\t"
     "st X+, r21\n\t"
@@ -1354,8 +1351,6 @@ static void measure_t4_psr_tlock_buffer()
     "st X+, r22\n\t"
     "st X+, r19\n\t"
     "st X+, r23\n\t"
-    "st X+, r19\n\t"
-    "st X+, r24\n\t"
     "st X+, r19\n\t"
     : "+x" (out)
     : [timsk4] "n" (_SFR_MEM_ADDR(TIMSK4)),
@@ -1369,7 +1364,6 @@ static void measure_t4_psr_tlock_buffer()
       [tc4h] "n" (_SFR_MEM_ADDR(TC4H)),
       [ocr4a] "n" (_SFR_MEM_ADDR(OCR4A)),
       [ocr4c] "n" (_SFR_MEM_ADDR(OCR4C)),
-      [pllfrq] "n" (_SFR_MEM_ADDR(PLLFRQ)),
       [psr4_cs1] "M" (uint8_t(_BV(PSR4) | 1))
     : "r18", "r19", "r20", "r21", "r22", "r23", "r24", "r25", "memory");
 }
