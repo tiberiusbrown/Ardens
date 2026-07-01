@@ -1246,6 +1246,53 @@ void arduboy_t::load_state_from_vector(std::vector<uint8_t> const& v)
     load_savestate(ss);
 }
 
+static void save_present_state_to_vector(arduboy_t& a, std::vector<uint8_t>& v)
+{
+    auto input_history = a.debugger_state.input_history;
+    auto state_history = a.debugger_state.state_history;
+    auto present_state = a.debugger_state.present_state;
+    auto present_cycle = a.debugger_state.present_cycle;
+
+    // Capture the live machine state without recursively embedding the timeline.
+    a.debugger_state.input_history.clear();
+    a.debugger_state.state_history.clear();
+    a.debugger_state.present_state.clear();
+    a.debugger_state.present_cycle = 0;
+
+    std::ostringstream ss;
+    bool ok = a.save_snapshot(ss);
+    auto s = ss.str();
+
+    a.debugger_state.input_history = std::move(input_history);
+    a.debugger_state.state_history = std::move(state_history);
+    a.debugger_state.present_state = std::move(present_state);
+    a.debugger_state.present_cycle = present_cycle;
+
+    if(!ok)
+    {
+        v.clear();
+        return;
+    }
+
+    v.resize(s.size());
+    memcpy(v.data(), s.data(), v.size());
+}
+
+static void load_present_state_from_vector(arduboy_t& a, std::vector<uint8_t> const& v)
+{
+    if(v.empty())
+        return;
+
+    auto input_history = a.debugger_state.input_history;
+    auto state_history = a.debugger_state.state_history;
+
+    absim::istrstream ss((char const*)v.data(), v.size());
+    a.load_snapshot(ss);
+
+    a.debugger_state.input_history = std::move(input_history);
+    a.debugger_state.state_history = std::move(state_history);
+}
+
 void arduboy_t::update_history()
 {
 #ifndef ARDENS_NO_DEBUGGER
@@ -1320,7 +1367,7 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
     if(a.debugger_state.input_history.empty()) return;
     if(a.debugger_state.present_state.empty())
     {
-        a.save_state_to_vector(a.debugger_state.present_state);
+        save_present_state_to_vector(a, a.debugger_state.present_state);
         a.debugger_state.present_cycle = a.core_state.cpu.cycle_count;
     }
     size_t si = a.debugger_state.state_history.size();
@@ -1385,7 +1432,7 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
     a.load_state_from_vector(temp_state);
     if(a.core_state.cpu.cycle_count >= a.debugger_state.present_cycle)
     {
-        a.load_state_from_vector(a.debugger_state.present_state);
+        load_present_state_from_vector(a, a.debugger_state.present_state);
         a.debugger_state.present_state.clear();
     }
 }
@@ -1429,14 +1476,18 @@ void arduboy_t::travel_back_single_instr_out()
 void arduboy_t::travel_to_present()
 {
     if(debugger_state.present_state.empty()) return;
-    load_state_from_vector(debugger_state.present_state);
+    load_present_state_from_vector(*this, debugger_state.present_state);
     debugger_state.present_state.clear();
+    debugger_state.present_cycle = 0;
+    debugger_state.paused = false;
 }
 
 void arduboy_t::travel_continue()
 {
     if(debugger_state.present_state.empty()) return;
     debugger_state.present_state.clear();
+    debugger_state.present_cycle = 0;
+    debugger_state.paused = false;
     size_t i;
     i = 0;
     while(i < debugger_state.state_history.size() && debugger_state.state_history[i].cycle < core_state.cpu.cycle_count)
@@ -1611,7 +1662,7 @@ void arduboy_t::advance(uint64_t ps)
 #ifndef ARDENS_NO_DEBUGGER
     if(core_state.cpu.cycle_count >= debugger_state.present_cycle)
     {
-        load_state_from_vector(debugger_state.present_state);
+        load_present_state_from_vector(*this, debugger_state.present_state);
         debugger_state.present_state.clear();
     }
 #endif

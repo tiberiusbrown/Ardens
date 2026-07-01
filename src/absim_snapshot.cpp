@@ -423,6 +423,10 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.profiler_state.hotspots_symbol);
     ar(a.profiler_state.total);
     ar(a.profiler_state.total_with_sleep);
+    ar(a.profiler_state.prev_total);
+    ar(a.profiler_state.prev_total_with_sleep);
+    ar(a.profiler_state.prev_total_ms);
+    ar(a.profiler_state.prev_total_with_sleep_ms);
     ar(a.profiler_state.prev_frame_cycles);
     ar(a.profiler_state.total_frames);
     ar(a.profiler_state.prev_ms_cycles);

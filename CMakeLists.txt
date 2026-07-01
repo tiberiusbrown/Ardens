@@ -601,7 +601,7 @@ if(NOT ARDENS_LIBRETRO)
         .editorconfig
         tests/integration_tests.cpp
         )
-    target_link_libraries(integration_tests PRIVATE ardenslib)
+    target_link_libraries(integration_tests PRIVATE ardensdebuggerlib)
     target_compile_definitions(integration_tests PRIVATE
         -DTESTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests"
         -DBOOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/boot")
