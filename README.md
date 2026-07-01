@@ -1,173 +1,270 @@
 # Ardens
 
-Ardens is an [Arduboy](https://www.arduboy.com/) simulator that is useful for profiling and debugging.
+Ardens is an [Arduboy](https://www.arduboy.com/) simulator, player, profiler, and debugger. It runs Arduboy games on desktop and in the browser, with extra tooling for inspecting CPU state, display state, EEPROM, FX flash, serial output, sound, source symbols, and performance hotspots.
 
-![screenshot](img/screenshot.png)
+![Ardens debugger screenshot](img/screenshot.png)
 
-[Try out the full debugger here.](https://tiberiusbrown.github.io/Ardens/)
-Drag and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (.hex/.elf/.arduboy) and any FX data (.bin) onto the page.
+## Try It Online
 
-Try the minimal player with one of the game URLs below:
+- [Full debugger](https://tiberiusbrown.github.io/Ardens/)
+- [Minimal player](https://tiberiusbrown.github.io/Ardens/player.html)
+- [Flashcart player](https://tiberiusbrown.github.io/Ardens/flashcart.html)
+
+Drag and drop an Arduboy game onto the page, or use a `file=` URL parameter. Supported game inputs include `.hex`, `.elf`, `.arduboy`, `.bin` FX data, and `.snapshot` files created by Ardens.
+
+Example player links:
 
 - [ArduChess](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduchess/master/arduchess/arduchess.hex)
 - [ArduGolf](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/arduboy_minigolf/master/ardugolf.hex)
 - [ArduRogue](https://tiberiusbrown.github.io/Ardens/player.html?file=https://raw.githubusercontent.com/tiberiusbrown/ardurogue/master/ardurogue.hex)
 
+For Arduboy FX games, pass both the program and FX data:
+
+```text
+https://tiberiusbrown.github.io/Ardens/player.html?file=https://example.com/game.hex&file=https://example.com/fxdata.bin
+```
+
+## Applications
+
+Ardens builds several related targets:
+
+| Target | Purpose |
+| --- | --- |
+| `Ardens` | Full debugger, profiler, and player UI. |
+| `ArdensPlayer` | Minimal player UI for running games. |
+| `ArdensFlashcart` | Browser flashcart player using `src/boot/flashcart.zip`. |
+| `ardens_libretro` | Libretro core for frontends such as RetroArch. |
+| `integration_tests` | Test executable for emulator behavior. |
+| `Ardens_benchmark` | Optional benchmark executable. |
+| `Ardens_cycles` | Optional cycle-counting utility. |
+
 ## Features
 
-- Profiler
-  - Identify performance hotspots at the instruction level
-  - View inclusive CPU load or raw cycle counts per instruction, hotspot, or symbol
-- Live CPU Usage Graph
-- Disassembly View
-  - Source lines, symbols, and labels intermixed with instructions
-  - Addresses of jumps, branches, and calls expanded to label/offset
-  - Click on jump addresses to scroll to their destination
-  - Hover over RAM addresses to see their symbol, data type, and value
-  - Jump to any symbol from sorted list
-- Source View
-- Call Stack
-- RAM/Registers View
-  - Edit any register or RAM value live
-  - Show RAM consumption from global variables
-  - Track current and maximum stack usage
-  - Set read/write breakpoints on RAM address
-  - View a portion of RAM as a display buffer
-- Simulation Control
-  - Slow down or speed up simulation speed
-  - Pause, continue, step into, step over, step out
-- Serial Monitor
-- LEDs
-- EEPROM (editable)
-- External flash (editable)
-- Display (SSD1306) Internals
-- Display View
-  - Customize palette and filters
-  - Optionally model row driver current limiting
-  - Temporal filtering for grayscale games
-- Sound Waveform (Time and Frequency)
-- Global and Local Variables
-  - Show all accessible locals and their data types and values
-  - User-defined list of globals to watch
-- Screenshots
-  - Record PNG or GIF
-  - Optionally record sound as WAV
-  - Customize palettes and filters for recording
-- Snapshots
-  - Save/restore snapshot of entire device state
+- AVR/ATmega32U4 Arduboy simulation with Arduboy, Arduboy FX, FX dev kit, and Arduboy Mini FX-port modes.
+- Program loading from Intel HEX, ELF, `.arduboy` packages, FX `.bin` data, and Ardens snapshots.
+- Debug information support from ELF/DWARF when built with LLVM.
+- Instruction-level profiler with inclusive CPU load and raw cycle count views.
+- Live CPU usage graph, disassembly, source view, symbols, globals, locals, and call stack.
+- RAM and register inspector with live editing, stack tracking, data breakpoints, and display-buffer visualization.
+- Simulation controls for pause, continue, reset, speed control, step into/over/out, and time-travel debugging with backward stepping and a recent-history timeline.
+- Runtime auto-breaks for common errors such as stack overflow, invalid memory access, invalid PC, SPI write collision, and FX busy access.
+- Serial monitor, LEDs, EEPROM editor, FX data editor, save-file view, and program-memory view.
+- SSD1306, SSD1309, and SH1106 display models with optional temporal filtering and row-driver current modeling.
+- Display palettes, pixel grids, rotation, integer scaling, ScaleNx and HQx filters.
+- Sound waveform and frequency views.
+- PNG screenshots, GIF recording, optional WAV audio recording, and full-state snapshots.
+- Optional linked secondary Arduboy simulation for I2C/link testing.
+- Desktop, web, distributable embedded-game, and libretro builds.
 
-## Keyboard Bindings
+## Controls
 
-|   Key  | Purpose                            |
-|:------:|------------------------------------|
-| Arrows | Arduboy: directional buttons       |
-|   A/Z  | Arduboy: A button                  |
-|  S/X/B | Arduboy: B button                  |
-|   F1   | (Desktop Debugger Only) Save screenshot of entire window |
-|   F2   | Save screenshot                    |
-|   F3   | Toggle GIF recording               |
-|   F4   | (Debugger only) Save snapshot      |
-|   F5   | (Debugger only) Pause/Continue     |
-|   F8   | Reset                              |
-|   F11  | Toggle fullscreen                  |
-|    O   | (Debugger only) Settings window    |
-|    P   | (Debugger only) Toggle player mode |
-|    R   | Rotate display                     |
+| Key | Action |
+| --- | --- |
+| Arrow keys | Arduboy directional buttons |
+| `A` / `Z` | Arduboy A button |
+| `S` / `X` / `B` | Arduboy B button |
+| `F1` | Desktop debugger: screenshot entire window |
+| `F2` | Save display screenshot |
+| `F3` | Toggle GIF recording |
+| `F4` | Debugger: save snapshot |
+| `F5` | Debugger: pause or continue |
+| `F8` | Reset |
+| `F11` | Toggle fullscreen |
+| `O` | Debugger: settings window |
+| `P` | Debugger: toggle player/full-zoom mode |
+| `R` | Rotate display |
 
 ## Command Line Usage
 
-To invoke from the command line with specific options and game file(s), use the syntax `/path/to/Ardens param=value file=game.hex`, where the parameters are the same as in the URL parameters below.
+Desktop builds accept `key=value` parameters followed by one or more files:
 
-For example:
-
-```raw
+```text
 Ardens palette=highcontrast grid=normal current=true file=game.hex file=fxdata.bin
 ```
 
-## Creating a link to a playable Arduboy game
+Any argument whose key is not a recognized parameter is treated as a file path. Use `save=path` to load a save file.
 
-There is a web build hosted on GitHub pages: to create a link to a playable Arduboy game using Ardens Player, you can follow these patterns:
+## URL and CLI Parameters
 
-`https://tiberiusbrown.github.io/Ardens/player.html?file=https://example.com/game.arduboy`
-`https://tiberiusbrown.github.io/Ardens/player.html?file=https://example.com/game.hex&file=https://example.com/game.bin`
+The web debugger, web player, and desktop applications share the same parameter parser. In URLs, append parameters after `?` and separate them with `&`. On desktop, pass them as command-line arguments.
 
-The web builds of the debugger and player accept the following additional URL parameters (e.g., add `&param1=value1&param2=value2` to the URL).
+| Parameter | Values |
+| --- | --- |
+| `file` | URL or path to a game, FX data, or snapshot. May be repeated. |
+| `save` | URL or path to save data. |
+| `z` | Toggle player/full-zoom mode: `0`, `1`, `false`, `true`, `off`, `on`, `no`, `yes`. |
+| `g`, `grid` | Pixel grid: `none`, `normal`, `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`, or numeric value. |
+| `p`, `palette` | Display palette: `default`, `retro`, `lowcontrast`, `highcontrast`, or numeric value. |
+| `af`, `autofilter` | Temporal display filtering for grayscale games: boolean value. |
+| `f`, `filter` | Upscaling filter: `none`, `scale2x`, `scale3x`, `scale4x`, `hq2x`, `hq3x`, `hq4x`, or numeric value. |
+| `ds`, `downsample` | Integer downsample ratio after filtering: `1` to `4`. |
+| `ori`, `orientation` | Display rotation: `0`/`normal`, `90`/`cw`/`cw90`, `180`/`flip`, `270`/`ccw`/`ccw90`, or `0` to `3`. |
+| `v`, `volume` | Audio gain from `0` to `200`; default is `100`. |
+| `i`, `intscale` | Restrict display scaling to integer factors: boolean value. |
+| `c`, `current` | Display current model: `0`/`off`, `1`/`subtle`, `2`/`normal`, `3`/`exaggerated`, or boolean value. |
+| `fxport` | Flash select port: `0`/`d1`/`fx`, `1`/`d2`/`fxdevkit`, `2`/`e2`/`mini`. |
+| `display` | Display type: `0`/`ssd1306`, `1`/`ssd1309`, `2`/`sh1106`. |
+| `usb`, `usb_connected` | Emulated USB bus connection state: boolean value. |
+| `touch` | Always show touch controls: boolean value. |
+| `size` | Desktop only: initial window size, such as `800x400`. |
 
-#### `g` or `grid`
-Overlays the display with a grid to allow easier disambiguation of adjacent pixels.
-Values: `none`, `normal`, `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`, `white`
+Boolean parameters accept `0`, `1`, `false`, `true`, `off`, `on`, `no`, and `yes`.
 
-#### `p` or `palette`
-Adjusts the color palette of the display.
-Values: `default`, `retro`, `lowcontrast`, `highcontrast`
+## Build From Source
 
-#### `af` or `autofilter`
-If enabled, applies temporal filtering to the display to help properly render grayscale games.
-Values: `0`, `1`, `false`, `true`, `off`, `on`, `no`, `yes`
+Clone with submodules:
 
-#### `f` or `filter`
-(Debugger only) Conditionally applies an upscaling filter.
-Values: `none`, `scale2x`, `scale3x`, `scale4x`, `hq2x`, `hq3x`, `hq4x`
+```sh
+git clone --recursive https://github.com/tiberiusbrown/Ardens.git
+cd Ardens
+```
 
-#### `ds` or `downsample`
-(Debugger only) Downsamples by an integer ratio after applying an upsample filter.
-Values: `1`, `2`, `3`, `4`
+If the repository was already cloned, initialize submodules with:
 
-#### `ori` or `orientation`
-Rotates the display in 90 degree increments (directional button mapping is also rotated as if playing on a rotated Arduboy).
-Values:
-- `0` or `normal`
-- `90` or `cw` or `cw90`
-- `180` or `flip`
-- `270` or `ccw` or `ccw90`
+```sh
+git submodule update --init --recursive
+```
 
-#### `v` or `volume`
-Sets the emulated audio gain. Value may be in the range 0 to 200, with 100 being the default.
+Configure and build the default desktop targets:
 
-#### `size` (Desktop only)
-Sets the initial size of the application window. Value should be in the format `<width>x<height>` (for example, `size=800x400`).
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
 
-#### `i` or `intscale`
-Restricts the display scaling to an integral scaling factor. Defaults to false for the web player, and true for all other platforms.
-Values: `0`, `1`, `false`, `true`, `off`, `on`, `no`, `yes`
+On Windows with Visual Studio, select an architecture during configure if needed:
 
-#### `c` or `current`
-Controls modeling the display row driver current limit. This effectively darkens rows that have many lit pixels. Defaults to `0` / `off`.
-Values:
-- `0` or `false` or `off` or `no`
-- `1` or `true` or `on` or `yes` or `subtle`
-- `2` or `normal`
-- `3` or `exaggerated`
+```sh
+cmake -B build -A x64 -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
+```
 
-#### `fxport`
-Sets the port to be used for the flash select. Values:
-- `0` or `d1` or `fx` (default)
-- `1` or `d2` or `fxdevkit`
-- `2` or `e2` or `mini`
+The default build enables LLVM support. CMake downloads LLVM 16.0.0 through `FetchContent` so Ardens can load ELF files and debug information. To build faster without ELF/DWARF support:
 
-#### `display`
-Sets the type of emulated display. Values:
-- `0` or `ssd1306` (default)
-- `1` or `ssd1309`
-- `2` or `sh1106`
+```sh
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=OFF
+cmake --build build --config Release
+```
 
-## Libraries Used
+Linux desktop builds require the usual C++/CMake toolchain plus graphics/audio development libraries used by SDL/OpenGL. The CI installs `libpulse-dev` and `libgl1-mesa-dev`.
 
-- [SDL](https://github.com/libsdl-org/SDL) (zlib)
-- [sokol](https://github.com/floooh/sokol) (zlib)
-- [LLVM Project](https://github.com/llvm/llvm-project) (Apache v2.0 with LLVM Exceptions) 
-- [Dear ImGui](https://github.com/ocornut/imgui) (MIT)
-- [ImPlot](https://github.com/epezent/implot) (MIT)
-- [imgui_markdown](https://github.com/juliettef/imgui_markdown) (zlib)
-- [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) (MIT)
-- [Simple-FFT](https://github.com/d1vanov/Simple-FFT) (MIT)
-- [brunexgeek/hqx](https://github.com/brunexgeek/hqx) (Apache v2.0)
-- [{fmt}](https://github.com/fmtlib/fmt) (MIT)
-- [rapidjson](https://github.com/Tencent/rapidjson) (MIT)
-- [Miniz](https://github.com/richgel999/miniz) (MIT)
-- [Bitsery](https://github.com/fraillt/bitsery) (MIT)
-- [stb_image_write](https://github.com/nothings/stb/blob/master/stb_image_write.h) (Public Domain)
-- [GIF encoder](https://github.com/lecram/gifenc) (Public Domain)
-- [AudioFile](https://github.com/adamstark/AudioFile) (MIT)
-- [Emscripten Browser File Library](https://github.com/Armchair-Software/emscripten-browser-file) (MIT)
-- [Filewatch](https://github.com/ThomasMonkman/filewatch) (MIT)
+## CMake Options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `ARDENS_LLVM` | `ON` | Build/link LLVM support for ELF and DWARF debug info. |
+| `ARDENS_DEBUGGER` | `ON` | Build the full `Ardens` debugger. |
+| `ARDENS_PLAYER` | `ON` | Build `ArdensPlayer`. |
+| `ARDENS_FLASHCART` | `ON` | Build `ArdensFlashcart`. |
+| `ARDENS_LIB` | `OFF` | Build the emulator core static library. |
+| `ARDENS_LIBRETRO` | `OFF` | Build the libretro core. Disables desktop app targets and LLVM. |
+| `ARDENS_DIST` | `OFF` | Build standalone distributable players from `dist/*.arduboy`. |
+| `ARDENS_BENCHMARK` | `OFF` | Build benchmark executables. |
+| `ARDENS_CYCLES` | `OFF` | Build the cycle-counting utility. |
+| `ARDENS_SDL` | `ON` on desktop | Use the SDL backend. |
+| `ARDENS_WEB_JS` | `OFF` on Emscripten | Build JavaScript-only output instead of WebAssembly. |
+
+## Tests and Benchmarks
+
+Build and run the integration tests:
+
+```sh
+cmake -B build-tests -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=OFF -DARDENS_DEBUGGER=OFF -DARDENS_PLAYER=OFF -DARDENS_LIBRETRO=OFF
+cmake --build build-tests --config Release --target integration_tests
+./build-tests/integration_tests
+```
+
+On Windows, the executable is usually under the configuration directory:
+
+```powershell
+.\build-tests\Release\integration_tests.exe
+```
+
+Optional benchmark targets:
+
+```sh
+cmake -B build-bench -DCMAKE_BUILD_TYPE=Release -DARDENS_BENCHMARK=ON
+cmake --build build-bench --config Release --target Ardens_benchmark Ardens_benchmark_debugger
+```
+
+## Web Builds
+
+Web builds use Emscripten. The CI currently uses Emscripten 3.1.64 and builds both JS-only and WebAssembly packages.
+
+Example configure command:
+
+```sh
+source /path/to/emsdk/emsdk_env.sh
+emcmake cmake -B build-web -DCMAKE_BUILD_TYPE=Release -DARDENS_WEB_JS=OFF
+cmake --build build-web --config Release --target Ardens ArdensPlayer ArdensFlashcart
+```
+
+When LLVM is enabled for web builds, LLVM tablegen tools must be available for the host build. See `.github/workflows/check.yml` for the exact CI sequence.
+
+## Libretro Core
+
+Build the libretro core with:
+
+```sh
+cmake -B build-libretro -DCMAKE_BUILD_TYPE=Release -DARDENS_LIBRETRO=ON
+cmake --build build-libretro --config Release --target ardens_libretro
+```
+
+The libretro core supports `.hex` and `.arduboy` content, savestates, and no BIOS/firmware requirement. Metadata lives in `src/libretro_core/ardens_libretro.info`.
+
+## Distributable Game Builds
+
+Place one or more `.arduboy` packages in `dist/`, then build with `ARDENS_DIST=ON`. Each package is embedded into its own standalone player target.
+
+```sh
+cmake -B dist/build -DARDENS_LLVM=OFF -DARDENS_DEBUGGER=OFF -DARDENS_PLAYER=OFF -DARDENS_DIST=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build dist/build --config Release
+```
+
+Helper scripts are provided:
+
+- `dist/build_windows.bat`
+- `dist/build_macos.sh`
+- `dist/build_linux.sh`
+
+## Repository Layout
+
+| Path | Contents |
+| --- | --- |
+| `src/` | Emulator core, debugger/player UI, platform backends, web HTML shells, and libretro core. |
+| `src/boot/` | Embedded bootloader/menu assets and flashcart package. |
+| `tests/` | Integration tests, ROM fixtures, expected serial output, and reference material. |
+| `bench/` | Benchmark and cycle-counting inputs. |
+| `deps/` | Third-party dependencies. Some are vendored; some are git submodules. |
+| `cmake/` | CMake helpers and Linux distribution build scripts. |
+| `dist/` | Standalone game distribution scripts and input `.arduboy` packages. |
+| `img/` | Icons, resources, and README screenshot. |
+
+## Dependencies
+
+Ardens uses the following third-party libraries:
+
+- [SDL](https://github.com/libsdl-org/SDL) - zlib
+- [sokol](https://github.com/floooh/sokol) - zlib
+- [LLVM Project](https://github.com/llvm/llvm-project) - Apache 2.0 with LLVM Exceptions
+- [Dear ImGui](https://github.com/ocornut/imgui) - MIT
+- [ImPlot](https://github.com/epezent/implot) - MIT
+- [imgui_markdown](https://github.com/juliettef/imgui_markdown) - zlib
+- [ImGuiColorTextEdit](https://github.com/BalazsJako/ImGuiColorTextEdit) - MIT
+- [Simple-FFT](https://github.com/d1vanov/Simple-FFT) - MIT
+- [brunexgeek/hqx](https://github.com/brunexgeek/hqx) - Apache 2.0
+- [{fmt}](https://github.com/fmtlib/fmt) - MIT
+- [RapidJSON](https://github.com/Tencent/rapidjson) - MIT
+- [Miniz](https://github.com/richgel999/miniz) - MIT
+- [Bitsery](https://github.com/fraillt/bitsery) - MIT
+- [stb_image_write](https://github.com/nothings/stb/blob/master/stb_image_write.h) - public domain
+- [gifenc](https://github.com/lecram/gifenc) - public domain
+- [AudioFile](https://github.com/adamstark/AudioFile) - MIT
+- [Emscripten Browser File Library](https://github.com/Armchair-Software/emscripten-browser-file) - MIT
+- [Filewatch](https://github.com/ThomasMonkman/filewatch) - MIT
+- [yyjson](https://github.com/ibireme/yyjson) - MIT
+- [Google Benchmark](https://github.com/google/benchmark) - Apache 2.0
+
+## License
+
+Ardens is released under the MIT License. See [LICENSE.txt](LICENSE.txt).
