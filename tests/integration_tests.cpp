@@ -17,8 +17,20 @@
 
 static const char* snapshot_name = "dazzledash";
 static const char* snapshot_rom = "dazzledash.arduboy";
-static const char* time_travel_name = "instructions";
-static const char* time_travel_rom = "instructions.ino-arduboy-fx.hex";
+
+struct time_travel_fixture_t
+{
+    char const* dir;
+    char const* rom;
+};
+
+static time_travel_fixture_t const time_travel_fixtures[] = {
+    { "instructions", "instructions.ino-arduboy-fx.hex" },
+    { "ardugolf", "ardugolf.hex" },
+    { "ardugolf_fx", "ardugolf_fx.arduboy" },
+    { "arduchess", "arduchess.hex" },
+    { "dazzledash", "dazzledash.arduboy" },
+};
 
 static std::unique_ptr<absim::arduboy_t> arduboy;
 
@@ -325,6 +337,11 @@ static std::string load_rom(absim::arduboy_t& a, char const* dir, char const* ga
 {
     std::ifstream f(std::string(TESTS_DIR "/") + dir + "/" + game, std::ios::binary);
     return a.load_file(game, f);
+}
+
+static std::string time_travel_case_name(time_travel_fixture_t const& fixture, char const* suffix)
+{
+    return std::string(fixture.dir) + " " + suffix;
 }
 
 static bool register_info_matches(
@@ -1328,9 +1345,9 @@ static int full_snapshot_test()
     return r ? 1 : 0;
 }
 
-static std::string load_time_travel_fixture(absim::arduboy_t& a)
+static std::string load_time_travel_fixture(absim::arduboy_t& a, time_travel_fixture_t const& fixture)
 {
-    auto err = load_rom(a, time_travel_name, time_travel_rom);
+    auto err = load_rom(a, fixture.dir, fixture.rom);
     if(!err.empty())
         return err;
     a.core_state.cpu.adc_nondeterminism = false;
@@ -1428,14 +1445,15 @@ static int time_travel_roundtrip_case(
     return r ? 1 : 0;
 }
 
-static int time_travel_roundtrip_test()
+static int time_travel_roundtrip_fixture_test(time_travel_fixture_t const& fixture)
 {
     auto reference = std::make_unique<absim::arduboy_t>();
 
-    auto err = load_time_travel_fixture(*reference);
+    auto const summary_name = time_travel_case_name(fixture, "time travel roundtrip");
+    auto err = load_time_travel_fixture(*reference, fixture);
     if(!err.empty())
     {
-        printf("   %-30s : FAIL\n", "time travel roundtrip");
+        printf("   %-30s : FAIL\n", summary_name.c_str());
         return 1;
     }
 
@@ -1444,49 +1462,95 @@ static int time_travel_roundtrip_test()
     auto baseline_snapshot = save_snapshot_bytes(*reference);
     if(baseline_snapshot.empty())
     {
-        printf("   %-30s : FAIL\n", "time travel roundtrip");
+        printf("   %-30s : FAIL\n", summary_name.c_str());
         return 1;
     }
 
+    int r = 0;
     auto restored = std::make_unique<absim::arduboy_t>();
     err = load_snapshot_bytes(*restored, baseline_snapshot);
     bool setup_fail = !err.empty() ||
         !same_full_state(*reference, *restored) ||
         save_snapshot_bytes(*restored) != baseline_snapshot;
-    printf("   %-30s : %s\n", "time travel load snapshot", setup_fail ? "FAIL" : "PASS");
+    printf("   %-30s : %s\n",
+        time_travel_case_name(fixture, "time travel load snapshot").c_str(),
+        setup_fail ? "FAIL" : "PASS");
     fflush(stdout);
     if(setup_fail)
+    {
+        printf("   %-30s : FAIL\n", summary_name.c_str());
         return 1;
+    }
 
     auto const before_cycle = restored->core_state.cpu.cycle_count;
     auto const before_pc = restored->core_state.cpu.pc;
     restored->travel_back_single_instr();
     bool single_moved = !(restored->core_state.cpu.cycle_count == before_cycle &&
         restored->core_state.cpu.pc == before_pc);
-    printf("   %-30s : %s\n", "time travel single move", single_moved ? "PASS" : "FAIL");
+    printf("   %-30s : %s\n",
+        time_travel_case_name(fixture, "time travel single move").c_str(),
+        single_moved ? "PASS" : "FAIL");
     restored->travel_to_present();
     bool single_runtime_fail = !same_runtime_state(*reference, *restored);
     bool single_snapshot_fail = !same_snapshot_state(*reference, *restored);
     bool single_state_fail = single_runtime_fail || single_snapshot_fail;
     bool single_bytes_fail = save_snapshot_bytes(*restored) != baseline_snapshot;
     bool single_restore_fail = single_state_fail || single_bytes_fail;
-    printf("   %-30s : %s\n", "time travel single restore", single_restore_fail ? "FAIL" : "PASS");
+    printf("   %-30s : %s\n",
+        time_travel_case_name(fixture, "time travel single restore").c_str(),
+        single_restore_fail ? "FAIL" : "PASS");
     if(!single_moved || single_restore_fail)
+    {
+        printf("   %-30s : FAIL\n", summary_name.c_str());
         return 1;
+    }
 
-    printf("   %-30s : PASS\n", "time travel roundtrip");
+    auto const cycle_target = reference->core_state.cpu.cycle_count / 2;
+    auto const cycle_step = [cycle_target](absim::arduboy_t& a)
+    {
+        return time_travel_step_cycle(a, cycle_target);
+    };
+    r |= time_travel_roundtrip_case(
+        time_travel_case_name(fixture, "time travel over").c_str(),
+        *reference,
+        baseline_snapshot,
+        time_travel_step_over,
+        time_travel_step_over);
+    r |= time_travel_roundtrip_case(
+        time_travel_case_name(fixture, "time travel out").c_str(),
+        *reference,
+        baseline_snapshot,
+        time_travel_step_out,
+        time_travel_step_out);
+    r |= time_travel_roundtrip_case(
+        time_travel_case_name(fixture, "time travel cycle").c_str(),
+        *reference,
+        baseline_snapshot,
+        cycle_step,
+        cycle_step);
+
+    printf("   %-30s : %s\n", summary_name.c_str(), r ? "FAIL" : "PASS");
     fflush(stdout);
-    return 0;
+    return r ? 1 : 0;
 }
 
-static int time_travel_snapshot_history_test()
+static int time_travel_roundtrip_test()
+{
+    int r = 0;
+    for(auto const& fixture : time_travel_fixtures)
+        r |= time_travel_roundtrip_fixture_test(fixture);
+    return r;
+}
+
+static int time_travel_snapshot_history_fixture_test(time_travel_fixture_t const& fixture)
 {
     auto baseline = std::make_unique<absim::arduboy_t>();
 
-    auto err = load_time_travel_fixture(*baseline);
+    auto const summary_name = time_travel_case_name(fixture, "time travel snapshot history");
+    auto err = load_time_travel_fixture(*baseline, fixture);
     if(!err.empty())
     {
-        printf("   %-30s : FAIL\n", "time travel snapshot history");
+        printf("   %-30s : FAIL\n", summary_name.c_str());
         return 1;
     }
 
@@ -1494,7 +1558,7 @@ static int time_travel_snapshot_history_test()
 
     if(baseline->debugger_state.state_history.size() <= 1)
     {
-        printf("   %-30s : FAIL\n", "time travel snapshot history");
+        printf("   %-30s : FAIL\n", summary_name.c_str());
         printf("      current cycle=%llu pc=%u present=%s\n",
             (unsigned long long)baseline->core_state.cpu.cycle_count,
             unsigned(baseline->core_state.cpu.pc),
@@ -1505,7 +1569,7 @@ static int time_travel_snapshot_history_test()
     auto baseline_snapshot = save_snapshot_bytes(*baseline);
     if(baseline_snapshot.empty())
     {
-        printf("   %-30s : FAIL\n", "time travel snapshot history");
+        printf("   %-30s : FAIL\n", summary_name.c_str());
         return 1;
     }
 
@@ -1514,18 +1578,35 @@ static int time_travel_snapshot_history_test()
     bool load_fail = !err.empty() ||
         !same_full_state(*baseline, *subject) ||
         save_snapshot_bytes(*subject) != baseline_snapshot;
-    printf("   %-30s : %s\n", "time travel snapshot load", load_fail ? "FAIL" : "PASS");
+    printf("   %-30s : %s\n",
+        time_travel_case_name(fixture, "time travel snapshot load").c_str(),
+        load_fail ? "FAIL" : "PASS");
     fflush(stdout);
 
-    uint64_t target_cycle = subject->debugger_state.state_history[1].cycle + 1;
     bool rewind_fail = false;
     if(!load_fail)
     {
-        auto const before_cycle = subject->core_state.cpu.cycle_count;
-        subject->travel_back_to_cycle(target_cycle);
-        rewind_fail = subject->core_state.cpu.cycle_count == before_cycle || subject->is_present_state();
+        if(subject->debugger_state.state_history.size() <= 1)
+        {
+            rewind_fail = true;
+            printf("   %-30s : FAIL\n",
+                time_travel_case_name(fixture, "time travel snapshot rewind").c_str());
+            printf("      current cycle=%llu pc=%u present=%s\n",
+                (unsigned long long)subject->core_state.cpu.cycle_count,
+                unsigned(subject->core_state.cpu.pc),
+                subject->is_present_state() ? "yes" : "no");
+        }
+        else
+        {
+            uint64_t target_cycle = subject->debugger_state.state_history[1].cycle + 1;
+            auto const before_cycle = subject->core_state.cpu.cycle_count;
+            subject->travel_back_to_cycle(target_cycle);
+            rewind_fail = subject->core_state.cpu.cycle_count == before_cycle || subject->is_present_state();
+            printf("   %-30s : %s\n",
+                time_travel_case_name(fixture, "time travel snapshot rewind").c_str(),
+                rewind_fail ? "FAIL" : "PASS");
+        }
     }
-    printf("   %-30s : %s\n", "time travel snapshot rewind", rewind_fail ? "FAIL" : "PASS");
     fflush(stdout);
 
     std::string rewound_snapshot;
@@ -1535,7 +1616,9 @@ static int time_travel_snapshot_history_test()
         rewound_snapshot = save_snapshot_bytes(*subject);
         save_fail = rewound_snapshot.empty();
     }
-    printf("   %-30s : %s\n", "time travel snapshot save", save_fail ? "FAIL" : "PASS");
+    printf("   %-30s : %s\n",
+        time_travel_case_name(fixture, "time travel snapshot save").c_str(),
+        save_fail ? "FAIL" : "PASS");
     fflush(stdout);
 
     bool reload_fail = save_fail;
@@ -1546,7 +1629,9 @@ static int time_travel_snapshot_history_test()
         reload_fail = !err.empty() ||
             !same_full_state(*subject, *restored) ||
             save_snapshot_bytes(*restored) != rewound_snapshot;
-        printf("   %-30s : %s\n", "time travel snapshot reload", reload_fail ? "FAIL" : "PASS");
+        printf("   %-30s : %s\n",
+            time_travel_case_name(fixture, "time travel snapshot reload").c_str(),
+            reload_fail ? "FAIL" : "PASS");
         fflush(stdout);
 
         bool restore_fail = reload_fail;
@@ -1559,15 +1644,25 @@ static int time_travel_snapshot_history_test()
             bool restore_bytes_fail = save_snapshot_bytes(*restored) != baseline_snapshot;
             restore_fail = restore_state_fail || restore_bytes_fail;
         }
-        printf("   %-30s : %s\n", "time travel snapshot restore", restore_fail ? "FAIL" : "PASS");
+        printf("   %-30s : %s\n",
+            time_travel_case_name(fixture, "time travel snapshot restore").c_str(),
+            restore_fail ? "FAIL" : "PASS");
         fflush(stdout);
         reload_fail = reload_fail || restore_fail;
     }
 
     bool final_fail = load_fail || rewind_fail || save_fail || reload_fail;
-    printf("   %-30s : %s\n", "time travel snapshot history", final_fail ? "FAIL" : "PASS");
+    printf("   %-30s : %s\n", summary_name.c_str(), final_fail ? "FAIL" : "PASS");
     fflush(stdout);
     return final_fail ? 1 : 0;
+}
+
+static int time_travel_snapshot_history_test()
+{
+    int r = 0;
+    for(auto const& fixture : time_travel_fixtures)
+        r |= time_travel_snapshot_history_fixture_test(fixture);
+    return r;
 }
 
 int main(int argc, char** argv)
