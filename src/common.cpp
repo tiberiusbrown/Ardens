@@ -1000,7 +1000,9 @@ void init()
     app.settings_loaded = true;
 #endif
 
+#ifdef IMGUI_HAS_DOCK
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#endif
 
 #if defined(__EMSCRIPTEN__) || defined(ARDENS_NO_SAVED_SETTINGS)
     io.IniFilename = nullptr;

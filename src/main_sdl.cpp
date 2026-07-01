@@ -91,7 +91,7 @@ static void sdl_platform_update_texture(texture_t t, void const* data, size_t n)
         return;
 
     float fw = 0.f, fh = 0.f;
-    if(SDL_GetTextureSize(texture, &fw, &fh) < 0)
+    if(!SDL_GetTextureSize(texture, &fw, &fh))
     {
         SDL_Log("SDL_GetTextureSize failed: %s", SDL_GetError());
         return;
@@ -115,7 +115,7 @@ static void sdl_platform_update_texture(texture_t t, void const* data, size_t n)
 
     void* pixels;
     int pitch;
-    if(SDL_LockTexture(texture, nullptr, &pixels, &pitch) < 0)
+    if(!SDL_LockTexture(texture, nullptr, &pixels, &pitch))
     {
         SDL_Log("SDL_LockTexture failed: %s", SDL_GetError());
         return;
@@ -199,12 +199,12 @@ static float sdl_platform_pixel_ratio()
 
 static void sdl_platform_destroy_fonts_texture()
 {
-    ImGui_ImplSDLRenderer3_DestroyFontsTexture();
+    ImGui_ImplSDLRenderer3_DestroyDeviceObjects();
 }
 
 static void sdl_platform_create_fonts_texture()
 {
-    ImGui_ImplSDLRenderer3_CreateFontsTexture();
+    ImGui_ImplSDLRenderer3_CreateDeviceObjects();
 }
 
 static void sdl_platform_open_url(char const* url)
@@ -216,7 +216,7 @@ static void sdl_platform_toggle_fullscreen()
 {
     static bool fs = false;
     fs = !fs;
-    SDL_SetWindowFullscreen(window, (SDL_bool)fs);
+    SDL_SetWindowFullscreen(window, fs);
 }
 
 static void main_loop()
@@ -394,7 +394,7 @@ int main(int argc, char** argv)
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;

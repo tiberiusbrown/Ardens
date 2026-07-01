@@ -48,6 +48,10 @@
 //                       added MouseHoveredAddr public readable field. (#47, #27) [@StrikerX3]
 //                       fixed a data preview crash with 1.91.0 WIP. fixed contiguous highlight color when using data preview.
 //                       *BREAKING* added UserData field passed to all optional function handlers: ReadFn, WriteFn, HighlightFn, BgColorFn. (#50) [@silverweed]
+// - v0.56 (2024/11/04): fixed MouseHovered, MouseHoveredAddr not being set when hovering a byte being edited. (#54)
+// - v0.57 (2025/03/26): fixed warnings. using ImGui's ImSXX/ImUXX types instead of e.g. int32_t/uint32_t. (#56)
+// - v0.58 (2025/03/31): fixed extraneous footer spacing (added in 0.51) breaking vertical auto-resize. (#53)
+// - v0.59 (2025/04/08): fixed GotoAddrAndHighlight() not working if OptShowOptions is disabled.
 //
 // TODO:
 // - This is generally old/crappy code, it should work but isn't very good.. to be rewritten some day.
@@ -60,12 +64,15 @@
 #include <stdio.h>      // sprintf, scanf
 #include <stdint.h>     // uint8_t, etc.
 
-#if defined(_MSC_VER) || defined(_UCRT)
-#define _PRISizeT   "I"
+#if defined(_MSC_VER) && !defined(snprintf)
 #define ImSnprintf  _snprintf
 #else
-#define _PRISizeT   "z"
 #define ImSnprintf  snprintf
+#endif
+#if defined(_MSC_VER) && !defined(__clang__)
+#define _PRISizeT   "I"
+#else
+#define _PRISizeT   "z"
 #endif
 
 #if defined(_MSC_VER) || defined(_UCRT)
@@ -99,10 +106,10 @@ struct MemoryEditor
     ImU32           HighlightColor;                             //          // background color of highlighted bytes.
 
     // Function handlers
-    ImU8            (*ReadFn)(const ImU8* data, size_t off, void* user_data);     // = 0      // optional handler to read bytes.
-    void            (*WriteFn)(ImU8* data, size_t off, ImU8 d, void* user_data);  // = 0      // optional handler to write bytes.
-    bool            (*HighlightFn)(const ImU8* data, size_t off, void* user_data);// = 0      // optional handler to return Highlight property (to support non-contiguous highlighting).
-    ImU32           (*BgColorFn)(const ImU8* data, size_t off, void* user_data);  // = 0      // optional handler to return custom background color of individual bytes.
+    ImU8            (*ReadFn)(const ImU8* mem, size_t off, void* user_data);      // = 0      // optional handler to read bytes.
+    void            (*WriteFn)(ImU8* mem, size_t off, ImU8 d, void* user_data);   // = 0      // optional handler to write bytes.
+    bool            (*HighlightFn)(const ImU8* mem, size_t off, void* user_data); // = 0      // optional handler to return Highlight property (to support non-contiguous highlighting).
+    ImU32           (*BgColorFn)(const ImU8* mem, size_t off, void* user_data);   // = 0      // optional handler to return custom background color of individual bytes.
     void*           UserData;                                                     // = NULL   // user data forwarded to the function handlers
 
     // Public read-only data
@@ -166,16 +173,16 @@ struct MemoryEditor
 
     struct Sizes
     {
-        int     AddrDigitsCount;
-        float   LineHeight;
-        float   GlyphWidth;
-        float   HexCellWidth;
-        float   SpacingBetweenMidCols;
-        float   PosHexStart;
-        float   PosHexEnd;
-        float   PosAsciiStart;
-        float   PosAsciiEnd;
-        float   WindowWidth;
+        int     AddrDigitsCount;            // Number of digits required to represent maximum address.
+        float   LineHeight;                 // Height of each line (no spacing).
+        float   GlyphWidth;                 // Glyph width (assume mono-space).
+        float   HexCellWidth;               // Width of a hex edit cell ~2.5f * GlypHWidth.
+        float   SpacingBetweenMidCols;      // Spacing between each columns section (OptMidColsCount).
+        float   OffsetHexMinX;
+        float   OffsetHexMaxX;
+        float   OffsetAsciiMinX;
+        float   OffsetAsciiMaxX;
+        float   WindowWidth;                // Ideal window width.
 
         Sizes() { memset(this, 0, sizeof(*this)); }
     };
@@ -191,17 +198,17 @@ struct MemoryEditor
         s.GlyphWidth = ImGui::CalcTextSize("F").x + 1;                  // We assume the font is mono-space
         s.HexCellWidth = (float)(int)(s.GlyphWidth * 2.5f);             // "FF " we include trailing space in the width to easily catch clicks everywhere
         s.SpacingBetweenMidCols = (float)(int)(s.HexCellWidth * 0.25f); // Every OptMidColsCount columns we add a bit of extra spacing
-        s.PosHexStart = (s.AddrDigitsCount + 2) * s.GlyphWidth;
-        s.PosHexEnd = s.PosHexStart + (s.HexCellWidth * Cols);
-        s.PosAsciiStart = s.PosAsciiEnd = s.PosHexEnd;
+        s.OffsetHexMinX = (s.AddrDigitsCount + 2) * s.GlyphWidth;
+        s.OffsetHexMaxX = s.OffsetHexMinX + (s.HexCellWidth * Cols);
+        s.OffsetAsciiMinX = s.OffsetAsciiMaxX = s.OffsetHexMaxX;
         if (OptShowAscii)
         {
-            s.PosAsciiStart = s.PosHexEnd + s.GlyphWidth * 1;
+            s.OffsetAsciiMinX = s.OffsetHexMaxX + s.GlyphWidth * 1;
             if (OptMidColsCount > 0)
-                s.PosAsciiStart += (float)((Cols + OptMidColsCount - 1) / OptMidColsCount) * s.SpacingBetweenMidCols;
-            s.PosAsciiEnd = s.PosAsciiStart + Cols * s.GlyphWidth;
+                s.OffsetAsciiMinX += (float)((Cols + OptMidColsCount - 1) / OptMidColsCount) * s.SpacingBetweenMidCols;
+            s.OffsetAsciiMaxX = s.OffsetAsciiMinX + Cols * s.GlyphWidth;
         }
-        s.WindowWidth = s.PosAsciiEnd + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
+        s.WindowWidth = s.OffsetAsciiMaxX + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
     }
 
     // Standalone Memory Editor window
@@ -253,6 +260,7 @@ struct MemoryEditor
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
         // We are not really using the clipper API correctly here, because we rely on visible_start_addr/visible_end_addr for our scrolling function.
+        const ImVec2 avail_size = ImGui::GetContentRegionAvail();
         const int line_total_count = (int)((mem_size + Cols - 1) / Cols);
         ImGuiListClipper clipper;
         clipper.Begin(line_total_count, s.LineHeight);
@@ -279,7 +287,7 @@ struct MemoryEditor
         // Draw vertical separator
         ImVec2 window_pos = ImGui::GetWindowPos();
         if (OptShowAscii)
-            draw_list->AddLine(ImVec2(window_pos.x + s.PosAsciiStart - s.GlyphWidth, window_pos.y), ImVec2(window_pos.x + s.PosAsciiStart - s.GlyphWidth, window_pos.y + 9999), ImGui::GetColorU32(ImGuiCol_Border));
+            draw_list->AddLine(ImVec2(window_pos.x + s.OffsetAsciiMinX - s.GlyphWidth, window_pos.y), ImVec2(window_pos.x + s.OffsetAsciiMinX - s.GlyphWidth, window_pos.y + 9999), ImGui::GetColorU32(ImGuiCol_Border));
 
         const ImU32 color_text = ImGui::GetColorU32(ImGuiCol_Text);
         const ImU32 color_disabled = OptGreyOutZeroes ? ImGui::GetColorU32(ImGuiCol_TextDisabled) : color_text;
@@ -301,7 +309,7 @@ struct MemoryEditor
                 // Draw Hexadecimal
                 for (int n = 0; n < Cols && addr < mem_size; n++, addr++)
                 {
-                    float byte_pos_x = s.PosHexStart + s.HexCellWidth * n;
+                    float byte_pos_x = s.OffsetHexMinX + s.HexCellWidth * n;
                     if (OptMidColsCount > 0)
                         byte_pos_x += (float)(n / OptMidColsCount) * s.SpacingBetweenMidCols;
                     ImGui::SameLine(byte_pos_x);
@@ -399,6 +407,11 @@ struct MemoryEditor
                             else
                                 mem_data[addr] = (ImU8)data_input_value;
                         }
+                        if (ImGui::IsItemHovered())
+                        {
+                            MouseHovered = true;
+                            MouseHoveredAddr = addr;
+                        }
                         ImGui::PopID();
                     }
                     else
@@ -440,15 +453,15 @@ struct MemoryEditor
                 if (OptShowAscii)
                 {
                     // Draw ASCII values
-                    ImGui::SameLine(s.PosAsciiStart);
+                    ImGui::SameLine(s.OffsetAsciiMinX);
                     ImVec2 pos = ImGui::GetCursorScreenPos();
                     addr = (size_t)line_i * Cols;
 
                     const float mouse_off_x = ImGui::GetIO().MousePos.x - pos.x;
-                    const size_t mouse_addr = (mouse_off_x >= 0.0f && mouse_off_x < s.PosAsciiEnd - s.PosAsciiStart) ? addr + (size_t)(mouse_off_x / s.GlyphWidth) : (size_t)-1;
+                    const size_t mouse_addr = (mouse_off_x >= 0.0f && mouse_off_x < s.OffsetAsciiMaxX - s.OffsetAsciiMinX) ? addr + (size_t)(mouse_off_x / s.GlyphWidth) : (size_t)-1;
 
                     ImGui::PushID(line_i);
-                    if (ImGui::InvisibleButton("ascii", ImVec2(s.PosAsciiEnd - s.PosAsciiStart, s.LineHeight)))
+                    if (ImGui::InvisibleButton("ascii", ImVec2(s.OffsetAsciiMaxX - s.OffsetAsciiMinX, s.LineHeight)))
                     {
                         DataEditingAddr = DataPreviewAddr = mouse_addr;
                         DataEditingTakeFocus = true;
@@ -482,8 +495,10 @@ struct MemoryEditor
         ImGui::EndChild();
 
         // Notify the main window of our ideal child content size (FIXME: we are missing an API to get the contents size from the child)
+        ImVec2 backup_pos = ImGui::GetCursorScreenPos();
         ImGui::SetCursorPosX(s.WindowWidth);
         ImGui::Dummy(ImVec2(0.0f, 0.0f));
+        ImGui::SetCursorScreenPos(backup_pos);
 
         if (data_next && DataEditingAddr + 1 < mem_size)
         {
@@ -507,6 +522,19 @@ struct MemoryEditor
         {
             ImGui::Separator();
             DrawPreviewLine(s, mem_data, mem_size, base_display_addr);
+        }
+
+        if (GotoAddr != (size_t)-1)
+        {
+            if (GotoAddr < mem_size)
+            {
+                ImGui::BeginChild("##scrolling");
+                ImGui::SetScrollY((GotoAddr / Cols) * ImGui::GetTextLineHeight() - avail_size.y * 0.5f);
+                ImGui::EndChild();
+                DataEditingAddr = DataPreviewAddr = GotoAddr;
+                DataEditingTakeFocus = true;
+            }
+            GotoAddr = (size_t)-1;
         }
 
         const ImVec2 contents_pos_end(contents_pos_start.x + child_width, ImGui::GetCursorScreenPos().y);
@@ -552,19 +580,6 @@ struct MemoryEditor
                 GotoAddr = goto_addr - base_display_addr;
                 HighlightMin = HighlightMax = (size_t)-1;
             }
-        }
-
-        if (GotoAddr != (size_t)-1)
-        {
-            if (GotoAddr < mem_size)
-            {
-                ImGui::BeginChild("##scrolling");
-                ImGui::SetScrollFromPosY(ImGui::GetCursorStartPos().y + (GotoAddr / Cols) * ImGui::GetTextLineHeight());
-                ImGui::EndChild();
-                DataEditingAddr = DataPreviewAddr = GotoAddr;
-                DataEditingTakeFocus = true;
-            }
-            GotoAddr = (size_t)-1;
         }
 
         //if (MouseHovered)
@@ -639,7 +654,7 @@ struct MemoryEditor
 
     bool IsBigEndian() const
     {
-        uint16_t x = 1;
+        ImU16 x = 1;
         char c[2];
         memcpy(c, &x, 2);
         return c[0] != 0;
@@ -649,8 +664,8 @@ struct MemoryEditor
     {
         if (is_little_endian)
         {
-            uint8_t* dst = (uint8_t*)_dst;
-            uint8_t* src = (uint8_t*)_src + s - 1;
+            ImU8* dst = (ImU8*)_dst;
+            ImU8* src = (ImU8*)_src + s - 1;
             for (int i = 0, n = (int)s; i < n; ++i)
                 memcpy(dst++, src--, 1);
             return _dst;
@@ -669,8 +684,8 @@ struct MemoryEditor
         }
         else
         {
-            uint8_t* dst = (uint8_t*)_dst;
-            uint8_t* src = (uint8_t*)_src + s - 1;
+            ImU8* dst = (ImU8*)_dst;
+            ImU8* src = (ImU8*)_src + s - 1;
             for (int i = 0, n = (int)s; i < n; ++i)
                 memcpy(dst++, src--, 1);
             return _dst;
@@ -685,7 +700,7 @@ struct MemoryEditor
         return fp(dst, src, size, PreviewEndianness);
     }
 
-    const char* FormatBinary(const uint8_t* buf, int width) const
+    const char* FormatBinary(const ImU8* buf, int width) const
     {
         IM_ASSERT(width <= 64);
         size_t out_n = 0;
@@ -705,7 +720,7 @@ struct MemoryEditor
     // [Internal]
     void DrawPreviewData(size_t addr, const ImU8* mem_data, size_t mem_size, ImGuiDataType data_type, DataFormat data_format, char* out_buf, size_t out_buf_size) const
     {
-        uint8_t buf[8];
+        ImU8 buf[8];
         size_t elem_size = DataTypeGetSize(data_type);
         size_t size = addr + elem_size > mem_size ? mem_size - addr : elem_size;
         if (ReadFn)
@@ -716,7 +731,7 @@ struct MemoryEditor
 
         if (data_format == DataFormat_Bin)
         {
-            uint8_t binbuf[8];
+            ImU8 binbuf[8];
             EndiannessCopy(binbuf, buf, size);
             ImSnprintf(out_buf, out_buf_size, "%s", FormatBinary(binbuf, (int)size * 8));
             return;
@@ -727,7 +742,7 @@ struct MemoryEditor
         {
         case ImGuiDataType_S8:
         {
-            int8_t data = 0;
+            ImS8 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%hhd", data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%02x", data & 0xFF); return; }
@@ -735,7 +750,7 @@ struct MemoryEditor
         }
         case ImGuiDataType_U8:
         {
-            uint8_t data = 0;
+            ImU8 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%hhu", data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%02x", data & 0XFF); return; }
@@ -743,7 +758,7 @@ struct MemoryEditor
         }
         case ImGuiDataType_S16:
         {
-            int16_t data = 0;
+            ImS16 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%hd", data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%04x", data & 0xFFFF); return; }
@@ -751,7 +766,7 @@ struct MemoryEditor
         }
         case ImGuiDataType_U16:
         {
-            uint16_t data = 0;
+            ImU16 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%hu", data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%04x", data & 0xFFFF); return; }
@@ -759,7 +774,7 @@ struct MemoryEditor
         }
         case ImGuiDataType_S32:
         {
-            int32_t data = 0;
+            ImS32 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%d", data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%08x", data); return; }
@@ -767,7 +782,7 @@ struct MemoryEditor
         }
         case ImGuiDataType_U32:
         {
-            uint32_t data = 0;
+            ImU32 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%u", data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%08x", data); return; }
@@ -775,7 +790,7 @@ struct MemoryEditor
         }
         case ImGuiDataType_S64:
         {
-            int64_t data = 0;
+            ImS64 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%lld", (long long)data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%016llx", (long long)data); return; }
@@ -783,7 +798,7 @@ struct MemoryEditor
         }
         case ImGuiDataType_U64:
         {
-            uint64_t data = 0;
+            ImU64 data = 0;
             EndiannessCopy(&data, buf, size);
             if (data_format == DataFormat_Dec) { ImSnprintf(out_buf, out_buf_size, "%llu", (long long)data); return; }
             if (data_format == DataFormat_Hex) { ImSnprintf(out_buf, out_buf_size, "0x%016llx", (long long)data); return; }

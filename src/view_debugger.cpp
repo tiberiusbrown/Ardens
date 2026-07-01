@@ -11,9 +11,7 @@
 
 void view_debugger()
 {
-    const bool enableDocking = ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable;
-    ImGuiID dockspace_id = ImGui::GetID("DockSpace");
-    if(app.fs_ready && enableDocking)
+    if(app.fs_ready)
     {
 #ifdef __EMSCRIPTEN__
         if(!app.settings_loaded)
@@ -30,34 +28,40 @@ void view_debugger()
             );
         }
 #endif
-
-        ImGuiViewport* viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(viewport->WorkPos);
-        ImGui::SetNextWindowSize(viewport->WorkSize);
-        ImGui::SetNextWindowViewport(viewport->ID);
-
-        ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
-        ImGuiWindowFlags host_window_flags = 0;
-        host_window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
-        host_window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-        if(dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-            host_window_flags |= ImGuiWindowFlags_NoBackground;
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-        ImGui::Begin("DockSpace Window", nullptr, host_window_flags);
-        ImGui::PopStyleVar(3);
-
-        bool dockspace_created = ImGui::DockBuilderGetNode(dockspace_id) != nullptr;
-        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, nullptr);
-        ImGui::End();
-
-        if(!dockspace_created && !app.layout_done)
+#ifdef IMGUI_HAS_DOCK
+        const bool enableDocking = (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable) != 0;
+        if(enableDocking)
         {
-            // default docked layout is just display
-            ImGui::DockBuilderDockWindow("Display", dockspace_id);
+            ImGuiID dockspace_id = ImGui::GetID("DockSpace");
+            ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->WorkPos);
+            ImGui::SetNextWindowSize(viewport->WorkSize);
+            ImGui::SetNextWindowViewport(viewport->ID);
+
+            ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
+            ImGuiWindowFlags host_window_flags = 0;
+            host_window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking;
+            host_window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+            if(dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
+                host_window_flags |= ImGuiWindowFlags_NoBackground;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            ImGui::Begin("DockSpace Window", nullptr, host_window_flags);
+            ImGui::PopStyleVar(3);
+
+            bool dockspace_created = ImGui::DockBuilderGetNode(dockspace_id) != nullptr;
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags, nullptr);
+            ImGui::End();
+
+            if(!dockspace_created && !app.layout_done)
+            {
+                // default docked layout is just display
+                ImGui::DockBuilderDockWindow("Display", dockspace_id);
+            }
         }
+#endif
         app.layout_done = true;
     }
 

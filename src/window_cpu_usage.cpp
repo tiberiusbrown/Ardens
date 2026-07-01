@@ -123,12 +123,11 @@ static void window_contents()
 
         SetupAxisLimits(ImAxis_Y1, 0.0, 1.0, ImPlotCond_Always);
         SetupFinish();
-        PushStyleVar(ImPlotStyleVar_FillAlpha, 0.25f);
         PlotShaded("##usage",
             d.data(),
             (int)d.size(),
-            0.0, 1.0, m);
-        PopStyleVar();
+            0.0, 1.0, m,
+            { ImPlotProp_FillAlpha, 0.25f });
         PlotLine("##usage",
             d.data(),
             (int)d.size(),
