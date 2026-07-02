@@ -22,19 +22,19 @@ static std::string prog_addr_name(uint16_t addr)
         if(info.name)
             return info.name;
     }
-    auto const* sym = app.emulator.symbol_for_prog_addr(addr);
+    auto const* sym = app.emulator->symbol_for_prog_addr(addr);
     if(sym)
     {
         if(addr == sym->addr)
             return sym->name.c_str();
-        if(app.emulator.program_state.elf)
+        if(app.emulator->program_state.elf)
         {
-            auto index = app.emulator.program_state.elf->addr_to_disassembled_index(addr);
-            auto const& a = app.emulator.program_state.elf->asm_with_source[index];
+            auto index = app.emulator->program_state.elf->addr_to_disassembled_index(addr);
+            auto const& a = app.emulator->program_state.elf->asm_with_source[index];
             if(a.type == a.SYMBOL)
             {
-                auto it = app.emulator.program_state.elf->text_symbols.find(a.addr);
-                if(it != app.emulator.program_state.elf->text_symbols.end())
+                auto it = app.emulator->program_state.elf->text_symbols.find(a.addr);
+                if(it != app.emulator->program_state.elf->text_symbols.end())
                     return it->second.name;
             }
         }
@@ -46,15 +46,15 @@ static std::string prog_addr_name(uint16_t addr)
 static absim::disassembled_instr_t const& dis_instr(int row)
 {
     size_t index = (size_t)row;
-    if(app.emulator.program_state.elf)
+    if(app.emulator->program_state.elf)
     {
-        if((size_t)row < app.emulator.program_state.elf->asm_with_source.size())
-            return app.emulator.program_state.elf->asm_with_source[row];
-        index -= app.emulator.program_state.elf->asm_with_source.size();
-        index += app.emulator.core_state.cpu.num_instrs;
+        if((size_t)row < app.emulator->program_state.elf->asm_with_source.size())
+            return app.emulator->program_state.elf->asm_with_source[row];
+        index -= app.emulator->program_state.elf->asm_with_source.size();
+        index += app.emulator->core_state.cpu.num_instrs;
     }
-    if(index < app.emulator.core_state.cpu.disassembled_prog.size())
-        return app.emulator.core_state.cpu.disassembled_prog[index];
+    if(index < app.emulator->core_state.cpu.disassembled_prog.size())
+        return app.emulator->core_state.cpu.disassembled_prog[index];
     static const absim::disassembled_instr_t DUMMY =
     { nullptr, absim::disassembled_instr_t::OBJECT, 1 };
     return DUMMY;
@@ -62,9 +62,9 @@ static absim::disassembled_instr_t const& dis_instr(int row)
 
 static char const* get_prog_addr_source_line(uint16_t addr)
 {
-    if(!app.emulator.program_state.elf)
+    if(!app.emulator->program_state.elf)
         return nullptr;
-    auto const& elf = *app.emulator.program_state.elf;
+    auto const& elf = *app.emulator->program_state.elf;
     auto it = elf.source_lines.find(addr);
     if(it == elf.source_lines.end())
         return nullptr;
@@ -124,9 +124,9 @@ static std::string disassembly_arg_str(
 
 static void copy_disassembly_to_clipboard(bool diffable = false)
 {
-    int num = app.emulator.program_state.elf ?
-        (int)app.emulator.program_state.elf->asm_with_source.size() :
-        (int)app.emulator.core_state.cpu.num_instrs;
+    int num = app.emulator->program_state.elf ?
+        (int)app.emulator->program_state.elf->asm_with_source.size() :
+        (int)app.emulator->core_state.cpu.num_instrs;
     std::ostringstream ss;
     for(int i = 0; i < num; ++i)
     {
@@ -139,9 +139,9 @@ static void copy_disassembly_to_clipboard(bool diffable = false)
             break;
         case absim::disassembled_instr_t::SYMBOL:
         {
-            if(!app.emulator.program_state.elf)
+            if(!app.emulator->program_state.elf)
                 break;
-            auto const& elf = *app.emulator.program_state.elf;
+            auto const& elf = *app.emulator->program_state.elf;
             auto it = elf.text_symbols.find(d.addr);
             if(it == elf.text_symbols.end())
                 break;
@@ -157,7 +157,7 @@ static void copy_disassembly_to_clipboard(bool diffable = false)
             int i;
             for(i = 0; i < d.obj_bytes && i < 8; ++i)
             {
-                uint8_t byte = app.emulator.core_state.cpu.prog[d.addr + i];
+                uint8_t byte = app.emulator->core_state.cpu.prog[d.addr + i];
                 if(i > 0) buf[i * 3 - 1] = ' ';
                 buf[i * 3 + 0] = "0123456789abcdef"[byte >> 4];
                 buf[i * 3 + 1] = "0123456789abcdef"[byte & 15];
@@ -202,10 +202,10 @@ static void register_tooltip(int reg, bool pointer = false)
     else
         Text("Register: r%d", reg);
     Separator();
-    uint8_t x = app.emulator.core_state.cpu.data[reg];
+    uint8_t x = app.emulator->core_state.cpu.data[reg];
     if(reg % 2 == 0)
     {
-        uint8_t y = app.emulator.core_state.cpu.data[reg + 1];
+        uint8_t y = app.emulator->core_state.cpu.data[reg + 1];
         uint16_t w = x | (uint16_t(y) << 8);
         if(!pointer)
             Text("[Single]  0x%02x    %5d  %+5d", x, x, (int8_t)x);
@@ -224,17 +224,17 @@ static void register_tooltip(int reg, bool pointer = false)
 
 static int find_index_of_addr(uint16_t addr)
 {
-    return app.emulator.program_state.elf ?
-        (int)app.emulator.program_state.elf->addr_to_disassembled_index(addr) :
-        (int)app.emulator.core_state.cpu.addr_to_disassembled_index(addr);
+    return app.emulator->program_state.elf ?
+        (int)app.emulator->program_state.elf->addr_to_disassembled_index(addr) :
+        (int)app.emulator->core_state.cpu.addr_to_disassembled_index(addr);
 }
 
 static void prog_addr_symbol_line(uint16_t addr)
 {
     using namespace ImGui;
-    if(!app.emulator.program_state.elf)
+    if(!app.emulator->program_state.elf)
         return;
-    auto const& elf = *app.emulator.program_state.elf;
+    auto const& elf = *app.emulator->program_state.elf;
     auto it = elf.text_symbols.find(addr);
     if(it == elf.text_symbols.end())
         return;
@@ -246,9 +246,9 @@ static void prog_addr_symbol_line(uint16_t addr)
 static void prog_addr_source_line(uint16_t addr)
 {
     using namespace ImGui;
-    if(!app.emulator.program_state.elf)
+    if(!app.emulator->program_state.elf)
         return;
-    auto const& elf = *app.emulator.program_state.elf;
+    auto const& elf = *app.emulator->program_state.elf;
     auto it = elf.source_lines.find(addr);
     if(it == elf.source_lines.end())
         return;
@@ -369,7 +369,7 @@ static void disassembly_arg(
         if(IsItemHovered())
         {
             hover_data_space(a.val);
-            //auto const* sym = app.emulator.symbol_for_data_addr(a.val);
+            //auto const* sym = app.emulator->symbol_for_data_addr(a.val);
             //BeginTooltip();
             //if(sym)
             //{
@@ -383,9 +383,9 @@ static void disassembly_arg(
             //    Text("Data Space: 0x%04x", a.val);
             //}
             //Separator();
-            //if(a.val < app.emulator.core_state.cpu.data.size())
+            //if(a.val < app.emulator->core_state.cpu.data.size())
             //{
-            //    uint8_t x = app.emulator.core_state.cpu.data[a.val];
+            //    uint8_t x = app.emulator->core_state.cpu.data[a.val];
             //    Text("0x%02x  %d  %d", x, x, (int8_t)x);
             //}
             //EndTooltip();
@@ -468,7 +468,7 @@ static void disassembly_arg(
 static void toggle_breakpoint(int row)
 {
     auto addr = dis_instr(row).addr;
-    app.emulator.debugger_state.breakpoints.flip(addr / 2);
+    app.emulator->debugger_state.breakpoints.flip(addr / 2);
 }
 
 static void draw_breakpoint_color(ImVec2 p, ImU32 color)
@@ -485,7 +485,7 @@ static void draw_breakpoint_hovered(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR_HOVERED = IM_COL32(150, 40, 40, 255);
     auto addr = dis_instr(row).addr / 2;
-    bool bp = app.emulator.debugger_state.breakpoints.test(addr);
+    bool bp = app.emulator->debugger_state.breakpoints.test(addr);
     if(!bp) draw_breakpoint_color(p, BP_COLOR_HOVERED);
 }
 
@@ -493,17 +493,17 @@ static void draw_breakpoint(int row, ImVec2 p)
 {
     constexpr auto BP_COLOR = IM_COL32(255, 40, 40, 255);
     auto addr = dis_instr(row).addr / 2;
-    bool bp = app.emulator.debugger_state.breakpoints.test(addr);
+    bool bp = app.emulator->debugger_state.breakpoints.test(addr);
     if(bp) draw_breakpoint_color(p, BP_COLOR);
 }
 
 static void profiler_count(absim::disassembled_instr_t const& d)
 {
     using namespace ImGui;
-    uint64_t profiler_total = app.emulator.profiler_state.enabled ?
-        app.emulator.profiler_state.total : app.emulator.profiler_state.cached_total;
+    uint64_t profiler_total = app.emulator->profiler_state.enabled ?
+        app.emulator->profiler_state.total : app.emulator->profiler_state.cached_total;
     if(profiler_total == 0) return;
-    uint64_t count = app.emulator.profiler_state.counts[d.addr / 2];
+    uint64_t count = app.emulator->profiler_state.counts[d.addr / 2];
     if(count == 0) return;
     double f = double(count) * 100 / profiler_total;
     if(settings.profiler_cycle_counts)
@@ -527,7 +527,7 @@ void window_disassembly(bool& open)
     using namespace ImGui;
     if(!open) return;
     SetNextWindowSize({ 200 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Disassembly", &open) && app.emulator.core_state.cpu.decoded)
+    if(Begin("Disassembly", &open) && app.emulator->core_state.cpu.decoded)
     {
         int do_scroll = app.disassembly_scroll_addr;
         app.disassembly_scroll_addr = -1;
@@ -554,7 +554,7 @@ void window_disassembly(bool& open)
         SameLine();
         if(Button("PC"))
         {
-            do_scroll = app.emulator.core_state.cpu.pc * 2;
+            do_scroll = app.emulator->core_state.cpu.pc * 2;
         }
         SameLine();
         if(Button("Copy"))
@@ -574,15 +574,15 @@ void window_disassembly(bool& open)
         SameLine();
         Checkbox("Full", &show_full_range);
 
-        if(app.emulator.program_state.elf)
+        if(app.emulator->program_state.elf)
         {
             SameLine();
             SetNextItemWidth(GetContentRegionAvail().x);
             if(BeginCombo("##symboljump", "Jump to function...", ImGuiComboFlags_HeightLarge))
             {
-                for(uint16_t addr : app.emulator.program_state.elf->text_symbols_sorted)
+                for(uint16_t addr : app.emulator->program_state.elf->text_symbols_sorted)
                 {
-                    auto const& sym = app.emulator.program_state.elf->text_symbols[addr];
+                    auto const& sym = app.emulator->program_state.elf->text_symbols[addr];
                     if(sym.object || sym.weak || sym.notype) continue;
                     if(Selectable(sym.name.c_str()))
                         do_scroll = addr, app.scroll_addr_to_top = true;
@@ -597,7 +597,7 @@ void window_disassembly(bool& open)
         flags |= ImGuiTableFlags_NoClip;
         //flags |= ImGuiTableFlags_SizingFixedFit;
         auto const size = GetContentRegionAvail();
-        float const cw = app.emulator.program_state.elf ? 20.f * app.pixel_ratio : 0.f;
+        float const cw = app.emulator->program_state.elf ? 20.f * app.pixel_ratio : 0.f;
         if(BeginTable("##ScrollingRegion", 3, flags, {size.x - cw, 0.f}))
         {
             TableSetupColumn("Address",
@@ -609,15 +609,15 @@ void window_disassembly(bool& open)
                 ImGuiTableColumnFlags_WidthFixed,
                 CalcTextSize(settings.profiler_cycle_counts ? "000000000000100.0000%" : "100.0000%").x + 2.f);
             ImGuiListClipper clipper;
-            int extra_instrs = (int)(app.emulator.core_state.cpu.num_instrs_total - app.emulator.core_state.cpu.num_instrs);
+            int extra_instrs = (int)(app.emulator->core_state.cpu.num_instrs_total - app.emulator->core_state.cpu.num_instrs);
             clipper.Begin(
                 show_full_range ?
-                app.emulator.program_state.elf ?
-                (int)app.emulator.program_state.elf->asm_with_source.size() + extra_instrs :
-                (int)app.emulator.core_state.cpu.num_instrs_total :
-                app.emulator.program_state.elf ?
-                (int)app.emulator.program_state.elf->asm_with_source.size() :
-                (int)app.emulator.core_state.cpu.num_instrs,
+                app.emulator->program_state.elf ?
+                (int)app.emulator->program_state.elf->asm_with_source.size() + extra_instrs :
+                (int)app.emulator->core_state.cpu.num_instrs_total :
+                app.emulator->program_state.elf ?
+                (int)app.emulator->program_state.elf->asm_with_source.size() :
+                (int)app.emulator->core_state.cpu.num_instrs,
                 GetTextLineHeightWithSpacing());
             while(clipper.Step())
             {
@@ -643,9 +643,9 @@ void window_disassembly(bool& open)
                         auto color = IM_COL32(80, 80, 80, uint8_t(f * 255));
                         TableSetBgColor(ImGuiTableBgTarget_RowBg1, color);
                     }
-                    if(instr_index == app.emulator.core_state.cpu.pc)
+                    if(instr_index == app.emulator->core_state.cpu.pc)
                     {
-                        auto color = app.emulator.debugger_state.paused ?
+                        auto color = app.emulator->debugger_state.paused ?
                             IM_COL32(80, 0, 0, 255) :
                             IM_COL32(60, 60, 60, 255);
                         TableSetBgColor(ImGuiTableBgTarget_RowBg0, color);
@@ -655,9 +655,9 @@ void window_disassembly(bool& open)
                         auto color = i % 2 ?
                             IM_COL32(65, 0, 0, 255) :
                             IM_COL32(50, 0, 0, 255);
-                        auto const& h = app.emulator.profiler_state.hotspots[app.profiler_selected_hotspot];
-                        uint16_t instr_begin = app.emulator.core_state.cpu.disassembled_prog[h.begin].addr / 2;
-                        uint16_t instr_end = app.emulator.core_state.cpu.disassembled_prog[h.end].addr / 2;
+                        auto const& h = app.emulator->profiler_state.hotspots[app.profiler_selected_hotspot];
+                        uint16_t instr_begin = app.emulator->core_state.cpu.disassembled_prog[h.begin].addr / 2;
+                        uint16_t instr_end = app.emulator->core_state.cpu.disassembled_prog[h.end].addr / 2;
                         if(instr_index >= instr_begin && instr_index <= instr_end)
                             TableSetBgColor(ImGuiTableBgTarget_RowBg0, color);
                     }
@@ -683,7 +683,7 @@ void window_disassembly(bool& open)
                         int i;
                         for(i = 0; i < d.obj_bytes && i < 8; ++i)
                         {
-                            uint8_t byte = app.emulator.core_state.cpu.prog[d.addr + i];
+                            uint8_t byte = app.emulator->core_state.cpu.prog[d.addr + i];
                             if(i > 0) buf[i * 3 - 1] = ' ';
                             buf[i * 3 + 0] = "0123456789abcdef"[byte >> 4];
                             buf[i * 3 + 1] = "0123456789abcdef"[byte & 15];
@@ -736,17 +736,17 @@ void window_disassembly(bool& open)
             EndTable();
         }
 
-        if(app.emulator.program_state.elf)
+        if(app.emulator->program_state.elf)
         {
             SameLine(0.f, 0.f);
             auto* draw = GetWindowDrawList();
             auto const cp = GetCursorScreenPos();
 
-            uint32_t last_addr = show_full_range ? 0x7fff : app.emulator.core_state.cpu.last_addr;
+            uint32_t last_addr = show_full_range ? 0x7fff : app.emulator->core_state.cpu.last_addr;
             float iend = size.y / float(last_addr + 1);
             size_t index = 0;
             auto const mp = GetMousePos();
-            for(auto const& kv : app.emulator.program_state.elf->text_symbols)
+            for(auto const& kv : app.emulator->program_state.elf->text_symbols)
             {
                 auto const& sym = kv.second;
                 if(sym.size <= 0) continue;

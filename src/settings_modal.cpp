@@ -408,21 +408,21 @@ void modal_settings()
         switch(settings.fxport)
         {
         case FXPORT_D1:
-            app.emulator.program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
-            app.emulator.program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
+            app.emulator->program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+            app.emulator->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD1;
             break;
         case FXPORT_D2:
-            app.emulator.program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
-            app.emulator.program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD2;
+            app.emulator->program_state.cfg.fxport_reg = absim::reg::addr::PORTD;
+            app.emulator->program_state.cfg.fxport_mask = absim::reg::bit::PORTD::PORTD2;
             break;
         case FXPORT_E2:
-            app.emulator.program_state.cfg.fxport_reg = absim::reg::addr::PORTE;
-            app.emulator.program_state.cfg.fxport_mask = absim::reg::bit::PORTE::PORTE2;
+            app.emulator->program_state.cfg.fxport_reg = absim::reg::addr::PORTE;
+            app.emulator->program_state.cfg.fxport_mask = absim::reg::bit::PORTE::PORTE2;
             break;
         default:
             break;
         }
-        app.emulator.program_state.cfg.usb_bus_state =
+        app.emulator->program_state.cfg.usb_bus_state =
             settings.usb_connected ?
             absim::USB_BUS_CONNECTED :
             absim::USB_BUS_DISCONNECTED;

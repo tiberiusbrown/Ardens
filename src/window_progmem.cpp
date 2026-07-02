@@ -11,7 +11,7 @@ static MemoryEditor memed;
 static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
     (void)user;
-    if(auto const* sym = app.emulator.symbol_for_prog_addr((uint16_t)off))
+    if(auto const* sym = app.emulator->symbol_for_prog_addr((uint16_t)off))
     {
         if(sym->object)
         {
@@ -25,7 +25,7 @@ static void hover_func(ImU8 const* data, size_t off)
 {
     (void)data;
     using namespace ImGui;
-    auto const* sym = app.emulator.symbol_for_prog_addr((uint16_t)off);
+    auto const* sym = app.emulator->symbol_for_prog_addr((uint16_t)off);
     BeginTooltip();
     if(sym)
         symbol_tooltip((uint16_t)off, *sym, true);
@@ -53,11 +53,11 @@ void window_progmem(bool& open)
     if(open)
     {
         SetNextWindowSize({ 200 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
-        if(Begin("PROGMEM Space", &open) && app.emulator.core_state.cpu.decoded)
+        if(Begin("PROGMEM Space", &open) && app.emulator->core_state.cpu.decoded)
         {
             memed.DrawContents(
-                app.emulator.core_state.cpu.prog.data(),
-                app.emulator.core_state.cpu.prog.size());
+                app.emulator->core_state.cpu.prog.data(),
+                app.emulator->core_state.cpu.prog.size());
         }
         End();
     }

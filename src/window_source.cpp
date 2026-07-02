@@ -91,23 +91,23 @@ void window_source(bool& open)
 
     SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Source##SourceWindow", &open)
-        && app.emulator.core_state.cpu.decoded && app.emulator.program_state.elf && app.emulator.debugger_state.paused)
+        && app.emulator->core_state.cpu.decoded && app.emulator->program_state.elf && app.emulator->debugger_state.paused)
     {
-        auto pc = app.emulator.core_state.cpu.pc;
+        auto pc = app.emulator->core_state.cpu.pc;
 
 #ifdef ARDENS_LLVM
         init_texteditor();
-        auto& dwarf = *app.emulator.program_state.elf->dwarf_ctx;
+        auto& dwarf = *app.emulator->program_state.elf->dwarf_ctx;
         //auto info = dwarf.getLineInfoForAddress(
         //    { uint64_t(pc) * 2 },
         //    { llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath });
         auto info = get_line_info(dwarf, uint64_t(pc) * 2);
        
-        auto it = app.emulator.program_state.elf->source_file_names.find(info.FileName);
-        if(it != app.emulator.program_state.elf->source_file_names.end() &&
-            it->second >= 0 && it->second < (int)app.emulator.program_state.elf->source_files.size())
+        auto it = app.emulator->program_state.elf->source_file_names.find(info.FileName);
+        if(it != app.emulator->program_state.elf->source_file_names.end() &&
+            it->second >= 0 && it->second < (int)app.emulator->program_state.elf->source_files.size())
         {
-            load_file_to_editor(app.emulator.program_state.elf->source_files[it->second]);
+            load_file_to_editor(app.emulator->program_state.elf->source_files[it->second]);
             editor.Render(info.FileName.c_str());
             if(prev_pc != pc)
             {

@@ -17,7 +17,7 @@ static int hex_value(char c)
 static void update_display_buffer_texture()
 {
     if(app.display_buffer_addr < 0) return;
-    if(app.display_buffer_addr >= (int)app.emulator.core_state.cpu.data.size()) return;
+    if(app.display_buffer_addr >= (int)app.emulator->core_state.cpu.data.size()) return;
 
     static uint8_t pixels[128 * 64 * 4];
     uint8_t* bpixels = (uint8_t*)pixels;
@@ -30,9 +30,9 @@ static void update_display_buffer_texture()
         {
             size_t n = (size_t)app.display_buffer_addr + (i / 8) * app.display_buffer_w + j;
             uint8_t pi = 128;
-            if(n < app.emulator.core_state.cpu.data.size())
+            if(n < app.emulator->core_state.cpu.data.size())
             {
-                uint8_t d = app.emulator.core_state.cpu.data[n];
+                uint8_t d = app.emulator->core_state.cpu.data[n];
                 pi = (d & (1 << (i % 8))) ? 255 : 0;
             }
             *bpixels++ = pi;
@@ -52,7 +52,7 @@ void window_display_buffer(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Display Buffer (RAM)", &open) && app.emulator.core_state.cpu.decoded)
+    if(Begin("Display Buffer (RAM)", &open) && app.emulator->core_state.cpu.decoded)
     {
         AlignTextToFramePadding();
         TextUnformatted("Address: 0x");
@@ -71,14 +71,14 @@ void window_display_buffer(bool& open)
             char* b = addr_buf;
             while(*b != 0)
                 a = (a << 4) + hex_value(*b++);
-            if(a >= 0 && a < (int)app.emulator.core_state.cpu.prog.size())
+            if(a >= 0 && a < (int)app.emulator->core_state.cpu.prog.size())
                 app.display_buffer_addr = a;
         }
-        if(app.emulator.program_state.elf)
+        if(app.emulator->program_state.elf)
         {
             if(app.display_buffer_addr < 0)
             {
-                for(auto const& kv : app.emulator.program_state.elf->data_symbols)
+                for(auto const& kv : app.emulator->program_state.elf->data_symbols)
                 {
                     if(kv.second.name != "Arduboy2Base::sBuffer") continue;
                     app.display_buffer_addr = kv.first;
@@ -89,9 +89,9 @@ void window_display_buffer(bool& open)
             SetNextItemWidth(GetContentRegionAvail().x);
             if(BeginCombo("##symbol", "Symbol...", ImGuiComboFlags_HeightLarge))
             {
-                for(uint16_t addr : app.emulator.program_state.elf->data_symbols_sorted)
+                for(uint16_t addr : app.emulator->program_state.elf->data_symbols_sorted)
                 {
-                    auto const& sym = app.emulator.program_state.elf->data_symbols[addr];
+                    auto const& sym = app.emulator->program_state.elf->data_symbols[addr];
                     if(sym.weak || sym.notype) continue;
                     if(Selectable(sym.name.c_str()))
                     {

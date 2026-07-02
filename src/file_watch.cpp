@@ -89,7 +89,7 @@ void file_watch_check()
         else
         {
             disconnect_linked_secondary_arduboy();
-            app.dropfile_err = app.emulator.load_file(fname_hex.c_str(), f);
+            app.dropfile_err = app.emulator->load_file(fname_hex.c_str(), f);
         }
     }
     if(app.ms_since_start >= ms_reload_bin && load_bin.exchange(false))
@@ -99,7 +99,7 @@ void file_watch_check()
         else
         {
             disconnect_linked_secondary_arduboy();
-            app.dropfile_err = app.emulator.load_file(fname_bin.c_str(), f);
+            app.dropfile_err = app.emulator->load_file(fname_bin.c_str(), f);
         }
     }
 }

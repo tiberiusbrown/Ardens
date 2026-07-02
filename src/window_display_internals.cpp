@@ -16,7 +16,7 @@ static char const* const MODES[] =
 static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
     (void)user;
-    if(off == app.emulator.peripherals.display.data_page * 128 + app.emulator.peripherals.display.data_col)
+    if(off == app.emulator->peripherals.display.data_page * 128 + app.emulator->peripherals.display.data_col)
     {
         return IM_COL32(40, 160, 40, 255);
     }
@@ -29,9 +29,9 @@ void window_display_internals(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 200 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Display Internals", &open) && app.emulator.core_state.cpu.decoded)
+    if(Begin("Display Internals", &open) && app.emulator->core_state.cpu.decoded)
     {
-        auto const& d = app.emulator.peripherals.display;
+        auto const& d = app.emulator->peripherals.display;
         if(CollapsingHeader("Internal State"))
         {
             Text("Address                0x%03x", d.data_page * 128 + d.data_col);
@@ -69,8 +69,8 @@ void window_display_internals(bool& open)
         Separator();
         memed_display_ram.BgColorFn = bgcolor_func;
         memed_display_ram.DrawContents(
-            app.emulator.peripherals.display.ram.data(),
-            app.emulator.peripherals.display.ram.size());
+            app.emulator->peripherals.display.ram.data(),
+            app.emulator->peripherals.display.ram.size());
     }
     End();
 }

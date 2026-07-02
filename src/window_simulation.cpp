@@ -22,7 +22,7 @@ void window_simulation(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 200 * app.pixel_ratio, 100 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Simulation", &open) && app.emulator.core_state.cpu.decoded)
+    if(Begin("Simulation", &open) && app.emulator->core_state.cpu.decoded)
     {
         SliderInt("Speed:", &slider_val, 0, sizeof(SLIDERS) / sizeof(int) - 1, "");
         app.simulation_slowdown = SLIDERS[slider_val];
@@ -35,32 +35,32 @@ void window_simulation(bool& open)
             Text("%dx slower", app.simulation_slowdown / 1000);
         if(Button("Reset"))
         {
-            app.emulator.debugger_state.paused = false;
+            app.emulator->debugger_state.paused = false;
             reset_primary_simulation();
         }
         SameLine();
-        if(app.emulator.debugger_state.paused)
+        if(app.emulator->debugger_state.paused)
         {
             if(Button("Continue"))
             {
-                app.emulator.debugger_state.paused = false;
+                app.emulator->debugger_state.paused = false;
             }
         }
         else
         {
             if(Button("Pause"))
             {
-                app.emulator.debugger_state.paused = true;
-                app.emulator.core_state.ps_rem = 0;
-                app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+                app.emulator->debugger_state.paused = true;
+                app.emulator->core_state.ps_rem = 0;
+                app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
             }
         }
         SameLine();
         AlignTextToFramePadding();
-        Text("%.3f", (double)app.emulator.core_state.cpu.cycle_count * (1.0 / 16e6));
+        Text("%.3f", (double)app.emulator->core_state.cpu.cycle_count * (1.0 / 16e6));
 
-        bool was_paused = app.emulator.debugger_state.paused;
-        bool was_present = app.emulator.is_present_state();
+        bool was_paused = app.emulator->debugger_state.paused;
+        bool was_present = app.emulator->is_present_state();
         if(!was_paused)
             BeginDisabled();
 
@@ -70,7 +70,7 @@ void window_simulation(bool& open)
         if(Button("Step Into"))
         {
             advance_primary_instr();
-            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(IsItemHovered())
         {
@@ -79,23 +79,23 @@ void window_simulation(bool& open)
             EndTooltip();
         }
         SameLine();
-        if(Button("Step Over") && app.emulator.core_state.cpu.pc < app.emulator.core_state.cpu.decoded_prog.size())
+        if(Button("Step Over") && app.emulator->core_state.cpu.pc < app.emulator->core_state.cpu.decoded_prog.size())
         {
-            auto const& i = app.emulator.core_state.cpu.decoded_prog[app.emulator.core_state.cpu.pc];
+            auto const& i = app.emulator->core_state.cpu.decoded_prog[app.emulator->core_state.cpu.pc];
 
             if(absim::instr_is_call(i))
             {
-                app.emulator.debugger_state.paused = false;
+                app.emulator->debugger_state.paused = false;
 
                 if(absim::instr_is_two_words(i))
-                    app.emulator.debugger_state.break_step = app.emulator.core_state.cpu.pc + 2;
+                    app.emulator->debugger_state.break_step = app.emulator->core_state.cpu.pc + 2;
                 else
-                    app.emulator.debugger_state.break_step = app.emulator.core_state.cpu.pc + 1;
+                    app.emulator->debugger_state.break_step = app.emulator->core_state.cpu.pc + 1;
             }
             else
             {
                 advance_primary_instr();
-                app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+                app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
             }
         }
         if(IsItemHovered())
@@ -105,14 +105,14 @@ void window_simulation(bool& open)
             EndTooltip();
         }
         SameLine();
-        if(app.emulator.core_state.cpu.num_stack_frames == 0)
+        if(app.emulator->core_state.cpu.num_stack_frames == 0)
             BeginDisabled();
-        if(Button("Step Out") && app.emulator.core_state.cpu.num_stack_frames > 0)
+        if(Button("Step Out") && app.emulator->core_state.cpu.num_stack_frames > 0)
         {
-            app.emulator.debugger_state.break_step = app.emulator.core_state.cpu.stack_frames[app.emulator.core_state.cpu.num_stack_frames - 1].pc;
-            app.emulator.debugger_state.paused = false;
+            app.emulator->debugger_state.break_step = app.emulator->core_state.cpu.stack_frames[app.emulator->core_state.cpu.num_stack_frames - 1].pc;
+            app.emulator->debugger_state.paused = false;
         }
-        if(app.emulator.core_state.cpu.num_stack_frames == 0)
+        if(app.emulator->core_state.cpu.num_stack_frames == 0)
             EndDisabled();
         if(IsItemHovered())
         {
@@ -126,8 +126,8 @@ void window_simulation(bool& open)
         SameLine();
         if(Button("Step Into###backinto"))
         {
-            app.emulator.travel_back_single_instr();
-            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+            app.emulator->travel_back_single_instr();
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(IsItemHovered())
         {
@@ -138,8 +138,8 @@ void window_simulation(bool& open)
         SameLine();
         if(Button("Step Over###backover"))
         {
-            app.emulator.travel_back_single_instr_over();
-            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+            app.emulator->travel_back_single_instr_over();
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(IsItemHovered())
         {
@@ -150,8 +150,8 @@ void window_simulation(bool& open)
         SameLine();
         if(Button("Step Out###backout"))
         {
-            app.emulator.travel_back_single_instr_out();
-            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+            app.emulator->travel_back_single_instr_out();
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(IsItemHovered())
         {
@@ -163,40 +163,40 @@ void window_simulation(bool& open)
         char buf[64];
         buf[0] = '\0';
         {
-            uint32_t dc = uint32_t(app.emulator.debugger_state.present_cycle - app.emulator.core_state.cpu.cycle_count);
-            if(app.emulator.is_present_state())
+            uint32_t dc = uint32_t(app.emulator->debugger_state.present_cycle - app.emulator->core_state.cpu.cycle_count);
+            if(app.emulator->is_present_state())
                 ttslider = 1.f;
             else
             {
                 snprintf(buf, sizeof(buf),
                     "-%u cycles, -%.4f ms",
                     dc, double((1.0 / 16e3) * (dc)));
-                if(!app.emulator.debugger_state.state_history.empty())
+                if(!app.emulator->debugger_state.state_history.empty())
                 {
-                    uint32_t tn = uint32_t(app.emulator.core_state.cpu.cycle_count - app.emulator.debugger_state.state_history[0].cycle);
-                    uint32_t td = uint32_t(app.emulator.debugger_state.present_cycle - app.emulator.debugger_state.state_history[0].cycle);
+                    uint32_t tn = uint32_t(app.emulator->core_state.cpu.cycle_count - app.emulator->debugger_state.state_history[0].cycle);
+                    uint32_t td = uint32_t(app.emulator->debugger_state.present_cycle - app.emulator->debugger_state.state_history[0].cycle);
                     if(td != 0) ttslider = float(tn) / float(td);
                 }
             }
         }
         float old_ttslider = ttslider;
         SliderFloat("###ttslider", &ttslider, 0.f, 1.f, buf);
-        if(old_ttslider != ttslider && !app.emulator.debugger_state.state_history.empty())
+        if(old_ttslider != ttslider && !app.emulator->debugger_state.state_history.empty())
         {
-            uint64_t cycles = app.emulator.debugger_state.present_cycle - app.emulator.debugger_state.state_history[0].cycle;
+            uint64_t cycles = app.emulator->debugger_state.present_cycle - app.emulator->debugger_state.state_history[0].cycle;
             uint64_t c = uint64_t(std::round(double(ttslider) * cycles));
-            c += app.emulator.debugger_state.state_history[0].cycle;
-            app.emulator.travel_to_present();
-            app.emulator.travel_back_to_cycle(c);
-            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+            c += app.emulator->debugger_state.state_history[0].cycle;
+            app.emulator->travel_to_present();
+            app.emulator->travel_back_to_cycle(c);
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(was_present)
             BeginDisabled();
         if(Button("Return to Present"))
         {
             ttslider = 1.f;
-            app.emulator.travel_to_present();
-            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+            app.emulator->travel_to_present();
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(IsItemHovered())
         {
@@ -208,7 +208,7 @@ void window_simulation(bool& open)
         if(Button("Set as Present"))
         {
             ttslider = 1.f;
-            app.emulator.travel_continue();
+            app.emulator->travel_continue();
         }
         if(IsItemHovered())
         {

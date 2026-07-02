@@ -59,6 +59,7 @@ void window_display(bool& open)
             {
                 if(Button("Swap with Secondary"))
                 {
+                    std::swap(app.emulator, app.linked_secondary_arduboy);
                 }
                 Separator();
             }

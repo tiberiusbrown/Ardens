@@ -22,8 +22,8 @@ void window_linked_secondary_arduboy(bool& open)
         app.linked_secondary_input_focus =
             connected && IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
         bool can_connect =
-            app.emulator.core_state.cpu.decoded &&
-            !app.emulator.program_state.prog_filedata.empty();
+            app.emulator->core_state.cpu.decoded &&
+            !app.emulator->program_state.prog_filedata.empty();
 
         if(connected)
         {
@@ -38,19 +38,9 @@ void window_linked_secondary_arduboy(bool& open)
                 app.linked_secondary_display_texture,
                 app.linked_secondary_display_texture_zoom);
 
-            if(app.linked_secondary_arduboy)
-            {
-                update_display_texture(
-                    app.linked_secondary_display_texture,
-                    app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
-            }
-            else
-            {
-                static std::array<uint8_t, 128 * 64> blank_pixels{};
-                update_display_texture(
-                    app.linked_secondary_display_texture,
-                    blank_pixels.data());
-            }
+            update_display_texture(
+                app.linked_secondary_display_texture,
+                app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
 
             draw_display_texture(
                 app.linked_secondary_display_texture,

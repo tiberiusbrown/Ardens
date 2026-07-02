@@ -68,7 +68,7 @@ touch_rect_t touch_rect(int btn);
 
 struct app_state_t
 {
-    absim::arduboy_t emulator;
+    std::unique_ptr<absim::arduboy_t> emulator = std::make_unique<absim::arduboy_t>();
     std::unique_ptr<absim::arduboy_t> linked_secondary_arduboy;
     absim::local_i2c_transaction_bridge_t linked_i2c_bridge;
     bool linked_secondary_input_focus{};

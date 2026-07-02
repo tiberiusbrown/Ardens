@@ -30,10 +30,10 @@ static int hex_value(char const* c)
 static ImU32 bgcolor_func(ImU8 const* data, size_t off, void* user)
 {
     (void)user;
-    if(off + app.emulator.peripherals.fx.min_page * absim::w25q128_t::PAGE_BYTES ==
-        app.emulator.peripherals.fx.current_addr)
+    if(off + app.emulator->peripherals.fx.min_page * absim::w25q128_t::PAGE_BYTES ==
+        app.emulator->peripherals.fx.current_addr)
     {
-        if(app.emulator.peripherals.fx.reading || app.emulator.peripherals.fx.programming)
+        if(app.emulator->peripherals.fx.reading || app.emulator->peripherals.fx.programming)
         {
             return IM_COL32(40, 160, 40, 255);
         }
@@ -50,9 +50,9 @@ void window_fx_data(bool& open)
     if(Begin("FX Data", &open))
     {
         if(autopage || !*minpagebuf)
-            snprintf(minpagebuf, sizeof(minpagebuf), "%04x", app.emulator.peripherals.fx.min_page);
+            snprintf(minpagebuf, sizeof(minpagebuf), "%04x", app.emulator->peripherals.fx.min_page);
         if(autopage || !*maxpagebuf)
-            snprintf(maxpagebuf, sizeof(maxpagebuf), "%04x", app.emulator.peripherals.fx.max_page);
+            snprintf(maxpagebuf, sizeof(maxpagebuf), "%04x", app.emulator->peripherals.fx.max_page);
 
         float tw = CalcTextSize("FFFF").x + GetStyle().FramePadding.x * 2;
         AlignTextToFramePadding();
@@ -85,18 +85,18 @@ void window_fx_data(bool& open)
         Checkbox("Auto", &autopage);
         if(autopage)
         {
-            minpage = app.emulator.peripherals.fx.min_page;
-            maxpage = app.emulator.peripherals.fx.max_page;
+            minpage = app.emulator->peripherals.fx.min_page;
+            maxpage = app.emulator->peripherals.fx.max_page;
         }
 
         SameLine();
         if(Button("Reset all data"))
         {
-            app.emulator.peripherals.fx.erase_all_data();
-            app.emulator.program_state.fxdata.clear();
-            app.emulator.program_state.fxsave.clear();
-            app.emulator.update_game_hash();
-            app.emulator.reset();
+            app.emulator->peripherals.fx.erase_all_data();
+            app.emulator->program_state.fxdata.clear();
+            app.emulator->program_state.fxsave.clear();
+            app.emulator->update_game_hash();
+            app.emulator->reset();
             load_savedata();
         }
 
@@ -111,16 +111,16 @@ void window_fx_data(bool& open)
         memed_fx.ReadFn = [](ImU8 const* data, size_t off, void* user) {
             (void)data;
             (void)user;
-            return app.emulator.peripherals.fx.read_byte(
+            return app.emulator->peripherals.fx.read_byte(
                 off + minpage * absim::w25q128_t::PAGE_BYTES);
         };
         memed_fx.WriteFn = [](ImU8* data, size_t off, ImU8 d, void* user) {
             (void)data;
             (void)user;
-            app.emulator.peripherals.fx.write_byte(
+            app.emulator->peripherals.fx.write_byte(
                 off + minpage * absim::w25q128_t::PAGE_BYTES, d);
         };
-        memed_fx.ReadOnly = !app.emulator.is_present_state();
+        memed_fx.ReadOnly = !app.emulator->is_present_state();
         memed_fx.DrawContents(
             nullptr,
             size_t((maxpage - minpage + 1) * absim::w25q128_t::PAGE_BYTES),

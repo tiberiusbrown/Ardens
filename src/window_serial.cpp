@@ -8,7 +8,7 @@ void window_serial(bool& open)
     static size_t prev_size = 0;
     bool scroll = false;
     {
-        size_t t = app.emulator.core_state.cpu.serial_bytes.size();
+        size_t t = app.emulator->core_state.cpu.serial_bytes.size();
         scroll = (t > prev_size);
         prev_size = t;
     }
@@ -16,9 +16,9 @@ void window_serial(bool& open)
     if(!open) return;
 
     SetNextWindowSize({ 400 * app.pixel_ratio, 200 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Serial Monitor", &open) && app.emulator.core_state.cpu.decoded)
+    if(Begin("Serial Monitor", &open) && app.emulator->core_state.cpu.decoded)
     {
-        auto& buf = app.emulator.core_state.cpu.serial_bytes;
+        auto& buf = app.emulator->core_state.cpu.serial_bytes;
         if(Button("Clear"))
             buf.clear();
         auto size = GetContentRegionAvail();

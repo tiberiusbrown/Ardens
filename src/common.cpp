@@ -79,7 +79,7 @@ static void flashcart_fetch_callback(sfetch_response_t const* r)
 {
     if(r->fetched)
     {
-        flashcart_error = app.emulator.load_flashcart_zip(
+        flashcart_error = app.emulator->load_flashcart_zip(
             (uint8_t const*)r->data.ptr, r->data.size);
     }
     else if(r->finished)
@@ -370,7 +370,7 @@ static void preroll_linked_secondary_arduboy()
 
 static bool load_linked_secondary_arduboy(bool preroll)
 {
-    auto& primary = app.emulator;
+    auto& primary = *app.emulator;
     if(!primary.core_state.cpu.decoded || primary.program_state.prog_filedata.empty())
         return false;
 
@@ -412,8 +412,8 @@ static void reset_linked_secondary_arduboy()
 
 void reset_primary_simulation()
 {
-    apply_runtime_settings(app.emulator);
-    app.emulator.reset();
+    apply_runtime_settings(*app.emulator);
+    app.emulator->reset();
     load_savedata();
     reset_linked_secondary_arduboy();
 }
@@ -435,21 +435,21 @@ void advance_primary(uint64_t ps)
 {
     if(!app.linked_secondary_arduboy)
     {
-        app.emulator.advance(ps);
+        app.emulator->advance(ps);
         return;
     }
 
     constexpr uint64_t LINK_UPDATE_PS = 10ull * 1000000ull;
-    while(ps > 0 && !app.emulator.debugger_state.paused)
+    while(ps > 0 && !app.emulator->debugger_state.paused)
     {
         uint64_t chunk = std::min<uint64_t>(ps, LINK_UPDATE_PS);
-        uint64_t before = app.emulator.core_state.cpu.cycle_count;
+        uint64_t before = app.emulator->core_state.cpu.cycle_count;
 
         app.linked_i2c_bridge.update_bus_lines();
-        app.emulator.advance(chunk);
+        app.emulator->advance(chunk);
         app.linked_i2c_bridge.update_bus_lines();
 
-        uint64_t cycles = app.emulator.core_state.cpu.cycle_count - before;
+        uint64_t cycles = app.emulator->core_state.cpu.cycle_count - before;
         advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
         app.linked_i2c_bridge.update_bus_lines();
 
@@ -461,9 +461,9 @@ void advance_primary(uint64_t ps)
 
 void advance_primary_instr()
 {
-    uint64_t before = app.emulator.core_state.cpu.cycle_count;
-    app.emulator.advance_instr();
-    uint64_t cycles = app.emulator.core_state.cpu.cycle_count - before;
+    uint64_t before = app.emulator->core_state.cpu.cycle_count;
+    app.emulator->advance_instr();
+    uint64_t cycles = app.emulator->core_state.cpu.cycle_count - before;
     if(app.linked_secondary_arduboy)
     {
         app.linked_i2c_bridge.update_bus_lines();
@@ -479,7 +479,7 @@ extern "C" int load_file(
     bool save = !strcmp(param, "save");
     if(!save)
         disconnect_linked_secondary_arduboy();
-    app.dropfile_err = app.emulator.load_file(filename, f, save);
+    app.dropfile_err = app.emulator->load_file(filename, f, save);
     autoset_from_device_type();
     if(app.dropfile_err.empty())
     {
@@ -493,17 +493,17 @@ extern "C" int load_file(
 
 extern "C" int get_led_state(int component)
 {
-    if(!app.emulator.core_state.cpu.decoded) return 0;
+    if(!app.emulator->core_state.cpu.decoded) return 0;
 
     uint8_t r = 0;
     uint8_t g = 0;
     uint8_t b = 0;
-    app.emulator.core_state.cpu.led_rgb(r, g, b);
+    app.emulator->core_state.cpu.led_rgb(r, g, b);
 
     switch(component)
     {
-    case 0: return app.emulator.core_state.cpu.led_tx();
-    case 1: return app.emulator.core_state.cpu.led_rx();
+    case 0: return app.emulator->core_state.cpu.led_tx();
+    case 1: return app.emulator->core_state.cpu.led_rx();
     case 2: return r;
     case 3: return g;
     case 4: return b;
@@ -959,7 +959,7 @@ void init()
 
     printf("Data path: %s\n", app.userpath.generic_string().c_str());
 
-    app.emulator.peripherals.display.type = absim::display_t::SSD1306;
+    app.emulator->peripherals.display.type = absim::display_t::SSD1306;
 
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::CreateContext();
@@ -994,11 +994,11 @@ void init()
 
     default_style = style;
 
-    app.emulator.peripherals.fx.erase_all_data();
-    app.emulator.core_state.cpu.adc_nondeterminism = settings.nondeterminism;
-    apply_runtime_settings(app.emulator);
-    app.emulator.reset();
-    app.emulator.peripherals.fx.set_empty_page_range();
+    app.emulator->peripherals.fx.erase_all_data();
+    app.emulator->core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    apply_runtime_settings(*app.emulator);
+    app.emulator->reset();
+    app.emulator->peripherals.fx.set_empty_page_range();
 
     app.ms_since_start = 0;
     app.ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
@@ -1053,14 +1053,14 @@ void take_snapshot()
     std::string fname = timestamped_filename("ardens", "snapshot");
 #ifdef __EMSCRIPTEN__
     std::ofstream f("ardens.snapshot", std::ios::binary);
-    if(app.emulator.save_snapshot(f))
+    if(app.emulator->save_snapshot(f))
     {
         f.close();
         file_download("ardens.snapshot", fname.c_str(), "application/octet-stream");
     }
 #else
     std::ofstream f(fname, std::ios::binary);
-    app.emulator.save_snapshot(f);
+    app.emulator->save_snapshot(f);
 #endif
 #endif
 }
@@ -1082,8 +1082,8 @@ std::string timestamped_filename(char const* prefix, char const* extension)
 std::string preferred_title()
 {
 #ifdef ARDENS_DIST
-    if(!app.emulator.program_state.title.empty())
-        return app.emulator.program_state.title;
+    if(!app.emulator->program_state.title.empty())
+        return app.emulator->program_state.title;
 #endif
     return ARDENS_TITLE;
 }
@@ -1094,7 +1094,7 @@ void frame_logic()
 
     ImGuiIO& io = ImGui::GetIO();
 
-    app.emulator.core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    app.emulator->core_state.cpu.adc_nondeterminism = settings.nondeterminism;
     if(!app.touch_points.empty())
         app.ms_since_touch = 0;
 
@@ -1111,7 +1111,7 @@ void frame_logic()
     app.ms_since_start += dt;
     app.ms_since_touch += dt;
     if(dt > 100) dt = 100;
-    if(app.emulator.core_state.cpu.decoded && !app.emulator.debugger_state.paused)
+    if(app.emulator->core_state.cpu.decoded && !app.emulator->debugger_state.paused)
     {
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
@@ -1123,26 +1123,26 @@ void frame_logic()
 
             if(input_to_secondary)
             {
-                set_unpressed_buttons(app.emulator);
+                set_unpressed_buttons(*app.emulator);
                 set_current_buttons(*app.linked_secondary_arduboy);
             }
             else
             {
-                set_current_buttons(app.emulator);
+                set_current_buttons(*app.emulator);
                 if(app.linked_secondary_arduboy)
                     set_unpressed_buttons(*app.linked_secondary_arduboy);
             }
         }
 
-        bool prev_paused = app.emulator.debugger_state.paused;
-        apply_runtime_settings(app.emulator);
+        bool prev_paused = app.emulator->debugger_state.paused;
+        apply_runtime_settings(*app.emulator);
 
-        app.emulator.core_state.cpu.enabled_autobreaks.reset();
+        app.emulator->core_state.cpu.enabled_autobreaks.reset();
 #ifndef ARDENS_NO_GUI
-        app.emulator.core_state.cpu.enabled_autobreaks.set(absim::AB_BREAK);
+        app.emulator->core_state.cpu.enabled_autobreaks.set(absim::AB_BREAK);
         for(int i = 1; i < absim::AB_NUM; ++i)
             if(settings.ab.index(i))
-                app.emulator.core_state.cpu.enabled_autobreaks.set(i);
+                app.emulator->core_state.cpu.enabled_autobreaks.set(i);
 #endif
 
         constexpr uint64_t MS_TO_PS = 1000000000ull;
@@ -1166,39 +1166,39 @@ void frame_logic()
 
         check_save_savedata();
 
-        if(app.emulator.debugger_state.paused && !prev_paused)
-            app.disassembly_scroll_addr = app.emulator.core_state.cpu.pc * 2;
+        if(app.emulator->debugger_state.paused && !prev_paused)
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         //if(!settings.enable_stack_breaks)
-        //    app.emulator.core_state.cpu.stack_overflow = false;
+        //    app.emulator->core_state.cpu.stack_overflow = false;
 
         // consume sound buffer
         send_wav_audio();
         process_sound_samples();
 #if !PROFILING
-        if(!app.emulator.core_state.cpu.sound_buffer.empty() && app.simulation_slowdown == 1000)
+        if(!app.emulator->core_state.cpu.sound_buffer.empty() && app.simulation_slowdown == 1000)
             platform_send_sound();
 #endif
-        app.emulator.core_state.cpu.sound_buffer.clear();
+        app.emulator->core_state.cpu.sound_buffer.clear();
     }
     else
     {
-        app.emulator.debugger_state.break_step = 0xffffffff;
+        app.emulator->debugger_state.break_step = 0xffffffff;
     }
 
     // update framebuffer texture
-    if(app.emulator.core_state.cpu.decoded)
+    if(app.emulator->core_state.cpu.decoded)
     {
         recreate_display_texture();
         update_display_texture(
             app.display_texture,
-            app.emulator.peripherals.display.filtered_pixels.data());
+            app.emulator->peripherals.display.filtered_pixels.data());
 
 #if ALLOW_SCREENSHOTS
-        if(app.emulator.core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
+        if(app.emulator->core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
             take_snapshot();
-        if(app.emulator.core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        if(app.emulator->core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
             save_screenshot();
-        if(app.emulator.core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
+        if(app.emulator->core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
             toggle_recording();
 #endif
     }
@@ -1216,7 +1216,7 @@ void frame_logic()
 
 #ifndef ARDENS_NO_DEBUGGER
     if(ImGui::IsKeyPressed(ImGuiKey_F5, false))
-        app.emulator.debugger_state.paused = !app.emulator.debugger_state.paused;
+        app.emulator->debugger_state.paused = !app.emulator->debugger_state.paused;
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
     {
@@ -1245,7 +1245,7 @@ void imgui_content()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    if(!app.emulator.core_state.cpu.decoded)
+    if(!app.emulator->core_state.cpu.decoded)
     {
         auto* d = ImGui::GetBackgroundDrawList();
         auto size = ImGui::GetMainViewport()->Size;
@@ -1356,7 +1356,7 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-    if(app.emulator.core_state.cpu.should_autobreak_gui())
+    if(app.emulator->core_state.cpu.should_autobreak_gui())
         ImGui::OpenPopup("Auto-Break");
 
     static std::array<char const*, absim::AB_NUM> const AB_REASONS =
@@ -1380,7 +1380,7 @@ void imgui_content()
         ImGuiWindowFlags_NoSavedSettings))
     {
         size_t ab = 0;
-        auto mask = app.emulator.core_state.cpu.autobreaks & app.emulator.core_state.cpu.enabled_autobreaks;
+        auto mask = app.emulator->core_state.cpu.autobreaks & app.emulator->core_state.cpu.enabled_autobreaks;
         for(size_t i = 1; i < mask.size(); ++i)
         {
             if(mask.test(i))
@@ -1397,7 +1397,7 @@ void imgui_content()
         ImGui::PopTextWrapPos();
         if(ImGui::Button("OK", ImVec2(120 * app.pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         {
-            app.emulator.core_state.cpu.autobreaks = 0;
+            app.emulator->core_state.cpu.autobreaks = 0;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

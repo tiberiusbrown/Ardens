@@ -19,11 +19,11 @@ void window_savefile(bool& open)
     bool open_confirm_delete_popup = false;
 
     SetNextWindowSize({ 300 * app.pixel_ratio, 100 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Save File", &open) && app.emulator.core_state.cpu.decoded)
+    if(Begin("Save File", &open) && app.emulator->core_state.cpu.decoded)
     {
-        auto const& d = app.emulator.save_data_state.savedata;
+        auto const& d = app.emulator->save_data_state.savedata;
         auto fname = savedata_filename();
-        Text("Hash: %016" PRIx64, app.emulator.program_state.game_hash);
+        Text("Hash: %016" PRIx64, app.emulator->program_state.game_hash);
         NewLine();
         if(std::filesystem::exists(fname))
         {
@@ -114,9 +114,9 @@ void window_savefile(bool& open)
             );
 #endif
             CloseCurrentPopup();
-            if(app.emulator.core_state.cpu.decoded)
+            if(app.emulator->core_state.cpu.decoded)
             {
-                app.emulator.reset();
+                app.emulator->reset();
                 load_savedata();
             }
         }

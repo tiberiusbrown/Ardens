@@ -169,7 +169,7 @@ static void sdl_platform_send_sound()
         return;
 
     std::vector<int16_t> buf;
-    buf.swap(app.emulator.core_state.cpu.sound_buffer);
+    buf.swap(app.emulator->core_state.cpu.sound_buffer);
     constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
     size_t num_bytes = buf.size() * SAMPLE_SIZE;
     uint32_t queued_bytes = SDL_GetAudioStreamQueued(audio_stream);
@@ -452,7 +452,7 @@ int main(int argc, char** argv)
                 bool save = !strcmp(sargs_key_at(i), "save");
                 if(!save)
                     disconnect_linked_secondary_arduboy();
-                app.dropfile_err = app.emulator.load_file(value, f, save);
+                app.dropfile_err = app.emulator->load_file(value, f, save);
                 autoset_from_device_type();
                 if(app.dropfile_err.empty())
                 {

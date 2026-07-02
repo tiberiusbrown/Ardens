@@ -216,7 +216,7 @@ void display_with_scanlines(ImDrawList* d, ImVec2 const& a, ImVec2 const& b)
 
 void view_player()
 {
-    if(!app.emulator.core_state.cpu.decoded)
+    if(!app.emulator->core_state.cpu.decoded)
         return;
 
     auto* d = ImGui::GetBackgroundDrawList();

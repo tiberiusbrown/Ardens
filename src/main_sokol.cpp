@@ -143,7 +143,7 @@ static void app_init()
                 bool save = !strcmp(sargs_key_at(i), "save");
                 if(!save)
                     disconnect_linked_secondary_arduboy();
-                app.dropfile_err = app.emulator.load_file(value, f, save);
+                app.dropfile_err = app.emulator->load_file(value, f, save);
                 autoset_from_device_type();
                 if(app.dropfile_err.empty())
                 {
@@ -277,7 +277,7 @@ static void sokol_platform_set_clipboard_text(char const* str)
 static void sokol_platform_send_sound()
 {
     std::vector<int16_t> buf;
-    buf.swap(app.emulator.core_state.cpu.sound_buffer);
+    buf.swap(app.emulator->core_state.cpu.sound_buffer);
 
     if(saudio_expect() <= 0)
         return;
@@ -315,7 +315,7 @@ static void sokol_platform_send_sound()
     if(ns < buf.size())
     {
         buf.erase(buf.begin(), buf.begin() + ns);
-        buf.swap(app.emulator.core_state.cpu.sound_buffer);
+        buf.swap(app.emulator->core_state.cpu.sound_buffer);
     }
 }
 

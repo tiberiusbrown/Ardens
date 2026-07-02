@@ -194,10 +194,10 @@ void update_settings()
 
 void autoset_from_device_type()
 {
-    if(app.emulator.program_state.device_type == "ArduboyFX")
+    if(app.emulator->program_state.device_type == "ArduboyFX")
         settings.fxport = FXPORT_D1;
-    if(app.emulator.program_state.device_type == "ArduboyFXDevKit")
+    if(app.emulator->program_state.device_type == "ArduboyFXDevKit")
         settings.fxport = FXPORT_D2;
-    if(app.emulator.program_state.device_type == "ArduboyMini")
+    if(app.emulator->program_state.device_type == "ArduboyMini")
         settings.fxport = FXPORT_E2;
 }

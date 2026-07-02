@@ -126,7 +126,7 @@ void view_debugger()
                     settings.fullzoom = !settings.fullzoom;
                     update_settings();
                 }
-                if(!app.emulator.core_state.cpu.decoded) ImGui::BeginDisabled();
+                if(!app.emulator->core_state.cpu.decoded) ImGui::BeginDisabled();
                 if(ImGui::MenuItem("Take PNG Screenshot", "F2"))
                     save_screenshot();
                 if(ImGui::MenuItem("Toggle GIF Recording", "F3"))
@@ -135,16 +135,16 @@ void view_debugger()
                 if(ImGui::MenuItem("Take Snapshot", "F4"))
                     take_snapshot();
 #endif
-                if(!app.emulator.core_state.cpu.decoded) ImGui::EndDisabled();
+                if(!app.emulator->core_state.cpu.decoded) ImGui::EndDisabled();
                 ImGui::EndMenu();
             }
 
-            if(app.emulator.debugger_state.paused)
+            if(app.emulator->debugger_state.paused)
             {
                 ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 255, 255));
                 float w = ImGui::CalcTextSize("PAUSED").x;
                 if(ImGui::Selectable("PAUSED##paused", false, 0, { w, 0.f }))
-                    app.emulator.debugger_state.paused = false;
+                    app.emulator->debugger_state.paused = false;
                 ImGui::PopStyleColor();
             }
 
@@ -186,7 +186,7 @@ void view_debugger()
         if(do_about_modal)
             ImGui::OpenPopup("About");
 
-        if(app.emulator.core_state.cpu.decoded)
+        if(app.emulator->core_state.cpu.decoded)
         {
             window_display(settings.open_display);
             window_display_buffer(settings.open_display_buffer);
