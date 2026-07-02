@@ -200,16 +200,6 @@ static float sdl_platform_pixel_ratio()
     return SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
 }
 
-static void sdl_platform_destroy_fonts_texture()
-{
-    ImGui_ImplSDLRenderer3_DestroyDeviceObjects();
-}
-
-static void sdl_platform_create_fonts_texture()
-{
-    ImGui_ImplSDLRenderer3_CreateDeviceObjects();
-}
-
 static void sdl_platform_open_url(char const* url)
 {
     SDL_OpenURL(url);
@@ -353,8 +343,6 @@ static void register_sdl_platform_services()
     platform_services.send_sound = sdl_platform_send_sound;
     platform_services.get_ms_dt = sdl_platform_get_ms_dt;
     platform_services.pixel_ratio = sdl_platform_pixel_ratio;
-    platform_services.destroy_fonts_texture = sdl_platform_destroy_fonts_texture;
-    platform_services.create_fonts_texture = sdl_platform_create_fonts_texture;
     platform_services.open_url = sdl_platform_open_url;
     platform_services.toggle_fullscreen = sdl_platform_toggle_fullscreen;
     platform_services.quit = sdl_platform_quit;
@@ -435,11 +423,11 @@ int main(int argc, char** argv)
 
     update_pixel_ratio();
     rescale_style();
+    // Add the default ImGui font after our scaling values are in place.
+    ImGui::GetIO().Fonts->AddFontDefault();
 
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
-
-    define_font();
 
     recreate_display_texture();
     app.display_buffer_texture = SDL_CreateTexture(

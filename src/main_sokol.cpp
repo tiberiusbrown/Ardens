@@ -34,6 +34,7 @@
 static simgui_desc_t const SIMGUI_DESC = []() {
     simgui_desc_t desc{};
     desc.ini_filename = "imgui.ini";
+    // Defer default font selection until after we apply our scaling values.
     desc.no_default_font = true;
     return desc;
 }();
@@ -102,7 +103,8 @@ static void app_init()
     init();
     update_pixel_ratio();
     rescale_style();
-    define_font();
+    // Add the default ImGui font after our scaling values are in place.
+    ImGui::GetIO().Fonts->AddFontDefault();
 
     {
         sg_image_desc desc{};
@@ -333,37 +335,6 @@ static float sokol_platform_pixel_ratio()
     return sapp_dpi_scale();
 }
 
-static void sokol_platform_destroy_fonts_texture()
-{
-    simgui_destroy_image(_simgui.default_font);
-    _simgui.font_img = {};
-    _simgui.default_font = {};
-}
-
-static void sokol_platform_create_fonts_texture()
-{
-    unsigned char* font_pixels;
-    int font_width, font_height;
-    auto& io = ImGui::GetIO();
-
-    io.Fonts->GetTexDataAsRGBA32(&font_pixels, &font_width, &font_height);
-    sg_image_desc img_desc{};
-    img_desc.width = font_width;
-    img_desc.height = font_height;
-    img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    img_desc.data.subimage[0][0].ptr = font_pixels;
-    img_desc.data.subimage[0][0].size = (size_t)(font_width * font_height) * sizeof(uint32_t);
-    img_desc.label = "sokol-imgui-font-image";
-    _simgui.font_img = sg_make_image(&img_desc);
-
-    simgui_image_desc_t idesc{};
-    idesc.image = _simgui.font_img;
-    idesc.sampler = _simgui.font_smp;
-    _simgui.default_font = simgui_make_image(&idesc);
-
-    io.Fonts->TexID = simgui_imtextureid(_simgui.default_font);
-}
-
 static void sokol_platform_toggle_fullscreen()
 {
 #ifdef __EMSCRIPTEN__
@@ -400,8 +371,6 @@ static void register_sokol_platform_services()
     platform_services.send_sound = sokol_platform_send_sound;
     platform_services.get_ms_dt = sokol_platform_get_ms_dt;
     platform_services.pixel_ratio = sokol_platform_pixel_ratio;
-    platform_services.destroy_fonts_texture = sokol_platform_destroy_fonts_texture;
-    platform_services.create_fonts_texture = sokol_platform_create_fonts_texture;
     platform_services.toggle_fullscreen = sokol_platform_toggle_fullscreen;
     platform_services.quit = sokol_platform_quit;
     platform_services.set_title = sokol_platform_set_title;

@@ -418,7 +418,6 @@ set(ARDENS_PLAYER_APP_DEPS
     )
 
 set(ARDENS_DEBUGGER_APP_SOURCES
-    src/font.cpp
     src/settings_modal.cpp
     src/modal_about.cpp
     src/view_debugger.cpp

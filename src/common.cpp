@@ -66,10 +66,6 @@ extern "C" {
 void process_sound_samples() {}
 #endif
 
-#ifndef ARDENS_NO_GUI
-extern unsigned char const ProggyVector[198188];
-#endif
-
 app_state_t app;
 platform_services_t platform_services;
 
@@ -196,18 +192,6 @@ float platform_pixel_ratio()
     return platform_services.pixel_ratio ?
         platform_services.pixel_ratio() :
         1.f;
-}
-
-void platform_destroy_fonts_texture()
-{
-    if(platform_services.destroy_fonts_texture)
-        platform_services.destroy_fonts_texture();
-}
-
-void platform_create_fonts_texture()
-{
-    if(platform_services.create_fonts_texture)
-        platform_services.create_fonts_texture();
 }
 
 void platform_open_url(char const* url)
@@ -909,25 +893,6 @@ static float ui_scale_factor()
     return settings.uiscale * 0.25f + 0.5f;
 }
 
-void define_font()
-{
-    ImGuiIO& io = ImGui::GetIO();
-    ImFontConfig cfg{};
-    cfg.FontDataOwnedByAtlas = false;
-    //cfg.RasterizerMultiply = 1.5f;
-    io.Fonts->Clear();
-#if !defined(ARDENS_NO_GUI) && !PROFILING
-    io.Fonts->AddFontFromMemoryTTF(
-        (void*)ProggyVector, sizeof(ProggyVector), 13.f, &cfg);
-#endif
-}
-
-void rebuild_fonts()
-{
-    // The backends now update the font texture from the atlas automatically.
-    // Font scale changes only need style updates.
-}
-
 void rescale_style()
 {
     float const ui_scale = ui_scale_factor();
@@ -1273,10 +1238,7 @@ void frame_logic()
     }
 
     if(update_pixel_ratio())
-    {
         rescale_style();
-        rebuild_fonts();
-    }
 }
 
 void imgui_content()
