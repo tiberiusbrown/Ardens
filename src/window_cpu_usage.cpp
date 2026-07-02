@@ -102,7 +102,7 @@ static void window_contents()
 
         double lim_min = m;
         double lim_max = (n < z ? z : n);
-        if(!app.emulator->debugger_state.paused)
+        //if(!app.emulator->debugger_state.paused)
         {
             if(n < w)
                 lim_max = w;
@@ -115,11 +115,11 @@ static void window_contents()
             SetupAxisZoomConstraints(ImAxis_X1, w, w);
             plot->Axes[ImAxis_X1].Range = { lim_min, lim_max };
         }
-        else
-        {
-            SetupAxisLimitsConstraints(ImAxis_X1, lim_min, lim_max);
-            SetupAxisZoomConstraints(ImAxis_X1, w / 16, w);
-        }
+        //else
+        //{
+        //    SetupAxisLimitsConstraints(ImAxis_X1, lim_min, lim_max);
+        //    SetupAxisZoomConstraints(ImAxis_X1, w / 16, w);
+        //}
 
         SetupAxisLimits(ImAxis_Y1, 0.0, 1.0, ImPlotCond_Always);
         SetupFinish();
