@@ -1,0 +1,8 @@
+{
+    "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+    "C_Cpp.codeAnalysis.clangTidy.checks.enabled": [
+        "bugprone-*",
+        "modernize-*",
+        "performance-*"
+    ]
+}

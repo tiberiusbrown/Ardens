@@ -32,6 +32,29 @@ void window_linked_secondary_arduboy(bool& open)
                 disconnect_linked_secondary_arduboy();
                 app.linked_secondary_input_focus = false;
             }
+            Separator();
+
+            recreate_display_texture(
+                app.linked_secondary_display_texture,
+                app.linked_secondary_display_texture_zoom);
+
+            if(app.linked_secondary_arduboy)
+            {
+                update_display_texture(
+                    app.linked_secondary_display_texture,
+                    app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
+            }
+            else
+            {
+                static std::array<uint8_t, 128 * 64> blank_pixels{};
+                update_display_texture(
+                    app.linked_secondary_display_texture,
+                    blank_pixels.data());
+            }
+
+            draw_display_texture(
+                app.linked_secondary_display_texture,
+                app.linked_secondary_display_texture_zoom);
         }
         else
         {
@@ -42,30 +65,6 @@ void window_linked_secondary_arduboy(bool& open)
             if(!can_connect)
                 EndDisabled();
         }
-
-        Separator();
-
-        recreate_display_texture(
-            app.linked_secondary_display_texture,
-            app.linked_secondary_display_texture_zoom);
-
-        if(app.linked_secondary_arduboy)
-        {
-            update_display_texture(
-                app.linked_secondary_display_texture,
-                app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
-        }
-        else
-        {
-            static std::array<uint8_t, 128 * 64> blank_pixels{};
-            update_display_texture(
-                app.linked_secondary_display_texture,
-                blank_pixels.data());
-        }
-
-        draw_display_texture(
-            app.linked_secondary_display_texture,
-            app.linked_secondary_display_texture_zoom);
     }
     else
     {

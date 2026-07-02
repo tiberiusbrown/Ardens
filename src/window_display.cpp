@@ -55,38 +55,15 @@ void window_display(bool& open)
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse))
         {
+            if(linked_secondary_arduboy_connected())
+            {
+                if(Button("Swap with Secondary"))
+                {
+                }
+                Separator();
+            }
+
             draw_display_texture(app.display_texture, app.display_texture_zoom);
-#if 0
-            AlignTextToFramePadding();
-            TextUnformatted("Filter for:");
-            int num = settings.num_pixel_history;
-            SameLine();
-            if(RadioButton("Monochrome", num <= 1))
-                num = 1;
-            SameLine();
-            if(RadioButton("3-Level", num == 2))
-                num = 2;
-            if(IsItemHovered())
-            {
-                BeginTooltip();
-                TextUnformatted("Average the last 2 display frames");
-                EndTooltip();
-            }
-            SameLine();
-            if(RadioButton("4-Level", num == 3))
-                num = 3;
-            if(IsItemHovered())
-            {
-                BeginTooltip();
-                TextUnformatted("Average the last 3 display frames");
-                EndTooltip();
-            }
-            if(num != settings.num_pixel_history)
-            {
-                settings.num_pixel_history = num;
-                update_settings();
-            }
-#endif
         }
         End();
     }
