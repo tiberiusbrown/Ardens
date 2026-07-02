@@ -896,39 +896,48 @@ extern "C" void postsyncfs()
 bool update_pixel_ratio()
 {
     float ratio = platform_pixel_ratio();
+    if(!(ratio > 0.f))
+        ratio = 1.f;
     ratio *= (settings.uiscale * 0.25f + 0.5f);
     bool changed = (ratio != app.pixel_ratio);
     app.pixel_ratio = ratio;
     return changed;
 }
 
+static float ui_scale_factor()
+{
+    return settings.uiscale * 0.25f + 0.5f;
+}
+
 void define_font()
 {
     ImGuiIO& io = ImGui::GetIO();
-    ImFontConfig cfg;
+    ImFontConfig cfg{};
     cfg.FontDataOwnedByAtlas = false;
-    cfg.RasterizerMultiply = 1.5f;
-    cfg.OversampleH = 2;
-    cfg.OversampleV = 2;
+    //cfg.RasterizerMultiply = 1.5f;
     io.Fonts->Clear();
 #if !defined(ARDENS_NO_GUI) && !PROFILING
     io.Fonts->AddFontFromMemoryTTF(
-        (void*)ProggyVector, sizeof(ProggyVector), 13.f * app.pixel_ratio, &cfg);
+        (void*)ProggyVector, sizeof(ProggyVector), 13.f, &cfg);
 #endif
 }
 
 void rebuild_fonts()
 {
-    platform_destroy_fonts_texture();
-    define_font();
-    platform_create_fonts_texture();
+    // The backends now update the font texture from the atlas automatically.
+    // Font scale changes only need style updates.
 }
 
 void rescale_style()
 {
+    float const ui_scale = ui_scale_factor();
+    float const dpi_scale = app.pixel_ratio / ui_scale;
     auto& style = ImGui::GetStyle();
     style = default_style;
     style.ScaleAllSizes(app.pixel_ratio);
+    style.FontSizeBase = 13.f;
+    style.FontScaleMain = ui_scale;
+    style.FontScaleDpi = dpi_scale > 0.f ? dpi_scale : 1.f;
 }
 
 void shutdown()

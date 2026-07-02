@@ -165,6 +165,9 @@ static uint64_t sdl_platform_get_ms_dt()
 
 static void sdl_platform_send_sound()
 {
+    if(!audio_stream)
+        return;
+
     std::vector<int16_t> buf;
     buf.swap(app.emulator.core_state.cpu.sound_buffer);
     constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
@@ -394,7 +397,7 @@ int main(int argc, char** argv)
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD) != 0)
+    if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -406,7 +409,10 @@ int main(int argc, char** argv)
         };
         audio_stream = SDL_OpenAudioDeviceStream(
             SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
-        SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
+        if(audio_stream)
+            SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
+        else
+            SDL_Log("Warning: audio init failed: %s", SDL_GetError());
     }
 
 #if PROFILING
@@ -497,7 +503,8 @@ int main(int argc, char** argv)
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_DestroyAudioStream(audio_stream);
+    if(audio_stream)
+        SDL_DestroyAudioStream(audio_stream);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

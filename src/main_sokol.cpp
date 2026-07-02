@@ -102,7 +102,7 @@ static void app_init()
     init();
     update_pixel_ratio();
     rescale_style();
-    rebuild_fonts();
+    define_font();
 
     {
         sg_image_desc desc{};
