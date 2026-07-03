@@ -183,11 +183,26 @@ void window_simulation(bool& open)
         SliderFloat("###ttslider", &ttslider, 0.f, 1.f, buf);
         if(old_ttslider != ttslider && !app.emulator->debugger_state.state_history.empty())
         {
-            uint64_t cycles = app.emulator->debugger_state.present_cycle - app.emulator->debugger_state.state_history[0].cycle;
-            uint64_t c = uint64_t(std::round(double(ttslider) * cycles));
-            c += app.emulator->debugger_state.state_history[0].cycle;
+            // Maintain the same cycle offset between linked Arduboys.
+            uint64_t min_cycle = app.emulator->debugger_state.state_history[0].cycle;
+            if(linked_secondary_arduboy_connected())
+            {
+                uint64_t linked_min_cycle = app.linked_secondary_arduboy->debugger_state.state_history[0].cycle;
+                min_cycle = static_cast<uint64_t>(std::max(
+                    static_cast<int64_t>(min_cycle),
+                    static_cast<int64_t>(linked_min_cycle + app.linked_secondary_arduboy_cycle_offset)));
+            }
+            uint64_t cycles = app.emulator->debugger_state.present_cycle - min_cycle;
+            uint64_t c = min_cycle + static_cast<uint64_t>(
+                std::round(static_cast<double>(ttslider) * static_cast<double>(cycles)));
             app.emulator->travel_to_present();
             app.emulator->travel_back_to_cycle(c);
+            if(linked_secondary_arduboy_connected())
+            {
+                int64_t offset = app.linked_secondary_arduboy_cycle_offset;
+                app.linked_secondary_arduboy->travel_to_present();
+                app.linked_secondary_arduboy->travel_back_to_cycle(c - offset);
+            }
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(was_present)
@@ -196,6 +211,8 @@ void window_simulation(bool& open)
         {
             ttslider = 1.f;
             app.emulator->travel_to_present();
+            if(linked_secondary_arduboy_connected())
+                app.linked_secondary_arduboy->travel_to_present();
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(IsItemHovered())
@@ -209,6 +226,8 @@ void window_simulation(bool& open)
         {
             ttslider = 1.f;
             app.emulator->travel_continue();
+            if(linked_secondary_arduboy_connected())
+                app.linked_secondary_arduboy->travel_continue();
         }
         if(IsItemHovered())
         {

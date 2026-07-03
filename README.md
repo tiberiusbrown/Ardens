@@ -264,6 +264,7 @@ Ardens uses the following third-party libraries:
 - [Filewatch](https://github.com/ThomasMonkman/filewatch) - MIT
 - [yyjson](https://github.com/ibireme/yyjson) - MIT
 - [Google Benchmark](https://github.com/google/benchmark) - Apache 2.0
+- [LZAV](https://github.com/avaneev/lzav) - MIT
 
 ## License
 

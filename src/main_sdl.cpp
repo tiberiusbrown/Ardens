@@ -249,6 +249,9 @@ static void main_loop()
         }
     }
 
+    if(app.done)
+        return;
+
     frame_logic();
 
     ImGui_ImplSDLRenderer3_NewFrame();

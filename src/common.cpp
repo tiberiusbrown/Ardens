@@ -386,6 +386,9 @@ static bool load_linked_secondary_arduboy(bool preroll)
         app.linked_secondary_arduboy->advance(50ull * 1000000000ull);
         app.linked_i2c_bridge.update_bus_lines();
     }
+    app.linked_secondary_arduboy_cycle_offset = static_cast<int64_t>(
+        app.emulator->core_state.cpu.cycle_count -
+        app.linked_secondary_arduboy->core_state.cpu.cycle_count);
     return true;
 }
 
@@ -413,16 +416,24 @@ void reset_primary_simulation()
     reset_linked_secondary_arduboy();
 }
 
-static void advance_linked_secondary(uint64_t ps)
+static void advance_linked_secondary()
 {
-    if(!app.linked_secondary_arduboy || ps == 0) return;
+    if(!app.linked_secondary_arduboy) return;
+
+    // Maintain the same cycle offset between linked Arduboys.
+    uint64_t cycles = app.emulator->core_state.cpu.cycle_count;
+    uint64_t secondary_cycles = app.linked_secondary_arduboy->core_state.cpu.cycle_count;
+    int64_t cycle_offset = app.linked_secondary_arduboy_cycle_offset;
+    if(static_cast<int64_t>(cycles - secondary_cycles) <= cycle_offset)
+        return;
+    auto c = static_cast<uint64_t>(cycles - secondary_cycles - cycle_offset);
 
     bool prev_paused = app.linked_secondary_arduboy->debugger_state.paused;
     app.linked_secondary_arduboy->debugger_state.paused = false;
     apply_runtime_settings(*app.linked_secondary_arduboy);
     if(!app.linked_secondary_input_focus)
         set_unpressed_buttons(*app.linked_secondary_arduboy);
-    app.linked_secondary_arduboy->advance(ps);
+    app.linked_secondary_arduboy->advance(c * absim::arduboy_t::CYCLE_PS);
     app.linked_secondary_arduboy->debugger_state.paused = prev_paused;
 }
 
@@ -445,7 +456,7 @@ void advance_primary(uint64_t ps)
         app.linked_i2c_bridge.update_bus_lines();
 
         uint64_t cycles = app.emulator->core_state.cpu.cycle_count - before;
-        advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
+        advance_linked_secondary();
         app.linked_i2c_bridge.update_bus_lines();
 
         if(cycles == 0 && chunk >= ps)
@@ -462,7 +473,7 @@ void advance_primary_instr()
     if(app.linked_secondary_arduboy)
     {
         app.linked_i2c_bridge.update_bus_lines();
-        advance_linked_secondary(cycles * absim::arduboy_t::CYCLE_PS);
+        advance_linked_secondary();
         app.linked_i2c_bridge.update_bus_lines();
     }
 }

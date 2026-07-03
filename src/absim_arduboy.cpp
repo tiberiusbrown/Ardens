@@ -20,7 +20,10 @@ extern "C"
 #include "boot/boot_flashcart.h"
 }
 
+#include <lzav/lzav.h>
+
 #define COMPRESS_TIME_TRAVEL_STATES 1
+#define COMPRESS_WITH_LZAV 1
 
 namespace absim
 {
@@ -1215,6 +1218,14 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
 #endif
 
     return cycles;
+}
+
+static void compress_lzav(std::vector<uint8_t>& v, const char* data, size_t size)
+{
+    v.clear();
+    v.resize(lzav_compress_bound((int)size));
+    int n = lzav_compress_default(data, v.data(), (int)size, (int)v.size());
+    v.resize(n);
 }
 
 void arduboy_t::save_state_to_vector(std::vector<uint8_t>& v)

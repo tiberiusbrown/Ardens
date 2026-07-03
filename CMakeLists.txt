@@ -334,6 +334,8 @@ set(ARDENS_SOURCES
 
     deps/yyjson/yyjson.h
     deps/yyjson/yyjson.c
+    
+    deps/lzav/lzav.h
     )
 file(GLOB ARDENS_BOOT_FILES "src/boot/*.c" "src/boot/*.h")
 list(APPEND ARDENS_SOURCES ${ARDENS_BOOT_FILES})

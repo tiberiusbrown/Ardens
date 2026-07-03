@@ -1621,6 +1621,8 @@ struct arduboy_t
     static constexpr uint64_t STATE_HISTORY_TOTAL_MS = 60000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_CYCLES =
         STATE_HISTORY_TOTAL_MS * 16000;
+    static constexpr uint64_t STATE_HISTORY_TOTAL_RECORDS =
+        STATE_HISTORY_TOTAL_CYCLES / STATE_HISTORY_CYCLES;
 
     // time-travel debugging
     void save_state_to_vector(std::vector<uint8_t>& v);
