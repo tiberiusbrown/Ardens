@@ -34,17 +34,20 @@ void window_linked_secondary_arduboy(bool& open)
             }
             Separator();
 
-            recreate_display_texture(
-                app.linked_secondary_display_texture,
-                app.linked_secondary_display_texture_zoom);
+            if(linked_secondary_arduboy_connected())
+            {
+                recreate_display_texture(
+                    app.linked_secondary_display_texture,
+                    app.linked_secondary_display_texture_zoom);
 
-            update_display_texture(
-                app.linked_secondary_display_texture,
-                app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
+                update_display_texture(
+                    app.linked_secondary_display_texture,
+                    app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
 
-            draw_display_texture(
-                app.linked_secondary_display_texture,
-                app.linked_secondary_display_texture_zoom);
+                draw_display_texture(
+                    app.linked_secondary_display_texture,
+                    app.linked_secondary_display_texture_zoom);
+            }
         }
         else
         {

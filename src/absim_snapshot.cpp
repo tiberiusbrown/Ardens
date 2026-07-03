@@ -461,7 +461,6 @@ static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
     ar(a.debugger_state.input_history);
     ar(a.debugger_state.state_history);
     ar(a.debugger_state.present_state);
-    ar(a.debugger_state.present_cycle);
 
     return "";
 }
@@ -557,12 +556,11 @@ bool arduboy_t::save_snapshot(std::ostream& f)
             ar(state_history);
         else
         {
-            std::vector<tt_state_t> t;
-            t.push_back(state_history.front());
-            ar(t);
+        std::vector<tt_state_t> t;
+        t.push_back(state_history.front());
+        ar(t);
         }
         ar(present_state);
-        ar(present_cycle);
 #endif
     }
 
@@ -656,12 +654,11 @@ std::string arduboy_t::load_snapshot(std::istream& f)
         ar(input_history);
         ar(state_history);
         ar(present_state);
-        ar(present_cycle);
 
         // resimulate history
         if(!state_history.empty())
         {
-            uint64_t saved_present_cycle = std::max(cpu.cycle_count, present_cycle);
+            uint64_t saved_present_cycle = std::max(cpu.cycle_count, present_state.cycle);
             auto saved_present_state = present_state;
             uint64_t saved_cycle = cpu.cycle_count;
             bool saved_paused = paused;
@@ -681,8 +678,8 @@ std::string arduboy_t::load_snapshot(std::istream& f)
             }
             travel_to_present();
             travel_back_to_cycle(saved_cycle);
-            present_cycle = saved_present_cycle;
             present_state = saved_present_state;
+            present_state.cycle = saved_present_cycle;
             paused = saved_paused;
         }
 #endif

@@ -1037,8 +1037,9 @@ static bool same_snapshot_state(absim::arduboy_t const& a, absim::arduboy_t cons
         a.program_state.flashcart_loaded != b.program_state.flashcart_loaded ||
         a.debugger_state.input_history.size() != b.debugger_state.input_history.size() ||
         a.debugger_state.state_history.size() != b.debugger_state.state_history.size() ||
-        a.debugger_state.present_state != b.debugger_state.present_state ||
-        a.debugger_state.present_cycle != b.debugger_state.present_cycle)
+        a.debugger_state.present_state.cycle != b.debugger_state.present_state.cycle ||
+        a.debugger_state.present_state.state != b.debugger_state.present_state.state ||
+        a.debugger_state.present_state.uncompressed_size != b.debugger_state.present_state.uncompressed_size)
     {
         return false;
     }

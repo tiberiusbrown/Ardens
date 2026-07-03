@@ -163,7 +163,7 @@ void window_simulation(bool& open)
         char buf[64];
         buf[0] = '\0';
         {
-            uint32_t dc = uint32_t(app.emulator->debugger_state.present_cycle - app.emulator->core_state.cpu.cycle_count);
+            uint32_t dc = uint32_t(app.emulator->debugger_state.present_state.cycle - app.emulator->core_state.cpu.cycle_count);
             if(app.emulator->is_present_state())
                 ttslider = 1.f;
             else
@@ -174,7 +174,7 @@ void window_simulation(bool& open)
                 if(!app.emulator->debugger_state.state_history.empty())
                 {
                     uint32_t tn = uint32_t(app.emulator->core_state.cpu.cycle_count - app.emulator->debugger_state.state_history[0].cycle);
-                    uint32_t td = uint32_t(app.emulator->debugger_state.present_cycle - app.emulator->debugger_state.state_history[0].cycle);
+                    uint32_t td = uint32_t(app.emulator->debugger_state.present_state.cycle - app.emulator->debugger_state.state_history[0].cycle);
                     if(td != 0) ttslider = float(tn) / float(td);
                 }
             }
@@ -192,7 +192,7 @@ void window_simulation(bool& open)
                     static_cast<int64_t>(min_cycle),
                     static_cast<int64_t>(linked_min_cycle + app.linked_secondary_arduboy_cycle_offset)));
             }
-            uint64_t cycles = app.emulator->debugger_state.present_cycle - min_cycle;
+            uint64_t cycles = app.emulator->debugger_state.present_state.cycle - min_cycle;
             uint64_t c = min_cycle + static_cast<uint64_t>(
                 std::round(static_cast<double>(ttslider) * static_cast<double>(cycles)));
             app.emulator->travel_to_present();

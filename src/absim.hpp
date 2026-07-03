@@ -1578,7 +1578,6 @@ struct arduboy_debugger_state_t
     std::vector<arduboy_debugger_input_t> input_history;
     std::vector<arduboy_debugger_tt_state_t> state_history;
     arduboy_debugger_tt_state_t present_state;
-    uint64_t present_cycle{};
 };
 
 struct arduboy_save_data_state_t
@@ -1618,7 +1617,7 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
-    static constexpr uint64_t STATE_HISTORY_CYCLES = 0x10000;
+    static constexpr uint64_t STATE_HISTORY_CYCLES = 0x100000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_MS = 60000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_CYCLES =
         STATE_HISTORY_TOTAL_MS * 16000;
