@@ -1220,39 +1220,101 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     return cycles;
 }
 
-static void compress_lzav(std::vector<uint8_t>& v, const char* data, size_t size)
+static bool compress_lzav(arduboy_t::tt_state_t& state, const char* data, size_t size)
 {
+    auto& v = state.state;
+    state.uncompressed_size = size;
     v.clear();
-    v.resize(lzav_compress_bound((int)size));
-    int n = lzav_compress_default(data, v.data(), (int)size, (int)v.size());
-    v.resize(n);
+    if(size > (size_t)std::numeric_limits<int>::max())
+    {
+        state.uncompressed_size = 0;
+        return false;
+    }
+
+    int srclen = (int)size;
+    int maxlen = lzav_compress_bound(srclen);
+    if(maxlen < 0)
+    {
+        state.uncompressed_size = 0;
+        return false;
+    }
+
+    v.resize((size_t)maxlen);
+    int n = lzav_compress_default(data, v.data(), srclen, maxlen);
+    if(n < 0 || (n == 0 && srclen != 0))
+    {
+        v.clear();
+        state.uncompressed_size = 0;
+        return false;
+    }
+    v.resize((size_t)n);
+    return true;
 }
 
-void arduboy_t::save_state_to_vector(std::vector<uint8_t>& v)
+static bool uncompress_lzav(
+    std::vector<uint8_t>& dst,
+    void const* src,
+    size_t src_bytes,
+    size_t dst_bytes)
+{
+    dst.clear();
+    if(src_bytes > (size_t)std::numeric_limits<int>::max() ||
+        dst_bytes > (size_t)std::numeric_limits<int>::max())
+    {
+        return false;
+    }
+
+    int srclen = (int)src_bytes;
+    int dstlen = (int)dst_bytes;
+    dst.resize(dst_bytes);
+    int n = lzav_decompress(src, dst.data(), srclen, dstlen);
+    if(n < 0 || (size_t)n != dst_bytes)
+    {
+        dst.clear();
+        return false;
+    }
+    return true;
+}
+
+void arduboy_t::save_state_to_vector(tt_state_t& state)
 {
     std::ostringstream ss;
     save_savestate(ss);
     auto s = ss.str();
 #if COMPRESS_TIME_TRAVEL_STATES
-    if(!compress_zlib(v, s.data(), s.size()))
-        v.clear();
+    #if COMPRESS_WITH_LZAV
+    if(!compress_lzav(state, s.data(), s.size()))
+        state.state.clear();
+    #else
+    state.uncompressed_size = s.size();
+    if(!compress_zlib(state.state, s.data(), s.size()))
+        state.state.clear();
+    #endif
 #else
-    v.resize(s.size());
-    memcpy(v.data(), s.data(), v.size());
+    state.uncompressed_size = s.size();
+    state.state.resize(s.size());
+    memcpy(state.state.data(), s.data(), state.state.size());
 #endif
 }
 
-void arduboy_t::load_state_from_vector(std::vector<uint8_t> const& v)
+void arduboy_t::load_state_from_vector(tt_state_t const& state)
 {
-    if(v.empty())
+    if(state.state.empty())
         return;
 #if COMPRESS_TIME_TRAVEL_STATES
     std::vector<uint8_t> v_uncomp;
-    if(!uncompress_zlib(v_uncomp, v.data(), v.size()))
+    #if COMPRESS_WITH_LZAV
+    if(!uncompress_lzav(v_uncomp, state.state.data(), state.state.size(), state.uncompressed_size))
         return;
+    #else
+    if(!uncompress_zlib(v_uncomp, state.state.data(), state.state.size()))
+        return;
+    if(v_uncomp.size() != state.uncompressed_size)
+        return;
+    #endif
     absim::istrstream ss((char const*)v_uncomp.data(), v_uncomp.size());
 #else
-    absim::istrstream ss((char const*)v.data(), v.size());
+    absim::istrstream ss((char const*)state.state.data(), state.state.size());
 #endif
     load_savestate(ss);
 }
@@ -1331,7 +1393,7 @@ void arduboy_t::update_history()
     {
         tt_state_t state;
         state.cycle = core_state.cpu.cycle_count;
-        save_state_to_vector(state.state);
+        save_state_to_vector(state);
         debugger_state.state_history.emplace_back(std::move(state));
     }
     while(debugger_state.input_history.size() >= 2 &&
@@ -1383,7 +1445,7 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
     }
     size_t si = a.debugger_state.state_history.size();
     std::vector<pc_hist_t> pcs;
-    std::vector<uint8_t> temp_state;
+    arduboy_t::tt_state_t temp_state;
     a.save_state_to_vector(temp_state);
     uint64_t curr_cycle = a.core_state.cpu.cycle_count;
     max_cycle = std::min(max_cycle, curr_cycle);
@@ -1403,7 +1465,7 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
         }
         if(ii >= a.debugger_state.input_history.size())
             break;
-        a.load_state_from_vector(state.state);
+        a.load_state_from_vector(state);
         pcs.clear();
         while(a.core_state.cpu.cycle_count < end_cycle)
         {
@@ -1426,7 +1488,7 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
             if(f(pcs[pi]))
             {
                 // success
-                a.load_state_from_vector(state.state);
+                a.load_state_from_vector(state);
                 for(size_t i = 0; i < pi; ++i)
                 {
                     a.core_state.cpu.data[reg::addr::PINB] = pcs[i].pinb;

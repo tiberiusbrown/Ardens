@@ -1496,8 +1496,9 @@ struct arduboy_debugger_input_t
 struct arduboy_debugger_tt_state_t
 {
     uint64_t cycle{};
+    size_t uncompressed_size{};
     std::vector<uint8_t> state;
-    template <class A> void serialize(A& a) { a(cycle, state); }
+    template <class A> void serialize(A& a) { a(cycle, uncompressed_size, state); }
 };
 
 struct arduboy_core_state_t
@@ -1576,7 +1577,7 @@ struct arduboy_debugger_state_t
     // time-travel debugging info
     std::vector<arduboy_debugger_input_t> input_history;
     std::vector<arduboy_debugger_tt_state_t> state_history;
-    std::vector<uint8_t> present_state;
+    arduboy_debugger_tt_state_t present_state;
     uint64_t present_cycle{};
 };
 
@@ -1617,7 +1618,7 @@ struct arduboy_t
     bool load_savedata(std::istream& f);
     void save_savedata(std::ostream& f);
 
-    static constexpr uint64_t STATE_HISTORY_CYCLES = 0x100000;
+    static constexpr uint64_t STATE_HISTORY_CYCLES = 0x10000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_MS = 60000;
     static constexpr uint64_t STATE_HISTORY_TOTAL_CYCLES =
         STATE_HISTORY_TOTAL_MS * 16000;
@@ -1625,8 +1626,8 @@ struct arduboy_t
         STATE_HISTORY_TOTAL_CYCLES / STATE_HISTORY_CYCLES;
 
     // time-travel debugging
-    void save_state_to_vector(std::vector<uint8_t>& v);
-    void load_state_from_vector(std::vector<uint8_t> const& v);
+    void save_state_to_vector(tt_state_t& state);
+    void load_state_from_vector(tt_state_t const& state);
     void update_history();
     void travel_back_to_cycle(uint64_t cycle);
     void travel_back_single_instr();

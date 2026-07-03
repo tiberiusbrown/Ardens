@@ -676,7 +676,7 @@ std::string arduboy_t::load_snapshot(std::istream& f)
                 advance(CYCLE_PS * STATE_HISTORY_CYCLES);
                 tt_state_t state;
                 state.cycle = cpu.cycle_count;
-                save_state_to_vector(state.state);
+                save_state_to_vector(state);
                 state_history.emplace_back(std::move(state));
             }
             travel_to_present();
