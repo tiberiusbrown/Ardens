@@ -356,18 +356,6 @@ void disconnect_linked_secondary_arduboy()
     app.linked_secondary_arduboy.reset();
 }
 
-static void preroll_linked_secondary_arduboy()
-{
-    if(!app.linked_secondary_arduboy) return;
-
-    apply_runtime_settings(*app.linked_secondary_arduboy);
-    set_unpressed_buttons(*app.linked_secondary_arduboy);
-    app.linked_secondary_arduboy->debugger_state.paused = false;
-    app.linked_i2c_bridge.update_bus_lines();
-    app.linked_secondary_arduboy->advance(50ull * 1000000000ull);
-    app.linked_i2c_bridge.update_bus_lines();
-}
-
 static bool load_linked_secondary_arduboy(bool preroll)
 {
     auto& primary = *app.emulator;
@@ -390,7 +378,14 @@ static bool load_linked_secondary_arduboy(bool preroll)
     app.linked_i2c_bridge.connect({ &primary, app.linked_secondary_arduboy.get() });
     app.linked_i2c_bridge.update_bus_lines();
     if(preroll)
-        preroll_linked_secondary_arduboy();
+    {
+        apply_runtime_settings(*app.linked_secondary_arduboy);
+        set_unpressed_buttons(*app.linked_secondary_arduboy);
+        app.linked_secondary_arduboy->debugger_state.paused = false;
+        app.linked_i2c_bridge.update_bus_lines();
+        app.linked_secondary_arduboy->advance(50ull * 1000000000ull);
+        app.linked_i2c_bridge.update_bus_lines();
+    }
     return true;
 }
 
