@@ -3,6 +3,7 @@
 #include "common.hpp"
 
 #include <cmath>
+#include <cinttypes>
 
 static int slider_val = 12;
 static int const SLIDERS[] = {
@@ -15,6 +16,39 @@ static int const SLIDERS[] = {
 };
 
 static float ttslider = 1.f;
+
+static void sync_secondary_arduboy_to_primary()
+{
+    if(linked_secondary_arduboy_connected())
+    {
+        int64_t offset = app.linked_secondary_arduboy_cycle_offset;
+        int64_t c = app.emulator->core_state.cpu.cycle_count - offset;
+        if(c < 0) c = 0;
+        app.linked_secondary_arduboy->travel_to_present();
+        app.linked_secondary_arduboy->travel_back_to_cycle((uint64_t)c);
+    }
+}
+
+static uint64_t tt_min_cycle(absim::arduboy_t const& a)
+{
+    uint64_t min_cycle = 0;
+    if(!a.debugger_state.state_history.empty())
+        min_cycle = a.debugger_state.state_history[0].cycle;
+    if(!a.debugger_state.input_history.empty())
+        min_cycle = std::max(min_cycle, a.debugger_state.input_history[0].cycle);
+    return min_cycle;
+}
+
+static uint64_t tt_min_cycle()
+{
+    uint64_t min_cycle = tt_min_cycle(*app.emulator);
+    if(linked_secondary_arduboy_connected())
+    {
+        uint64_t linked_min_cycle = tt_min_cycle(*app.linked_secondary_arduboy);
+        min_cycle = std::max(min_cycle, linked_min_cycle + app.linked_secondary_arduboy_cycle_offset);
+    }
+    return min_cycle;
+}
 
 void window_simulation(bool& open)
 {
@@ -128,6 +162,7 @@ void window_simulation(bool& open)
         {
             app.emulator->travel_back_single_instr();
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
+            sync_secondary_arduboy_to_primary();
         }
         if(IsItemHovered())
         {
@@ -140,6 +175,7 @@ void window_simulation(bool& open)
         {
             app.emulator->travel_back_single_instr_over();
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
+            sync_secondary_arduboy_to_primary();
         }
         if(IsItemHovered())
         {
@@ -152,6 +188,7 @@ void window_simulation(bool& open)
         {
             app.emulator->travel_back_single_instr_out();
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
+            sync_secondary_arduboy_to_primary();
         }
         if(IsItemHovered())
         {
@@ -160,22 +197,31 @@ void window_simulation(bool& open)
             EndTooltip();
         }
 
+        uint64_t min_cycle = tt_min_cycle();
+        uint64_t max_cycle = app.emulator->is_present_state() ?
+            app.emulator->core_state.cpu.cycle_count :
+            app.emulator->debugger_state.present_state.cycle;
+        uint64_t cycles = max_cycle - min_cycle;
+
         char buf[64];
         buf[0] = '\0';
         {
-            uint32_t dc = uint32_t(app.emulator->debugger_state.present_state.cycle - app.emulator->core_state.cpu.cycle_count);
+            uint64_t dc = uint64_t(app.emulator->debugger_state.present_state.cycle - app.emulator->core_state.cpu.cycle_count);
             if(app.emulator->is_present_state())
+            {
                 ttslider = 1.f;
+            }
             else
             {
                 snprintf(buf, sizeof(buf),
-                    "-%u cycles, -%.4f ms",
+                    "-%" PRIu64 " cycles, -%.4f ms",
                     dc, double((1.0 / 16e3) * (dc)));
                 if(!app.emulator->debugger_state.state_history.empty())
                 {
-                    uint32_t tn = uint32_t(app.emulator->core_state.cpu.cycle_count - app.emulator->debugger_state.state_history[0].cycle);
-                    uint32_t td = uint32_t(app.emulator->debugger_state.present_state.cycle - app.emulator->debugger_state.state_history[0].cycle);
-                    if(td != 0) ttslider = float(tn) / float(td);
+                    uint64_t tn = uint64_t(app.emulator->core_state.cpu.cycle_count - min_cycle);
+                    uint64_t td = uint64_t(max_cycle - min_cycle);
+                    if((int64_t)tn < 0) ttslider = 0.f;
+                    else if(td != 0) ttslider = float(double(tn) / double(td));
                 }
             }
         }
@@ -184,25 +230,11 @@ void window_simulation(bool& open)
         if(old_ttslider != ttslider && !app.emulator->debugger_state.state_history.empty())
         {
             // Maintain the same cycle offset between linked Arduboys.
-            uint64_t min_cycle = app.emulator->debugger_state.state_history[0].cycle;
-            if(linked_secondary_arduboy_connected())
-            {
-                uint64_t linked_min_cycle = app.linked_secondary_arduboy->debugger_state.state_history[0].cycle;
-                min_cycle = static_cast<uint64_t>(std::max(
-                    static_cast<int64_t>(min_cycle),
-                    static_cast<int64_t>(linked_min_cycle + app.linked_secondary_arduboy_cycle_offset)));
-            }
-            uint64_t cycles = app.emulator->debugger_state.present_state.cycle - min_cycle;
             uint64_t c = min_cycle + static_cast<uint64_t>(
                 std::round(static_cast<double>(ttslider) * static_cast<double>(cycles)));
             app.emulator->travel_to_present();
             app.emulator->travel_back_to_cycle(c);
-            if(linked_secondary_arduboy_connected())
-            {
-                int64_t offset = app.linked_secondary_arduboy_cycle_offset;
-                app.linked_secondary_arduboy->travel_to_present();
-                app.linked_secondary_arduboy->travel_back_to_cycle(c - offset);
-            }
+            sync_secondary_arduboy_to_primary();
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         }
         if(was_present)

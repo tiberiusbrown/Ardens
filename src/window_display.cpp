@@ -60,6 +60,15 @@ void window_display(bool& open)
                 if(Button("Swap with Secondary"))
                 {
                     std::swap(app.emulator, app.linked_secondary_arduboy);
+                    std::swap(
+                        app.emulator->debugger_state.breakpoints,
+                        app.linked_secondary_arduboy->debugger_state.breakpoints);
+                    std::swap(
+                        app.emulator->debugger_state.breakpoints_rd,
+                        app.linked_secondary_arduboy->debugger_state.breakpoints_rd);
+                    std::swap(
+                        app.emulator->debugger_state.breakpoints_wr,
+                        app.linked_secondary_arduboy->debugger_state.breakpoints_wr);
                 }
                 Separator();
             }

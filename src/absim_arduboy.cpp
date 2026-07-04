@@ -1323,7 +1323,7 @@ void arduboy_t::update_history()
 {
 #ifndef ARDENS_NO_DEBUGGER
     if(core_state.cpu.cycle_count >= debugger_state.present_state.cycle)
-        debugger_state.present_state = {};
+        debugger_state.present_state.state.clear();
     if(!is_present_state())
         return;
 
@@ -1464,6 +1464,8 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
 
 void arduboy_t::travel_back_to_cycle(uint64_t cycle)
 {
+    if(cycle >= core_state.cpu.cycle_count)
+        return;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.cycle <= cycle;
     }, cycle);
@@ -1503,7 +1505,6 @@ void arduboy_t::travel_to_present()
     if(debugger_state.present_state.state.empty()) return;
     load_state_from_vector(debugger_state.present_state);
     debugger_state.present_state = {};
-    debugger_state.paused = false;
 }
 
 void arduboy_t::travel_continue()
