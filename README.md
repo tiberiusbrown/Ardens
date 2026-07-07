@@ -106,7 +106,7 @@ The web debugger, web player, and desktop applications share the same parameter 
 | `display` | Display type: `0`/`ssd1306`, `1`/`ssd1309`, `2`/`sh1106`. |
 | `usb`, `usb_connected` | Emulated USB bus connection state: boolean value. |
 | `touch` | Always show touch controls: boolean value. |
-| `size` | Desktop only: initial window size, such as `800x400`. |
+| `size` | Desktop only: overrides the remembered window size, such as `800x400`. |
 
 Boolean parameters accept `0`, `1`, `false`, `true`, `off`, `on`, `no`, and `yes`.
 

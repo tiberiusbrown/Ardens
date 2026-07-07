@@ -67,6 +67,14 @@ static SDL_AudioStream* audio_stream;
 
 static SDL_Window* window;
 static SDL_Renderer* renderer;
+static bool window_geometry_events_ready = false;
+
+enum class window_geometry_mode
+{
+    query,
+    maximized,
+    restored,
+};
 
 static void sdl_platform_destroy_texture(texture_t t)
 {
@@ -205,11 +213,48 @@ static void sdl_platform_open_url(char const* url)
     SDL_OpenURL(url);
 }
 
+static void sdl_update_window_geometry(window_geometry_mode mode = window_geometry_mode::query)
+{
+    if(!window_geometry_events_ready || !window)
+        return;
+
+    SDL_WindowFlags const flags = SDL_GetWindowFlags(window);
+    if(flags & SDL_WINDOW_FULLSCREEN)
+        return;
+
+    bool maximized = false;
+    switch(mode)
+    {
+    case window_geometry_mode::maximized:
+        maximized = true;
+        break;
+    case window_geometry_mode::restored:
+        maximized = false;
+        break;
+    case window_geometry_mode::query:
+        maximized = (flags & SDL_WINDOW_MAXIMIZED) != 0;
+        break;
+    }
+    if(maximized)
+    {
+        int w = settings.window_width;
+        int h = settings.window_height;
+        if(w <= 0 || h <= 0)
+            SDL_GetWindowSize(window, &w, &h);
+        update_window_settings(w, h, true);
+        return;
+    }
+
+    int w = 0;
+    int h = 0;
+    SDL_GetWindowSize(window, &w, &h);
+    update_window_settings(w, h, false);
+}
+
 static void sdl_platform_toggle_fullscreen()
 {
-    static bool fs = false;
-    fs = !fs;
-    SDL_SetWindowFullscreen(window, fs);
+    bool const fs = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+    SDL_SetWindowFullscreen(window, !fs);
 }
 
 static void main_loop()
@@ -217,13 +262,36 @@ static void main_loop()
     auto& io = ImGui::GetIO();
     
     SDL_Event event;
+    Uint32 const window_id = SDL_GetWindowID(window);
     while(SDL_PollEvent(&event))
     {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if(event.type == SDL_EVENT_QUIT)
+        {
+            sdl_update_window_geometry();
             app.done = true;
-        if(event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
+        }
+        if(event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == window_id)
+        {
+            sdl_update_window_geometry();
             app.done = true;
+        }
+        if((event.type == SDL_EVENT_WINDOW_RESIZED ||
+            event.type == SDL_EVENT_WINDOW_MAXIMIZED ||
+            event.type == SDL_EVENT_WINDOW_RESTORED ||
+            event.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN ||
+            event.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN) &&
+           event.window.windowID == window_id)
+        {
+            if(event.type == SDL_EVENT_WINDOW_MAXIMIZED)
+                sdl_update_window_geometry(window_geometry_mode::maximized);
+            else if(event.type == SDL_EVENT_WINDOW_RESTORED)
+                sdl_update_window_geometry(window_geometry_mode::restored);
+            else if(event.type == SDL_EVENT_WINDOW_RESIZED ||
+                    event.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN ||
+                    event.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN)
+                sdl_update_window_geometry();
+        }
         if(event.type == SDL_EVENT_DROP_FILE)
         {
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
@@ -321,6 +389,7 @@ static void main_loop()
 #endif
 
     SDL_RenderPresent(renderer);
+    window_geometry_events_ready = true;
 }
 
 static void sdl_platform_quit()
@@ -359,6 +428,7 @@ int main(int argc, char** argv)
 #else
     int width = 1280, height = 720;
 #endif
+    bool size_cli_override = false;
 #ifndef __EMSCRIPTEN__
     {
         sargs_desc d{};
@@ -373,7 +443,10 @@ int main(int argc, char** argv)
             if(0 != strcmp(k, "size")) continue;
             int w = width, h = height;
             if(2 == sscanf(v, "%dx%d", &w, &h))
+            {
                 width = w, height = h;
+                size_cli_override = true;
+            }
             break;
         }
     }
@@ -410,12 +483,30 @@ int main(int argc, char** argv)
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
 #endif
 
+    if(!size_cli_override && settings.window_width > 0 && settings.window_height > 0)
+    {
+        width = settings.window_width;
+        height = settings.window_height;
+    }
+
+    bool const start_maximized = !size_cli_override && settings.window_maximized;
+
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
         SDL_WINDOW_HIGH_PIXEL_DENSITY |
-        0);
+        (start_maximized ? SDL_WINDOW_MAXIMIZED : 0));
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
+    if(!window)
+    {
+        SDL_Log("Error creating SDL window: %s", SDL_GetError());
+        return -1;
+    }
+    if(start_maximized)
+        SDL_MaximizeWindow(window);
+
+    if(settings.window_width <= 0 || settings.window_height <= 0)
+        update_window_settings(width, height, start_maximized);
 
     renderer = SDL_CreateRenderer(window, nullptr);
     if (renderer == NULL)

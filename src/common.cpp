@@ -911,6 +911,22 @@ void rescale_style()
     style.FontScaleDpi = dpi_scale > 0.f ? dpi_scale : 1.f;
 }
 
+std::filesystem::path app_config_folder()
+{
+#ifdef __EMSCRIPTEN__
+    return "/offline";
+#else
+    char ini_path[1024];
+    get_user_config_folder(ini_path, sizeof(ini_path), "Ardens");
+    return ini_path;
+#endif
+}
+
+std::filesystem::path app_config_ini_path()
+{
+    return app_config_folder() / "Ardens.ini";
+}
+
 void shutdown()
 {
     flush_savedata();
@@ -946,21 +962,16 @@ void init()
     FS.mount(IDBFS, {}, '/offline');
     FS.syncfs(true, function(err) { ccall('postsyncfs', 'v'); });
     );
+    app.userpath = app_config_folder();
     io.IniFilename = "/offline/Ardens.ini";
-    app.userpath = "/offline";
 #else
-    {
-        static char ini_path[1024];
-        get_user_config_folder(ini_path, sizeof(ini_path), "Ardens");
-        app.userpath = ini_path;
-        std::error_code ec;
-        std::filesystem::create_directories(app.userpath, ec);
-        strncpy(
-            ini_path,
-            (app.userpath / "Ardens.ini").generic_string().c_str(),
-            sizeof(ini_path));
-        io.IniFilename = ini_path;
-    }
+    auto const ini_path = app_config_ini_path();
+    app.userpath = ini_path.parent_path();
+    std::error_code ec;
+    std::filesystem::create_directories(app.userpath, ec);
+    static std::string ini_filename;
+    ini_filename = ini_path.generic_string();
+    io.IniFilename = ini_filename.c_str();
 #endif
 
     printf("Data path: %s\n", app.userpath.generic_string().c_str());

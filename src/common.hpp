@@ -137,6 +137,8 @@ extern "C" int load_file(
 extern "C" int get_led_state(int component);
 void init();
 void shutdown();
+std::filesystem::path app_config_folder();
+std::filesystem::path app_config_ini_path();
 void frame_logic();
 void imgui_content();
 bool update_pixel_ratio();
