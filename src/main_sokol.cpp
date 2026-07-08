@@ -9,6 +9,8 @@
 #include <imgui.h>
 #include <fmt/format.h>
 
+#define ENABLE_SOKOL_LOGGING 1
+
 #if defined(__EMSCRIPTEN__)
 #define SOKOL_GLES3
 #elif defined(__APPLE__)
@@ -154,7 +156,7 @@ static void app_init()
 
     {
         sg_desc desc{};
-#ifndef NDEBUG
+#if ENABLE_SOKOL_LOGGING
         desc.logger.func = app_log;
 #endif
         desc.environment = sglue_environment();
@@ -216,7 +218,7 @@ static void app_init()
             sg_view_desc vdesc{};
             vdesc.texture.image = img;
             sg_view view = sg_make_view(&vdesc);
-            app.display_texture = (texture_t)(uintptr_t)simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
+            app.display_texture = simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
         }
 
         {
@@ -224,7 +226,7 @@ static void app_init()
             sg_view_desc vdesc{};
             vdesc.texture.image = img;
             sg_view view = sg_make_view(&vdesc);
-            app.display_buffer_texture = (texture_t)(uintptr_t)simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
+            app.display_buffer_texture = simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
         }
     }
 
@@ -336,7 +338,7 @@ static void sokol_platform_destroy_texture(texture_t t)
     // Only the image/view pair is owned by the texture handle. The sampler is
     // shared across all of these textures, so destroying it here would leave
     // later draws with a dead binding.
-    uint64_t const imtex_id = (uint64_t)(uintptr_t)t;
+    uint64_t const imtex_id = t;
     sg_view const view = simgui_texture_view_from_imtextureid(imtex_id);
     sg_image const img = sg_query_view_image(view);
     if(view.id != SG_INVALID_ID)
@@ -357,9 +359,7 @@ static texture_t sokol_platform_create_texture(int w, int h)
     sg_view_desc vdesc{};
     vdesc.texture.image = img;
     sg_view view = sg_make_view(&vdesc);
-    auto t = simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
-
-    return (texture_t)(uintptr_t)t;
+    return simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
 }
 
 static void sokol_platform_update_texture(texture_t t, void const* data, size_t n)
@@ -367,7 +367,7 @@ static void sokol_platform_update_texture(texture_t t, void const* data, size_t 
     sg_image_data idata{};
     idata.mip_levels[0] = { data, n };
 
-    uint64_t const imtex_id = (uint64_t)(uintptr_t)t;
+    uint64_t const imtex_id = t;
     sg_view const view = simgui_texture_view_from_imtextureid(imtex_id);
     sg_image const img = sg_query_view_image(view);
     sg_update_image(img, &idata);
@@ -537,10 +537,10 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.event_cb = app_event;
     desc.frame_cb = app_frame;
     desc.cleanup_cb = app_cleanup;
-#ifndef NDEBUG
+#if ENABLE_SOKOL_LOGGING
     desc.logger.func = app_log;
 #endif
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__)
     desc.html5.canvas_selector = "#canvas";
 #else
 #ifdef ARDENS_PLAYER

@@ -52,7 +52,13 @@
 
 constexpr uint32_t AUDIO_FREQ = 16000000 / absim::atmega32u4_t::SOUND_CYCLES;
 
+#if defined(ARDENS_PLATFORM_SOKOL)
+// sokol_imgui uses 64-bit texture IDs; wasm pointers are 32-bit, so store the
+// full ID explicitly on the Sokol path.
+using texture_t = uint64_t;
+#else
 using texture_t = void*;
+#endif
 
 constexpr float CLEAR_R = 0.10f;
 constexpr float CLEAR_G = 0.10f;
