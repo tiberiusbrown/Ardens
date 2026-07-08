@@ -1471,30 +1471,31 @@ void arduboy_t::travel_back_to_cycle(uint64_t cycle)
     }, cycle);
 }
 
-void arduboy_t::travel_back_single_instr()
+void arduboy_t::travel_back_single_instr(uint64_t min_cycle)
 {
     uint16_t tpc = core_state.cpu.pc;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.pc != tpc;
-    });
+    }, min_cycle);
 }
 
-void arduboy_t::travel_back_single_instr_over()
+void arduboy_t::travel_back_single_instr_over(uint64_t min_cycle)
 {
     uint16_t tpc = core_state.cpu.pc;
     uint16_t tsd = core_state.cpu.num_stack_frames;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.pc != tpc && p.stack_depth == tsd;
-    });
+    }, min_cycle);
 }
 
-void arduboy_t::travel_back_single_instr_out()
+void arduboy_t::travel_back_single_instr_out(uint64_t min_cycle)
 {
     uint16_t tsd = core_state.cpu.num_stack_frames;
     if(tsd == 0) return;
     uint64_t cycle = core_state.cpu.stack_frames[tsd - 1].cycle;
     assert(cycle < core_state.cpu.cycle_count);
     if(cycle >= core_state.cpu.cycle_count) return;
+    if(cycle < min_cycle) return;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.stack_depth < tsd;
     }, cycle);

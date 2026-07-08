@@ -1629,9 +1629,9 @@ struct arduboy_t
     void load_state_from_vector(tt_state_t const& state);
     void update_history();
     void travel_back_to_cycle(uint64_t cycle);
-    void travel_back_single_instr();
-    void travel_back_single_instr_over();
-    void travel_back_single_instr_out();
+    void travel_back_single_instr(uint64_t min_cycle = 0);
+    void travel_back_single_instr_over(uint64_t min_cycle = 0);
+    void travel_back_single_instr_out(uint64_t min_cycle = 0);
     void travel_to_present();
     void travel_continue();
     bool is_present_state();

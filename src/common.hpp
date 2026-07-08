@@ -157,6 +157,7 @@ void reset_primary_simulation();
 bool connect_linked_secondary_arduboy();
 void disconnect_linked_secondary_arduboy();
 bool linked_secondary_arduboy_connected();
+void swap_linked_secondary_arduboy();
 
 float volume_gain();
 bool ends_with(std::string const& str, std::string const& end);

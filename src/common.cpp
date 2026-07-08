@@ -392,6 +392,22 @@ static bool load_linked_secondary_arduboy(bool preroll)
     return true;
 }
 
+void swap_linked_secondary_arduboy()
+{
+    if(!app.linked_secondary_arduboy) return;
+    std::swap(app.emulator, app.linked_secondary_arduboy);
+    std::swap(
+        app.emulator->debugger_state.breakpoints,
+        app.linked_secondary_arduboy->debugger_state.breakpoints);
+    std::swap(
+        app.emulator->debugger_state.breakpoints_rd,
+        app.linked_secondary_arduboy->debugger_state.breakpoints_rd);
+    std::swap(
+        app.emulator->debugger_state.breakpoints_wr,
+        app.linked_secondary_arduboy->debugger_state.breakpoints_wr);
+    app.linked_secondary_arduboy_cycle_offset = -app.linked_secondary_arduboy_cycle_offset;
+}
+
 bool connect_linked_secondary_arduboy()
 {
     disconnect_linked_secondary_arduboy();

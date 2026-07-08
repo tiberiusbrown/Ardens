@@ -45,7 +45,10 @@ static uint64_t tt_min_cycle()
     if(linked_secondary_arduboy_connected())
     {
         uint64_t linked_min_cycle = tt_min_cycle(*app.linked_secondary_arduboy);
-        min_cycle = std::max(min_cycle, linked_min_cycle + app.linked_secondary_arduboy_cycle_offset);
+        linked_min_cycle += app.linked_secondary_arduboy_cycle_offset;
+        if((int64_t)linked_min_cycle < 0)
+            return min_cycle;
+        min_cycle = std::max(min_cycle, linked_min_cycle);
     }
     return min_cycle;
 }
@@ -155,12 +158,18 @@ void window_simulation(bool& open)
             EndTooltip();
         }
 
+        uint64_t min_cycle = tt_min_cycle();
+        uint64_t max_cycle = app.emulator->is_present_state() ?
+            app.emulator->core_state.cpu.cycle_count :
+            app.emulator->debugger_state.present_state.cycle;
+        uint64_t cycles = max_cycle - min_cycle;
+
         AlignTextToFramePadding();
         TextUnformatted("Backward:");
         SameLine();
         if(Button("Step Into###backinto"))
         {
-            app.emulator->travel_back_single_instr();
+            app.emulator->travel_back_single_instr(min_cycle);
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
             sync_secondary_arduboy_to_primary();
         }
@@ -173,7 +182,7 @@ void window_simulation(bool& open)
         SameLine();
         if(Button("Step Over###backover"))
         {
-            app.emulator->travel_back_single_instr_over();
+            app.emulator->travel_back_single_instr_over(min_cycle);
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
             sync_secondary_arduboy_to_primary();
         }
@@ -186,7 +195,7 @@ void window_simulation(bool& open)
         SameLine();
         if(Button("Step Out###backout"))
         {
-            app.emulator->travel_back_single_instr_out();
+            app.emulator->travel_back_single_instr_out(min_cycle);
             app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
             sync_secondary_arduboy_to_primary();
         }
@@ -196,12 +205,6 @@ void window_simulation(bool& open)
             TextUnformatted("Step back in recorded history out of the current function to its call site.");
             EndTooltip();
         }
-
-        uint64_t min_cycle = tt_min_cycle();
-        uint64_t max_cycle = app.emulator->is_present_state() ?
-            app.emulator->core_state.cpu.cycle_count :
-            app.emulator->debugger_state.present_state.cycle;
-        uint64_t cycles = max_cycle - min_cycle;
 
         char buf[64];
         buf[0] = '\0';
