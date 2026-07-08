@@ -147,7 +147,7 @@ texture_t platform_create_texture(int w, int h)
 {
     return platform_services.create_texture ?
         platform_services.create_texture(w, h) :
-        nullptr;
+        texture_t{};
 }
 
 void platform_update_texture(texture_t t, void const* data, size_t n)
