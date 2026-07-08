@@ -182,7 +182,7 @@ static void app_init()
     update_pixel_ratio();
     rescale_style();
     // Add the default ImGui font after our scaling values are in place.
-    ImGui::GetIO().Fonts->AddFontDefault();
+    ImGui::GetIO().Fonts->AddFontDefaultVector();
 
     {
         sg_image_desc desc{};
