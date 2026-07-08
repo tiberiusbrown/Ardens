@@ -1,7 +1,6 @@
 #include "absim.hpp"
 
 #include <algorithm>
-#include <iostream>
 
 #include <sstream>
 #include <tuple>
@@ -21,43 +20,57 @@ extern "C"
 #include "boot/boot_flashcart.h"
 }
 
+#include <lzav/lzav.h>
+
 #define COMPRESS_TIME_TRAVEL_STATES 1
+#define COMPRESS_WITH_LZAV 1
 
 namespace absim
 {
 
+arduboy_t::arduboy_t() {}
+
 void arduboy_t::reload_fx()
 {
-    fx.erase_all_data();
+    peripherals.fx.erase_all_data();
 
-    if(flashcart_loaded)
+    if(program_state.flashcart_loaded)
     {
-        fx.min_page = 0;
-        fx.max_page = uint32_t((fxdata.size() + 255) / 256 - 1);
-        fx.write_bytes(0, fxdata.data(), fxdata.size());
-        fxsave.clear();
+        peripherals.fx.min_page = 0;
+        peripherals.fx.max_page =
+            uint32_t((program_state.fxdata.size() + w25q128_t::PAGE_BYTES - 1) /
+                w25q128_t::PAGE_BYTES - 1);
+        peripherals.fx.write_bytes(0, program_state.fxdata.data(), program_state.fxdata.size());
+        program_state.fxsave.clear();
         update_game_hash();
     }
     else
     {
-        size_t fxsave_bytes = (fxsave.size() + 4095) & ~4095;
-        size_t fxdata_bytes = (fxdata.size() + 255) & ~255;
-        size_t fxsave_offset = w25q128_t::DATA_BYTES - fxsave_bytes;
-        size_t fxdata_offset = fxsave_offset - fxdata_bytes;
+        w25q128_t::fx_data_save_layout_t layout{};
+        bool layout_valid = w25q128_t::make_data_save_layout(
+            program_state.fxdata.size(), program_state.fxsave.size(), layout);
+        assert(layout_valid);
 
-        fx.min_page = uint32_t(fxdata_offset / 256);
-        fx.max_page = 0xffff;
+        if(layout.has_payload())
+        {
+            peripherals.fx.min_page = layout.min_page();
+            peripherals.fx.max_page = w25q128_t::LAST_PAGE;
+        }
+        else
+        {
+            peripherals.fx.set_empty_page_range();
+        }
 
-        fx.write_bytes(fxdata_offset, fxdata.data(), fxdata.size());
+        peripherals.fx.write_bytes(layout.data_offset, program_state.fxdata.data(), program_state.fxdata.size());
         update_game_hash();
-        fx.write_bytes(fxsave_offset, fxsave.data(), fxsave.size());
+        peripherals.fx.write_bytes(layout.save_offset, program_state.fxsave.data(), program_state.fxsave.size());
     }
 
-    for(size_t i = 0; i < fx.NUM_SECTORS; ++i)
+    for(size_t i = 0; i < peripherals.fx.NUM_SECTORS; ++i)
     {
-        auto const& s = fx.sectors_modified_data[i];
+        auto const& s = peripherals.fx.sectors_modified_data[i];
         if(!s) continue;
-        fx.write_bytes(i * 4096, s->data(), s->size());
+        peripherals.fx.write_bytes(i * w25q128_t::SECTOR_BYTES, s->data(), s->size());
     }
 }
 
@@ -67,11 +80,11 @@ void arduboy_t::update_game_hash()
     constexpr uint64_t OFFSET = 0xcbf29ce484222325;
     constexpr uint64_t PRIME = 0x100000001b3;
     uint64_t h = OFFSET;
-    if(!flashcart_loaded)
+    if(!program_state.flashcart_loaded)
     {
-        for(size_t i = 0; i < 29 * 1024; ++i)
+        for(size_t i = 0; i < atmega32u4_t::PROGRAM_FLASH_BYTES; ++i)
         {
-            uint8_t byte = cpu.prog[i];
+            uint8_t byte = core_state.cpu.prog[i];
             h ^= byte;
             h *= PRIME;
         }
@@ -87,82 +100,717 @@ void arduboy_t::update_game_hash()
         h ^= 0xff;
         h *= PRIME;
     }
-    for(size_t i = sizeof(ARDENS_BOOT_FLASHCART); i < fx.DATA_BYTES; ++i)
+    for(size_t i = sizeof(ARDENS_BOOT_FLASHCART); i < peripherals.fx.DATA_BYTES; ++i)
     {
-        h ^= fx.read_byte(i); // TODO: optimize?
+        h ^= peripherals.fx.read_byte(i); // TODO: optimize?
         h *= PRIME;
     }
 
-    game_hash = h;
+    program_state.game_hash = h;
 }
 
 void arduboy_t::reset()
 {
-    input_history.clear();
-    state_history.clear();
-    present_state.clear();
-    present_cycle = 0;
+    debugger_state.input_history.clear();
+    debugger_state.state_history.clear();
+    debugger_state.present_state = {};
 
     profiler_reset();
-    frame_cpu_usage.clear();
-    total_frames = 0;
-    total_ms = 0;
+    profiler_state.frame_cpu_usage.clear();
+    profiler_state.total_frames = 0;
+    profiler_state.total_ms = 0;
 
-    cpu.lock = 0xff;
-    cpu.fuse_lo = 0xff;
-    cpu.fuse_hi = 0xd3;
-    cpu.fuse_ext = 0xcb;
-    if(flashcart_loaded || cfg.bootloader)
-        cpu.fuse_hi &= ~(1 << 0);
-    cpu.reset();
+    core_state.cpu.lock = 0xff;
+    core_state.cpu.fuse_lo = 0xff;
+    core_state.cpu.fuse_hi = 0xd3;
+    core_state.cpu.fuse_ext = 0xcb;
+    if(program_state.flashcart_loaded || program_state.cfg.bootloader)
+        core_state.cpu.fuse_hi &= ~(1 << 0);
+    core_state.cpu.usb.bus_state = program_state.cfg.usb_bus_state;
+    core_state.cpu.reset();
 
-    display.reset();
-    display.type = cfg.display_type;
-    fx.reset();
-    paused = false;
-    break_step = 0xffffffff;
+    peripherals.display.reset();
+    peripherals.display.type = program_state.cfg.display_type;
+    peripherals.fx.reset();
+    debugger_state.paused = false;
+    debugger_state.break_step = 0xffffffff;
 
-    prev_display_reset = true;
+    peripherals.prev_display_reset = true;
 
-    prev_profiler_total = 0;
-    prev_profiler_total_with_sleep = 0;
-    prev_ms_cycles = 0;
-    ms_cpu_usage.clear();
+    profiler_state.prev_total = 0;
+    profiler_state.prev_total_with_sleep = 0;
+    profiler_state.prev_ms_cycles = 0;
+    profiler_state.ms_cpu_usage.clear();
 
-    if(breakpoints.test(0))
-        paused = true;
+    if(debugger_state.breakpoints.test(0))
+        debugger_state.paused = true;
 
-    fxport_reg = cfg.fxport_reg;
-    fxport_mask = cfg.fxport_mask;
+    peripherals.fxport_reg = program_state.cfg.fxport_reg;
+    peripherals.fxport_mask = program_state.cfg.fxport_mask;
 
-    if(flashcart_loaded || cfg.bootloader)
+    if(program_state.flashcart_loaded || program_state.cfg.bootloader)
     {
         unsigned char const* ptr = nullptr;
         size_t size = 0;
-        if(flashcart_loaded || cfg.boot_to_menu)
+        if(program_state.flashcart_loaded || program_state.cfg.boot_to_menu)
         {
-            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 1)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD1)
                 ptr = ARDENS_BOOT_MENU_D1, size = sizeof(ARDENS_BOOT_MENU_D1);
-            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD2)
                 ptr = ARDENS_BOOT_MENU_D2, size = sizeof(ARDENS_BOOT_MENU_D2);
-            if(cfg.fxport_reg == 0x2e && cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTE &&
+                program_state.cfg.fxport_mask == reg::bit::PORTE::PORTE2)
                 ptr = ARDENS_BOOT_MENU_E2, size = sizeof(ARDENS_BOOT_MENU_E2);
         }
         else
         {
-            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 1)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD1)
                 ptr = ARDENS_BOOT_GAME_D1, size = sizeof(ARDENS_BOOT_GAME_D1);
-            if(cfg.fxport_reg == 0x2b && cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTD &&
+                program_state.cfg.fxport_mask == reg::bit::PORTD::PORTD2)
                 ptr = ARDENS_BOOT_GAME_D2, size = sizeof(ARDENS_BOOT_GAME_D2);
-            if(cfg.fxport_reg == 0x2e && cfg.fxport_mask == 1 << 2)
+            if(program_state.cfg.fxport_reg == reg::addr::PORTE &&
+                program_state.cfg.fxport_mask == reg::bit::PORTE::PORTE2)
                 ptr = ARDENS_BOOT_GAME_E2, size = sizeof(ARDENS_BOOT_GAME_E2);
         }
         if(ptr != nullptr && size != 0)
             (void)load_bootloader_hex(ptr, size);
     }
 
-    if(cpu.program_loaded)
-        cpu.decode();
+    if(core_state.cpu.program_loaded)
+        core_state.cpu.decode();
+}
+
+twi_wire_state_t arduboy_t::twi_wire_state() const
+{
+    return core_state.cpu.twi_wire_state();
+}
+
+twi_wire_state_t arduboy_t::twi_drive_state() const
+{
+    return core_state.cpu.twi_drive_state();
+}
+
+void arduboy_t::set_twi_external_lines(bool scl_low, bool sda_low)
+{
+    core_state.cpu.set_twi_external_lines(scl_low, sda_low);
+}
+
+void i2c_bus_t::clear()
+{
+    participants.clear();
+}
+
+void i2c_bus_t::attach(i2c_bus_participant_t const* participant)
+{
+    if(participant)
+        participants.push_back(participant);
+}
+
+twi_wire_state_t i2c_bus_t::resolve() const
+{
+    bool scl_low = false;
+    bool sda_low = false;
+    for(auto* participant : participants)
+    {
+        if(!participant)
+            continue;
+        scl_low = scl_low || participant->drive_scl_low;
+        sda_low = sda_low || participant->drive_sda_low;
+    }
+    return { scl_low, sda_low, !scl_low, !sda_low };
+}
+
+bool i2c_link_adapter_t::endpoint_active(uint8_t endpoint) const
+{
+    return endpoint < num_endpoints && endpoints[endpoint].active;
+}
+
+void i2c_link_adapter_t::reset_endpoint(endpoint_t& endpoint)
+{
+    endpoint = {};
+    endpoint.id = BROADCAST_ENDPOINT;
+}
+
+uint8_t i2c_link_adapter_t::attach_endpoint()
+{
+    if(num_endpoints >= MAX_ENDPOINTS)
+        return BROADCAST_ENDPOINT;
+
+    uint8_t id = num_endpoints++;
+    auto& endpoint = endpoints[id];
+    reset_endpoint(endpoint);
+    endpoint.active = true;
+    endpoint.id = id;
+    return id;
+}
+
+void i2c_link_adapter_t::disconnect()
+{
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        detach_endpoint(i);
+        reset_endpoint(endpoints[i]);
+    }
+    num_endpoints = 0;
+    updating_lines = false;
+    next_transaction_id = 1;
+    reset_transport();
+}
+
+void i2c_link_adapter_t::sync_bus_lines()
+{
+    refresh_bus_lines();
+    poll_messages();
+}
+
+void i2c_link_adapter_t::refresh_bus_lines()
+{
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(!endpoint_active(i))
+            continue;
+
+        uint64_t sample_cycle = 0;
+        if(!endpoint_sample_cycle(i, sample_cycle))
+            continue;
+
+        bool external_scl_low = false;
+        bool external_sda_low = false;
+        for(uint8_t j = 0; j < num_endpoints; ++j)
+        {
+            if(i == j || !endpoint_active(j))
+                continue;
+            twi_wire_state_t drive{};
+            if(!endpoint_drive_state(j, sample_cycle, drive))
+                continue;
+            external_scl_low = external_scl_low || drive.scl_low;
+            external_sda_low = external_sda_low || drive.sda_low;
+        }
+        endpoint_set_external_lines(i, external_scl_low, external_sda_low);
+    }
+}
+
+void i2c_link_adapter_t::update_bus_lines()
+{
+    if(updating_lines)
+        return;
+    updating_lines = true;
+    refresh_bus_lines();
+    poll_messages();
+    refresh_bus_lines();
+    updating_lines = false;
+}
+
+void i2c_link_adapter_t::on_local_start(uint8_t endpoint, bool repeated)
+{
+    if(!endpoint_active(endpoint))
+        return;
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(i != endpoint && endpoint_active(i))
+            pump_endpoint(i);
+    }
+    auto& e = endpoints[endpoint];
+    if(repeated)
+    {
+        i2c_message_t message;
+        message.kind = i2c_message_t::kind_t::REPEATED_START;
+        message.from = endpoint;
+        message.transaction_id = next_transaction_id++;
+        for(uint8_t target : e.targets)
+        {
+            if(endpoint_active(target))
+            {
+                message.to = target;
+                send_message(message);
+            }
+        }
+    }
+    else
+    {
+        i2c_message_t message;
+        message.kind = i2c_message_t::kind_t::START;
+        message.from = endpoint;
+        message.to = BROADCAST_ENDPOINT;
+        message.transaction_id = next_transaction_id++;
+        send_message(message);
+    }
+    e.targets.clear();
+    poll_messages();
+}
+
+std::vector<uint8_t> i2c_link_adapter_t::route_address_targets(
+    uint8_t endpoint, uint8_t address, bool& address_busy)
+{
+    std::vector<uint8_t> targets;
+    bool general_call = address == 0;
+    uint8_t nonzero_claims = 0;
+    address_busy = false;
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(!endpoint_active(i))
+            continue;
+        if(i != endpoint)
+            pump_endpoint(i);
+
+        bool claims = endpoint_claims_address(i, address, general_call);
+        if(!general_call && claims)
+            nonzero_claims++;
+
+        if(i == endpoint)
+            continue;
+
+        if(endpoint_can_address(i, address, general_call))
+            targets.push_back(i);
+        else if(claims)
+            address_busy = true;
+    }
+
+    if(!general_call && nonzero_claims != 1)
+    {
+        address_busy = false;
+        targets.clear();
+    }
+    return targets;
+}
+
+void i2c_link_adapter_t::begin_request(
+    endpoint_t& endpoint,
+    pending_op_t op,
+    std::vector<uint8_t> const& targets,
+    i2c_message_t const& packet)
+{
+    endpoint.pending_op = op;
+    endpoint.pending_transaction_id = next_transaction_id++;
+    endpoint.pending_targets = targets;
+    endpoint.pending_responses.clear();
+    endpoint.pending_address = packet.address;
+    endpoint.pending_data = packet.data;
+    endpoint.pending_read = packet.read;
+    endpoint.pending_master_ack = packet.master_ack;
+
+    i2c_message_t p = packet;
+    p.transaction_id = endpoint.pending_transaction_id;
+    for(uint8_t target : targets)
+    {
+        p.to = target;
+        send_message(p);
+    }
+}
+
+i2c_link_adapter_t::result_t i2c_link_adapter_t::finish_request(endpoint_t& endpoint)
+{
+    result_t result;
+    if(endpoint.pending_responses.size() < endpoint.pending_targets.size())
+    {
+        result.pending = true;
+        return result;
+    }
+
+    for(auto const& response : endpoint.pending_responses)
+    {
+        result.ack = result.ack || response.ack;
+        if(response.ack)
+            result.data = response.data;
+    }
+
+    endpoint.pending_op = I2C_PENDING_NONE;
+    endpoint.pending_transaction_id = 0;
+    endpoint.pending_targets.clear();
+    endpoint.pending_responses.clear();
+    return result;
+}
+
+i2c_link_adapter_t::result_t i2c_link_adapter_t::request_address_ack(
+    uint8_t endpoint, uint8_t address, bool read)
+{
+    if(!endpoint_active(endpoint))
+        return {};
+
+    auto& e = endpoints[endpoint];
+    if(e.pending_op == I2C_PENDING_NONE)
+    {
+        bool address_busy = false;
+        auto targets = route_address_targets(endpoint, address, address_busy);
+        e.targets.clear();
+        if(targets.empty())
+        {
+            if(address_busy)
+            {
+                result_t result;
+                result.pending = true;
+                return result;
+            }
+            return {};
+        }
+
+        i2c_message_t packet;
+        packet.kind = i2c_message_t::kind_t::ADDRESS;
+        packet.from = endpoint;
+        packet.address = address & 0x7f;
+        packet.read = read;
+        packet.ack = false;
+        begin_request(e, I2C_PENDING_ADDRESS, targets, packet);
+    }
+
+    poll_messages();
+    auto targets = e.pending_targets;
+    auto result = finish_request(e);
+    if(!result.pending)
+    {
+        if(result.ack)
+            e.targets = targets;
+        else
+            e.targets.clear();
+    }
+    return result;
+}
+
+i2c_link_adapter_t::result_t i2c_link_adapter_t::request_write_ack(
+    uint8_t endpoint, uint8_t address, uint8_t data)
+{
+    (void)address;
+    if(!endpoint_active(endpoint))
+        return {};
+
+    auto& e = endpoints[endpoint];
+    if(e.pending_op == I2C_PENDING_NONE)
+    {
+        if(e.targets.empty())
+            return {};
+        i2c_message_t packet;
+        packet.kind = i2c_message_t::kind_t::WRITE_BYTE;
+        packet.from = endpoint;
+        packet.address = address & 0x7f;
+        packet.data = data;
+        begin_request(e, I2C_PENDING_WRITE, e.targets, packet);
+    }
+
+    poll_messages();
+    return finish_request(e);
+}
+
+i2c_link_adapter_t::result_t i2c_link_adapter_t::request_read_byte(
+    uint8_t endpoint, uint8_t address, bool master_ack)
+{
+    (void)address;
+    if(!endpoint_active(endpoint))
+        return {};
+
+    auto& e = endpoints[endpoint];
+    if(e.pending_op == I2C_PENDING_NONE)
+    {
+        if(e.targets.empty())
+            return {};
+        std::vector<uint8_t> targets;
+        targets.push_back(e.targets.front());
+        i2c_message_t packet;
+        packet.kind = i2c_message_t::kind_t::READ_REQUEST;
+        packet.from = endpoint;
+        packet.address = address & 0x7f;
+        packet.master_ack = master_ack;
+        begin_request(e, I2C_PENDING_READ, targets, packet);
+    }
+
+    poll_messages();
+    return finish_request(e);
+}
+
+void i2c_link_adapter_t::on_local_stop(uint8_t endpoint)
+{
+    if(!endpoint_active(endpoint))
+        return;
+
+    auto& e = endpoints[endpoint];
+    i2c_message_t packet;
+    packet.kind = i2c_message_t::kind_t::STOP;
+    packet.from = endpoint;
+    packet.transaction_id = next_transaction_id++;
+    for(uint8_t target : e.targets)
+    {
+        if(endpoint_active(target))
+        {
+            packet.to = target;
+            send_message(packet);
+        }
+    }
+    e.targets.clear();
+    e.pending_op = I2C_PENDING_NONE;
+    e.pending_targets.clear();
+    e.pending_responses.clear();
+    poll_messages();
+}
+
+bool i2c_link_adapter_t::drain_messages_once()
+{
+    bool progressed = false;
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(!endpoint_active(i))
+            continue;
+        i2c_message_t packet;
+        while(receive_message(i, packet))
+        {
+            handle_message(i, packet);
+            progressed = true;
+        }
+    }
+    return progressed;
+}
+
+void i2c_link_adapter_t::poll_messages()
+{
+    for(int i = 0; i < 20000 && drain_messages_once(); ++i)
+        refresh_bus_lines();
+}
+
+void i2c_link_adapter_t::pump_endpoint(uint8_t endpoint)
+{
+    if(!endpoint_active(endpoint))
+        return;
+    auto& endpoint_state = endpoints[endpoint];
+    if(endpoint_state.pumping)
+        return;
+
+    endpoint_state.pumping = true;
+    for(int i = 0; i < 20000 && endpoint_needs_pump(endpoint); ++i)
+    {
+        refresh_bus_lines();
+        endpoint_pump_cycle(endpoint);
+        drain_messages_once();
+    }
+    refresh_bus_lines();
+    endpoint_state.pumping = false;
+}
+
+void i2c_link_adapter_t::handle_message(uint8_t endpoint, i2c_message_t const& packet)
+{
+    if(packet.kind == i2c_message_t::kind_t::RESPONSE ||
+        packet.kind == i2c_message_t::kind_t::READ_RESPONSE)
+    {
+        auto& e = endpoints[endpoint];
+        if(e.pending_op != I2C_PENDING_NONE &&
+            e.pending_transaction_id == packet.transaction_id)
+            e.pending_responses.push_back(packet);
+        return;
+    }
+
+    if(!endpoint_active(endpoint))
+        return;
+
+    i2c_message_t response;
+    response.kind = i2c_message_t::kind_t::RESPONSE;
+    response.from = endpoint;
+    response.to = packet.from;
+    response.address = packet.address;
+    response.transaction_id = packet.transaction_id;
+
+    switch(packet.kind)
+    {
+    case i2c_message_t::kind_t::START:
+        break;
+
+    case i2c_message_t::kind_t::REPEATED_START:
+        endpoint_stop(endpoint);
+        pump_endpoint(endpoint);
+        break;
+
+    case i2c_message_t::kind_t::ADDRESS:
+        response.ack = endpoint_address(
+            endpoint, packet.address, packet.read, packet.address == 0);
+        if(response.ack)
+            pump_endpoint(endpoint);
+        send_message(response);
+        break;
+
+    case i2c_message_t::kind_t::WRITE_BYTE:
+        response.ack = endpoint_write(endpoint, packet.data);
+        if(response.ack)
+            pump_endpoint(endpoint);
+        send_message(response);
+        break;
+
+    case i2c_message_t::kind_t::READ_REQUEST:
+        response.kind = i2c_message_t::kind_t::READ_RESPONSE;
+        response.ack = true;
+        response.data = endpoint_read(endpoint, packet.master_ack);
+        pump_endpoint(endpoint);
+        send_message(response);
+        break;
+
+    case i2c_message_t::kind_t::MASTER_ACK:
+        break;
+
+    case i2c_message_t::kind_t::STOP:
+        endpoint_stop(endpoint);
+        pump_endpoint(endpoint);
+        break;
+
+    case i2c_message_t::kind_t::ABORT:
+    case i2c_message_t::kind_t::BUS_RESET:
+        endpoint_stop(endpoint);
+        break;
+
+    default:
+        break;
+    }
+}
+
+void local_i2c_transaction_bridge_t::connect(std::vector<arduboy_t*> const& devices)
+{
+    disconnect();
+    for(auto* device : devices)
+    {
+        if(!device)
+            continue;
+
+        uint8_t endpoint = attach_endpoint();
+        if(endpoint == BROADCAST_ENDPOINT)
+            continue;
+
+        local_cpus[endpoint] = &device->core_state.cpu;
+        device->core_state.cpu.attach_i2c_adapter(this, endpoint);
+    }
+    refresh_bus_lines();
+}
+
+void local_i2c_transaction_bridge_t::reset_transport()
+{
+    for(auto& queue : queues)
+        queue.clear();
+}
+
+void local_i2c_transaction_bridge_t::send_message(i2c_message_t const& packet)
+{
+    if(packet.to == BROADCAST_ENDPOINT)
+    {
+        for(uint8_t i = 0; i < num_endpoints; ++i)
+        {
+            if(i == packet.from || !endpoint_active(i))
+                continue;
+            i2c_message_t p = packet;
+            p.to = i;
+            queues[i].push_back(p);
+        }
+    }
+    else if(packet.to < MAX_ENDPOINTS)
+    {
+        queues[packet.to].push_back(packet);
+    }
+}
+
+bool local_i2c_transaction_bridge_t::receive_message(uint8_t endpoint, i2c_message_t& packet)
+{
+    if(endpoint >= MAX_ENDPOINTS || queues[endpoint].empty())
+        return false;
+    packet = queues[endpoint].front();
+    queues[endpoint].pop_front();
+    return true;
+}
+
+void local_i2c_transaction_bridge_t::detach_endpoint(uint8_t endpoint)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return;
+
+    cpu->attach_i2c_adapter(nullptr, BROADCAST_ENDPOINT);
+    cpu->set_twi_external_lines(false, false);
+    local_cpus[endpoint] = nullptr;
+}
+
+bool local_i2c_transaction_bridge_t::endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return false;
+    cycle = cpu->cycle_count;
+    return true;
+}
+
+bool local_i2c_transaction_bridge_t::endpoint_drive_state(
+    uint8_t endpoint, uint64_t sample_cycle, twi_wire_state_t& state)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return false;
+    state = cpu->twi_drive_state_at(sample_cycle);
+    return true;
+}
+
+void local_i2c_transaction_bridge_t::endpoint_set_external_lines(
+    uint8_t endpoint, bool scl_low, bool sda_low)
+{
+    if(auto* cpu = local_cpu(endpoint))
+        cpu->set_twi_external_lines(scl_low, sda_low);
+}
+
+bool local_i2c_transaction_bridge_t::endpoint_needs_pump(uint8_t endpoint)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && (
+        cpu->twi_busy ||
+        (cpu->data[reg::addr::TWCR] & reg::bit::TWCR::TWINT));
+}
+
+void local_i2c_transaction_bridge_t::endpoint_pump_cycle(uint8_t endpoint)
+{
+    auto* cpu = local_cpu(endpoint);
+    if(!cpu)
+        return;
+    cpu->advance_cycle();
+    cpu->update_all();
+    cpu->sound_buffer.clear();
+}
+
+bool local_i2c_transaction_bridge_t::endpoint_claims_address(
+    uint8_t endpoint, uint8_t address, bool general_call)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_claims_address(address, general_call);
+}
+
+bool local_i2c_transaction_bridge_t::endpoint_can_address(
+    uint8_t endpoint, uint8_t address, bool general_call)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_can_address(address, general_call);
+}
+
+bool local_i2c_transaction_bridge_t::endpoint_address(
+    uint8_t endpoint, uint8_t address, bool read, bool general_call)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_address(address, read, general_call);
+}
+
+bool local_i2c_transaction_bridge_t::endpoint_write(uint8_t endpoint, uint8_t data)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu && cpu->twi_slave_write(data);
+}
+
+uint8_t local_i2c_transaction_bridge_t::endpoint_read(uint8_t endpoint, bool master_ack)
+{
+    auto* cpu = local_cpu(endpoint);
+    return cpu ? cpu->twi_slave_read(master_ack) : 0xff;
+}
+
+void local_i2c_transaction_bridge_t::endpoint_stop(uint8_t endpoint)
+{
+    if(auto* cpu = local_cpu(endpoint))
+        cpu->twi_slave_stop();
+}
+
+atmega32u4_t* local_i2c_transaction_bridge_t::local_cpu(uint8_t endpoint) const
+{
+    if(endpoint >= MAX_ENDPOINTS)
+        return nullptr;
+    return local_cpus[endpoint];
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(
@@ -181,40 +829,40 @@ static elf_data_symbol_t const* symbol_for_addr_helper(
 
 elf_data_symbol_t const* arduboy_t::symbol_for_prog_addr(uint16_t addr)
 {
-    if(!elf) return nullptr;
-    return symbol_for_addr_helper(elf->text_symbols, addr);
+    if(!program_state.elf) return nullptr;
+    return symbol_for_addr_helper(program_state.elf->text_symbols, addr);
 }
 
 elf_data_symbol_t const* arduboy_t::symbol_for_data_addr(uint16_t addr)
 {
-    if(!elf) return nullptr;
-    return symbol_for_addr_helper(elf->data_symbols, addr);
+    if(!program_state.elf) return nullptr;
+    return symbol_for_addr_helper(program_state.elf->data_symbols, addr);
 }
 
 void arduboy_t::profiler_reset()
 {
-    memset(&profiler_counts, 0, sizeof(profiler_counts));
-    memset(&profiler_hotspots, 0, sizeof(profiler_hotspots));
-    profiler_hotspots_symbol.clear();
-    num_hotspots = 0;
-    profiler_total = 0;
-    profiler_total_with_sleep = 0;
-    prev_profiler_total = 0;
-    prev_profiler_total_with_sleep = 0;
-    profiler_enabled = false;
-    frame_bytes = 0;
+    memset(&profiler_state.counts, 0, sizeof(profiler_state.counts));
+    memset(&profiler_state.hotspots, 0, sizeof(profiler_state.hotspots));
+    profiler_state.hotspots_symbol.clear();
+    profiler_state.num_hotspots = 0;
+    profiler_state.total = 0;
+    profiler_state.total_with_sleep = 0;
+    profiler_state.prev_total = 0;
+    profiler_state.prev_total_with_sleep = 0;
+    profiler_state.enabled = false;
+    profiler_state.frame_bytes = 0;
 }
 
 void arduboy_t::profiler_build_hotspots()
 {
-    if(!cpu.decoded) return;
-    if(cpu.num_instrs <= 0) return;
+    if(!core_state.cpu.decoded) return;
+    if(core_state.cpu.num_instrs <= 0) return;
 
     // group symbol hotspots
-    profiler_hotspots_symbol.clear();
-    if(elf)
+    profiler_state.hotspots_symbol.clear();
+    if(program_state.elf)
     {
-        for(auto const& kv : elf->text_symbols)
+        for(auto const& kv : program_state.elf->text_symbols)
         {
             auto const& sym = kv.second;
             if(sym.size == 0) continue;
@@ -222,21 +870,21 @@ void arduboy_t::profiler_build_hotspots()
             if(sym.notype) continue;
             if(sym.object) continue;
             hotspot_t h;
-            h.begin = (uint16_t)cpu.addr_to_disassembled_index(sym.addr);
-            h.end = (uint16_t)cpu.addr_to_disassembled_index(sym.addr + sym.size - 1);
+            h.begin = (uint16_t)core_state.cpu.addr_to_disassembled_index(sym.addr);
+            h.end = (uint16_t)core_state.cpu.addr_to_disassembled_index(sym.addr + sym.size - 1);
             h.count = 0;
             for(uint32_t i = sym.addr / 2; i < (sym.addr + sym.size) / 2u; ++i)
             {
-                if(i >= profiler_counts.size()) break;
-                h.count += profiler_counts[i];
+                if(i >= profiler_state.counts.size()) break;
+                h.count += profiler_state.counts[i];
             }
             if(h.count == 0) continue;
-            profiler_hotspots_symbol.push_back(h);
+            profiler_state.hotspots_symbol.push_back(h);
         }
     }
     std::sort(
-        profiler_hotspots_symbol.begin(),
-        profiler_hotspots_symbol.end(),
+        profiler_state.hotspots_symbol.begin(),
+        profiler_state.hotspots_symbol.end(),
         [](auto const& a, auto const& b) { return a.count > b.count; }
     );
 
@@ -245,31 +893,31 @@ void arduboy_t::profiler_build_hotspots()
     //
 
     std::bitset<NUM_INSTRS> starts;
-    starts.set(cpu.num_instrs - 1);
+    starts.set(core_state.cpu.num_instrs - 1);
 
     // set starts at beginning of each func symbol
-    if(elf)
+    if(program_state.elf)
     {
-        for(auto const& kv : elf->text_symbols)
+        for(auto const& kv : program_state.elf->text_symbols)
         {
             auto const& sym = kv.second;
             if(sym.object) continue;
-            auto i = cpu.addr_to_disassembled_index(sym.addr);
+            auto i = core_state.cpu.addr_to_disassembled_index(sym.addr);
             if(i < starts.size()) starts.set(i);
         }
     }
 
-    num_hotspots = 0;
+    profiler_state.num_hotspots = 0;
 
     // identify hotspot starts
     uint32_t index = 0;
-    for(uint32_t index = 0; index < cpu.num_instrs; ++index)
+    for(uint32_t index = 0; index < core_state.cpu.num_instrs; ++index)
     {
-        auto const& d = cpu.disassembled_prog[index];
-        auto const& i = cpu.decoded_prog[d.addr / 2];
+        auto const& d = core_state.cpu.disassembled_prog[index];
+        auto const& i = core_state.cpu.decoded_prog[d.addr / 2];
         
         // don't split on jumps/branches that are never taken
-        if(profiler_counts[d.addr / 2] == 0)
+        if(profiler_state.counts[d.addr / 2] == 0)
             continue;
 
         bool call = (
@@ -280,8 +928,8 @@ void arduboy_t::profiler_build_hotspots()
 
         if(index > 0)
         {
-            auto const& dprev = cpu.disassembled_prog[index - 1];
-            auto const& iprev = cpu.decoded_prog[dprev.addr / 2];
+            auto const& dprev = core_state.cpu.disassembled_prog[index - 1];
+            auto const& iprev = core_state.cpu.decoded_prog[dprev.addr / 2];
             switch(iprev.func)
             {
             case INSTR_SBRS:
@@ -348,20 +996,20 @@ void arduboy_t::profiler_build_hotspots()
     }
 
     // now collect hotspots
-    for(uint32_t start = 0, index = 1; index < cpu.num_instrs; ++index)
+    for(uint32_t start = 0, index = 1; index < core_state.cpu.num_instrs; ++index)
     {
         if(starts.test(index))
         {
-            auto& h = profiler_hotspots[num_hotspots++];
+            auto& h = profiler_state.hotspots[profiler_state.num_hotspots++];
             h.begin = start;
             h.end = index - 1;
             h.count = 0;
             for(int32_t i = h.begin; i <= h.end; ++i)
             {
-                uint16_t addr = cpu.disassembled_prog[i].addr;
-                h.count += profiler_counts[addr / 2];
+                uint16_t addr = core_state.cpu.disassembled_prog[i].addr;
+                h.count += profiler_state.counts[addr / 2];
             }
-            if(h.count == 0) --num_hotspots;
+            if(h.count == 0) --profiler_state.num_hotspots;
 
             constexpr int LOW_COUNT_NUM = 1;
             constexpr int LOW_COUNT_DENOM = 256;
@@ -369,12 +1017,12 @@ void arduboy_t::profiler_build_hotspots()
             // trim low-counts from beginning
             for(int32_t i = h.begin; i <= h.end; ++i)
             {
-                uint16_t addr = cpu.disassembled_prog[i].addr;
+                uint16_t addr = core_state.cpu.disassembled_prog[i].addr;
                 uint64_t c = h.count * LOW_COUNT_NUM / LOW_COUNT_DENOM;
-                if(profiler_counts[addr / 2] <= c)
+                if(profiler_state.counts[addr / 2] <= c)
                 {
                     ++h.begin;
-                    h.count -= profiler_counts[addr / 2];
+                    h.count -= profiler_state.counts[addr / 2];
                 }
                 else
                     break;
@@ -383,12 +1031,12 @@ void arduboy_t::profiler_build_hotspots()
             // trim low-counts from end
             for(int32_t i = h.end; i >= h.begin; --i)
             {
-                uint16_t addr = cpu.disassembled_prog[i].addr;
+                uint16_t addr = core_state.cpu.disassembled_prog[i].addr;
                 uint64_t c = h.count * LOW_COUNT_NUM / LOW_COUNT_DENOM;
-                if(profiler_counts[addr / 2] <= c)
+                if(profiler_state.counts[addr / 2] <= c)
                 {
                     --h.end;
-                    h.count -= profiler_counts[addr / 2];
+                    h.count -= profiler_state.counts[addr / 2];
                 }
                 else
                     break;
@@ -398,19 +1046,19 @@ void arduboy_t::profiler_build_hotspots()
             constexpr int N = 4;
             for(int32_t ns, n = 0, i = h.begin; i <= h.end; ++i)
             {
-                uint16_t addr = cpu.disassembled_prog[i].addr;
-                if(profiler_counts[addr / 2] == 0)
+                uint16_t addr = core_state.cpu.disassembled_prog[i].addr;
+                if(profiler_state.counts[addr / 2] == 0)
                     ++n;
                 else if(n >= N)
                 {
-                    auto& hn = profiler_hotspots[num_hotspots++];
+                    auto& hn = profiler_state.hotspots[profiler_state.num_hotspots++];
                     hn.begin = h.begin;
                     hn.end = ns - 1;
                     hn.count = 0;
                     for(int32_t j = hn.begin; j <= hn.end; ++j)
                     {
-                        uint16_t hnaddr = cpu.disassembled_prog[j].addr;
-                        hn.count += profiler_counts[hnaddr / 2];
+                        uint16_t hnaddr = core_state.cpu.disassembled_prog[j].addr;
+                        hn.count += profiler_state.counts[hnaddr / 2];
                     }
                     h.count -= hn.count;
                     h.begin = i;
@@ -426,65 +1074,65 @@ void arduboy_t::profiler_build_hotspots()
     }
 
     std::sort(
-        profiler_hotspots.begin(),
-        profiler_hotspots.begin() + num_hotspots,
+        profiler_state.hotspots.begin(),
+        profiler_state.hotspots.begin() + profiler_state.num_hotspots,
         [](auto const& a, auto const& b) { return a.count > b.count; }
     );
 }
 
 ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
 {
-    assert(cpu.decoded);
+    assert(core_state.cpu.decoded);
 
     bool vsync = false;
-    uint8_t displayport = cpu.data[0x2b];
-    uint8_t fxport = cpu.data[fxport_reg];
+    uint8_t displayport = core_state.cpu.data[reg::addr::PORTD];
+    uint8_t fxport = core_state.cpu.data[peripherals.fxport_reg];
 
-    uint32_t cycles = cpu.advance_cycle();
+    uint32_t cycles = core_state.cpu.advance_cycle();
 
     // TODO: model SPI connection more precisely?
-    // send SPI commands and data to display
-    fx.set_enabled((fxport & fxport_mask) == 0);
+    // send SPI commands and data to peripherals.display
+    peripherals.fx.set_enabled((fxport & peripherals.fxport_mask) == 0);
 
-    if(cpu.cycle_count >= cpu.spi_done_cycle)
+    if(core_state.cpu.cycle_count >= core_state.cpu.spi_done_cycle)
     {
-        uint8_t byte = cpu.spi_data_byte;
+        uint8_t byte = core_state.cpu.spi_data_byte;
 
-        // display enabled?
+        // peripherals.display enabled?
         if(!(displayport & (1 << 6)))
         {
             if(displayport & (1 << 4))
             {
-                if(frame_bytes_total != 0 && ++frame_bytes >= frame_bytes_total)
+                if(profiler_state.frame_bytes_total != 0 && ++profiler_state.frame_bytes >= profiler_state.frame_bytes_total)
                 {
-                    frame_bytes = 0;
+                    profiler_state.frame_bytes = 0;
                     vsync = true;
                 }
-                display.send_data(byte);
+                peripherals.display.send_data(byte);
             }
             else
-                display.send_command(byte);
+                peripherals.display.send_command(byte);
         }
 
-        bool was_erasing = (fx.erasing_sector != 0);
-        cpu.spi_datain_byte = fx.spi_transceive(byte);
-        if(fx.busy_error)
-            cpu.autobreak(AB_FX_BUSY);
-        cpu.spi_done_cycle = UINT64_MAX;
+        bool was_erasing = (peripherals.fx.erasing_sector != 0);
+        core_state.cpu.spi_datain_byte = peripherals.fx.spi_transceive(byte);
+        if(peripherals.fx.busy_error)
+            core_state.cpu.autobreak(AB_FX_BUSY);
+        core_state.cpu.spi_done_cycle = UINT64_MAX;
     }
 
 #ifndef ARDENS_NO_DEBUGGER
     if(is_present_state())
     {
-        profiler_total_with_sleep += cycles;
-        if((cpu.active || cpu.wakeup_cycles != 0) &&
-            cpu.executing_instr_pc < cpu.decoded_prog.size() &&
-            cpu.decoded_prog[cpu.executing_instr_pc].func != INSTR_SLEEP)
+        profiler_state.total_with_sleep += cycles;
+        if((core_state.cpu.active || core_state.cpu.wakeup_cycles != 0) &&
+            core_state.cpu.executing_instr_pc < core_state.cpu.decoded_prog.size() &&
+            core_state.cpu.decoded_prog[core_state.cpu.executing_instr_pc].func != INSTR_SLEEP)
         {
-            profiler_total += cycles;
-            if(profiler_enabled && cpu.executing_instr_pc < profiler_counts.size())
+            profiler_state.total += cycles;
+            if(profiler_state.enabled && core_state.cpu.executing_instr_pc < profiler_state.counts.size())
             {
-                profiler_counts[cpu.executing_instr_pc] += cycles;
+                profiler_state.counts[core_state.cpu.executing_instr_pc] += cycles;
             }
         }
     }
@@ -493,20 +1141,20 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     {
         auto cycles_ps = cycles * CYCLE_PS;
         bool actual_vsync = false;
-        if((cpu.PORTD() & (1 << 7)) != 0)
+        if((core_state.cpu.data[reg::addr::PORTD] & reg::bit::PORTD::PORTD7) != 0)
         {
-            actual_vsync = display.advance(cycles_ps);
-            prev_display_reset = false;
+            actual_vsync = peripherals.display.advance(cycles_ps);
+            peripherals.prev_display_reset = false;
         }
         else
         {
-            if(!prev_display_reset)
-                display.reset();
-            prev_display_reset = true;
+            if(!peripherals.prev_display_reset)
+                peripherals.display.reset();
+            peripherals.prev_display_reset = true;
         }
-        fx.advance(cycles_ps);
+        peripherals.fx.advance(cycles_ps);
 #ifndef ARDENS_NO_DEBUGGER
-        if(frame_bytes_total == 0)
+        if(profiler_state.frame_bytes_total == 0)
             vsync |= actual_vsync;
 #endif
     }
@@ -514,56 +1162,56 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
 #ifndef ARDENS_NO_DEBUGGER
     if(vsync && is_present_state())
     {
-        // vsync occurred and we are profiling: store frame cpu usage
-        uint64_t frame_total = profiler_total - prev_profiler_total;
-        uint64_t frame_sleep = profiler_total_with_sleep - prev_profiler_total_with_sleep;
-        prev_profiler_total = profiler_total;
-        prev_profiler_total_with_sleep = profiler_total_with_sleep;
+        // vsync occurred and we are profiling: store frame core_state.cpu usage
+        uint64_t frame_total = profiler_state.total - profiler_state.prev_total;
+        uint64_t frame_sleep = profiler_state.total_with_sleep - profiler_state.prev_total_with_sleep;
+        profiler_state.prev_total = profiler_state.total;
+        profiler_state.prev_total_with_sleep = profiler_state.total_with_sleep;
         double f = frame_sleep ? double(frame_total) / double(frame_sleep) : 0.0;
-        frame_cpu_usage.push_back((float)f);
-        prev_frame_cycles = frame_sleep;
-        ++total_frames;
+        profiler_state.frame_cpu_usage.push_back((float)f);
+        profiler_state.prev_frame_cycles = frame_sleep;
+        ++profiler_state.total_frames;
 
         // limit memory usage
-        if(frame_cpu_usage.size() >= 65536)
+        if(profiler_state.frame_cpu_usage.size() >= 65536)
         {
-            frame_cpu_usage.erase(
-                frame_cpu_usage.begin(),
-                frame_cpu_usage.begin() + 32768);
+            profiler_state.frame_cpu_usage.erase(
+                profiler_state.frame_cpu_usage.begin(),
+                profiler_state.frame_cpu_usage.begin() + 32768);
         }
     }
 #endif
 
 #ifndef ARDENS_NO_DEBUGGER
-    // time-based cpu usage
-    if(cpu.cycle_count >= prev_ms_cycles && is_present_state())
+    // time-based core_state.cpu usage
+    if(core_state.cpu.cycle_count >= profiler_state.prev_ms_cycles && is_present_state())
     {
         constexpr size_t MS_PROF_FILT_NUM = 5;
         constexpr uint64_t PROF_MS = 1000000000ull * 20 / CYCLE_PS;
-        prev_ms_cycles += PROF_MS;
+        profiler_state.prev_ms_cycles += PROF_MS;
 
-        // one millisecond has passed: store cpu usage
-        uint64_t ms_total = profiler_total - prev_profiler_total_ms;
-        uint64_t ms_sleep = profiler_total_with_sleep - prev_profiler_total_with_sleep_ms;
-        prev_profiler_total_ms = profiler_total;
-        prev_profiler_total_with_sleep_ms = profiler_total_with_sleep;
+        // one millisecond has passed: store core_state.cpu usage
+        uint64_t ms_total = profiler_state.total - profiler_state.prev_total_ms;
+        uint64_t ms_sleep = profiler_state.total_with_sleep - profiler_state.prev_total_with_sleep_ms;
+        profiler_state.prev_total_ms = profiler_state.total;
+        profiler_state.prev_total_with_sleep_ms = profiler_state.total_with_sleep;
         double f = ms_sleep ? double(ms_total) / double(ms_sleep) : 0.0;
-        ms_cpu_usage_raw.push_back((float)f);
-        if(ms_cpu_usage_raw.size() >= MS_PROF_FILT_NUM)
+        profiler_state.ms_cpu_usage_raw.push_back((float)f);
+        if(profiler_state.ms_cpu_usage_raw.size() >= MS_PROF_FILT_NUM)
         {
             float t = 0.f;
             for(size_t i = 0; i < MS_PROF_FILT_NUM; ++i)
-                t += ms_cpu_usage_raw[ms_cpu_usage_raw.size() - MS_PROF_FILT_NUM + i];
-            ms_cpu_usage.push_back(t * (1.f / MS_PROF_FILT_NUM));
+                t += profiler_state.ms_cpu_usage_raw[profiler_state.ms_cpu_usage_raw.size() - MS_PROF_FILT_NUM + i];
+            profiler_state.ms_cpu_usage.push_back(t * (1.f / MS_PROF_FILT_NUM));
         }
-        ++total_ms;
+        ++profiler_state.total_ms;
 
         // limit memory usage
-        if(ms_cpu_usage.size() >= 65536)
+        if(profiler_state.ms_cpu_usage.size() >= 65536)
         {
-            ms_cpu_usage.erase(
-                ms_cpu_usage.begin(),
-                ms_cpu_usage.begin() + 32768);
+            profiler_state.ms_cpu_usage.erase(
+                profiler_state.ms_cpu_usage.begin(),
+                profiler_state.ms_cpu_usage.begin() + 32768);
         }
     }
 #endif
@@ -571,31 +1219,102 @@ ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
     return cycles;
 }
 
-void arduboy_t::save_state_to_vector(std::vector<uint8_t>& v)
+static bool compress_lzav(arduboy_t::tt_state_t& state, const char* data, size_t size)
+{
+    auto& v = state.state;
+    state.uncompressed_size = size;
+    v.clear();
+    if(size > (size_t)std::numeric_limits<int>::max())
+    {
+        state.uncompressed_size = 0;
+        return false;
+    }
+
+    int srclen = (int)size;
+    int maxlen = lzav_compress_bound(srclen);
+    if(maxlen < 0)
+    {
+        state.uncompressed_size = 0;
+        return false;
+    }
+
+    v.resize((size_t)maxlen);
+    int n = lzav_compress_default(data, v.data(), srclen, maxlen);
+    if(n < 0 || (n == 0 && srclen != 0))
+    {
+        v.clear();
+        state.uncompressed_size = 0;
+        return false;
+    }
+    v.resize((size_t)n);
+    return true;
+}
+
+static bool uncompress_lzav(
+    std::vector<uint8_t>& dst,
+    void const* src,
+    size_t src_bytes,
+    size_t dst_bytes)
+{
+    dst.clear();
+    if(src_bytes > (size_t)std::numeric_limits<int>::max() ||
+        dst_bytes > (size_t)std::numeric_limits<int>::max())
+    {
+        return false;
+    }
+
+    int srclen = (int)src_bytes;
+    int dstlen = (int)dst_bytes;
+    dst.resize(dst_bytes);
+    int n = lzav_decompress(src, dst.data(), srclen, dstlen);
+    if(n < 0 || (size_t)n != dst_bytes)
+    {
+        dst.clear();
+        return false;
+    }
+    return true;
+}
+
+void arduboy_t::save_state_to_vector(tt_state_t& state)
 {
     std::ostringstream ss;
     save_savestate(ss);
     auto s = ss.str();
+    state.cycle = core_state.cpu.cycle_count;
 #if COMPRESS_TIME_TRAVEL_STATES
-    if(!compress_zlib(v, s.data(), s.size()))
-        v.clear();
+    #if COMPRESS_WITH_LZAV
+    if(!compress_lzav(state, s.data(), s.size()))
+        state = {};
+    #else
+    state.uncompressed_size = s.size();
+    if(!compress_zlib(state.state, s.data(), s.size()))
+        state = {};
+    #endif
 #else
-    v.resize(s.size());
-    memcpy(v.data(), s.data(), v.size());
+    state.uncompressed_size = s.size();
+    state.state.resize(s.size());
+    memcpy(state.state.data(), s.data(), state.state.size());
 #endif
 }
 
-void arduboy_t::load_state_from_vector(std::vector<uint8_t> const& v)
+void arduboy_t::load_state_from_vector(tt_state_t const& state)
 {
-    if(v.empty())
+    if(state.state.empty())
         return;
 #if COMPRESS_TIME_TRAVEL_STATES
     std::vector<uint8_t> v_uncomp;
-    if(!uncompress_zlib(v_uncomp, v.data(), v.size()))
+    #if COMPRESS_WITH_LZAV
+    if(!uncompress_lzav(v_uncomp, state.state.data(), state.state.size(), state.uncompressed_size))
         return;
+    #else
+    if(!uncompress_zlib(v_uncomp, state.state.data(), state.state.size()))
+        return;
+    if(v_uncomp.size() != state.uncompressed_size)
+        return;
+    #endif
     absim::istrstream ss((char const*)v_uncomp.data(), v_uncomp.size());
 #else
-    absim::istrstream ss((char const*)v.data(), v.size());
+    absim::istrstream ss((char const*)state.state.data(), state.state.size());
 #endif
     load_savestate(ss);
 }
@@ -603,42 +1322,42 @@ void arduboy_t::load_state_from_vector(std::vector<uint8_t> const& v)
 void arduboy_t::update_history()
 {
 #ifndef ARDENS_NO_DEBUGGER
-    if(cpu.cycle_count >= present_cycle)
-        present_state.clear();
+    if(core_state.cpu.cycle_count >= debugger_state.present_state.cycle)
+        debugger_state.present_state.state.clear();
     if(!is_present_state())
         return;
 
     {
         inputs_t state;
-        state.cycle = cpu.cycle_count;
-        state.pinb = cpu.PINB();
-        state.pine = cpu.PINE();
-        state.pinf = cpu.PINF();
-        if(input_history.empty() ||
-            input_history.back().pinb != state.pinb ||
-            input_history.back().pine != state.pine ||
-            input_history.back().pinf != state.pinf)
+        state.cycle = core_state.cpu.cycle_count;
+        state.pinb = core_state.cpu.data[reg::addr::PINB];
+        state.pine = core_state.cpu.data[reg::addr::PINE];
+        state.pinf = core_state.cpu.data[reg::addr::PINF];
+        if(debugger_state.input_history.empty() ||
+            debugger_state.input_history.back().pinb != state.pinb ||
+            debugger_state.input_history.back().pine != state.pine ||
+            debugger_state.input_history.back().pinf != state.pinf)
         {
-            input_history.push_back(state);
+            debugger_state.input_history.push_back(state);
         }
     }
-    if(state_history.empty() ||
-        cpu.cycle_count >= state_history.back().cycle + STATE_HISTORY_CYCLES)
+    if(debugger_state.state_history.empty() ||
+        core_state.cpu.cycle_count >= debugger_state.state_history.back().cycle + STATE_HISTORY_CYCLES)
     {
         tt_state_t state;
-        state.cycle = cpu.cycle_count;
-        save_state_to_vector(state.state);
-        state_history.emplace_back(std::move(state));
+        state.cycle = core_state.cpu.cycle_count;
+        save_state_to_vector(state);
+        debugger_state.state_history.emplace_back(std::move(state));
     }
-    while(input_history.size() >= 2 &&
-        input_history[1].cycle + STATE_HISTORY_TOTAL_CYCLES < cpu.cycle_count)
+    while(debugger_state.input_history.size() >= 2 &&
+        debugger_state.input_history[1].cycle + STATE_HISTORY_TOTAL_CYCLES < core_state.cpu.cycle_count)
     {
-        input_history.erase(input_history.begin());
+        debugger_state.input_history.erase(debugger_state.input_history.begin());
     }
-    while(state_history.size() >= 2 &&
-        state_history[1].cycle + STATE_HISTORY_TOTAL_CYCLES < cpu.cycle_count)
+    while(debugger_state.state_history.size() >= 2 &&
+        debugger_state.state_history[1].cycle + STATE_HISTORY_TOTAL_CYCLES < core_state.cpu.cycle_count)
     {
-        state_history.erase(state_history.begin());
+        debugger_state.state_history.erase(debugger_state.state_history.begin());
     }
 #endif
 }
@@ -656,63 +1375,62 @@ struct pc_hist_t
 static void travel_back_advance_instr(arduboy_t& a)
 {
     int n = 0;
-    auto oldpc = a.cpu.pc;
-    a.cpu.no_merged = true;
-    a.ps_rem = 0;
+    auto oldpc = a.core_state.cpu.pc;
+    a.core_state.cpu.no_merged = true;
+    a.core_state.ps_rem = 0;
     do
     {
-        a.paused = false;
+        a.debugger_state.paused = false;
         a.cycle();
-        a.paused = true;
-    } while(++n < 65536 && a.cpu.pc == oldpc);
+        a.debugger_state.paused = true;
+    } while(++n < 65536 && a.core_state.cpu.pc == oldpc);
 }
 
 template<class F>
 static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MAX)
 {
-    if(a.state_history.empty()) return;
-    if(a.input_history.empty()) return;
-    if(a.present_state.empty())
+    if(a.debugger_state.state_history.empty()) return;
+    if(a.debugger_state.input_history.empty()) return;
+    if(a.debugger_state.present_state.state.empty())
     {
-        a.save_state_to_vector(a.present_state);
-        a.present_cycle = a.cpu.cycle_count;
+        a.save_state_to_vector(a.debugger_state.present_state);
     }
-    size_t si = a.state_history.size();
+    size_t si = a.debugger_state.state_history.size();
     std::vector<pc_hist_t> pcs;
-    std::vector<uint8_t> temp_state;
+    arduboy_t::tt_state_t temp_state;
     a.save_state_to_vector(temp_state);
-    uint64_t curr_cycle = a.cpu.cycle_count;
+    uint64_t curr_cycle = a.core_state.cpu.cycle_count;
     max_cycle = std::min(max_cycle, curr_cycle);
-    while(si >= 2 && a.state_history[si - 1].cycle >= max_cycle)
+    while(si >= 2 && a.debugger_state.state_history[si - 1].cycle >= max_cycle)
         si -= 1;
     while(si-- > 0)
     {
-        auto const& state = a.state_history[si];
-        uint64_t end_cycle = (si + 1 < a.state_history.size() ?
-            a.state_history[si + 1].cycle : a.present_cycle);
+        auto const& state = a.debugger_state.state_history[si];
+        uint64_t end_cycle = (si + 1 < a.debugger_state.state_history.size() ?
+            a.debugger_state.state_history[si + 1].cycle : a.debugger_state.present_state.cycle);
         end_cycle = std::min(end_cycle, curr_cycle);
-        size_t ii = a.input_history.size();
+        size_t ii = a.debugger_state.input_history.size();
         while(ii-- > 0)
         {
-            if(a.input_history[ii].cycle <= state.cycle)
+            if(a.debugger_state.input_history[ii].cycle <= state.cycle)
                 break;
         }
-        if(ii >= a.input_history.size())
+        if(ii >= a.debugger_state.input_history.size())
             break;
-        a.load_state_from_vector(state.state);
+        a.load_state_from_vector(state);
         pcs.clear();
-        while(a.cpu.cycle_count < end_cycle)
+        while(a.core_state.cpu.cycle_count < end_cycle)
         {
-            while(ii + 1 < a.input_history.size() && a.input_history[ii + 1].cycle <= a.cpu.cycle_count)
+            while(ii + 1 < a.debugger_state.input_history.size() && a.debugger_state.input_history[ii + 1].cycle <= a.core_state.cpu.cycle_count)
                 ++ii;
-            auto const& input = a.input_history[ii];
+            auto const& input = a.debugger_state.input_history[ii];
             pc_hist_t p{};
-            p.cycle = a.cpu.cycle_count;
-            p.pc = a.cpu.pc;
-            p.stack_depth = (uint16_t)a.cpu.num_stack_frames;
-            a.cpu.PINB() = p.pinb = input.pinb;
-            a.cpu.PINE() = p.pine = input.pine;
-            a.cpu.PINF() = p.pinf = input.pinf;
+            p.cycle = a.core_state.cpu.cycle_count;
+            p.pc = a.core_state.cpu.pc;
+            p.stack_depth = (uint16_t)a.core_state.cpu.num_stack_frames;
+            a.core_state.cpu.data[reg::addr::PINB] = p.pinb = input.pinb;
+            a.core_state.cpu.data[reg::addr::PINE] = p.pine = input.pine;
+            a.core_state.cpu.data[reg::addr::PINF] = p.pinf = input.pinf;
             pcs.push_back(p);
             travel_back_advance_instr(a);
         }
@@ -722,59 +1440,62 @@ static void travel_back_cond(arduboy_t& a, F&& f, uint64_t max_cycle = UINT64_MA
             if(f(pcs[pi]))
             {
                 // success
-                a.load_state_from_vector(state.state);
+                a.load_state_from_vector(state);
                 for(size_t i = 0; i < pi; ++i)
                 {
-                    a.cpu.PINB() = pcs[i].pinb;
-                    a.cpu.PINE() = pcs[i].pine;
-                    a.cpu.PINF() = pcs[i].pinf;
+                    a.core_state.cpu.data[reg::addr::PINB] = pcs[i].pinb;
+                    a.core_state.cpu.data[reg::addr::PINE] = pcs[i].pine;
+                    a.core_state.cpu.data[reg::addr::PINF] = pcs[i].pinf;
                     travel_back_advance_instr(a);
                 }
-                a.cpu.update_all();
+                a.core_state.cpu.update_all();
                 return;
             }
         }
     }
     // failed to travel back: reload previous state
     a.load_state_from_vector(temp_state);
-    if(a.cpu.cycle_count >= a.present_cycle)
+    if(a.core_state.cpu.cycle_count >= a.debugger_state.present_state.cycle)
     {
-        a.load_state_from_vector(a.present_state);
-        a.present_state.clear();
+        a.load_state_from_vector(a.debugger_state.present_state);
+        a.debugger_state.present_state = {};
     }
 }
 
 void arduboy_t::travel_back_to_cycle(uint64_t cycle)
 {
+    if(cycle >= core_state.cpu.cycle_count && is_present_state())
+        return;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.cycle <= cycle;
     }, cycle);
 }
 
-void arduboy_t::travel_back_single_instr()
+void arduboy_t::travel_back_single_instr(uint64_t min_cycle)
 {
-    uint16_t tpc = cpu.pc;
+    uint16_t tpc = core_state.cpu.pc;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.pc != tpc;
-    });
+    }, min_cycle);
 }
 
-void arduboy_t::travel_back_single_instr_over()
+void arduboy_t::travel_back_single_instr_over(uint64_t min_cycle)
 {
-    uint16_t tpc = cpu.pc;
-    uint16_t tsd = cpu.num_stack_frames;
+    uint16_t tpc = core_state.cpu.pc;
+    uint16_t tsd = core_state.cpu.num_stack_frames;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.pc != tpc && p.stack_depth == tsd;
-    });
+    }, min_cycle);
 }
 
-void arduboy_t::travel_back_single_instr_out()
+void arduboy_t::travel_back_single_instr_out(uint64_t min_cycle)
 {
-    uint16_t tsd = cpu.num_stack_frames;
+    uint16_t tsd = core_state.cpu.num_stack_frames;
     if(tsd == 0) return;
-    uint64_t cycle = cpu.stack_frames[tsd - 1].cycle;
-    assert(cycle < cpu.cycle_count);
-    if(cycle >= cpu.cycle_count) return;
+    uint64_t cycle = core_state.cpu.stack_frames[tsd - 1].cycle;
+    assert(cycle < core_state.cpu.cycle_count);
+    if(cycle >= core_state.cpu.cycle_count) return;
+    if(cycle < min_cycle) return;
     travel_back_cond(*this, [=](pc_hist_t const& p) {
         return p.stack_depth < tsd;
     }, cycle);
@@ -782,41 +1503,47 @@ void arduboy_t::travel_back_single_instr_out()
 
 void arduboy_t::travel_to_present()
 {
-    if(present_state.empty()) return;
-    load_state_from_vector(present_state);
-    present_state.clear();
+    if(debugger_state.present_state.state.empty()) return;
+    load_state_from_vector(debugger_state.present_state);
+    debugger_state.present_state = {};
+    debugger_state.paused = false;
 }
 
 void arduboy_t::travel_continue()
 {
-    if(present_state.empty()) return;
-    present_state.clear();
+    if(debugger_state.present_state.state.empty()) return;
+    debugger_state.present_state = {};
+    debugger_state.paused = false;
     size_t i;
     i = 0;
-    while(i < state_history.size() && state_history[i].cycle < cpu.cycle_count)
+    while(i < debugger_state.state_history.size() && debugger_state.state_history[i].cycle < core_state.cpu.cycle_count)
         ++i;
-    if(i < state_history.size())
-        state_history.resize(i);
+    if(i < debugger_state.state_history.size())
+        debugger_state.state_history.resize(i);
     i = 0;
-    while(i < input_history.size() && input_history[i].cycle < cpu.cycle_count)
+    while(i < debugger_state.input_history.size() && debugger_state.input_history[i].cycle < core_state.cpu.cycle_count)
         ++i;
-    if(i < input_history.size())
-        input_history.resize(i);
+    if(i < debugger_state.input_history.size())
+        debugger_state.input_history.resize(i);
 }
 
 bool arduboy_t::is_present_state()
 {
-    return present_state.empty();
+    return debugger_state.present_state.state.empty();
 }
 
 static void set_button_pins_from_history(arduboy_t& a)
 {
-    uint64_t cycle = a.cpu.cycle_count;
-    auto const& inputs = a.input_history;
+    uint64_t cycle = a.core_state.cpu.cycle_count;
+    auto const& inputs = a.debugger_state.input_history;
     size_t n = inputs.size();
-    uint8_t pinb = 0x10;
-    uint8_t pine = 0x40;
-    uint8_t pinf = 0xf0;
+    uint8_t pinb = reg::bit::PINB::PINB4;
+    uint8_t pine = reg::bit::PINE::PINE6;
+    uint8_t pinf =
+        reg::bit::PINF::PINF7 |
+        reg::bit::PINF::PINF6 |
+        reg::bit::PINF::PINF5 |
+        reg::bit::PINF::PINF4;
     while(n-- > 0)
     {
         auto const& i = inputs[n];
@@ -828,54 +1555,54 @@ static void set_button_pins_from_history(arduboy_t& a)
             break;
         }
     }
-    a.cpu.PINB() = pinb;
-    a.cpu.PINE() = pine;
-    a.cpu.PINF() = pinf;
+    a.core_state.cpu.data[reg::addr::PINB] = pinb;
+    a.core_state.cpu.data[reg::addr::PINE] = pine;
+    a.core_state.cpu.data[reg::addr::PINF] = pinf;
 }
 
 void arduboy_t::advance_instr()
 {
-    if(!cpu.decoded) return;
+    if(!core_state.cpu.decoded) return;
     update_history();
     set_button_pins_from_history(*this);
     int n = 0;
-    auto oldpc = cpu.pc;
-    cpu.no_merged = true;
-    ps_rem = 0;
+    auto oldpc = core_state.cpu.pc;
+    core_state.cpu.no_merged = true;
+    core_state.ps_rem = 0;
     do
     {
-        paused = false;
+        debugger_state.paused = false;
         cycle();
-        cpu.update_all();
-        paused = true;
-    } while(++n < 65536 && cpu.pc == oldpc);
+        core_state.cpu.update_all();
+        debugger_state.paused = true;
+    } while(++n < 65536 && core_state.cpu.pc == oldpc);
 }
 
 void arduboy_t::advance(uint64_t ps)
 {
     update_history();
 
-    ps += ps_rem;
-    ps_rem = 0;
+    ps += core_state.ps_rem;
+    core_state.ps_rem = 0;
 
-    if(!cpu.decoded) return;
-    if(paused) return;
+    if(!core_state.cpu.decoded) return;
+    if(debugger_state.paused) return;
 
-    cpu.autobreaks = 0;
+    core_state.cpu.autobreaks = 0;
 
 #ifndef ARDENS_NO_DEBUGGER
     bool any_breakpoints =
-        allow_nonstep_breakpoints && (
-        breakpoints.any() ||
-        breakpoints_rd.any() ||
-        breakpoints_wr.any()) ||
-        break_step != 0xffffffff;
+        debugger_state.allow_nonstep_breakpoints && (
+        debugger_state.breakpoints.any() ||
+        debugger_state.breakpoints_rd.any() ||
+        debugger_state.breakpoints_wr.any()) ||
+        debugger_state.break_step != 0xffffffff;
 
-    cpu.no_merged = profiler_enabled || any_breakpoints;
+    core_state.cpu.no_merged = profiler_state.enabled || any_breakpoints;
 #endif
 
     if(!is_present_state())
-        cpu.no_merged = true;
+        core_state.cpu.no_merged = true;
 
     while(ps >= PS_BUFFER)
     {
@@ -889,80 +1616,80 @@ void arduboy_t::advance(uint64_t ps)
 #ifndef ARDENS_NO_DEBUGGER
         if(any_breakpoints)
         {
-            if(cpu.pc == break_step || allow_nonstep_breakpoints && (
-                cpu.pc < breakpoints.size() && breakpoints.test(cpu.pc) ||
-                cpu.just_read < breakpoints_rd.size() && breakpoints_rd.test(cpu.just_read) ||
-                cpu.just_written < breakpoints_wr.size() && breakpoints_wr.test(cpu.just_written)))
+            if(core_state.cpu.pc == debugger_state.break_step || debugger_state.allow_nonstep_breakpoints && (
+                core_state.cpu.pc < debugger_state.breakpoints.size() && debugger_state.breakpoints.test(core_state.cpu.pc) ||
+                core_state.cpu.just_read < debugger_state.breakpoints_rd.size() && debugger_state.breakpoints_rd.test(core_state.cpu.just_read) ||
+                core_state.cpu.just_written < debugger_state.breakpoints_wr.size() && debugger_state.breakpoints_wr.test(core_state.cpu.just_written)))
             {
-                paused = true;
+                debugger_state.paused = true;
                 break;
             }
         }
 #endif
 
 #ifndef ARDENS_NO_DEBUGGER
-        if(cpu.should_autobreak())
+        if(core_state.cpu.should_autobreak())
         {
-            paused = true;
+            debugger_state.paused = true;
             break;
         }
 #endif
 
     }
 
-    cpu.update_all();
+    core_state.cpu.update_all();
 
     // track remainder
-    if(!paused)
-        ps_rem = ps;
+    if(!debugger_state.paused)
+        core_state.ps_rem = ps;
 
-    if(!display.enable_filter)
+    if(!peripherals.display.enable_filter)
     {
         memcpy(
-            display.filtered_pixels.data(),
-            display.pixels[0].data(),
-            array_bytes(display.filtered_pixels));
+            peripherals.display.filtered_pixels.data(),
+            peripherals.display.pixels[0].data(),
+            array_bytes(peripherals.display.filtered_pixels));
     }
 
-    // update savedata
-    if(cpu.eeprom_dirty)
+    // update save_data_state.savedata
+    if(core_state.cpu.eeprom_dirty)
     {
-        savedata.eeprom.resize(cpu.eeprom.size());
-        savedata.eeprom_modified_bytes = cpu.eeprom_modified_bytes;
-        memcpy(savedata.eeprom.data(), cpu.eeprom.data(), array_bytes(savedata.eeprom));
-        cpu.eeprom_dirty = false;
+        save_data_state.savedata.eeprom.resize(core_state.cpu.eeprom.size());
+        save_data_state.savedata.eeprom_modified_bytes = core_state.cpu.eeprom_modified_bytes;
+        memcpy(save_data_state.savedata.eeprom.data(), core_state.cpu.eeprom.data(), array_bytes(save_data_state.savedata.eeprom));
+        core_state.cpu.eeprom_dirty = false;
         if(is_present_state())
-            savedata_dirty = true;
+            save_data_state.dirty = true;
     }
-    if(fx.sectors_dirty)
+    if(peripherals.fx.sectors_dirty)
     {
-        for(size_t i = 0; i < fx.sectors_modified.size(); ++i)
+        for(size_t i = 0; i < peripherals.fx.sectors_modified.size(); ++i)
         {
-            if(!fx.sectors_modified.test(i)) continue;
-            auto& s = savedata.fx_sectors[(uint32_t)i];
-            auto const& fxs = fx.sectors[i];
+            if(!peripherals.fx.sectors_modified.test(i)) continue;
+            auto& s = save_data_state.savedata.fx_sectors[(uint32_t)i];
+            auto const& fxs = peripherals.fx.sectors[i];
             if(!fxs)
-                memset(s.data(), 0xff, 4096);
+                memset(s.data(), 0xff, w25q128_t::SECTOR_BYTES);
             else
-                memcpy(s.data(), fxs->data(), 4096);
-            auto& fxsm = fx.sectors_modified_data[i];
+                memcpy(s.data(), fxs->data(), w25q128_t::SECTOR_BYTES);
+            auto& fxsm = peripherals.fx.sectors_modified_data[i];
             if(!fxsm)
                 fxsm = std::make_unique<w25q128_t::sector_t>();
             if(!fxs)
-                memset(fxsm->data(), 0xff, 4096);
+                memset(fxsm->data(), 0xff, w25q128_t::SECTOR_BYTES);
             else
-                memcpy(fxsm->data(), fxs->data(), 4096);
+                memcpy(fxsm->data(), fxs->data(), w25q128_t::SECTOR_BYTES);
         }
-        fx.sectors_dirty = false;
+        peripherals.fx.sectors_dirty = false;
         if(is_present_state())
-            savedata_dirty = true;
+            save_data_state.dirty = true;
     }
 
 #ifndef ARDENS_NO_DEBUGGER
-    if(cpu.cycle_count >= present_cycle)
+    if(core_state.cpu.cycle_count >= debugger_state.present_state.cycle)
     {
-        load_state_from_vector(present_state);
-        present_state.clear();
+        load_state_from_vector(debugger_state.present_state);
+        debugger_state.present_state = {};
     }
 #endif
 }

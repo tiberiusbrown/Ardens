@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <cstdio>
+#include <cstdlib>
 
 #include <imgui.h>
 #include <fmt/format.h>
@@ -34,11 +35,79 @@
 static simgui_desc_t const SIMGUI_DESC = []() {
     simgui_desc_t desc{};
     desc.ini_filename = "imgui.ini";
+    // Defer default font selection until after we apply our scaling values.
     desc.no_default_font = true;
     return desc;
 }();
 
 static sg_sampler DEFAULT_SAMPLER;
+static bool window_geometry_events_ready = false;
+
+static void register_sokol_platform_services();
+
+#ifndef __EMSCRIPTEN__
+static bool sokol_window_is_maximized()
+{
+#if defined(_WIN32)
+    auto hwnd = (HWND)sapp_win32_get_hwnd();
+    return hwnd != nullptr && IsZoomed(hwnd);
+#elif defined(ARDENS_OS_MACOS)
+    auto* window = (__bridge NSWindow*)sapp_macos_get_window();
+    return window != nullptr && [window isZoomed];
+#elif defined(ARDENS_OS_LINUX)
+    if(!_sapp.x11.display || !_sapp.x11.window)
+        return false;
+
+    Atom const state_atom = XInternAtom(_sapp.x11.display, "_NET_WM_STATE", False);
+    Atom const maximized_vert_atom = XInternAtom(_sapp.x11.display, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+    Atom const maximized_horz_atom = XInternAtom(_sapp.x11.display, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+
+    unsigned char* data = nullptr;
+    unsigned long const count = _sapp_x11_get_window_property(
+        _sapp.x11.window,
+        state_atom,
+        XA_ATOM,
+        &data);
+
+    bool has_maximized_vert = false;
+    bool has_maximized_horz = false;
+    if(data)
+    {
+        Atom* atoms = (Atom*)data;
+        for(unsigned long i = 0; i < count; ++i)
+        {
+            has_maximized_vert |= atoms[i] == maximized_vert_atom;
+            has_maximized_horz |= atoms[i] == maximized_horz_atom;
+        }
+        XFree(data);
+    }
+    return has_maximized_vert && has_maximized_horz;
+#else
+    return false;
+#endif
+}
+
+static void sokol_update_window_geometry(sapp_event const* e)
+{
+    if(!window_geometry_events_ready || !e)
+        return;
+
+    if(sokol_window_is_maximized())
+    {
+        int w = settings.window_width;
+        int h = settings.window_height;
+        if(w <= 0 || h <= 0)
+        {
+            w = e->window_width;
+            h = e->window_height;
+        }
+        update_window_settings(w, h, true);
+        return;
+    }
+
+    update_window_settings(e->window_width, e->window_height, false);
+}
+#endif
 
 static void app_frame()
 {
@@ -65,6 +134,8 @@ static void app_frame()
 
     sg_end_pass();
     sg_commit();
+
+    window_geometry_events_ready = true;
 }
 
 static void app_init()
@@ -96,32 +167,44 @@ static void app_init()
         saudio_setup(&desc);
     }
 
+    register_sokol_platform_services();
     init();
+#ifndef __EMSCRIPTEN__
+    if(settings.window_width <= 0 || settings.window_height <= 0)
+    {
+        auto const startup_desc = sapp_query_desc();
+        update_window_settings(
+            startup_desc.width,
+            startup_desc.height,
+            settings.window_maximized);
+    }
+#endif
     update_pixel_ratio();
     rescale_style();
-    rebuild_fonts();
+    // Add the default ImGui font after our scaling values are in place.
+    ImGui::GetIO().Fonts->AddFontDefault();
 
     {
         sg_image_desc desc{};
         desc.width = 128;
         desc.height = 64;
         desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-        desc.usage = SG_USAGE_STREAM;
+        desc.usage.stream_update = true;
 
         {
-            simgui_image_desc_t idesc{};
-            idesc.image = sg_make_image(&desc);
-            idesc.sampler = DEFAULT_SAMPLER;
-            auto iimg = simgui_make_image(&idesc);
-            display_texture = simgui_imtextureid(iimg);
+            sg_image img = sg_make_image(&desc);
+            sg_view_desc vdesc{};
+            vdesc.texture.image = img;
+            sg_view view = sg_make_view(&vdesc);
+            app.display_texture = (texture_t)(uintptr_t)simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
         }
 
         {
-            simgui_image_desc_t idesc{};
-            idesc.image = sg_make_image(&desc);
-            idesc.sampler = DEFAULT_SAMPLER;
-            auto iimg = simgui_make_image(&idesc);
-            display_buffer_texture = simgui_imtextureid(iimg);
+            sg_image img = sg_make_image(&desc);
+            sg_view_desc vdesc{};
+            vdesc.texture.image = img;
+            sg_view view = sg_make_view(&vdesc);
+            app.display_buffer_texture = (texture_t)(uintptr_t)simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
         }
     }
 
@@ -136,16 +219,18 @@ static void app_init()
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy.load_file(value, f, save);
+                if(!save)
+                    disconnect_linked_secondary_arduboy();
+                app.dropfile_err = app.emulator->load_file(value, f, save);
                 autoset_from_device_type();
-                if(dropfile_err.empty())
+                if(app.dropfile_err.empty())
                 {
                     load_savedata();
                     if(!save) file_watch(value);
                 }
             }
             else
-                dropfile_err = fmt::format("Could not open file: \"{}\"", value);
+                app.dropfile_err = fmt::format("Could not open file: \"{}\"", value);
 #endif
         }
     }
@@ -156,14 +241,14 @@ static void app_event(sapp_event const* e)
 {
     simgui_handle_event(e);
 
-    float ipr = 1.f / pixel_ratio;
+    float ipr = 1.f / app.pixel_ratio;
     if( e->type == SAPP_EVENTTYPE_TOUCHES_BEGAN ||
         e->type == SAPP_EVENTTYPE_TOUCHES_MOVED)
     {
-        first_touch = true;
+        app.first_touch = true;
         for(int i = 0; i < e->num_touches; ++i)
         {
-            auto& tp = touch_points[e->touches[i].identifier];
+            auto& tp = app.touch_points[e->touches[i].identifier];
             tp = { e->touches[i].pos_x * ipr, e->touches[i].pos_y * ipr };
         }
         sapp_consume_event();
@@ -172,25 +257,30 @@ static void app_event(sapp_event const* e)
     {
         for(int i = 0; i < e->num_touches; ++i)
             if(e->touches[i].changed)
-                touch_points.erase(e->touches[i].identifier);
+                app.touch_points.erase(e->touches[i].identifier);
         sapp_consume_event();
     }
     if(e->type == SAPP_EVENTTYPE_TOUCHES_CANCELLED)
     {
-        touch_points.clear();
+        app.touch_points.clear();
         sapp_consume_event();
     }
+
+#ifndef __EMSCRIPTEN__
+    if(e->type == SAPP_EVENTTYPE_RESIZED || e->type == SAPP_EVENTTYPE_RESTORED)
+        sokol_update_window_geometry(e);
+#endif
 
 #if 0
     if(e->type == SAPP_EVENTTYPE_MOUSE_DOWN)
     {
-        touch_points.clear();
-        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
+        app.touch_points.clear();
+        app.touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
     }
-    if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !touch_points.empty())
-        touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
+    if(e->type == SAPP_EVENTTYPE_MOUSE_MOVE && !app.touch_points.empty())
+        app.touch_points[0] = { e->mouse_x * ipr, e->mouse_y * ipr };
     if(e->type == SAPP_EVENTTYPE_MOUSE_UP)
-        touch_points.clear();
+        app.touch_points.clear();
 #endif
 
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
@@ -221,56 +311,67 @@ static void app_cleanup()
     sg_shutdown();
 }
 
-void platform_destroy_texture(texture_t t)
+static void sokol_platform_destroy_texture(texture_t t)
 {
-    simgui_destroy_image({ (uint32_t)(uintptr_t)t });
+    uint64_t const imtex_id = (uint64_t)(uintptr_t)t;
+    sg_view const view = simgui_texture_view_from_imtextureid(imtex_id);
+    sg_image const img = sg_query_view_image(view);
+    sg_sampler const smp = simgui_sampler_from_imtextureid(imtex_id);
+    if(view.id != SG_INVALID_ID)
+        sg_destroy_view(view);
+    if(img.id != SG_INVALID_ID)
+        sg_destroy_image(img);
+    if(smp.id != SG_INVALID_ID)
+        sg_destroy_sampler(smp);
 }
 
-texture_t platform_create_texture(int w, int h)
+static texture_t sokol_platform_create_texture(int w, int h)
 {
     sg_image_desc desc{};
     desc.width = w;
     desc.height = h;
     desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    desc.usage = SG_USAGE_STREAM;
+    desc.usage.stream_update = true;
 
-    simgui_image_desc_t idesc{};
-    idesc.image = sg_make_image(&desc);
-    idesc.sampler = DEFAULT_SAMPLER;
-    auto t = simgui_make_image(&idesc);
+    sg_image img = sg_make_image(&desc);
+    sg_view_desc vdesc{};
+    vdesc.texture.image = img;
+    sg_view view = sg_make_view(&vdesc);
+    auto t = simgui_imtextureid_with_sampler(view, DEFAULT_SAMPLER);
 
-    return (texture_t)(uintptr_t)t.id;
+    return (texture_t)(uintptr_t)t;
 }
 
-void platform_update_texture(texture_t t, void const* data, size_t n)
+static void sokol_platform_update_texture(texture_t t, void const* data, size_t n)
 {
     sg_image_data idata{};
-    idata.subimage[0][0] = { data, n };
+    idata.mip_levels[0] = { data, n };
 
-    auto img = simgui_image_from_imtextureid(t);
-    auto desc = simgui_query_image_desc(img);
-    sg_update_image(desc.image, &idata);
+    uint64_t const imtex_id = (uint64_t)(uintptr_t)t;
+    sg_view const view = simgui_texture_view_from_imtextureid(imtex_id);
+    sg_image const img = sg_query_view_image(view);
+    sg_update_image(img, &idata);
 }
 
-void platform_texture_scale_linear(texture_t t)
+static void sokol_platform_texture_scale_linear(texture_t t)
 {
     // not supported by sokol_gfx
 }
 
-void platform_texture_scale_nearest(texture_t t)
+static void sokol_platform_texture_scale_nearest(texture_t t)
 {
     // not supported by sokol_gfx
 }
 
-void platform_set_clipboard_text(char const* str)
+static void sokol_platform_set_clipboard_text(char const* str)
 {
     sapp_set_clipboard_string(str);
 }
 
-void platform_send_sound()
+static void sokol_platform_send_sound()
 {
     std::vector<int16_t> buf;
-    buf.swap(arduboy.cpu.sound_buffer);
+    buf.swap(app.emulator->core_state.cpu.sound_buffer);
 
     if(saudio_expect() <= 0)
         return;
@@ -308,11 +409,11 @@ void platform_send_sound()
     if(ns < buf.size())
     {
         buf.erase(buf.begin(), buf.begin() + ns);
-        buf.swap(arduboy.cpu.sound_buffer);
+        buf.swap(app.emulator->core_state.cpu.sound_buffer);
     }
 }
 
-uint64_t platform_get_ms_dt()
+static uint64_t sokol_platform_get_ms_dt()
 {
     static uint64_t dt_rem = 0;
     static uint64_t pt = 0;
@@ -323,43 +424,12 @@ uint64_t platform_get_ms_dt()
     return ms;
 }
 
-float platform_pixel_ratio()
+static float sokol_platform_pixel_ratio()
 {
     return sapp_dpi_scale();
 }
 
-void platform_destroy_fonts_texture()
-{
-    simgui_destroy_image(_simgui.default_font);
-    _simgui.font_img = {};
-    _simgui.default_font = {};
-}
-
-void platform_create_fonts_texture()
-{
-    unsigned char* font_pixels;
-    int font_width, font_height;
-    auto& io = ImGui::GetIO();
-
-    io.Fonts->GetTexDataAsRGBA32(&font_pixels, &font_width, &font_height);
-    sg_image_desc img_desc{};
-    img_desc.width = font_width;
-    img_desc.height = font_height;
-    img_desc.pixel_format = SG_PIXELFORMAT_RGBA8;
-    img_desc.data.subimage[0][0].ptr = font_pixels;
-    img_desc.data.subimage[0][0].size = (size_t)(font_width * font_height) * sizeof(uint32_t);
-    img_desc.label = "sokol-imgui-font-image";
-    _simgui.font_img = sg_make_image(&img_desc);
-
-    simgui_image_desc_t idesc{};
-    idesc.image = _simgui.font_img;
-    idesc.sampler = _simgui.font_smp;
-    _simgui.default_font = simgui_make_image(&idesc);
-
-    io.Fonts->TexID = simgui_imtextureid(_simgui.default_font);
-}
-
-void platform_toggle_fullscreen()
+static void sokol_platform_toggle_fullscreen()
 {
 #ifdef __EMSCRIPTEN__
     EmscriptenFullscreenChangeEvent e{};
@@ -374,14 +444,30 @@ void platform_toggle_fullscreen()
 #endif
 }
 
-void platform_quit()
+static void sokol_platform_quit()
 {
     sapp_request_quit();
 }
 
-void platform_set_title(char const* title)
+static void sokol_platform_set_title(char const* title)
 {
     sapp_set_window_title(title);
+}
+
+static void register_sokol_platform_services()
+{
+    platform_services.destroy_texture = sokol_platform_destroy_texture;
+    platform_services.create_texture = sokol_platform_create_texture;
+    platform_services.update_texture = sokol_platform_update_texture;
+    platform_services.texture_scale_linear = sokol_platform_texture_scale_linear;
+    platform_services.texture_scale_nearest = sokol_platform_texture_scale_nearest;
+    platform_services.set_clipboard_text = sokol_platform_set_clipboard_text;
+    platform_services.send_sound = sokol_platform_send_sound;
+    platform_services.get_ms_dt = sokol_platform_get_ms_dt;
+    platform_services.pixel_ratio = sokol_platform_pixel_ratio;
+    platform_services.toggle_fullscreen = sokol_platform_toggle_fullscreen;
+    platform_services.quit = sokol_platform_quit;
+    platform_services.set_title = sokol_platform_set_title;
 }
 
 static std::array<std::vector<uint32_t>, SAPP_MAX_ICONIMAGES> icon_imgs;
@@ -418,6 +504,7 @@ sapp_desc sokol_main(int argc, char** argv)
         d.argv = argv;
         sargs_setup(&d);
     }
+    bool size_cli_override = false;
 #endif
 
     g_title = preferred_title();
@@ -431,7 +518,7 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.frame_cb = app_frame;
     desc.cleanup_cb = app_cleanup;
 #ifdef __EMSCRIPTEN__
-    desc.html5_canvas_name = "canvas";
+    desc.html5.canvas_selector = "#canvas";
 #else
 #ifdef ARDENS_PLAYER
     desc.width = 512;
@@ -447,7 +534,7 @@ sapp_desc sokol_main(int argc, char** argv)
 #endif
 #endif
 #ifdef _WIN32
-    desc.win32_console_attach = true;
+    desc.win32.console_attach = true;
 #endif
 
 #ifndef __EMSCRIPTEN__
@@ -456,14 +543,33 @@ sapp_desc sokol_main(int argc, char** argv)
         char const* k = sargs_key_at(i);
         char const* v = sargs_value_at(i);
         if(0 != strcmp(k, "size")) continue;
+        char* end = nullptr;
+        long const parsed_width = std::strtol(v, &end, 10);
+        if(end != v && *end == 'x')
+        {
+            char* end2 = nullptr;
+            long const parsed_height = std::strtol(end + 1, &end2, 10);
+            if(end2 != end + 1 && *end2 == '\0' && parsed_width > 0 && parsed_height > 0)
+            {
+                desc.width = (int)parsed_width;
+                desc.height = (int)parsed_height;
+                size_cli_override = true;
+            }
+        }
+        break;
+    }
+#endif
+
+#if !defined(__EMSCRIPTEN__) && !defined(ARDENS_NO_SAVED_SETTINGS)
+    if(!size_cli_override)
+    {
         int width = desc.width;
         int height = desc.height;
-        if(2 == sscanf(v, "%dx%d", &width, &height))
+        if(load_window_geometry_from_ini(app_config_ini_path(), width, height))
         {
             desc.width = width;
             desc.height = height;
         }
-        break;
     }
 #endif
 

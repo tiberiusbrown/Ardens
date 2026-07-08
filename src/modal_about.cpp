@@ -36,7 +36,7 @@ Drap and drop an [Arduboy game](https://community.arduboy.com/c/games/35) (hex/e
 
 MIT License
 
-Copyright (c) 2023 Peter Brown
+Copyright (c) 2026 Peter Brown
 
 )"
 "Permission is hereby granted, free of charge, to any person obtaining a copy "
@@ -78,7 +78,7 @@ void modal_about()
 {
     using namespace ImGui;
 
-    SetNextWindowSize({ pixel_ratio * 500.f, pixel_ratio * 400.f });
+    SetNextWindowSize({ app.pixel_ratio * 500.f, app.pixel_ratio * 400.f });
     if(!BeginPopupModal("About", nullptr,
         ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoSavedSettings))
@@ -99,7 +99,7 @@ void modal_about()
 
     SetCursorPosY(GetCursorPosY() + GetFrameHeight());
 
-    if(Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
+    if(Button("OK", ImVec2(120 * app.pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         CloseCurrentPopup();
 
     EndPopup();

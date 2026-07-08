@@ -14,7 +14,6 @@
 #include "imgui_impl_sdlrenderer3.h"
 #include <implot/implot.h>
 #include <stdio.h>
-#include <time.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
@@ -68,14 +67,22 @@ static SDL_AudioStream* audio_stream;
 
 static SDL_Window* window;
 static SDL_Renderer* renderer;
+static bool window_geometry_events_ready = false;
 
-void platform_destroy_texture(texture_t t)
+enum class window_geometry_mode
+{
+    query,
+    maximized,
+    restored,
+};
+
+static void sdl_platform_destroy_texture(texture_t t)
 {
     if(t != nullptr)
         SDL_DestroyTexture((SDL_Texture*)t);
 }
 
-texture_t platform_create_texture(int w, int h)
+static texture_t sdl_platform_create_texture(int w, int h)
 {
     return SDL_CreateTexture(
         renderer,
@@ -85,31 +92,76 @@ texture_t platform_create_texture(int w, int h)
         h);
 }
 
-void platform_update_texture(texture_t t, void const* data, size_t n)
+static void sdl_platform_update_texture(texture_t t, void const* data, size_t n)
 {
+    SDL_Texture* texture = (SDL_Texture*)t;
+    if(!texture || !data)
+        return;
+
+    float fw = 0.f, fh = 0.f;
+    if(!SDL_GetTextureSize(texture, &fw, &fh))
+    {
+        SDL_Log("SDL_GetTextureSize failed: %s", SDL_GetError());
+        return;
+    }
+
+    int w = (int)fw;
+    int h = (int)fh;
+    if(w <= 0 || h <= 0)
+        return;
+
+    size_t const src_pitch = (size_t)w * 4;
+    size_t const expected_size = src_pitch * (size_t)h;
+    if(n < expected_size)
+    {
+        SDL_Log(
+            "Texture upload data too small: got %zu bytes, expected %zu bytes",
+            n,
+            expected_size);
+        return;
+    }
+
     void* pixels;
     int pitch;
-    SDL_LockTexture((SDL_Texture*)t, nullptr, &pixels, &pitch);
-    memcpy(pixels, data, n);
-    SDL_UnlockTexture((SDL_Texture*)t);
+    if(!SDL_LockTexture(texture, nullptr, &pixels, &pitch))
+    {
+        SDL_Log("SDL_LockTexture failed: %s", SDL_GetError());
+        return;
+    }
+    if(pitch < (int)src_pitch)
+    {
+        SDL_Log(
+            "Texture upload pitch too small: got %d bytes, expected at least %zu bytes",
+            pitch,
+            src_pitch);
+        SDL_UnlockTexture(texture);
+        return;
+    }
+
+    uint8_t* dst = (uint8_t*)pixels;
+    uint8_t const* src = (uint8_t const*)data;
+    for(int y = 0; y < h; ++y)
+        memcpy(dst + (size_t)y * (size_t)pitch, src + (size_t)y * src_pitch, src_pitch);
+
+    SDL_UnlockTexture(texture);
 }
 
-void platform_texture_scale_linear(texture_t t)
+static void sdl_platform_texture_scale_linear(texture_t t)
 {
     SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_SCALEMODE_LINEAR);
 }
 
-void platform_texture_scale_nearest(texture_t t)
+static void sdl_platform_texture_scale_nearest(texture_t t)
 {
     SDL_SetTextureScaleMode((SDL_Texture*)t, SDL_SCALEMODE_NEAREST);
 }
 
-void platform_set_clipboard_text(char const* str)
+static void sdl_platform_set_clipboard_text(char const* str)
 {
     SDL_SetClipboardText(str);
 }
 
-uint64_t platform_get_ms_dt()
+static uint64_t sdl_platform_get_ms_dt()
 {
     static uint64_t pt = 0;
     uint64_t t = SDL_GetTicks();
@@ -119,10 +171,13 @@ uint64_t platform_get_ms_dt()
     return dt;
 }
 
-void platform_send_sound()
+static void sdl_platform_send_sound()
 {
+    if(!audio_stream)
+        return;
+
     std::vector<int16_t> buf;
-    buf.swap(arduboy.cpu.sound_buffer);
+    buf.swap(app.emulator->core_state.cpu.sound_buffer);
     constexpr size_t SAMPLE_SIZE = sizeof(buf[0]);
     size_t num_bytes = buf.size() * SAMPLE_SIZE;
     uint32_t queued_bytes = SDL_GetAudioStreamQueued(audio_stream);
@@ -148,31 +203,58 @@ void platform_send_sound()
     }
 }
 
-float platform_pixel_ratio()
+static float sdl_platform_pixel_ratio()
 {
     return SDL_GetDisplayContentScale(SDL_GetDisplayForWindow(window));
 }
 
-void platform_destroy_fonts_texture()
-{
-    ImGui_ImplSDLRenderer3_DestroyFontsTexture();
-}
-
-void platform_create_fonts_texture()
-{
-    ImGui_ImplSDLRenderer3_CreateFontsTexture();
-}
-
-void platform_open_url(char const* url)
+static void sdl_platform_open_url(char const* url)
 {
     SDL_OpenURL(url);
 }
 
-void platform_toggle_fullscreen()
+static void sdl_update_window_geometry(window_geometry_mode mode = window_geometry_mode::query)
 {
-    static bool fs = false;
-    fs = !fs;
-    SDL_SetWindowFullscreen(window, (SDL_bool)fs);
+    if(!window_geometry_events_ready || !window)
+        return;
+
+    SDL_WindowFlags const flags = SDL_GetWindowFlags(window);
+    if(flags & SDL_WINDOW_FULLSCREEN)
+        return;
+
+    bool maximized = false;
+    switch(mode)
+    {
+    case window_geometry_mode::maximized:
+        maximized = true;
+        break;
+    case window_geometry_mode::restored:
+        maximized = false;
+        break;
+    case window_geometry_mode::query:
+        maximized = (flags & SDL_WINDOW_MAXIMIZED) != 0;
+        break;
+    }
+    if(maximized)
+    {
+        int w = settings.window_width;
+        int h = settings.window_height;
+        if(w <= 0 || h <= 0)
+            SDL_GetWindowSize(window, &w, &h);
+        update_window_settings(w, h, true);
+        return;
+    }
+
+    int w = 0;
+    int h = 0;
+    SDL_GetWindowSize(window, &w, &h);
+    update_window_settings(w, h, false);
+}
+
+static void sdl_platform_toggle_fullscreen()
+{
+    bool const fs = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+    SDL_SetWindowFullscreen(window, !fs);
 }
 
 static void main_loop()
@@ -180,13 +262,36 @@ static void main_loop()
     auto& io = ImGui::GetIO();
     
     SDL_Event event;
+    Uint32 const window_id = SDL_GetWindowID(window);
     while(SDL_PollEvent(&event))
     {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if(event.type == SDL_EVENT_QUIT)
-            done = true;
-        if(event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
-            done = true;
+        {
+            sdl_update_window_geometry();
+            app.done = true;
+        }
+        if(event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == window_id)
+        {
+            sdl_update_window_geometry();
+            app.done = true;
+        }
+        if((event.type == SDL_EVENT_WINDOW_RESIZED ||
+            event.type == SDL_EVENT_WINDOW_MAXIMIZED ||
+            event.type == SDL_EVENT_WINDOW_RESTORED ||
+            event.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN ||
+            event.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN) &&
+           event.window.windowID == window_id)
+        {
+            if(event.type == SDL_EVENT_WINDOW_MAXIMIZED)
+                sdl_update_window_geometry(window_geometry_mode::maximized);
+            else if(event.type == SDL_EVENT_WINDOW_RESTORED)
+                sdl_update_window_geometry(window_geometry_mode::restored);
+            else if(event.type == SDL_EVENT_WINDOW_RESIZED ||
+                    event.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN ||
+                    event.type == SDL_EVENT_WINDOW_LEAVE_FULLSCREEN)
+                sdl_update_window_geometry();
+        }
         if(event.type == SDL_EVENT_DROP_FILE)
         {
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_DIST) && !defined(ARDENS_FLASHCART)
@@ -202,15 +307,18 @@ static void main_loop()
         {
             int w = 0, h = 0;
             SDL_GetWindowSize(window, &w, &h);
-            first_touch = true;
-            auto& tp = touch_points[(size_t)event.tfinger.fingerID];
+            app.first_touch = true;
+            auto& tp = app.touch_points[(size_t)event.tfinger.fingerID];
             tp = { event.tfinger.x * w, event.tfinger.y * h };
         }
         if(event.type == SDL_EVENT_FINGER_UP)
         {
-            touch_points.erase(event.tfinger.fingerID);
+            app.touch_points.erase(event.tfinger.fingerID);
         }
     }
+
+    if(app.done)
+        return;
 
     frame_logic();
 
@@ -220,13 +328,13 @@ static void main_loop()
     do
     {
         int count = 0;
-        auto* j = SDL_GetGamepads(&count);
-        if(!j) break;
+        auto* gamepads = SDL_GetGamepads(&count);
+        if(!gamepads) break;
         auto& io = ImGui::GetIO();
         for(int i = 0; i < count; ++i)
         {
-            if(!SDL_IsGamepad(j[i])) continue;
-            auto* g = SDL_OpenGamepad(j[i]);
+            if(!SDL_IsGamepad(gamepads[i])) continue;
+            auto* g = SDL_OpenGamepad(gamepads[i]);
             if(!g) continue;
             io.AddKeyEvent(ImGuiKey_A         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_SOUTH     ) != 0);
             io.AddKeyEvent(ImGuiKey_B         , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_EAST      ) != 0);
@@ -234,8 +342,10 @@ static void main_loop()
             io.AddKeyEvent(ImGuiKey_DownArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_DOWN ) != 0);
             io.AddKeyEvent(ImGuiKey_LeftArrow , SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_LEFT ) != 0);
             io.AddKeyEvent(ImGuiKey_RightArrow, SDL_GetGamepadButton(g, SDL_GAMEPAD_BUTTON_DPAD_RIGHT) != 0);
+            SDL_CloseGamepad(g);
             break;
         }
+        SDL_free(gamepads);
     } while(0);
 
     ImGui::NewFrame();
@@ -265,20 +375,12 @@ static void main_loop()
         SDL_Surface* ss = SDL_ConvertSurface(rs, format);
         if(ss)
         {
-            char fname[256];
-            time_t rawtime;
-            struct tm* ti;
-            time(&rawtime);
-            ti = localtime(&rawtime);
-            (void)snprintf(fname, sizeof(fname),
-                "window_%04d%02d%02d%02d%02d%02d.png",
-                ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-                ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+            std::string fname = timestamped_filename("window", "png");
 #ifdef __EMSCRIPTEN__
             stbi_write_png("screenshot.png", w, h, 3, ss->pixels, ss->pitch);
-            file_download("screenshot.png", fname, "image/x-png");
+            file_download("screenshot.png", fname.c_str(), "image/x-png");
 #else
-            stbi_write_png(fname, w, h, 3, ss->pixels, ss->pitch);
+            stbi_write_png(fname.c_str(), w, h, 3, ss->pixels, ss->pitch);
 #endif
         }
         SDL_DestroySurface(rs);
@@ -287,18 +389,36 @@ static void main_loop()
 #endif
 
     SDL_RenderPresent(renderer);
+    window_geometry_events_ready = true;
 }
 
-void platform_quit()
+static void sdl_platform_quit()
 {
     SDL_Event e;
     e.type = SDL_EVENT_QUIT;
     SDL_PushEvent(&e);
 }
 
-void platform_set_title(char const* title)
+static void sdl_platform_set_title(char const* title)
 {
     SDL_SetWindowTitle(window, title);
+}
+
+static void register_sdl_platform_services()
+{
+    platform_services.destroy_texture = sdl_platform_destroy_texture;
+    platform_services.create_texture = sdl_platform_create_texture;
+    platform_services.update_texture = sdl_platform_update_texture;
+    platform_services.texture_scale_linear = sdl_platform_texture_scale_linear;
+    platform_services.texture_scale_nearest = sdl_platform_texture_scale_nearest;
+    platform_services.set_clipboard_text = sdl_platform_set_clipboard_text;
+    platform_services.send_sound = sdl_platform_send_sound;
+    platform_services.get_ms_dt = sdl_platform_get_ms_dt;
+    platform_services.pixel_ratio = sdl_platform_pixel_ratio;
+    platform_services.open_url = sdl_platform_open_url;
+    platform_services.toggle_fullscreen = sdl_platform_toggle_fullscreen;
+    platform_services.quit = sdl_platform_quit;
+    platform_services.set_title = sdl_platform_set_title;
 }
 
 int main(int argc, char** argv)
@@ -308,6 +428,7 @@ int main(int argc, char** argv)
 #else
     int width = 1280, height = 720;
 #endif
+    bool size_cli_override = false;
 #ifndef __EMSCRIPTEN__
     {
         sargs_desc d{};
@@ -322,7 +443,10 @@ int main(int argc, char** argv)
             if(0 != strcmp(k, "size")) continue;
             int w = width, h = height;
             if(2 == sscanf(v, "%dx%d", &w, &h))
+            {
                 width = w, height = h;
+                size_cli_override = true;
+            }
             break;
         }
     }
@@ -331,11 +455,13 @@ int main(int argc, char** argv)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
+    register_sdl_platform_services();
+
     init();
 
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "1");
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMEPAD) != 0)
+    if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;
@@ -347,19 +473,40 @@ int main(int argc, char** argv)
         };
         audio_stream = SDL_OpenAudioDeviceStream(
             SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
-        SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
+        if(audio_stream)
+            SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(audio_stream));
+        else
+            SDL_Log("Warning: audio init failed: %s", SDL_GetError());
     }
 
 #if PROFILING
     SDL_SetHint(SDL_HINT_RENDER_VSYNC, "0");
 #endif
 
+    if(!size_cli_override && settings.window_width > 0 && settings.window_height > 0)
+    {
+        width = settings.window_width;
+        height = settings.window_height;
+    }
+
+    bool const start_maximized = !size_cli_override && settings.window_maximized;
+
     // Setup window
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
         SDL_WINDOW_RESIZABLE |
         SDL_WINDOW_HIGH_PIXEL_DENSITY |
-        0);
+        (start_maximized ? SDL_WINDOW_MAXIMIZED : 0));
     window = SDL_CreateWindow(preferred_title().c_str(), width, height, window_flags);
+    if(!window)
+    {
+        SDL_Log("Error creating SDL window: %s", SDL_GetError());
+        return -1;
+    }
+    if(start_maximized)
+        SDL_MaximizeWindow(window);
+
+    if(settings.window_width <= 0 || settings.window_height <= 0)
+        update_window_settings(width, height, start_maximized);
 
     renderer = SDL_CreateRenderer(window, nullptr);
     if (renderer == NULL)
@@ -370,21 +517,21 @@ int main(int argc, char** argv)
 
     update_pixel_ratio();
     rescale_style();
+    // Add the default ImGui font after our scaling values are in place.
+    ImGui::GetIO().Fonts->AddFontDefault();
 
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    define_font();
-
     recreate_display_texture();
-    display_buffer_texture = SDL_CreateTexture(
+    app.display_buffer_texture = SDL_CreateTexture(
         renderer,
         SDL_PIXELFORMAT_ABGR8888,
         SDL_TEXTUREACCESS_STREAMING,
         128,
         64);
 
-    done = false;
+    app.done = false;
 
 #if !defined(__EMSCRIPTEN__)
     for(int i = 0; i < sargs_num_args(); ++i)
@@ -397,16 +544,18 @@ int main(int argc, char** argv)
             if(f)
             {
                 bool save = !strcmp(sargs_key_at(i), "save");
-                dropfile_err = arduboy.load_file(value, f, save);
+                if(!save)
+                    disconnect_linked_secondary_arduboy();
+                app.dropfile_err = app.emulator->load_file(value, f, save);
                 autoset_from_device_type();
-                if(dropfile_err.empty())
+                if(app.dropfile_err.empty())
                 {
                     load_savedata();
                     if(!save) file_watch(value);
                 }
             }
             else
-                dropfile_err = std::string("Could not open file: \"") + value + "\"";
+                app.dropfile_err = std::string("Could not open file: \"") + value + "\"";
 #endif
     }
 }
@@ -415,28 +564,29 @@ int main(int argc, char** argv)
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(main_loop, -1, 1);
 #else
-    while(!done)
+    while(!app.done)
         main_loop();
 #endif
 
     shutdown();
 
-    if(display_texture)
+    if(app.display_texture)
     {
-        SDL_DestroyTexture((SDL_Texture*)display_texture);
-        display_texture = nullptr;
+        SDL_DestroyTexture((SDL_Texture*)app.display_texture);
+        app.display_texture = nullptr;
     }
-    if(display_buffer_texture)
+    if(app.display_buffer_texture)
     {
-        SDL_DestroyTexture((SDL_Texture*)display_buffer_texture);
-        display_buffer_texture = nullptr;
+        SDL_DestroyTexture((SDL_Texture*)app.display_buffer_texture);
+        app.display_buffer_texture = nullptr;
     }
 
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_DestroyAudioStream(audio_stream);
+    if(audio_stream)
+        SDL_DestroyAudioStream(audio_stream);
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

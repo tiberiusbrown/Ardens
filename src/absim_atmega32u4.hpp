@@ -5,6 +5,7 @@
 #include "absim_adc.hpp"
 #include "absim_pll.hpp"
 #include "absim_spi.hpp"
+#include "absim_twi.hpp"
 #include "absim_eeprom.hpp"
 #include "absim_w25q128.hpp"
 #include "absim_sound.hpp"
@@ -18,38 +19,68 @@ namespace absim
 void atmega32u4_t::st_handle_prr0(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x64);
-    cpu.data[0x64] = x;
+    assert(ptr == reg::addr::PRR0);
+    sync_write_barrier(cpu);
+    cpu.data[reg::addr::PRR0] = x;
+    cpu.update_sync_timers();
     cpu.adc_handle_prr0(x);
+    cpu.twi_handle_prr0(x);
+}
+
+void atmega32u4_t::st_handle_prr1(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    assert(ptr == reg::addr::PRR1);
+    sync_write_barrier(cpu);
+    timer4_write_barrier(cpu);
+    cpu.data[reg::addr::PRR1] = x;
+    cpu.update_sync_timers();
+    cpu.update_timer4();
 }
 
 void atmega32u4_t::st_handle_pin(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     cpu.data[ptr + 2] ^= x;
+    if(ptr == reg::addr::PINC)
+        cpu.data[reg::addr::PINC] = cpu.data[reg::addr::PORTC];
+}
+
+void atmega32u4_t::st_handle_ddrd(
+    atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
+{
+    cpu.data[ptr] = x;
+    if(cpu.twi_adapter)
+        cpu.twi_adapter->sync_bus_lines();
 }
 
 void atmega32u4_t::st_handle_port(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    // TODO: handle pullup behavior
     cpu.data[ptr] = x;
+    if(ptr == reg::addr::PORTC)
+        cpu.data[reg::addr::PINC] = x;
+    if(ptr == reg::addr::PORTD && cpu.twi_adapter)
+        cpu.twi_adapter->sync_bus_lines();
 }
 
 void atmega32u4_t::st_handle_mcucr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    x &= 0xfe;
+    x &= ~reg::bit::MCUCR::IVCE;
     cpu.data[ptr] = x;
 }
 
 void atmega32u4_t::st_handle_mcusr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    x &= 0x17;
-    x |= (cpu.MCUSR() & 0xe0);
-    if(x & (1 << 3))
-        cpu.WDTCSR() |= (1 << 3);
+    x &= reg::bit::MCUSR::PORF |
+        reg::bit::MCUSR::EXTRF |
+        reg::bit::MCUSR::BORF |
+        reg::bit::MCUSR::JTRF;
+    x |= (cpu.data[reg::addr::MCUSR] & reg::bit::MCUSR::USBRF);
+    if(x & reg::bit::MCUSR::WDRF)
+        cpu.data[reg::addr::WDTCSR] |= reg::bit::WDTCSR::WDE;
     cpu.data[ptr] = x;
 }
 
@@ -59,15 +90,19 @@ void atmega32u4_t::st_handle_wdtcsr(
     // TODO: WDTON fuse
     // TODO: model WDCE behavior
     cpu.watchdog_divider_cycle = 0;
-    x &= 0x7f; // clear interrupt flag
+    x &= ~reg::bit::WDTCSR::WDIF;
     cpu.data[ptr] = x;
     cpu.update_watchdog();
 }
 
 void atmega32u4_t::update_watchdog_prescaler()
 {
-    uint8_t wdp = WDTCSR();
-    wdp = (wdp & 7) | ((wdp >> 2) & 8);
+    uint8_t wdp = data[reg::addr::WDTCSR];
+    wdp = (wdp &
+        (reg::bit::WDTCSR::WDP0 |
+         reg::bit::WDTCSR::WDP1 |
+         reg::bit::WDTCSR::WDP2)) |
+        ((wdp & reg::bit::WDTCSR::WDP3) >> 2);
     if(wdp > 9) wdp = 9;
 
     // 128 kHz osc divider
@@ -84,19 +119,19 @@ void atmega32u4_t::update_watchdog()
     if(wdt_hits != 0)
     {
         // watchdog timeout
-        uint8_t csr = WDTCSR();
-        if(csr & (1 << 6))
+        uint8_t csr = data[reg::addr::WDTCSR];
+        if(csr & reg::bit::WDTCSR::WDIE)
         {
             // interrupt
-            WDTCSR() |= (1 << 7);
+            data[reg::addr::WDTCSR] |= reg::bit::WDTCSR::WDIF;
             schedule_interrupt_check();
-            if(csr & (1 << 3))
+            if(csr & reg::bit::WDTCSR::WDE)
             {
                 // if also system reset, disable interrupt
-                WDTCSR() &= ~(1 << 6);
+                data[reg::addr::WDTCSR] &= ~reg::bit::WDTCSR::WDIE;
             }
         }
-        else if(csr & (1 << 3))
+        else if(csr & reg::bit::WDTCSR::WDE)
         {
             // system reset
             soft_reset();
@@ -119,23 +154,35 @@ void atmega32u4_t::st_handle_spmcsr(
 {
     cpu.update_spm();
     if(cpu.spm_op != cpu.SPM_OP_NONE)
-        x |= 0x01;
+        x |= reg::bit::SPMCSR::SPMEN;
     else
     {
-        if((x & 0x3f) == (1 << 1) + 1)
+        uint8_t const mask =
+            reg::bit::SPMCSR::SPMEN |
+            reg::bit::SPMCSR::PGERS |
+            reg::bit::SPMCSR::PGWRT |
+            reg::bit::SPMCSR::BLBSET |
+            reg::bit::SPMCSR::RWWSRE |
+            reg::bit::SPMCSR::SIGRD;
+        if((x & mask) ==
+            (reg::bit::SPMCSR::SPMEN | reg::bit::SPMCSR::PGERS))
             cpu.spm_op = cpu.SPM_OP_PAGE_ERASE;
-        else if((x & 0x3f) == (1 << 2) + 1)
+        else if((x & mask) ==
+            (reg::bit::SPMCSR::SPMEN | reg::bit::SPMCSR::PGWRT))
             cpu.spm_op = cpu.SPM_OP_PAGE_WRITE;
-        else if((x & 0x3f) == (1 << 3) + 1)
+        else if((x & mask) ==
+            (reg::bit::SPMCSR::SPMEN | reg::bit::SPMCSR::BLBSET))
             cpu.spm_op = cpu.SPM_OP_BLB_SET;
-        else if((x & 0x3f) == (1 << 4) + 1)
+        else if((x & mask) ==
+            (reg::bit::SPMCSR::SPMEN | reg::bit::SPMCSR::RWWSRE))
         {
             cpu.spm_op = cpu.SPM_OP_RWW_EN;
             cpu.erase_spm_buffer();
         }
-        else if((x & 0x3f) == (1 << 5) + 1)
+        else if((x & mask) ==
+            (reg::bit::SPMCSR::SPMEN | reg::bit::SPMCSR::SIGRD))
             cpu.spm_op = cpu.SPM_OP_SIG_READ;
-        else if((x & 0x3f) == 1)
+        else if((x & mask) == reg::bit::SPMCSR::SPMEN)
             cpu.spm_op = cpu.SPM_OP_PAGE_LOAD;
         else
             return; // no effect
@@ -169,7 +216,7 @@ void atmega32u4_t::execute_spm()
             break; // TODO: autobreak / this should halt the device
         for(uint32_t i = a; i < b; ++i)
             prog[i] = 0xff;
-        SPMCSR() |= (1 << 6); // RWWSB
+        data[reg::addr::SPMCSR] |= reg::bit::SPMCSR::RWWSB;
         decode();
         last_addr = 0x7fff;
         spm_cycles = SPM_CYCLES;
@@ -186,7 +233,7 @@ void atmega32u4_t::execute_spm()
         for(uint32_t i = a; i < b; ++i)
             prog[i] &= spm_buffer[i - a];
         erase_spm_buffer();
-        SPMCSR() |= (1 << 6); // RWWSB
+        data[reg::addr::SPMCSR] |= reg::bit::SPMCSR::RWWSB;
         decode();
         last_addr = 0x7fff;
         spm_cycles = SPM_CYCLES;
@@ -202,7 +249,7 @@ void atmega32u4_t::execute_spm()
     }
     case SPM_OP_RWW_EN:
     {
-        SPMCSR() &= ~(1 << 6); // RWWSB
+        data[reg::addr::SPMCSR] &= ~reg::bit::SPMCSR::RWWSB;
         break;
     }
     default:
@@ -251,7 +298,7 @@ void atmega32u4_t::update_spm()
         spm_op = SPM_OP_NONE;
         spm_en_cycles = 0;
         spm_cycles = 0;
-        SPMCSR() &= 0xc0;
+        data[reg::addr::SPMCSR] &= (reg::bit::SPMCSR::RWWSB | reg::bit::SPMCSR::SPMIE);
     }
 }
 
@@ -269,12 +316,12 @@ ARDENS_FORCEINLINE bool atmega32u4_t::check_interrupt(
     push_stack_frame(pc);
     push(uint8_t(pc >> 0));
     push(uint8_t(pc >> 8));
-    if(vector != 0 && (MCUCR() & (1 << 1)) != 0)
+    if(vector != 0 && (data[reg::addr::MCUCR] & reg::bit::MCUCR::IVSEL) != 0)
         pc = vector + bootloader_address();
     else
         pc = vector;
     tifr &= ~flag;
-    sreg() &= ~SREG_I;
+    data[reg::addr::SREG] &= ~reg::bit::SREG::I;
     wakeup_cycles = 4;
     if(!active)
         wakeup_cycles += 4;
@@ -285,9 +332,25 @@ ARDENS_FORCEINLINE bool atmega32u4_t::check_interrupt(
 
 ARDENS_FORCEINLINE void atmega32u4_t::check_all_interrupts()
 {
-    if(!(prev_sreg & sreg() & SREG_I))
+    auto& sreg = data[reg::addr::SREG];
+    auto& udint = data[reg::addr::UDINT];
+    auto& udien = data[reg::addr::UDIEN];
+    auto& usbint = data[reg::addr::USBINT];
+    auto& usbc = data[reg::addr::USBCON];
+    auto& ueint = data[reg::addr::UEINT];
+    auto& wdtcsr = data[reg::addr::WDTCSR];
+    auto& tifr1 = data[reg::addr::TIFR1];
+    auto& timsk1 = data[reg::addr::TIMSK1];
+    auto& tifr0 = data[reg::addr::TIFR0];
+    auto& timsk0 = data[reg::addr::TIMSK0];
+    auto& tifr3 = data[reg::addr::TIFR3];
+    auto& timsk3 = data[reg::addr::TIMSK3];
+    auto& tifr4 = data[reg::addr::TIFR4];
+    auto& timsk4 = data[reg::addr::TIMSK4];
+
+    if(!(prev_sreg & sreg & reg::bit::SREG::I))
     {
-        if(sreg() & SREG_I)
+        if(sreg & reg::bit::SREG::I)
             peripheral_queue.schedule(cycle_count + 1, PQ_INTERRUPT);
         return;
     }
@@ -301,7 +364,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::check_all_interrupts()
     uint8_t i;
 
     // usb general
-    i = (UDINT() & UDIEN()) | (USBINT() & USBCON());
+    i = (udint & udien) | (usbint & usbc);
     if(i)
     {
         uint8_t dummy = 0;
@@ -309,45 +372,56 @@ ARDENS_FORCEINLINE void atmega32u4_t::check_all_interrupts()
     }
 
     // usb endpoint
-    i = UEINT();
-    if(check_interrupt(0x16, i, UEINT())) return;
+    i = ueint;
+    if(check_interrupt(0x16, i, ueint)) return;
 
     // watchdog timeout
-    if(check_interrupt(0x18, WDTCSR() & 0x80, WDTCSR())) return;
+    if(check_interrupt(0x18, wdtcsr & reg::bit::WDTCSR::WDIF, wdtcsr)) return;
 
-    i = tifr1() & timsk1();
+    i = tifr1 & timsk1;
     if(i)
     {
-        if(check_interrupt(0x22, i & 0x02, tifr1())) return; // TIMER1 COMPA
-        if(check_interrupt(0x24, i & 0x04, tifr1())) return; // TIMER1 COMPB
-        if(check_interrupt(0x26, i & 0x08, tifr1())) return; // TIMER1 COMPC
-        if(check_interrupt(0x28, i & 0x01, tifr1())) return; // TIMER1 OVF
+        if(check_interrupt(0x22, i & reg::bit::TIFR1::OCF1A, tifr1)) return; // TIMER1 COMPA
+        if(check_interrupt(0x24, i & reg::bit::TIFR1::OCF1B, tifr1)) return; // TIMER1 COMPB
+        if(check_interrupt(0x26, i & reg::bit::TIFR1::OCF1C, tifr1)) return; // TIMER1 COMPC
+        if(check_interrupt(0x28, i & reg::bit::TIFR1::TOV1, tifr1)) return; // TIMER1 OVF
     }
 
-    i = tifr0() & timsk0();
+    i = tifr0 & timsk0;
     if(i)
     {
-        if(check_interrupt(0x2a, i & 0x02, tifr0())) return; // TIMER0 COMPA
-        if(check_interrupt(0x2c, i & 0x04, tifr0())) return; // TIMER0 COMPB
-        if(check_interrupt(0x2e, i & 0x01, tifr0())) return; // TIMER0 OVF
+        if(check_interrupt(0x2a, i & reg::bit::TIFR0::OCF0A, tifr0)) return; // TIMER0 COMPA
+        if(check_interrupt(0x2c, i & reg::bit::TIFR0::OCF0B, tifr0)) return; // TIMER0 COMPB
+        if(check_interrupt(0x2e, i & reg::bit::TIFR0::TOV0, tifr0)) return; // TIMER0 OVF
     }
 
-    i = tifr3() & timsk3();
+    i = tifr3 & timsk3;
     if(i)
     {
-        if(check_interrupt(0x40, i & 0x02, tifr3())) return; // TIMER3 COMPA
-        if(check_interrupt(0x42, i & 0x04, tifr3())) return; // TIMER3 COMPB
-        if(check_interrupt(0x44, i & 0x08, tifr3())) return; // TIMER3 COMPC
-        if(check_interrupt(0x46, i & 0x01, tifr3())) return; // TIMER3 OVF
+        if(check_interrupt(0x40, i & reg::bit::TIFR3::OCF3A, tifr3)) return; // TIMER3 COMPA
+        if(check_interrupt(0x42, i & reg::bit::TIFR3::OCF3B, tifr3)) return; // TIMER3 COMPB
+        if(check_interrupt(0x44, i & reg::bit::TIFR3::OCF3C, tifr3)) return; // TIMER3 COMPC
+        if(check_interrupt(0x46, i & reg::bit::TIFR3::TOV3, tifr3)) return; // TIMER3 OVF
     }
 
-    i = tifr4() & timsk4();
+    auto const& twcr = data[reg::addr::TWCR];
+    i = (twcr & (reg::bit::TWCR::TWINT | reg::bit::TWCR::TWIE)) ==
+        (reg::bit::TWCR::TWINT | reg::bit::TWCR::TWIE) ?
+        reg::bit::TWCR::TWINT :
+        0;
     if(i)
     {
-        if(check_interrupt(0x4c, i & 0x40, tifr4())) return; // TIMER4 COMPA
-        if(check_interrupt(0x4e, i & 0x20, tifr4())) return; // TIMER4 COMPB
-        if(check_interrupt(0x50, i & 0x80, tifr4())) return; // TIMER4 COMPD
-        if(check_interrupt(0x52, i & 0x04, tifr4())) return; // TIMER4 OVF
+        uint8_t dummy = i;
+        if(check_interrupt(0x48, i, dummy)) return; // TWI
+    }
+
+    i = tifr4 & timsk4;
+    if(i)
+    {
+        if(check_interrupt(0x4c, i & reg::bit::TIFR4::OCF4A, tifr4)) return; // TIMER4 COMPA
+        if(check_interrupt(0x4e, i & reg::bit::TIFR4::OCF4B, tifr4)) return; // TIMER4 COMPB
+        if(check_interrupt(0x50, i & reg::bit::TIFR4::OCF4D, tifr4)) return; // TIMER4 COMPD
+        if(check_interrupt(0x52, i & reg::bit::TIFR4::TOV4, tifr4)) return; // TIMER4 OVF
     }
 }
 
@@ -371,6 +445,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 {
     uint32_t cycles = 1;
     just_interrupted = false;
+    auto& sreg = data[reg::addr::SREG];
 
     constexpr uint64_t MAX_MERGED_CYCLES = 1024;
 
@@ -384,9 +459,9 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         switch(qi.type)
         {
         case PQ_SPI: update_spi(); break;
-        case PQ_TIMER0: update_timer0(); break;
-        case PQ_TIMER1: update_timer1(); break;
-        case PQ_TIMER3: update_timer3(); break;
+        case PQ_TIMER_SYNC: update_sync_timers(); break;
+        case PQ_TIMER1: break;
+        case PQ_TIMER3: break;
         case PQ_TIMER4: update_timer4(); break;
         case PQ_USB: update_usb(); break;
         case PQ_WATCHDOG: update_watchdog(); break;
@@ -394,6 +469,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
         case PQ_PLL: update_pll(); break;
         case PQ_ADC: update_adc(); break;
         case PQ_SPM: update_spm(); break;
+        case PQ_TWI: update_twi(); break;
         case PQ_INTERRUPT: check_all_interrupts(); break;
         default: break;
         }
@@ -424,7 +500,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 return 1;
             }
             auto const& i = decoded_prog[pc];
-            prev_sreg = sreg();
+            prev_sreg = sreg;
             cycles = INSTR_MAP[i.func](*this, i);
             assert(cycles <= MAX_INSTR_CYCLES);
             cycle_count += cycles;
@@ -437,7 +513,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
             // this can happen here because if SREG I-bit is ever changed
             // it'll break out of the loop anyway
-            prev_sreg = sreg();
+            prev_sreg = sreg;
             
             io_reg_accessed = false;
             do
@@ -460,7 +536,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     }
     else if(wakeup_cycles > 0)
     {
-        prev_sreg = sreg();
+        prev_sreg = sreg;
         // sleeping but waking up from an interrupt
 
 #ifndef ARDENS_NO_DEBUGGER
@@ -478,7 +554,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
     else
     {
         // sleeping and not waking up from an interrupt
-        prev_sreg = sreg();
+        prev_sreg = sreg;
 
         // boost executed cycles to speed up timer code
         uint64_t t = std::max(cycle_count + 1, peripheral_queue.next_cycle());
@@ -490,7 +566,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
     // if interrupts were just enabled, schedule interrupt check for next cycle
     // (allows next instruction to execute)
-    if(~prev_sreg & sreg() & SREG_I)
+    if(~prev_sreg & sreg & reg::bit::SREG::I)
         peripheral_queue.schedule(cycle_count + 1, PQ_INTERRUPT);
 
     update_sound();
@@ -500,11 +576,10 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
 
 void atmega32u4_t::update_all()
 {
-    update_timer0();
-    update_timer1();
-    update_timer3();
+    update_sync_timers();
     update_timer4();
     update_usb();
+    update_twi();
     update_sound();
 }
 

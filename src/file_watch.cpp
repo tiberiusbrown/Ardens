@@ -37,12 +37,12 @@ static void watch_action(std::string const& path, filewatch::Event const e)
     if(hex)
     {
         load_hex.store(true);
-        ms_reload_hex = ms_since_start + RELOAD_AFTER_MS;
+        ms_reload_hex = app.ms_since_start + RELOAD_AFTER_MS;
     }
     else
     {
         load_bin.store(true);
-        ms_reload_bin = ms_since_start + RELOAD_AFTER_MS;
+        ms_reload_bin = app.ms_since_start + RELOAD_AFTER_MS;
     }
 }
 
@@ -82,17 +82,25 @@ void file_watch_clear()
 
 void file_watch_check()
 {
-    if(ms_since_start >= ms_reload_hex && load_hex.exchange(false))
+    if(app.ms_since_start >= ms_reload_hex && load_hex.exchange(false))
     {
         std::ifstream f(fname_hex.c_str(), std::ios::in | std::ios::binary);
         if(f.fail()) load_hex.store(true);
-        else dropfile_err = arduboy.load_file(fname_hex.c_str(), f);
+        else
+        {
+            disconnect_linked_secondary_arduboy();
+            app.dropfile_err = app.emulator->load_file(fname_hex.c_str(), f);
+        }
     }
-    if(ms_since_start >= ms_reload_bin && load_bin.exchange(false))
+    if(app.ms_since_start >= ms_reload_bin && load_bin.exchange(false))
     {
         std::ifstream f(fname_bin.c_str(), std::ios::in | std::ios::binary);
         if(f.fail()) load_bin.store(true);
-        else dropfile_err = arduboy.load_file(fname_bin.c_str(), f);
+        else
+        {
+            disconnect_linked_secondary_arduboy();
+            app.dropfile_err = app.emulator->load_file(fname_bin.c_str(), f);
+        }
     }
 }
 

@@ -59,14 +59,14 @@ static std::array<uint32_t, 128 * 64> video_buf;
 static std::vector<int16_t> audio_buf;
 
 constexpr size_t SAVE_RAM_BYTES =
-    sizeof(arduboy->cpu.eeprom) + absim::w25q128_t::DATA_BYTES;
+    sizeof(arduboy->core_state.cpu.eeprom) + absim::w25q128_t::DATA_BYTES;
 static std::vector<uint8_t> save_buf;
 
 static std::string savedata_filename()
 {
     char buf[128];
-    uint32_t hash_hi = uint32_t(arduboy->game_hash >> 32);
-    uint32_t hash_lo = uint32_t(arduboy->game_hash);
+    uint32_t hash_hi = uint32_t(arduboy->program_state.game_hash >> 32);
+    uint32_t hash_lo = uint32_t(arduboy->program_state.game_hash);
     snprintf(buf, sizeof(buf), "/ardens_%08x%08x.save", hash_hi, hash_lo);
     return std::string(save_path) + buf;
 }
@@ -90,13 +90,13 @@ static void load_savedata()
 
 static void flush_savedata()
 {
-    if(!arduboy || !save_path || (!need_save && !arduboy->savedata_dirty))
+    if(!arduboy || !save_path || (!need_save && !arduboy->save_data_state.dirty))
     {
         return;
     }
 
     need_save = false;
-    arduboy->savedata_dirty = false;
+    arduboy->save_data_state.dirty = false;
 
     std::string fname = savedata_filename();
     std::ofstream f(fname, std::ios::out | std::ios::binary);
@@ -199,63 +199,67 @@ void retro_run()
     bool btn_A = func_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
     bool btn_B = func_input_state(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
 
-    uint8_t pinf = 0xf0;
-    uint8_t pine = 0x40;
-    uint8_t pinb = 0x10;
+    uint8_t pinf =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
+    uint8_t pine = absim::reg::bit::PINE::PINE6;
+    uint8_t pinb = absim::reg::bit::PINB::PINB4;
     
     std::array<bool, 4> keys = { btn_U, btn_R, btn_D, btn_L, };
     unsigned orientation = 0;
     std::rotate(keys.begin(), keys.begin() + orientation, keys.end());
 
-    if(keys[0]) pinf &= ~0x80;
-    if(keys[1]) pinf &= ~0x40;
-    if(keys[2]) pinf &= ~0x10;
-    if(keys[3]) pinf &= ~0x20;
+    if(keys[0]) pinf &= ~absim::reg::bit::PINF::PINF7;
+    if(keys[1]) pinf &= ~absim::reg::bit::PINF::PINF6;
+    if(keys[2]) pinf &= ~absim::reg::bit::PINF::PINF4;
+    if(keys[3]) pinf &= ~absim::reg::bit::PINF::PINF5;
 
-    if(btn_A) pine &= ~0x40;
-    if(btn_B) pinb &= ~0x10;
+    if(btn_A) pine &= ~absim::reg::bit::PINE::PINE6;
+    if(btn_B) pinb &= ~absim::reg::bit::PINB::PINB4;
 
-    arduboy->cpu.data[0x23] = pinb;
-    arduboy->cpu.data[0x2c] = pine;
-    arduboy->cpu.data[0x2f] = pinf;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINB] = pinb;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINE] = pine;
+    arduboy->core_state.cpu.data[absim::reg::addr::PINF] = pinf;
 
-    arduboy->frame_bytes_total = 1024;
-    arduboy->cpu.enabled_autobreaks = 0;
-    arduboy->allow_nonstep_breakpoints = false;
-    arduboy->display.enable_filter = true;
+    arduboy->profiler_state.frame_bytes_total = 1024;
+    arduboy->core_state.cpu.enabled_autobreaks = 0;
+    arduboy->debugger_state.allow_nonstep_breakpoints = false;
+    arduboy->peripherals.display.enable_filter = true;
 
     constexpr uint64_t dtps = uint64_t(1e12 / FPS);
     arduboy->advance(dtps);
 
     for(size_t i = 0; i < video_buf.size(); ++i)
     {
-        uint32_t t = arduboy->display.filtered_pixels[i];
+        uint32_t t = arduboy->peripherals.display.filtered_pixels[i];
         t |= (t << 8) | (t << 16);
         video_buf[i] = t;
     }
     func_video(video_buf.data(), 128, 64, sizeof(uint32_t) * 128);
 
     audio_buf.clear();
-    for(auto sample : arduboy->cpu.sound_buffer)
+    for(auto sample : arduboy->core_state.cpu.sound_buffer)
     {
         audio_buf.push_back(sample);
         audio_buf.push_back(sample);
     }
-    arduboy->cpu.sound_buffer.clear();
+    arduboy->core_state.cpu.sound_buffer.clear();
     func_audio_batch(
         audio_buf.data(),
         audio_buf.size() / 2);
-    arduboy->cpu.serial_bytes.clear();
+    arduboy->core_state.cpu.serial_bytes.clear();
 
     // Do we need to save?
-    if(arduboy->savedata_dirty)
+    if(arduboy->save_data_state.dirty)
     {
         need_save = true;
-        need_save_cycle = arduboy->cpu.cycle_count + SAVE_INTERVAL_CYCLES;
-        arduboy->savedata_dirty = false;
+        need_save_cycle = arduboy->core_state.cpu.cycle_count + SAVE_INTERVAL_CYCLES;
+        arduboy->save_data_state.dirty = false;
     }
 
-    if(save_path && need_save && arduboy->cpu.cycle_count >= need_save_cycle)
+    if(save_path && need_save && arduboy->core_state.cpu.cycle_count >= need_save_cycle)
     {
         flush_savedata();
     }
@@ -344,29 +348,29 @@ void* retro_get_memory_data(unsigned id)
     switch(id)
     {
     case RETRO_MEMORY_SYSTEM_RAM:
-        return arduboy->cpu.data.data();
+        return arduboy->core_state.cpu.data.data();
     case RETRO_MEMORY_SAVE_RAM:
-        memcpy(save_buf.data() + 0, arduboy->cpu.eeprom.data(), 1024);
-        for(size_t i = 0; i < arduboy->fx.NUM_SECTORS; ++i)
+        memcpy(save_buf.data() + 0, arduboy->core_state.cpu.eeprom.data(), 1024);
+        for(size_t i = 0; i < arduboy->peripherals.fx.NUM_SECTORS; ++i)
         {
-            if(arduboy->fx.sectors[i])
+            if(arduboy->peripherals.fx.sectors[i])
             {
                 memcpy(
-                    save_buf.data() + 1024 + i * arduboy->fx.SECTOR_BYTES,
-                    arduboy->fx.sectors[i]->data(),
-                    arduboy->fx.SECTOR_BYTES);
+                    save_buf.data() + 1024 + i * arduboy->peripherals.fx.SECTOR_BYTES,
+                    arduboy->peripherals.fx.sectors[i]->data(),
+                    arduboy->peripherals.fx.SECTOR_BYTES);
             }
             else
             {
                 memset(
-                    save_buf.data() + 1024 + i * arduboy->fx.SECTOR_BYTES,
+                    save_buf.data() + 1024 + i * arduboy->peripherals.fx.SECTOR_BYTES,
                     0,
-                    arduboy->fx.SECTOR_BYTES);
+                    arduboy->peripherals.fx.SECTOR_BYTES);
             }
         }
         return save_buf.data();
     case RETRO_MEMORY_VIDEO_RAM:
-        return arduboy->display.ram.data();
+        return arduboy->peripherals.display.ram.data();
     default:
         return nullptr;
     }
@@ -377,11 +381,11 @@ size_t retro_get_memory_size(unsigned id)
     switch(id)
     {
     case RETRO_MEMORY_SYSTEM_RAM:
-        return sizeof(arduboy->cpu.data);
+        return sizeof(arduboy->core_state.cpu.data);
     case RETRO_MEMORY_SAVE_RAM:
         return SAVE_RAM_BYTES;
     case RETRO_MEMORY_VIDEO_RAM:
-        return sizeof(arduboy->display.ram);
+        return sizeof(arduboy->peripherals.display.ram);
     default:
         return 0;
     }

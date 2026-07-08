@@ -10,13 +10,13 @@ void window_eeprom(bool& open)
 	using namespace ImGui;
     if(!open) return;
 
-    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("EEPROM", &open) && arduboy.cpu.decoded)
+    SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+    if(Begin("EEPROM", &open) && app.emulator->core_state.cpu.decoded)
     {
-        memed_eeprom.ReadOnly = !arduboy.is_present_state();
+        memed_eeprom.ReadOnly = !app.emulator->is_present_state();
         memed_eeprom.DrawContents(
-            arduboy.cpu.eeprom.data(),
-            arduboy.cpu.eeprom.size());
+            app.emulator->core_state.cpu.eeprom.data(),
+            app.emulator->core_state.cpu.eeprom.size());
     }
     End();
 }

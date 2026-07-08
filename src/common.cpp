@@ -12,6 +12,9 @@
 
 #include <fstream>
 #include <algorithm>
+#include <cerrno>
+#include <cctype>
+#include <ctime>
 
 #include <string.h>
 #include <stdlib.h>
@@ -63,46 +66,10 @@ extern "C" {
 void process_sound_samples() {}
 #endif
 
-#ifndef ARDENS_NO_GUI
-extern unsigned char const ProggyVector[198188];
-#endif
-
-std::filesystem::path userpath;
-
-texture_t display_texture{};
-texture_t display_buffer_texture{};
-absim::arduboy_t arduboy;
-
-int profiler_selected_hotspot = -1;
-int disassembly_scroll_addr = -1;
-bool scroll_addr_to_top = false;
-int simulation_slowdown = 1000;
-int fx_data_scroll_addr = -1;
-
-int display_buffer_addr = -1;
-int display_buffer_w = 128;
-int display_buffer_h = 64;
+app_state_t app;
+platform_services_t platform_services;
 
 static ImGuiStyle default_style;
-
-float pixel_ratio = 1.f;
-std::string dropfile_err;
-bool loading_indicator = false;
-uint64_t ms_since_start;
-
-uint64_t ms_since_touch;
-bool first_touch = false;
-bool always_touch = false;
-std::unordered_map<uint64_t, touch_point_t> touch_points;
-
-bool done = false;
-bool layout_done = false;
-bool settings_loaded = false;
-#ifdef __EMSCRIPTEN__
-bool fs_ready = false;
-#else
-bool fs_ready = true;
-#endif
 
 #if defined(ARDENS_FLASHCART)
 static uint8_t FLASHCART_BUFFER[8 * 1024 * 1024];
@@ -112,7 +79,7 @@ static void flashcart_fetch_callback(sfetch_response_t const* r)
 {
     if(r->fetched)
     {
-        flashcart_error = arduboy.load_flashcart_zip(
+        flashcart_error = app.emulator->load_flashcart_zip(
             (uint8_t const*)r->data.ptr, r->data.size);
     }
     else if(r->finished)
@@ -121,7 +88,7 @@ static void flashcart_fetch_callback(sfetch_response_t const* r)
     }
     if(r->finished)
     {
-        loading_indicator = false;
+        app.loading_indicator = false;
         if(flashcart_error.empty())
             printf("Flashcart loaded successfully.\n");
         else
@@ -144,7 +111,6 @@ void file_download(
 }
 #endif
 
-#ifndef ARDENS_PLATFORM_SDL
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -152,7 +118,8 @@ void file_download(
 #include <windows.h>
 #include <shellapi.h>
 #endif
-void platform_open_url(char const *url)
+
+static void default_platform_open_url(char const *url)
 {
 #ifdef __EMSCRIPTEN__
     EM_ASM(
@@ -169,16 +136,374 @@ void platform_open_url(char const *url)
     (void)system(fmt::format("xdg-open {}", url).c_str());
 #endif
 }
-#endif
+
+void platform_destroy_texture(texture_t t)
+{
+    if(platform_services.destroy_texture)
+        platform_services.destroy_texture(t);
+}
+
+texture_t platform_create_texture(int w, int h)
+{
+    return platform_services.create_texture ?
+        platform_services.create_texture(w, h) :
+        nullptr;
+}
+
+void platform_update_texture(texture_t t, void const* data, size_t n)
+{
+    if(platform_services.update_texture)
+        platform_services.update_texture(t, data, n);
+}
+
+void platform_texture_scale_linear(texture_t t)
+{
+    if(platform_services.texture_scale_linear)
+        platform_services.texture_scale_linear(t);
+}
+
+void platform_texture_scale_nearest(texture_t t)
+{
+    if(platform_services.texture_scale_nearest)
+        platform_services.texture_scale_nearest(t);
+}
+
+void platform_set_clipboard_text(char const* str)
+{
+    if(platform_services.set_clipboard_text)
+        platform_services.set_clipboard_text(str);
+}
+
+void platform_send_sound()
+{
+    if(platform_services.send_sound)
+        platform_services.send_sound();
+}
+
+uint64_t platform_get_ms_dt()
+{
+    return platform_services.get_ms_dt ?
+        platform_services.get_ms_dt() :
+        0;
+}
+
+float platform_pixel_ratio()
+{
+    return platform_services.pixel_ratio ?
+        platform_services.pixel_ratio() :
+        1.f;
+}
+
+void platform_open_url(char const* url)
+{
+    if(platform_services.open_url)
+        platform_services.open_url(url);
+    else
+        default_platform_open_url(url);
+}
+
+void platform_toggle_fullscreen()
+{
+    if(platform_services.toggle_fullscreen)
+        platform_services.toggle_fullscreen();
+}
+
+void platform_quit()
+{
+    if(platform_services.quit)
+        platform_services.quit();
+}
+
+void platform_set_title(char const* title)
+{
+    if(platform_services.set_title)
+        platform_services.set_title(title);
+}
+
+bool linked_secondary_arduboy_connected()
+{
+    return app.linked_secondary_arduboy != nullptr;
+}
+
+static void set_unpressed_buttons(absim::arduboy_t& a)
+{
+    auto& cpu = a.core_state.cpu;
+    cpu.data[absim::reg::addr::PINB] = absim::reg::bit::PINB::PINB4;
+    cpu.data[absim::reg::addr::PINE] = absim::reg::bit::PINE::PINE6;
+    cpu.data[absim::reg::addr::PINF] =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
+}
+
+static void set_current_buttons(absim::arduboy_t& a)
+{
+    // PINF: 4,5,6,7=D,L,R,U
+    // PINE: 6=A
+    // PINB: 4=B
+    uint8_t pinf =
+        absim::reg::bit::PINF::PINF7 |
+        absim::reg::bit::PINF::PINF6 |
+        absim::reg::bit::PINF::PINF5 |
+        absim::reg::bit::PINF::PINF4;
+    uint8_t pine = absim::reg::bit::PINE::PINE6;
+    uint8_t pinb = absim::reg::bit::PINB::PINB4;
+
+    std::array<ImGuiKey, 4> keys =
+    {
+        ImGuiKey_UpArrow,
+        ImGuiKey_RightArrow,
+        ImGuiKey_DownArrow,
+        ImGuiKey_LeftArrow,
+    };
+    std::array<int, 4> tkeys =
+    {
+        TOUCH_U, TOUCH_R, TOUCH_D, TOUCH_L,
+    };
+    auto touch = touched_buttons();
+
+    std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
+    std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
+
+    if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~absim::reg::bit::PINF::PINF7;
+    if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~absim::reg::bit::PINF::PINF6;
+    if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~absim::reg::bit::PINF::PINF4;
+    if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~absim::reg::bit::PINF::PINF5;
+
+    if( ImGui::IsKeyDown(ImGuiKey_A) ||
+        ImGui::IsKeyDown(ImGuiKey_Z) ||
+        touch.btns[TOUCH_A])
+        pine &= ~absim::reg::bit::PINE::PINE6;
+    if( ImGui::IsKeyDown(ImGuiKey_B) ||
+        ImGui::IsKeyDown(ImGuiKey_S) ||
+        ImGui::IsKeyDown(ImGuiKey_X) ||
+        touch.btns[TOUCH_B])
+        pinb &= ~absim::reg::bit::PINB::PINB4;
+
+    auto& cpu = a.core_state.cpu;
+    cpu.data[absim::reg::addr::PINB] = pinb;
+    cpu.data[absim::reg::addr::PINE] = pine;
+    cpu.data[absim::reg::addr::PINF] = pinf;
+}
+
+void apply_runtime_settings(absim::arduboy_t& a)
+{
+    a.core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    a.profiler_state.frame_bytes_total = 1024;
+    a.debugger_state.allow_nonstep_breakpoints =
+        a.debugger_state.break_step == 0xffffffff || settings.enable_step_breaks;
+    a.program_state.cfg.usb_bus_state =
+        settings.usb_connected ?
+        absim::USB_BUS_CONNECTED :
+        absim::USB_BUS_DISCONNECTED;
+
+    auto& display = a.peripherals.display;
+    display.enable_filter = settings.display_auto_filter;
+    display.enable_current_limiting = (settings.display_current_modeling != 0);
+    display.ref_segment_current = 0.195f;
+    switch(settings.display_current_modeling)
+    {
+    case 0:  display.current_limit_slope = 0.f;   break;
+    case 1:  display.current_limit_slope = 0.75f; break;
+    case 2:  display.current_limit_slope = 0.45f; break;
+    case 3:  display.current_limit_slope = 0.f;   break;
+    default: display.current_limit_slope = 0.f;   break;
+    }
+
+    switch(settings.fxport)
+    {
+    case FXPORT_D1:
+        a.peripherals.fxport_reg = absim::reg::addr::PORTD;
+        a.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD1;
+        break;
+    case FXPORT_D2:
+        a.peripherals.fxport_reg = absim::reg::addr::PORTD;
+        a.peripherals.fxport_mask = absim::reg::bit::PORTD::PORTD2;
+        break;
+    case FXPORT_E2:
+        a.peripherals.fxport_reg = absim::reg::addr::PORTE;
+        a.peripherals.fxport_mask = absim::reg::bit::PORTE::PORTE2;
+        break;
+    default:
+        break;
+    }
+
+    switch(settings.display)
+    {
+    case DISPLAY_SSD1306:
+        display.type = absim::display_t::SSD1306;
+        break;
+    case DISPLAY_SSD1309:
+        display.type = absim::display_t::SSD1309;
+        break;
+    case DISPLAY_SH1106:
+        display.type = absim::display_t::SH1106;
+        break;
+    default:
+        break;
+    }
+}
+
+void disconnect_linked_secondary_arduboy()
+{
+    app.linked_secondary_input_focus = false;
+    app.linked_i2c_bridge.disconnect();
+
+    platform_destroy_texture(app.linked_secondary_display_texture);
+    app.linked_secondary_display_texture = {};
+    app.linked_secondary_display_texture_zoom = -1;
+    app.linked_secondary_arduboy.reset();
+}
+
+static bool load_linked_secondary_arduboy(bool preroll)
+{
+    auto& primary = *app.emulator;
+    if(!primary.core_state.cpu.decoded || primary.program_state.prog_filedata.empty())
+        return false;
+
+    auto secondary = std::make_unique<absim::arduboy_t>();
+    secondary->program_state.cfg = primary.program_state.cfg;
+    absim::istrstream f(
+        (char const*)primary.program_state.prog_filedata.data(),
+        (int)primary.program_state.prog_filedata.size());
+    std::string err = secondary->load_file(primary.program_state.prog_filename.c_str(), f);
+    if(!err.empty())
+    {
+        app.dropfile_err = err;
+        return false;
+    }
+
+    app.linked_secondary_arduboy = std::move(secondary);
+    app.linked_i2c_bridge.connect({ &primary, app.linked_secondary_arduboy.get() });
+    app.linked_i2c_bridge.update_bus_lines();
+    if(preroll)
+    {
+        apply_runtime_settings(*app.linked_secondary_arduboy);
+        set_unpressed_buttons(*app.linked_secondary_arduboy);
+        app.linked_secondary_arduboy->debugger_state.paused = false;
+        app.linked_i2c_bridge.update_bus_lines();
+        app.linked_secondary_arduboy->advance(50ull * 1000000000ull);
+        app.linked_i2c_bridge.update_bus_lines();
+    }
+    app.linked_secondary_arduboy_cycle_offset = static_cast<int64_t>(
+        app.emulator->core_state.cpu.cycle_count -
+        app.linked_secondary_arduboy->core_state.cpu.cycle_count);
+    return true;
+}
+
+void swap_linked_secondary_arduboy()
+{
+    if(!app.linked_secondary_arduboy) return;
+    std::swap(app.emulator, app.linked_secondary_arduboy);
+    std::swap(
+        app.emulator->debugger_state.breakpoints,
+        app.linked_secondary_arduboy->debugger_state.breakpoints);
+    std::swap(
+        app.emulator->debugger_state.breakpoints_rd,
+        app.linked_secondary_arduboy->debugger_state.breakpoints_rd);
+    std::swap(
+        app.emulator->debugger_state.breakpoints_wr,
+        app.linked_secondary_arduboy->debugger_state.breakpoints_wr);
+    app.linked_secondary_arduboy_cycle_offset = -app.linked_secondary_arduboy_cycle_offset;
+}
+
+bool connect_linked_secondary_arduboy()
+{
+    disconnect_linked_secondary_arduboy();
+    return load_linked_secondary_arduboy(false);
+}
+
+static void reset_linked_secondary_arduboy()
+{
+    if(!app.linked_secondary_arduboy) return;
+
+    app.linked_i2c_bridge.disconnect();
+    app.linked_secondary_arduboy.reset();
+
+    load_linked_secondary_arduboy(true);
+}
+
+void reset_primary_simulation()
+{
+    apply_runtime_settings(*app.emulator);
+    app.emulator->reset();
+    load_savedata();
+    reset_linked_secondary_arduboy();
+}
+
+static void advance_linked_secondary()
+{
+    if(!app.linked_secondary_arduboy) return;
+
+    // Maintain the same cycle offset between linked Arduboys.
+    uint64_t cycles = app.emulator->core_state.cpu.cycle_count;
+    uint64_t secondary_cycles = app.linked_secondary_arduboy->core_state.cpu.cycle_count;
+    int64_t cycle_offset = app.linked_secondary_arduboy_cycle_offset;
+    if(static_cast<int64_t>(cycles - secondary_cycles) <= cycle_offset)
+        return;
+    auto c = static_cast<uint64_t>(cycles - secondary_cycles - cycle_offset);
+
+    bool prev_paused = app.linked_secondary_arduboy->debugger_state.paused;
+    app.linked_secondary_arduboy->debugger_state.paused = false;
+    apply_runtime_settings(*app.linked_secondary_arduboy);
+    if(!app.linked_secondary_input_focus)
+        set_unpressed_buttons(*app.linked_secondary_arduboy);
+    app.linked_secondary_arduboy->advance(c * absim::arduboy_t::CYCLE_PS);
+    app.linked_secondary_arduboy->debugger_state.paused = prev_paused;
+}
+
+void advance_primary(uint64_t ps)
+{
+    if(!app.linked_secondary_arduboy)
+    {
+        app.emulator->advance(ps);
+        return;
+    }
+
+    constexpr uint64_t LINK_UPDATE_PS = 10ull * 1000000ull;
+    while(ps > 0 && !app.emulator->debugger_state.paused)
+    {
+        uint64_t chunk = std::min<uint64_t>(ps, LINK_UPDATE_PS);
+        uint64_t before = app.emulator->core_state.cpu.cycle_count;
+
+        app.linked_i2c_bridge.update_bus_lines();
+        app.emulator->advance(chunk);
+        app.linked_i2c_bridge.update_bus_lines();
+
+        uint64_t cycles = app.emulator->core_state.cpu.cycle_count - before;
+        advance_linked_secondary();
+        app.linked_i2c_bridge.update_bus_lines();
+
+        if(cycles == 0 && chunk >= ps)
+            break;
+        ps -= chunk;
+    }
+}
+
+void advance_primary_instr()
+{
+    uint64_t before = app.emulator->core_state.cpu.cycle_count;
+    app.emulator->advance_instr();
+    uint64_t cycles = app.emulator->core_state.cpu.cycle_count - before;
+    if(app.linked_secondary_arduboy)
+    {
+        app.linked_i2c_bridge.update_bus_lines();
+        advance_linked_secondary();
+        app.linked_i2c_bridge.update_bus_lines();
+    }
+}
 
 extern "C" int load_file(
     char const* param, char const* filename, uint8_t const* data, size_t size)
 {
     absim::istrstream f((char const*)data, size);
     bool save = !strcmp(param, "save");
-    dropfile_err = arduboy.load_file(filename, f, save);
+    if(!save)
+        disconnect_linked_secondary_arduboy();
+    app.dropfile_err = app.emulator->load_file(filename, f, save);
     autoset_from_device_type();
-    if(dropfile_err.empty())
+    if(app.dropfile_err.empty())
     {
         load_savedata();
 #ifndef ARDENS_DIST
@@ -190,17 +515,17 @@ extern "C" int load_file(
 
 extern "C" int get_led_state(int component)
 {
-    if(!arduboy.cpu.decoded) return 0;
+    if(!app.emulator->core_state.cpu.decoded) return 0;
 
     uint8_t r = 0;
     uint8_t g = 0;
     uint8_t b = 0;
-    arduboy.cpu.led_rgb(r, g, b);
+    app.emulator->core_state.cpu.led_rgb(r, g, b);
 
     switch(component)
     {
-    case 0: return arduboy.cpu.led_tx();
-    case 1: return arduboy.cpu.led_rx();
+    case 0: return app.emulator->core_state.cpu.led_tx();
+    case 1: return app.emulator->core_state.cpu.led_rx();
     case 2: return r;
     case 3: return g;
     case 4: return b;
@@ -259,158 +584,310 @@ bool ends_with(std::string const& str, std::string const& end)
     return str.substr(str.size() - end.size()) == end;
 }
 
+static bool string_equals_ignore_case(char const* a, char const* b)
+{
+    if(!a || !b) return false;
+    while(*a && *b)
+    {
+        unsigned char ca = static_cast<unsigned char>(*a++);
+        unsigned char cb = static_cast<unsigned char>(*b++);
+        if(std::tolower(ca) != std::tolower(cb)) return false;
+    }
+    return *a == *b;
+}
+
+static bool parse_int(char const* value, int& result)
+{
+    if(!value || !*value) return false;
+    errno = 0;
+    char* end = nullptr;
+    long parsed = strtol(value, &end, 10);
+    if(errno || end == value || *end) return false;
+    result = static_cast<int>(parsed);
+    return true;
+}
+
+static bool parse_clamped_int(char const* value, int min_value, int max_value, int& result)
+{
+    int parsed = 0;
+    if(!parse_int(value, parsed)) return false;
+    result = std::clamp<int>(parsed, min_value, max_value);
+    return true;
+}
+
+static bool parse_bool(char const* value, bool& result)
+{
+    int parsed = 0;
+    if(parse_int(value, parsed))
+    {
+        result = parsed != 0;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "true") ||
+        string_equals_ignore_case(value, "yes") ||
+        string_equals_ignore_case(value, "on"))
+    {
+        result = true;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "false") ||
+        string_equals_ignore_case(value, "no") ||
+        string_equals_ignore_case(value, "off"))
+    {
+        result = false;
+        return true;
+    }
+    return false;
+}
+
+static bool parse_grid(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "none")) result = PGRID_NONE;
+    else if(string_equals_ignore_case(value, "normal")) result = PGRID_NORMAL;
+    else if(string_equals_ignore_case(value, "red")) result = PGRID_RED;
+    else if(string_equals_ignore_case(value, "green")) result = PGRID_GREEN;
+    else if(string_equals_ignore_case(value, "blue")) result = PGRID_BLUE;
+    else if(string_equals_ignore_case(value, "cyan")) result = PGRID_CYAN;
+    else if(string_equals_ignore_case(value, "magenta")) result = PGRID_MAGENTA;
+    else if(string_equals_ignore_case(value, "yellow")) result = PGRID_YELLOW;
+    else if(string_equals_ignore_case(value, "white")) result = PGRID_WHITE;
+    else return parse_clamped_int(value, PGRID_MIN, PGRID_MAX, result);
+    return true;
+}
+
+static bool parse_palette(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "default")) result = PALETTE_DEFAULT;
+    else if(string_equals_ignore_case(value, "retro")) result = PALETTE_RETRO;
+    else if(string_equals_ignore_case(value, "lowcontrast")) result = PALETTE_LOW_CONTRAST;
+    else if(string_equals_ignore_case(value, "highcontrast")) result = PALETTE_HIGH_CONTRAST;
+    else return parse_clamped_int(value, PALETTE_MIN, PALETTE_MAX, result);
+    return true;
+}
+
+static bool parse_filter(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "none")) result = FILTER_NONE;
+    else if(string_equals_ignore_case(value, "scale2x")) result = FILTER_SCALE2X;
+    else if(string_equals_ignore_case(value, "scale3x")) result = FILTER_SCALE3X;
+    else if(string_equals_ignore_case(value, "scale4x")) result = FILTER_SCALE4X;
+    else if(string_equals_ignore_case(value, "hq2x")) result = FILTER_HQ2X;
+    else if(string_equals_ignore_case(value, "hq3x")) result = FILTER_HQ3X;
+    else if(string_equals_ignore_case(value, "hq4x")) result = FILTER_HQ4X;
+    else return parse_clamped_int(value, FILTER_MIN, FILTER_MAX, result);
+    return true;
+}
+
+static bool parse_orientation(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "0") || string_equals_ignore_case(value, "normal"))
+        result = 0;
+    else if(string_equals_ignore_case(value, "90") ||
+        string_equals_ignore_case(value, "cw") ||
+        string_equals_ignore_case(value, "cw90"))
+        result = 1;
+    else if(string_equals_ignore_case(value, "180") || string_equals_ignore_case(value, "flip"))
+        result = 2;
+    else if(string_equals_ignore_case(value, "270") ||
+        string_equals_ignore_case(value, "ccw") ||
+        string_equals_ignore_case(value, "ccw90"))
+        result = 3;
+    else return parse_clamped_int(value, 0, 3, result);
+    return true;
+}
+
+static bool parse_current_model(char const* value, int& result)
+{
+    if(parse_clamped_int(value, 0, 3, result))
+        return true;
+    if(string_equals_ignore_case(value, "true") ||
+        string_equals_ignore_case(value, "yes") ||
+        string_equals_ignore_case(value, "on"))
+    {
+        result = 1;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "false") ||
+        string_equals_ignore_case(value, "no") ||
+        string_equals_ignore_case(value, "off"))
+    {
+        result = 0;
+        return true;
+    }
+    if(string_equals_ignore_case(value, "subtle")) result = 1;
+    else if(string_equals_ignore_case(value, "normal")) result = 2;
+    else if(string_equals_ignore_case(value, "exaggerated")) result = 3;
+    else return false;
+    return true;
+}
+
+static bool parse_fxport(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "d1") || string_equals_ignore_case(value, "fx"))
+        result = FXPORT_D1;
+    else if(string_equals_ignore_case(value, "d2") || string_equals_ignore_case(value, "fxdevkit"))
+        result = FXPORT_D2;
+    else if(string_equals_ignore_case(value, "e2") || string_equals_ignore_case(value, "mini"))
+        result = FXPORT_E2;
+    else return parse_clamped_int(value, 0, FXPORT_NUM - 1, result);
+    return true;
+}
+
+static bool parse_display(char const* value, int& result)
+{
+    if(string_equals_ignore_case(value, "ssd1306")) result = DISPLAY_SSD1306;
+    else if(string_equals_ignore_case(value, "ssd1309")) result = DISPLAY_SSD1309;
+    else if(string_equals_ignore_case(value, "sh1106")) result = DISPLAY_SH1106;
+    else return parse_clamped_int(value, 0, DISPLAY_NUM - 1, result);
+    return true;
+}
+
 extern "C" int setparam(char const* name, char const* value)
 {
     if(!name || !value) return 0;
-    int nvalue = atoi(value);
-    bool bvalue = (nvalue != 0);
     int r = 0;
     if(!strcmp(name, "z"))
     {
-        settings.fullzoom = bvalue;
-        update_settings();
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.fullzoom = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "g") || !strcmp(name, "grid"))
     {
-        if(!strcmp(value, "none"))
-            settings.display_pixel_grid = PGRID_NONE;
-        else if(!strcmp(value, "normal"))
-            settings.display_pixel_grid = PGRID_NORMAL;
-        else if(!strcmp(value, "red"))
-            settings.display_pixel_grid = PGRID_RED;
-        else if(!strcmp(value, "green"))
-            settings.display_pixel_grid = PGRID_GREEN;
-        else if(!strcmp(value, "blue"))
-            settings.display_pixel_grid = PGRID_BLUE;
-        else if(!strcmp(value, "cyan"))
-            settings.display_pixel_grid = PGRID_CYAN;
-        else if(!strcmp(value, "magenta"))
-            settings.display_pixel_grid = PGRID_MAGENTA;
-        else if(!strcmp(value, "yellow"))
-            settings.display_pixel_grid = PGRID_YELLOW;
-        else if(!strcmp(value, "white"))
-            settings.display_pixel_grid = PGRID_WHITE;
-        else
-            settings.display_pixel_grid = std::clamp<int>(nvalue, PGRID_MIN, PGRID_MAX);
-        update_settings();
+        int parsed = 0;
+        if(parse_grid(value, parsed))
+        {
+            settings.display_pixel_grid = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "p") || !strcmp(name, "palette"))
     {
-        if(!strcmp(value, "default"))
-            settings.display_palette = PALETTE_DEFAULT;
-        else if(!strcmp(value, "retro"))
-            settings.display_palette = PALETTE_RETRO;
-        else if(!strcmp(value, "lowcontrast"))
-            settings.display_palette = PALETTE_LOW_CONTRAST;
-        else if(!strcmp(value, "highcontrast"))
-            settings.display_palette = PALETTE_HIGH_CONTRAST;
-        else
-            settings.display_palette = std::clamp<int>(nvalue, PALETTE_MIN, PALETTE_MAX);
-        update_settings();
+        int parsed = 0;
+        if(parse_palette(value, parsed))
+        {
+            settings.display_palette = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "af") || !strcmp(name, "autofilter"))
     {
-        settings.display_auto_filter = bvalue;
-        update_settings();
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.display_auto_filter = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "f") || !strcmp(name, "filter"))
     {
-        if(!strcmp(value, "none"))
-            settings.display_filtering = FILTER_NONE;
-        else if(!strcmp(value, "scale2x"))
-            settings.display_filtering = FILTER_SCALE2X;
-        else if(!strcmp(value, "scale3x"))
-            settings.display_filtering = FILTER_SCALE3X;
-        else if(!strcmp(value, "scale4x"))
-            settings.display_filtering = FILTER_SCALE4X;
-        else if(!strcmp(value, "hq2x"))
-            settings.display_filtering = FILTER_HQ2X;
-        else if(!strcmp(value, "hq3x"))
-            settings.display_filtering = FILTER_HQ3X;
-        else if(!strcmp(value, "hq4x"))
-            settings.display_filtering = FILTER_HQ4X;
-        else
-            settings.display_filtering = std::clamp<int>(nvalue, FILTER_MIN, FILTER_MAX);
-        update_settings();
+        int parsed = 0;
+        if(parse_filter(value, parsed))
+        {
+            settings.display_filtering = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "ds") || !strcmp(name, "downsample"))
     {
-        settings.display_downsample = std::clamp<int>(nvalue, 1, 4);
-        update_settings();
+        int parsed = 0;
+        if(parse_clamped_int(value, 1, 4, parsed))
+        {
+            settings.display_downsample = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "ori") || !strcmp(name, "orientation"))
     {
-        if(!strcmp(value, "0") || !strcmp(value, "normal"))
-            settings.display_orientation = 0;
-        else if(!strcmp(value, "90") || !strcmp(value, "cw") || !strcmp(value, "cw90"))
-            settings.display_orientation = 1;
-        else if(!strcmp(value, "180") || !strcmp(value, "flip"))
-            settings.display_orientation = 2;
-        else if(!strcmp(value, "270") || !strcmp(value, "ccw") || !strcmp(value, "ccw90"))
-            settings.display_orientation = 3;
-        else
-            settings.display_orientation = std::clamp<int>(nvalue, 0, 3);
-        update_settings();
+        int parsed = 0;
+        if(parse_orientation(value, parsed))
+        {
+            settings.display_orientation = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "v") || !strcmp(name, "volume"))
     {
-        settings.volume = std::clamp<int>(nvalue, 0, 200);
-        update_settings();
+        int parsed = 0;
+        if(parse_clamped_int(value, 0, 200, parsed))
+        {
+            settings.volume = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "i") || !strcmp(name, "intscale"))
     {
-        settings.display_integer_scale = bvalue;
-        update_settings();
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.display_integer_scale = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "c") || !strcmp(name, "current"))
     {
-        settings.display_current_modeling = std::clamp<int>(nvalue, 0, 3);;
-        update_settings();
+        int parsed = 0;
+        if(parse_current_model(value, parsed))
+        {
+            settings.display_current_modeling = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "fxport"))
     {
-        if(!strcmp(value, "d1") || !strcmp(value, "fx"))
-            settings.fxport = FXPORT_D1;
-        else if(!strcmp(value, "d2") || !strcmp(value, "fxdevkit"))
-            settings.fxport = FXPORT_D2;
-        else if(!strcmp(value, "32") || !strcmp(value, "mini"))
-            settings.fxport = FXPORT_E2;
-        else
-            settings.fxport = std::clamp<int>(nvalue, 0, FXPORT_NUM - 1);
-        update_settings();
+        int parsed = 0;
+        if(parse_fxport(value, parsed))
+        {
+            settings.fxport = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "display"))
     {
-        if(!strcmp(value, "ssd1306"))
-            settings.display = DISPLAY_SSD1306;
-        else if(!strcmp(value, "ssd1309"))
-            settings.display = DISPLAY_SSD1309;
-        else if(!strcmp(value, "sh1106"))
-            settings.display = DISPLAY_SH1106;
-        else
-            settings.display = std::clamp<int>(nvalue, 0, DISPLAY_NUM - 1);
-        update_settings();
+        int parsed = 0;
+        if(parse_display(value, parsed))
+        {
+            settings.display = parsed;
+            update_settings();
+        }
+        r = 1;
+    }
+    else if(!strcmp(name, "usb") || !strcmp(name, "usb_connected"))
+    {
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+        {
+            settings.usb_connected = parsed;
+            update_settings();
+        }
         r = 1;
     }
     else if(!strcmp(name, "touch"))
     {
-        always_touch = bvalue;
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+            app.always_touch = parsed;
         r = 1;
     }
     else if(!strcmp(name, "loading"))
     {
-        loading_indicator = bvalue;
+        bool parsed = false;
+        if(parse_bool(value, parsed))
+            app.loading_indicator = parsed;
         r = 1;
     }
     return r;
@@ -418,46 +895,52 @@ extern "C" int setparam(char const* name, char const* value)
 
 extern "C" void postsyncfs()
 {
-    fs_ready = true;
+    app.fs_ready = true;
     load_savedata();
 }
 
 bool update_pixel_ratio()
 {
     float ratio = platform_pixel_ratio();
+    if(!(ratio > 0.f))
+        ratio = 1.f;
     ratio *= (settings.uiscale * 0.25f + 0.5f);
-    bool changed = (ratio != pixel_ratio);
-    pixel_ratio = ratio;
+    bool changed = (ratio != app.pixel_ratio);
+    app.pixel_ratio = ratio;
     return changed;
 }
 
-void define_font()
+static float ui_scale_factor()
 {
-    ImGuiIO& io = ImGui::GetIO();
-    ImFontConfig cfg;
-    cfg.FontDataOwnedByAtlas = false;
-    cfg.RasterizerMultiply = 1.5f;
-    cfg.OversampleH = 2;
-    cfg.OversampleV = 2;
-    io.Fonts->Clear();
-#if !defined(ARDENS_NO_GUI) && !PROFILING
-    io.Fonts->AddFontFromMemoryTTF(
-        (void*)ProggyVector, sizeof(ProggyVector), 13.f * pixel_ratio, &cfg);
-#endif
-}
-
-void rebuild_fonts()
-{
-    platform_destroy_fonts_texture();
-    define_font();
-    platform_create_fonts_texture();
+    return settings.uiscale * 0.25f + 0.5f;
 }
 
 void rescale_style()
 {
+    float const ui_scale = ui_scale_factor();
+    float const dpi_scale = app.pixel_ratio / ui_scale;
     auto& style = ImGui::GetStyle();
     style = default_style;
-    style.ScaleAllSizes(pixel_ratio);
+    style.ScaleAllSizes(app.pixel_ratio);
+    style.FontSizeBase = 13.f;
+    style.FontScaleMain = ui_scale;
+    style.FontScaleDpi = dpi_scale > 0.f ? dpi_scale : 1.f;
+}
+
+std::filesystem::path app_config_folder()
+{
+#ifdef __EMSCRIPTEN__
+    return "/offline";
+#else
+    char ini_path[1024];
+    get_user_config_folder(ini_path, sizeof(ini_path), "Ardens");
+    return ini_path;
+#endif
+}
+
+std::filesystem::path app_config_ini_path()
+{
+    return app_config_folder() / "Ardens.ini";
 }
 
 void shutdown()
@@ -495,26 +978,21 @@ void init()
     FS.mount(IDBFS, {}, '/offline');
     FS.syncfs(true, function(err) { ccall('postsyncfs', 'v'); });
     );
+    app.userpath = app_config_folder();
     io.IniFilename = "/offline/Ardens.ini";
-    userpath = "/offline";
 #else
-    {
-        static char ini_path[1024];
-        get_user_config_folder(ini_path, sizeof(ini_path), "Ardens");
-        userpath = ini_path;
-        std::error_code ec;
-        std::filesystem::create_directories(userpath, ec);
-        strncpy(
-            ini_path,
-            (userpath / "Ardens.ini").generic_string().c_str(),
-            sizeof(ini_path));
-        io.IniFilename = ini_path;
-    }
+    auto const ini_path = app_config_ini_path();
+    app.userpath = ini_path.parent_path();
+    std::error_code ec;
+    std::filesystem::create_directories(app.userpath, ec);
+    static std::string ini_filename;
+    ini_filename = ini_path.generic_string();
+    io.IniFilename = ini_filename.c_str();
 #endif
 
-    printf("Data path: %s\n", userpath.generic_string().c_str());
+    printf("Data path: %s\n", app.userpath.generic_string().c_str());
 
-    arduboy.display.type = absim::display_t::SSD1306;
+    app.emulator->peripherals.display.type = absim::display_t::SSD1306;
 
 #ifndef ARDENS_NO_DEBUGGER
     ImPlot::CreateContext();
@@ -526,10 +1004,12 @@ void init()
 
 #if !defined(__EMSCRIPTEN__) && !defined(ARDENS_NO_SAVED_SETTINGS)
     ImGui::LoadIniSettingsFromDisk(io.IniFilename);
-    settings_loaded = true;
+    app.settings_loaded = true;
 #endif
 
+#ifdef IMGUI_HAS_DOCK
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+#endif
 
 #if defined(__EMSCRIPTEN__) || defined(ARDENS_NO_SAVED_SETTINGS)
     io.IniFilename = nullptr;
@@ -547,14 +1027,14 @@ void init()
 
     default_style = style;
 
-    arduboy.fx.erase_all_data();
-    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
-    arduboy.reset();
-    arduboy.fx.min_page = 0xffff;
-    arduboy.fx.max_page = 0xffff;
+    app.emulator->peripherals.fx.erase_all_data();
+    app.emulator->core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    apply_runtime_settings(*app.emulator);
+    app.emulator->reset();
+    app.emulator->peripherals.fx.set_empty_page_range();
 
-    ms_since_start = 0;
-    ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
+    app.ms_since_start = 0;
+    app.ms_since_touch = MS_SHOW_TOUCH_CONTROLS;
 
 #ifdef ARDENS_DIST
     load_file("", "game.arduboy", game_arduboy, game_arduboy_size);
@@ -568,22 +1048,14 @@ void init()
         req.path = "flashcart.zip";
         req.callback = flashcart_fetch_callback;
         sfetch_send(&req);
-        loading_indicator = true;
+        app.loading_indicator = true;
     }
 #endif
 }
 
 void save_screenshot()
 {
-    char fname[256];
-    time_t rawtime;
-    struct tm* ti;
-    time(&rawtime);
-    ti = localtime(&rawtime);
-    (void)snprintf(fname, sizeof(fname),
-        "screenshot_%04d%02d%02d%02d%02d%02d.png",
-        ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
-        ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
+    std::string fname = timestamped_filename("screenshot", "png");
     int z = recording_filter_zoom();
     int w = 128 * z;
     int h = 64 * z;
@@ -595,9 +1067,9 @@ void save_screenshot()
     }
 #ifdef __EMSCRIPTEN__
     stbi_write_png("screenshot.png", w, h, 4, recording_pixels(true), stride);
-    file_download("screenshot.png", fname, "image/x-png");
+    file_download("screenshot.png", fname.c_str(), "image/x-png");
 #else
-    stbi_write_png(fname, w, h, 4, recording_pixels(true), stride);
+    stbi_write_png(fname.c_str(), w, h, 4, recording_pixels(true), stride);
 #endif
 }
 
@@ -611,34 +1083,40 @@ void toggle_recording()
 void take_snapshot()
 {
 #ifndef ARDENS_NO_SNAPSHOTS
-    char fname[256];
+    std::string fname = timestamped_filename("ardens", "snapshot");
+#ifdef __EMSCRIPTEN__
+    std::ofstream f("ardens.snapshot", std::ios::binary);
+    if(app.emulator->save_snapshot(f))
+    {
+        f.close();
+        file_download("ardens.snapshot", fname.c_str(), "application/octet-stream");
+    }
+#else
+    std::ofstream f(fname, std::ios::binary);
+    app.emulator->save_snapshot(f);
+#endif
+#endif
+}
+
+std::string timestamped_filename(char const* prefix, char const* extension)
+{
+    char timestamp[32];
     time_t rawtime;
     struct tm* ti;
     time(&rawtime);
     ti = localtime(&rawtime);
-    (void)snprintf(fname, sizeof(fname),
-        "ardens_%04d%02d%02d%02d%02d%02d.snapshot",
+    (void)snprintf(timestamp, sizeof(timestamp),
+        "%04d%02d%02d%02d%02d%02d",
         ti->tm_year + 1900, ti->tm_mon + 1, ti->tm_mday,
         ti->tm_hour + 1, ti->tm_min, ti->tm_sec);
-#ifdef __EMSCRIPTEN__
-    std::ofstream f("ardens.snapshot", std::ios::binary);
-    if(arduboy.save_snapshot(f))
-    {
-        f.close();
-        file_download("ardens.snapshot", fname, "application/octet-stream");
-    }
-#else
-    std::ofstream f(fname, std::ios::binary);
-    arduboy.save_snapshot(f);
-#endif
-#endif
+    return fmt::format("{}_{}.{}", prefix, timestamp, extension);
 }
 
 std::string preferred_title()
 {
 #ifdef ARDENS_DIST
-    if(arduboy && !arduboy.title.empty())
-        return arduboy.title;
+    if(!app.emulator->program_state.title.empty())
+        return app.emulator->program_state.title;
 #endif
     return ARDENS_TITLE;
 }
@@ -649,138 +1127,66 @@ void frame_logic()
 
     ImGuiIO& io = ImGui::GetIO();
 
-    arduboy.cpu.adc_nondeterminism = settings.nondeterminism;
-    if(!touch_points.empty())
-        ms_since_touch = 0;
+    app.emulator->core_state.cpu.adc_nondeterminism = settings.nondeterminism;
+    if(!app.touch_points.empty())
+        app.ms_since_touch = 0;
 
 #ifndef ARDENS_DIST
     file_watch_check();
 #endif
 
 #ifdef __EMSCRIPTEN__
-    if(done) emscripten_cancel_main_loop();
+    if(app.done) emscripten_cancel_main_loop();
 #endif
 
     // advance simulation
     uint64_t dt = platform_get_ms_dt();
-    ms_since_start += dt;
-    ms_since_touch += dt;
+    app.ms_since_start += dt;
+    app.ms_since_touch += dt;
     if(dt > 100) dt = 100;
-    if(arduboy.cpu.decoded && !arduboy.paused)
+    if(app.emulator->core_state.cpu.decoded && !app.emulator->debugger_state.paused)
     {
-        // PINF: 4,5,6,7=D,L,R,U
-        // PINE: 6=A
-        // PINB: 4=B
-        uint8_t pinf = 0xf0;
-        uint8_t pine = 0x40;
-        uint8_t pinb = 0x10;
-
         if(!ImGui::GetIO().WantCaptureKeyboard)
         {
-            std::array<ImGuiKey, 4> keys =
+            bool input_to_secondary =
+                !settings.fullzoom &&
+                settings.open_linked_secondary_arduboy &&
+                app.linked_secondary_input_focus &&
+                app.linked_secondary_arduboy != nullptr;
+
+            if(input_to_secondary)
             {
-                ImGuiKey_UpArrow,
-                ImGuiKey_RightArrow,
-                ImGuiKey_DownArrow,
-                ImGuiKey_LeftArrow,
-            };
-            std::array<int, 4> tkeys =
+                set_unpressed_buttons(*app.emulator);
+                set_current_buttons(*app.linked_secondary_arduboy);
+            }
+            else
             {
-                TOUCH_U, TOUCH_R, TOUCH_D, TOUCH_L,
-            };
-            auto touch = touched_buttons();
-
-            std::rotate(keys.begin(), keys.begin() + settings.display_orientation, keys.end());
-            std::rotate(tkeys.begin(), tkeys.begin() + settings.display_orientation, tkeys.end());
-
-            if(ImGui::IsKeyDown(keys[0]) || touch.btns[tkeys[0]]) pinf &= ~0x80;
-            if(ImGui::IsKeyDown(keys[1]) || touch.btns[tkeys[1]]) pinf &= ~0x40;
-            if(ImGui::IsKeyDown(keys[2]) || touch.btns[tkeys[2]]) pinf &= ~0x10;
-            if(ImGui::IsKeyDown(keys[3]) || touch.btns[tkeys[3]]) pinf &= ~0x20;
-
-            if( ImGui::IsKeyDown(ImGuiKey_A) ||
-                ImGui::IsKeyDown(ImGuiKey_Z) ||
-                touch.btns[TOUCH_A])
-                pine &= ~0x40;
-            if( ImGui::IsKeyDown(ImGuiKey_B) ||
-                ImGui::IsKeyDown(ImGuiKey_S) ||
-                ImGui::IsKeyDown(ImGuiKey_X) ||
-                touch.btns[TOUCH_B])
-                pinb &= ~0x10;
-
-            arduboy.cpu.data[0x23] = pinb;
-            arduboy.cpu.data[0x2c] = pine;
-            arduboy.cpu.data[0x2f] = pinf;
+                set_current_buttons(*app.emulator);
+                if(app.linked_secondary_arduboy)
+                    set_unpressed_buttons(*app.linked_secondary_arduboy);
+            }
         }
 
-        bool prev_paused = arduboy.paused;
-        arduboy.frame_bytes_total = 1024;
+        bool prev_paused = app.emulator->debugger_state.paused;
+        apply_runtime_settings(*app.emulator);
 
-        arduboy.cpu.enabled_autobreaks.reset();
+        app.emulator->core_state.cpu.enabled_autobreaks.reset();
 #ifndef ARDENS_NO_GUI
-        arduboy.cpu.enabled_autobreaks.set(absim::AB_BREAK);
+        app.emulator->core_state.cpu.enabled_autobreaks.set(absim::AB_BREAK);
         for(int i = 1; i < absim::AB_NUM; ++i)
             if(settings.ab.index(i))
-                arduboy.cpu.enabled_autobreaks.set(i);
+                app.emulator->core_state.cpu.enabled_autobreaks.set(i);
 #endif
 
-        arduboy.allow_nonstep_breakpoints =
-            arduboy.break_step == 0xffffffff || settings.enable_step_breaks;
-        arduboy.display.enable_filter = settings.display_auto_filter;
-
-        arduboy.display.enable_current_limiting = (settings.display_current_modeling != 0);
-        arduboy.display.ref_segment_current = 0.195f;
-        switch(settings.display_current_modeling)
-        {
-        case 0:  arduboy.display.current_limit_slope = 0.f;   break;
-        case 1:  arduboy.display.current_limit_slope = 0.75f; break;
-        case 2:  arduboy.display.current_limit_slope = 0.45f; break;
-        case 3:  arduboy.display.current_limit_slope = 0.f;   break;
-        default: arduboy.display.current_limit_slope = 0.f;   break;
-        }
-
-        switch(settings.fxport)
-        {
-        case FXPORT_D1:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 1;
-            break;
-        case FXPORT_D2:
-            arduboy.fxport_reg = 0x2b;
-            arduboy.fxport_mask = 1 << 2;
-            break;
-        case FXPORT_E2:
-            arduboy.fxport_reg = 0x2e;
-            arduboy.fxport_mask = 1 << 2;
-            break;
-        default:
-            break;
-        }
-
-        switch(settings.display)
-        {
-        case DISPLAY_SSD1306:
-            arduboy.display.type = absim::display_t::SSD1306;
-            break;
-        case DISPLAY_SSD1309:
-            arduboy.display.type = absim::display_t::SSD1309;
-            break;
-        case DISPLAY_SH1106:
-            arduboy.display.type = absim::display_t::SH1106;
-            break;
-        default:
-            break;
-        }
-
         constexpr uint64_t MS_TO_PS = 1000000000ull;
-        uint64_t dtps = dt * MS_TO_PS * 1000 / simulation_slowdown;
+        uint64_t dtps = dt * MS_TO_PS * 1000 / app.simulation_slowdown;
         if(gif_recording)
         {
             constexpr uint64_t DT_20_MS = 20 * MS_TO_PS;
             uint64_t ps = DT_20_MS - gif_ps_rem;
             while(dtps >= ps)
             {
-                arduboy.advance(ps);
+                advance_primary(ps);
                 send_gif_frame(2, recording_pixels(false));
                 dtps -= ps;
                 ps = DT_20_MS;
@@ -789,45 +1195,43 @@ void frame_logic()
             gif_ps_rem += dtps;
         }
         if(dtps > 0)
-            arduboy.advance(dtps * SPEEDUP);
+            advance_primary(dtps * SPEEDUP);
 
         check_save_savedata();
 
-        if(arduboy.paused && !prev_paused)
-            disassembly_scroll_addr = arduboy.cpu.pc * 2;
+        if(app.emulator->debugger_state.paused && !prev_paused)
+            app.disassembly_scroll_addr = app.emulator->core_state.cpu.pc * 2;
         //if(!settings.enable_stack_breaks)
-        //    arduboy.cpu.stack_overflow = false;
+        //    app.emulator->core_state.cpu.stack_overflow = false;
 
         // consume sound buffer
         send_wav_audio();
         process_sound_samples();
 #if !PROFILING
-        if(!arduboy.cpu.sound_buffer.empty() && simulation_slowdown == 1000)
+        if(!app.emulator->core_state.cpu.sound_buffer.empty() && app.simulation_slowdown == 1000)
             platform_send_sound();
 #endif
-        arduboy.cpu.sound_buffer.clear();
+        app.emulator->core_state.cpu.sound_buffer.clear();
     }
     else
     {
-        arduboy.break_step = 0xffffffff;
+        app.emulator->debugger_state.break_step = 0xffffffff;
     }
 
     // update framebuffer texture
-    if(arduboy.cpu.decoded)
+    if(app.emulator->core_state.cpu.decoded)
     {
         recreate_display_texture();
-        int z = display_texture_zoom;
-        std::vector<uint8_t> pixels;
-        pixels.resize(128 * 64 * 4 * z * z);
-        scalenx(pixels.data(), arduboy.display.filtered_pixels.data(), true);
-        platform_update_texture(display_texture, pixels.data(), pixels.size());
+        update_display_texture(
+            app.display_texture,
+            app.emulator->peripherals.display.filtered_pixels.data());
 
 #if ALLOW_SCREENSHOTS
-        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
+        if(app.emulator->core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F4, false))
             take_snapshot();
-        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
+        if(app.emulator->core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F2, false))
             save_screenshot();
-        if(arduboy.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
+        if(app.emulator->core_state.cpu.decoded && ImGui::IsKeyPressed(ImGuiKey_F3, false))
             toggle_recording();
 #endif
     }
@@ -845,12 +1249,11 @@ void frame_logic()
 
 #ifndef ARDENS_NO_DEBUGGER
     if(ImGui::IsKeyPressed(ImGuiKey_F5, false))
-        arduboy.paused = !arduboy.paused;
+        app.emulator->debugger_state.paused = !app.emulator->debugger_state.paused;
 #endif
     if(ImGui::IsKeyPressed(ImGuiKey_F8, false))
     {
-        arduboy.reset();
-        load_savedata();
+        reset_primary_simulation();
     }
 
     if(ImGui::IsKeyPressed(ImGuiKey_F11, false))
@@ -868,22 +1271,19 @@ void frame_logic()
     }
 
     if(update_pixel_ratio())
-    {
         rescale_style();
-        rebuild_fonts();
-    }
 }
 
 void imgui_content()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    if(!arduboy.cpu.decoded)
+    if(!app.emulator->core_state.cpu.decoded)
     {
         auto* d = ImGui::GetBackgroundDrawList();
         auto size = ImGui::GetMainViewport()->Size;
-        float w = 100.f * pixel_ratio;
-        float pad = 25.f * pixel_ratio;
+        float w = 100.f * app.pixel_ratio;
+        float pad = 25.f * app.pixel_ratio;
         w = std::min(w, size.x - pad);
         w = std::min(w, size.y - pad);
         w = std::max(w, pad);
@@ -893,7 +1293,7 @@ void imgui_content()
         constexpr uint8_t shade = 200;
         auto color = IM_COL32(shade, shade, shade, 255);
         float thickness = w * 0.04f;
-        if(loading_indicator)
+        if(app.loading_indicator)
         {
             for(int i = 0; i < 12; ++i)
             {
@@ -934,7 +1334,7 @@ void imgui_content()
                 { cx - w2, cy - w2 },
                 { cx + w2, cy + w2 },
                 color,
-                10.f * pixel_ratio,
+                10.f * app.pixel_ratio,
                 0,
                 thickness);
             d->AddLine(
@@ -966,22 +1366,22 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-    if(!dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
+    if(!app.dropfile_err.empty() && !ImGui::IsPopupOpen("File Load Error"))
         ImGui::OpenPopup("File Load Error");
 
-    ImGui::SetNextWindowSize({ 500 * pixel_ratio, 0 });
+    ImGui::SetNextWindowSize({ 500 * app.pixel_ratio, 0 });
     if(ImGui::BeginPopupModal("File Load Error", NULL,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
         ImGui::PushTextWrapPos(0.0f);
-        ImGui::TextUnformatted(dropfile_err.c_str());
+        ImGui::TextUnformatted(app.dropfile_err.c_str());
         ImGui::PopTextWrapPos();
-        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) ||
+        if(ImGui::Button("OK", ImVec2(120 * app.pixel_ratio, 0)) ||
             ImGui::IsKeyPressed(ImGuiKey_Enter) ||
-            dropfile_err.empty())
+            app.dropfile_err.empty())
         {
-            dropfile_err.clear();
+            app.dropfile_err.clear();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
@@ -989,7 +1389,7 @@ void imgui_content()
 #endif
 
 #ifndef ARDENS_NO_GUI
-    if(arduboy.cpu.should_autobreak_gui())
+    if(app.emulator->core_state.cpu.should_autobreak_gui())
         ImGui::OpenPopup("Auto-Break");
 
     static std::array<char const*, absim::AB_NUM> const AB_REASONS =
@@ -1007,13 +1407,13 @@ void imgui_content()
         "FX Busy: attempted to execute FX command while flash chip was busy."
     };
 
-    ImGui::SetNextWindowSize({ 300 * pixel_ratio, 0 });
+    ImGui::SetNextWindowSize({ 300 * app.pixel_ratio, 0 });
     if(ImGui::BeginPopupModal("Auto-Break", NULL,
         ImGuiWindowFlags_AlwaysAutoResize |
         ImGuiWindowFlags_NoSavedSettings))
     {
         size_t ab = 0;
-        auto mask = arduboy.cpu.autobreaks & arduboy.cpu.enabled_autobreaks;
+        auto mask = app.emulator->core_state.cpu.autobreaks & app.emulator->core_state.cpu.enabled_autobreaks;
         for(size_t i = 1; i < mask.size(); ++i)
         {
             if(mask.test(i))
@@ -1028,9 +1428,9 @@ void imgui_content()
         ImGui::Separator();
         ImGui::TextUnformatted(AB_REASONS[ab]);
         ImGui::PopTextWrapPos();
-        if(ImGui::Button("OK", ImVec2(120 * pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
+        if(ImGui::Button("OK", ImVec2(120 * app.pixel_ratio, 0)) || ImGui::IsKeyPressed(ImGuiKey_Enter))
         {
-            arduboy.cpu.autobreaks = 0;
+            app.emulator->core_state.cpu.autobreaks = 0;
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();

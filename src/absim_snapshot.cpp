@@ -48,7 +48,7 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
-constexpr version_t SNAPSHOT_VERSION = { 0, 24, 16 };
+constexpr version_t SNAPSHOT_VERSION = { 0, 25, 0 };
 
 static std::string version_str(version_t const& v)
 {
@@ -220,173 +220,183 @@ public:
 template<class Archive>
 static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 {
-    ar(a.cpu.data);
-    ar(a.cpu.active);
-    ar(a.cpu.wakeup_cycles);
-    ar(a.cpu.just_interrupted);
-    ar(a.cpu.min_stack);
-    ar(a.cpu.stack_check);
-    ar(a.cpu.pushed_at_least_once);
-    ar(a.cpu.eeprom);
-    ar(a.cpu.eeprom_modified_bytes);
-    ar(a.cpu.eeprom_modified);
-    ar(a.cpu.eeprom_dirty);
-    ar(a.cpu.prev_sreg);
-    ar(a.cpu.pc);
-    ar(a.cpu.executing_instr_pc);
-    for(auto& f : a.cpu.stack_frames)
+    ar(a.core_state.cpu.data);
+    ar(a.core_state.cpu.active);
+    ar(a.core_state.cpu.wakeup_cycles);
+    ar(a.core_state.cpu.just_interrupted);
+    ar(a.core_state.cpu.min_stack);
+    ar(a.core_state.cpu.stack_check);
+    ar(a.core_state.cpu.pushed_at_least_once);
+    ar(a.core_state.cpu.eeprom);
+    ar(a.core_state.cpu.eeprom_modified_bytes);
+    ar(a.core_state.cpu.eeprom_modified);
+    ar(a.core_state.cpu.eeprom_dirty);
+    ar(a.core_state.cpu.prev_sreg);
+    ar(a.core_state.cpu.pc);
+    ar(a.core_state.cpu.executing_instr_pc);
+    for(auto& f : a.core_state.cpu.stack_frames)
     {
         ar(f.cycle);
         ar(f.pc);
         ar(f.sp);
     }
-    ar(a.cpu.num_stack_frames);
-    ar(a.cpu.program_loaded);
-    ar(a.cpu.timer0);
-    ar(a.cpu.timer1);
-    ar(a.cpu.timer3);
-    ar(a.cpu.timer4);
+    ar(a.core_state.cpu.num_stack_frames);
+    ar(a.core_state.cpu.program_loaded);
+    ar(a.core_state.cpu.timer_sync);
+    ar(a.core_state.cpu.timer0);
+    ar(a.core_state.cpu.timer1);
+    ar(a.core_state.cpu.timer3);
+    ar(a.core_state.cpu.timer4);
 
-    ar(a.cpu.pll_prev_cycle);
-    ar(a.cpu.pll_lock_cycle);
-    ar(a.cpu.pll_num12);
-    ar(a.cpu.pll_busy);
+    ar(a.core_state.cpu.pll_prev_cycle);
+    ar(a.core_state.cpu.pll_lock_cycle);
+    ar(a.core_state.cpu.pll_num12);
+    ar(a.core_state.cpu.pll_busy);
 
-    ar(a.cpu.spsr_read_after_transmit);
-    ar(a.cpu.spi_busy);
-    ar(a.cpu.spi_busy_clear);
-    ar(a.cpu.spi_latch_read);
-    ar(a.cpu.spi_data_latched);
-    ar(a.cpu.spi_data_byte);
-    ar(a.cpu.spi_datain_byte);
-    ar(a.cpu.spi_done_cycle);
-    ar(a.cpu.spi_transmit_zero_cycle);
-    ar(a.cpu.spi_clock_cycles);
+    ar(a.core_state.cpu.spsr_read_after_transmit);
+    ar(a.core_state.cpu.spi_busy);
+    ar(a.core_state.cpu.spi_busy_clear);
+    ar(a.core_state.cpu.spi_latch_read);
+    ar(a.core_state.cpu.spi_data_latched);
+    ar(a.core_state.cpu.spi_data_byte);
+    ar(a.core_state.cpu.spi_datain_byte);
+    ar(a.core_state.cpu.spi_done_cycle);
+    ar(a.core_state.cpu.spi_transmit_zero_cycle);
+    ar(a.core_state.cpu.spi_clock_cycles);
 
-    ar(a.cpu.eeprom_prev_cycle);
-    ar(a.cpu.eeprom_clear_eempe_cycles);
-    ar(a.cpu.eeprom_write_addr);
-    ar(a.cpu.eeprom_write_data);
-    ar(a.cpu.eeprom_program_cycles);
-    ar(a.cpu.eeprom_busy);
+    ar(a.core_state.cpu.twi_prev_cycle);
+    ar(a.core_state.cpu.twi_done_cycle);
+    ar(a.core_state.cpu.twi_mode);
+    ar(a.core_state.cpu.twi_pending);
+    ar(a.core_state.cpu.twi_status);
+    ar(a.core_state.cpu.twi_address);
+    ar(a.core_state.cpu.twi_busy);
+    ar(a.core_state.cpu.twi_started);
+    ar(a.core_state.cpu.twi_repeated_start);
+    ar(a.core_state.cpu.twi_reading);
+    ar(a.core_state.cpu.twi_general_call);
+    ar(a.core_state.cpu.twi_pull_scl_low);
+    ar(a.core_state.cpu.twi_pull_sda_low);
+    ar(a.core_state.cpu.twi_external_scl_low);
+    ar(a.core_state.cpu.twi_external_sda_low);
 
-    ar(a.cpu.adc_prev_cycle);
-    ar(a.cpu.adc_prescaler_cycle);
-    ar(a.cpu.adc_cycle);
-    ar(a.cpu.adc_ref);
-    ar(a.cpu.adc_result);
-    ar(a.cpu.adc_seed);
-    ar(a.cpu.adc_busy);
-    ar(a.cpu.adc_nondeterminism);
+    ar(a.core_state.cpu.eeprom_prev_cycle);
+    ar(a.core_state.cpu.eeprom_clear_eempe_cycles);
+    ar(a.core_state.cpu.eeprom_write_addr);
+    ar(a.core_state.cpu.eeprom_write_data);
+    ar(a.core_state.cpu.eeprom_program_cycles);
+    ar(a.core_state.cpu.eeprom_busy);
 
-    ar(a.cpu.sound_prev_cycle);
-    ar(a.cpu.sound_cycle);
-    ar(a.cpu.sound_enabled);
-    ar(a.cpu.sound_pwm);
-    ar(a.cpu.sound_pwm_val);
+    ar(a.core_state.cpu.adc_prev_cycle);
+    ar(a.core_state.cpu.adc_prescaler_cycle);
+    ar(a.core_state.cpu.adc_cycle);
+    ar(a.core_state.cpu.adc_ref);
+    ar(a.core_state.cpu.adc_result);
+    ar(a.core_state.cpu.adc_seed);
+    ar(a.core_state.cpu.adc_busy);
+    ar(a.core_state.cpu.adc_nondeterminism);
 
-    ar(a.cpu.usb_ep);
-    ar(a.cpu.usb_next_sofi_cycle);
-    ar(a.cpu.usb_next_eorsti_cycle);
-    ar(a.cpu.usb_next_setconf_cycle);
-    ar(a.cpu.usb_next_setlength_cycle);
-    ar(a.cpu.usb_next_update_cycle);
-    ar(a.cpu.usb_dpram);
-    ar(a.cpu.usb_attached);
+    ar(a.core_state.cpu.sound_prev_cycle);
+    ar(a.core_state.cpu.sound_cycle);
+    ar(a.core_state.cpu.sound_enabled);
+    ar(a.core_state.cpu.sound_pwm);
+    ar(a.core_state.cpu.sound_pwm_val);
 
-    ar(a.cpu.spm_prev_cycle);
-    ar(a.cpu.spm_busy);
-    ar(a.cpu.spm_en_cycles);
-    ar(a.cpu.spm_op);
-    ar(a.cpu.spm_cycles);
-    ar(a.cpu.spm_buffer);
+    ar(a.core_state.cpu.usb);
 
-    ar(a.cpu.watchdog_divider);
-    ar(a.cpu.watchdog_divider_cycle);
-    ar(a.cpu.watchdog_prev_cycle);
-    ar(a.cpu.watchdog_next_cycle);
+    ar(a.core_state.cpu.spm_prev_cycle);
+    ar(a.core_state.cpu.spm_busy);
+    ar(a.core_state.cpu.spm_en_cycles);
+    ar(a.core_state.cpu.spm_op);
+    ar(a.core_state.cpu.spm_cycles);
+    ar(a.core_state.cpu.spm_buffer);
 
-    ar(a.cpu.peripheral_queue);
+    ar(a.core_state.cpu.watchdog_divider);
+    ar(a.core_state.cpu.watchdog_divider_cycle);
+    ar(a.core_state.cpu.watchdog_prev_cycle);
+    ar(a.core_state.cpu.watchdog_next_cycle);
 
-    ar(a.cpu.cycle_count);
+    ar(a.core_state.cpu.peripheral_queue);
 
-    ar(a.cpu.lock);
-    ar(a.cpu.fuse_lo);
-    ar(a.cpu.fuse_hi);
-    ar(a.cpu.fuse_ext);
+    ar(a.core_state.cpu.cycle_count);
 
-    ar(a.display.filtered_pixels);
-    ar(a.display.filtered_pixel_counts);
-    ar(a.display.type);
-    ar(a.display.pixels);
-    ar(a.display.pixel_history_index);
-    ar(a.display.enable_filter);
-    ar(a.display.ram);
-    ar(a.display.ref_segment_current);
-    ar(a.display.current_limit_slope);
-    ar(a.display.enable_current_limiting);
-    ar(a.display.prev_row_drive);
-    ar(a.display.contrast);
-    ar(a.display.entire_display_on);
-    ar(a.display.inverse_display);
-    ar(a.display.display_on);
-    ar(a.display.enable_charge_pump);
-    ar(a.display.addressing_mode);
-    ar(a.display.col_start);
-    ar(a.display.col_end);
-    ar(a.display.page_start);
-    ar(a.display.page_end);
-    ar(a.display.mux_ratio);
-    ar(a.display.display_offset);
-    ar(a.display.display_start);
-    ar(a.display.com_scan_direction);
-    ar(a.display.alternative_com);
-    ar(a.display.com_remap);
-    ar(a.display.segment_remap);
-    ar(a.display.fosc_index);
-    ar(a.display.divide_ratio);
-    ar(a.display.phase_1);
-    ar(a.display.phase_2);
-    ar(a.display.vcomh_deselect);
-    ar(a.display.row);
-    ar(a.display.row_cycle);
-    ar(a.display.cycles_per_row);
-    ar(a.display.ps_per_clk);
-    ar(a.display.ps_rem);
-    ar(a.display.processing_command);
-    ar(a.display.current_command);
-    ar(a.display.command_byte_index);
-    ar(a.display.data_page);
-    ar(a.display.data_col);
-    ar(a.display.vsync);
+    ar(a.core_state.cpu.lock);
+    ar(a.core_state.cpu.fuse_lo);
+    ar(a.core_state.cpu.fuse_hi);
+    ar(a.core_state.cpu.fuse_ext);
 
-    ar(a.fx.sectors_modified_data);
-    ar(a.fx.sectors_modified);
-    ar(a.fx.sectors_dirty);
-    ar(a.fx.enabled);
-    ar(a.fx.woken_up);
-    ar(a.fx.write_enabled);
-    ar(a.fx.reading_status);
-    ar(a.fx.processing_command);
-    ar(a.fx.reading);
-    ar(a.fx.programming);
-    ar(a.fx.erasing_sector);
-    ar(a.fx.releasing);
-    ar(a.fx.reading_jedec_id);
-    ar(a.fx.busy_ps_rem);
-    ar(a.fx.current_addr);
-    ar(a.fx.command);
-    ar(a.fx.min_page);
-    ar(a.fx.max_page);
-    ar(a.fx.busy_error);
+    ar(a.peripherals.display.filtered_pixels);
+    ar(a.peripherals.display.filtered_pixel_counts);
+    ar(a.peripherals.display.type);
+    ar(a.peripherals.display.pixels);
+    ar(a.peripherals.display.pixel_history_index);
+    ar(a.peripherals.display.enable_filter);
+    ar(a.peripherals.display.ram);
+    ar(a.peripherals.display.ref_segment_current);
+    ar(a.peripherals.display.current_limit_slope);
+    ar(a.peripherals.display.enable_current_limiting);
+    ar(a.peripherals.display.prev_row_drive);
+    ar(a.peripherals.display.contrast);
+    ar(a.peripherals.display.entire_display_on);
+    ar(a.peripherals.display.inverse_display);
+    ar(a.peripherals.display.display_on);
+    ar(a.peripherals.display.enable_charge_pump);
+    ar(a.peripherals.display.addressing_mode);
+    ar(a.peripherals.display.col_start);
+    ar(a.peripherals.display.col_end);
+    ar(a.peripherals.display.page_start);
+    ar(a.peripherals.display.page_end);
+    ar(a.peripherals.display.mux_ratio);
+    ar(a.peripherals.display.display_offset);
+    ar(a.peripherals.display.display_start);
+    ar(a.peripherals.display.com_scan_direction);
+    ar(a.peripherals.display.alternative_com);
+    ar(a.peripherals.display.com_remap);
+    ar(a.peripherals.display.segment_remap);
+    ar(a.peripherals.display.fosc_index);
+    ar(a.peripherals.display.divide_ratio);
+    ar(a.peripherals.display.phase_1);
+    ar(a.peripherals.display.phase_2);
+    ar(a.peripherals.display.vcomh_deselect);
+    ar(a.peripherals.display.row);
+    ar(a.peripherals.display.row_cycle);
+    ar(a.peripherals.display.cycles_per_row);
+    ar(a.peripherals.display.ps_per_clk);
+    ar(a.peripherals.display.ps_rem);
+    ar(a.peripherals.display.processing_command);
+    ar(a.peripherals.display.current_command);
+    ar(a.peripherals.display.command_byte_index);
+    ar(a.peripherals.display.data_page);
+    ar(a.peripherals.display.data_col);
+    ar(a.peripherals.display.vsync);
 
-    ar(a.fxport_reg);
-    ar(a.fxport_mask);
-    ar(a.game_hash);
-    ar(a.title);
-    ar(a.device_type);
-    ar(a.prev_display_reset);
-    ar(a.ps_rem);
+    ar(a.peripherals.fx.sectors_modified_data);
+    ar(a.peripherals.fx.sectors_modified);
+    ar(a.peripherals.fx.sectors_dirty);
+    ar(a.peripherals.fx.enabled);
+    ar(a.peripherals.fx.woken_up);
+    ar(a.peripherals.fx.write_enabled);
+    ar(a.peripherals.fx.reading_status);
+    ar(a.peripherals.fx.processing_command);
+    ar(a.peripherals.fx.reading);
+    ar(a.peripherals.fx.programming);
+    ar(a.peripherals.fx.erasing_sector);
+    ar(a.peripherals.fx.releasing);
+    ar(a.peripherals.fx.reading_jedec_id);
+    ar(a.peripherals.fx.busy_ps_rem);
+    ar(a.peripherals.fx.current_addr);
+    ar(a.peripherals.fx.command);
+    ar(a.peripherals.fx.min_page);
+    ar(a.peripherals.fx.max_page);
+    ar(a.peripherals.fx.busy_error);
+
+    ar(a.peripherals.fxport_reg);
+    ar(a.peripherals.fxport_mask);
+    ar(a.program_state.game_hash);
+    ar(a.program_state.title);
+    ar(a.program_state.device_type);
+    ar(a.peripherals.prev_display_reset);
+    ar(a.core_state.ps_rem);
 
     return "";
 }
@@ -394,59 +404,63 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 template<bool is_load, class Archive>
 static std::string serdes_snapshot(Archive& ar, arduboy_t& a)
 {
-    ar(a.prog_filename);
-    ar(a.prog_filedata);
+    ar(a.program_state.prog_filename);
+    ar(a.program_state.prog_filedata);
 
     if(is_load)
     {
-        vectorwrapbuf<uint8_t> vb(a.prog_filedata);
+        vectorwrapbuf<uint8_t> vb(a.program_state.prog_filedata);
         std::istream is(&vb);
-        auto r = a.load_file(a.prog_filename.c_str(), is);
+        auto r = a.load_file(a.program_state.prog_filename.c_str(), is);
         if(!r.empty())
             return r;
     }
 
-    ar(a.cpu.serial_bytes);
-    ar(a.cpu.sound_buffer);
-    ar(a.fx.sectors);
+    ar(a.core_state.cpu.serial_bytes);
+    ar(a.core_state.cpu.sound_buffer);
+    ar(a.peripherals.fx.sectors);
 
-    ar(a.profiler_hotspots_symbol);
-    ar(a.profiler_total);
-    ar(a.profiler_total_with_sleep);
-    ar(a.prev_frame_cycles);
-    ar(a.total_frames);
-    ar(a.prev_ms_cycles);
-    ar(a.total_ms);
-    ar(a.frame_bytes_total);
-    ar(a.frame_bytes);
-    ar(a.frame_cpu_usage);
-    ar(a.ms_cpu_usage_raw);
-    ar(a.ms_cpu_usage);
-    ar(a.profiler_enabled);
-    ar(a.cached_profiler_total);
-    ar(a.cached_profiler_total_with_sleep);
-    ar(a.profiler_hotspots);
-    ar(a.num_hotspots);
+    ar(a.profiler_state.hotspots_symbol);
+    ar(a.profiler_state.total);
+    ar(a.profiler_state.total_with_sleep);
+    ar(a.profiler_state.prev_total);
+    ar(a.profiler_state.prev_total_with_sleep);
+    ar(a.profiler_state.prev_total_ms);
+    ar(a.profiler_state.prev_total_with_sleep_ms);
+    ar(a.profiler_state.prev_frame_cycles);
+    ar(a.profiler_state.total_frames);
+    ar(a.profiler_state.prev_ms_cycles);
+    ar(a.profiler_state.total_ms);
+    ar(a.profiler_state.frame_bytes_total);
+    ar(a.profiler_state.frame_bytes);
+    ar(a.profiler_state.frame_cpu_usage);
+    ar(a.profiler_state.ms_cpu_usage_raw);
+    ar(a.profiler_state.ms_cpu_usage);
+    ar(a.profiler_state.enabled);
+    ar(a.profiler_state.cached_total);
+    ar(a.profiler_state.cached_total_with_sleep);
+    ar(a.profiler_state.hotspots);
+    ar(a.profiler_state.num_hotspots);
 
-    ar(a.breakpoints);
-    ar(a.breakpoints_rd);
-    ar(a.breakpoints_wr);
-    ar(a.paused);
+    ar(a.debugger_state.breakpoints);
+    ar(a.debugger_state.breakpoints_rd);
+    ar(a.debugger_state.breakpoints_wr);
+    ar(a.debugger_state.paused);
 
-    ar(a.cfg.display_type);
-    ar(a.cfg.fxport_reg);
-    ar(a.cfg.fxport_mask);
-    ar(a.cfg.bootloader);
-    ar(a.cfg.boot_to_menu);
-    ar(a.flashcart_loaded);
+    ar(a.program_state.cfg.display_type);
+    ar(a.program_state.cfg.fxport_reg);
+    ar(a.program_state.cfg.fxport_mask);
+    ar(a.program_state.cfg.bootloader);
+    ar(a.program_state.cfg.boot_to_menu);
+    ar(a.program_state.cfg.usb_bus_state);
+    ar(a.program_state.flashcart_loaded);
 
     serdes_savestate(ar, a);
 
     // time-travel debugging history
-    ar(a.input_history);
-    ar(a.state_history);
-    ar(a.present_state);
-    ar(a.present_cycle);
+    ar(a.debugger_state.input_history);
+    ar(a.debugger_state.state_history);
+    ar(a.debugger_state.present_state);
 
     return "";
 }
@@ -468,7 +482,7 @@ size_t arduboy_t::max_savestate_size() const
     // Calculate the theoretical maximum serialize size:
     // if all FX sectors are present (each sector is 4097 bytes serialized).
     size_t num_sectors = 0;
-    for(auto const& s : fx.sectors)
+    for(auto const& s : peripherals.fx.sectors)
         if(s) ++num_sectors;
     num_sectors = std::min<size_t>(num_sectors, w25q128_t::NUM_SECTORS);
     size += (w25q128_t::NUM_SECTORS - num_sectors) * 4097;
@@ -542,12 +556,11 @@ bool arduboy_t::save_snapshot(std::ostream& f)
             ar(state_history);
         else
         {
-            std::vector<tt_state_t> t;
-            t.push_back(state_history.front());
-            ar(t);
+        std::vector<tt_state_t> t;
+        t.push_back(state_history.front());
+        ar(t);
         }
         ar(present_state);
-        ar(present_cycle);
 #endif
     }
 
@@ -621,7 +634,7 @@ std::string arduboy_t::load_snapshot(std::istream& f)
         }
 
         bitsery::Deserializer<BufferAdapter> ar(dst.begin(), dst.end());
-        cpu.reset();
+        core_state.cpu.reset();
         auto r = serdes_snapshot<true>(ar, *this);
         if(!r.empty())
         {
@@ -641,12 +654,11 @@ std::string arduboy_t::load_snapshot(std::istream& f)
         ar(input_history);
         ar(state_history);
         ar(present_state);
-        ar(present_cycle);
 
         // resimulate history
         if(!state_history.empty())
         {
-            uint64_t saved_present_cycle = std::max(cpu.cycle_count, present_cycle);
+            uint64_t saved_present_cycle = std::max(cpu.cycle_count, present_state.cycle);
             auto saved_present_state = present_state;
             uint64_t saved_cycle = cpu.cycle_count;
             bool saved_paused = paused;
@@ -661,13 +673,13 @@ std::string arduboy_t::load_snapshot(std::istream& f)
                 advance(CYCLE_PS * STATE_HISTORY_CYCLES);
                 tt_state_t state;
                 state.cycle = cpu.cycle_count;
-                save_state_to_vector(state.state);
+                save_state_to_vector(state);
                 state_history.emplace_back(std::move(state));
             }
             travel_to_present();
             travel_back_to_cycle(saved_cycle);
-            present_cycle = saved_present_cycle;
             present_state = saved_present_state;
+            present_state.cycle = saved_present_cycle;
             paused = saved_paused;
         }
 #endif
@@ -680,8 +692,8 @@ void arduboy_t::save_savedata(std::ostream& f)
 {
     using StreamAdapter = bitsery::OutputStreamAdapter;
     bitsery::Serializer<StreamAdapter> ar(f);
-    savedata.game_hash = game_hash;
-    ar(savedata);
+    save_data_state.savedata.game_hash = program_state.game_hash;
+    ar(save_data_state.savedata);
 }
 
 bool arduboy_t::load_savedata(std::istream& f)
@@ -693,24 +705,24 @@ bool arduboy_t::load_savedata(std::istream& f)
     ar(data);
     if(!bitsery_ok(ar.adapter().error(), ar.adapter().isCompletedSuccessfully()))
         return false;
-    if(data.game_hash != game_hash)
+    if(data.game_hash != program_state.game_hash)
     {
         return false;
     }
-    savedata = std::move(data);
+    save_data_state.savedata = std::move(data);
 
     // overwrite eeprom / fx with saved data
 
-    auto const& d = savedata;
-    if(d.eeprom.size() == cpu.eeprom.size())
-        memcpy(cpu.eeprom.data(), d.eeprom.data(), array_bytes(cpu.eeprom));
+    auto const& d = save_data_state.savedata;
+    if(d.eeprom.size() == core_state.cpu.eeprom.size())
+        memcpy(core_state.cpu.eeprom.data(), d.eeprom.data(), array_bytes(core_state.cpu.eeprom));
 
     for(auto const& kv : d.fx_sectors)
     {
         uint32_t sector = kv.first;
         auto const& sdata = kv.second;
-        if(sector >= fx.NUM_SECTORS) continue;
-        fx.write_bytes(sector * 4096, sdata.data(), 4096);
+        if(sector >= peripherals.fx.NUM_SECTORS) continue;
+        peripherals.fx.write_bytes(sector * 4096, sdata.data(), 4096);
     }
 
     return true;

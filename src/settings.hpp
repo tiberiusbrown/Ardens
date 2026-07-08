@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <filesystem>
 
 enum
 {
@@ -44,6 +45,7 @@ struct settings_t
 
     bool open_disassembly = false;
     bool open_display = true;
+    bool open_linked_secondary_arduboy = false;
     bool open_display_buffer = false;
     bool open_display_internals = false;
     bool open_data_space = false;
@@ -77,6 +79,7 @@ struct settings_t
     bool enable_step_breaks = true;
     bool nondeterminism = false;
     bool frame_based_cpu_usage = true;
+    bool usb_connected = true;
 
     struct
     {
@@ -114,6 +117,11 @@ struct settings_t
 
     int volume = 100;
 
+    // Persisted desktop window state.
+    int window_width = 0;
+    int window_height = 0;
+    bool window_maximized = false;
+
     bool recording_sameasdisplay = true;
 };
 
@@ -121,4 +129,9 @@ extern settings_t settings;
 
 void init_settings();
 void update_settings();
+void update_window_settings(int width, int height, bool maximized);
 void autoset_from_device_type();
+bool load_window_geometry_from_ini(
+    std::filesystem::path const& ini_path,
+    int& width,
+    int& height);

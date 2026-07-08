@@ -16,7 +16,7 @@ static size_t sample_history_rem;
 
 void process_sound_samples()
 {
-    auto const& buffer = arduboy.cpu.sound_buffer;
+    auto const& buffer = app.emulator->core_state.cpu.sound_buffer;
     size_t index = 0;
 
     if(buffer.size() >= SAMPLE_HISTORY_NUM)
@@ -78,8 +78,8 @@ void window_sound(bool& open)
         ImPlotAxisFlags_NoHighlight |
         0;
 
-    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Sound", &open) && arduboy.cpu.decoded && arduboy.is_present_state())
+    SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+    if(Begin("Sound", &open) && app.emulator->core_state.cpu.decoded && app.emulator->is_present_state())
     {
         float plot_height = (GetContentRegionAvail().y - ImGui::GetStyle().ItemSpacing.y) * 0.5f;
 

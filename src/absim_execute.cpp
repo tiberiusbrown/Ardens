@@ -218,8 +218,8 @@ uint32_t instr_break(atmega32u4_t& cpu, avr_instr_t i)
 
 ARDENS_FORCEINLINE static void set_flag(atmega32u4_t& cpu, uint8_t mask, uint32_t x)
 {
-    if(x) cpu.sreg() |= mask;
-    else cpu.sreg() &= ~mask;
+    if(x) cpu.data[reg::addr::SREG] |= mask;
+    else cpu.data[reg::addr::SREG] &= ~mask;
 }
 
 ARDENS_FORCEINLINE static uint8_t flag_s(uint8_t sreg)
@@ -231,19 +231,19 @@ ARDENS_FORCEINLINE static uint8_t flag_s(uint8_t sreg)
 
 ARDENS_FORCEINLINE static void set_flags_hcv(atmega32u4_t& cpu, uint8_t h, uint8_t c, uint8_t v)
 {
-    uint8_t sreg = cpu.sreg() & ~(SREG_H | SREG_C | SREG_V);
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::H | reg::bit::SREG::C | reg::bit::SREG::V);
 
-    if(h) sreg |= SREG_H;
-    if(c) sreg |= SREG_C;
-    if(v) sreg |= SREG_V;
+    if(h) sreg |= reg::bit::SREG::H;
+    if(c) sreg |= reg::bit::SREG::C;
+    if(v) sreg |= reg::bit::SREG::V;
 
-    cpu.sreg() = sreg;
+    cpu.data[reg::addr::SREG] = sreg;
 }
 
 ARDENS_FORCEINLINE static uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 {
     sreg |= ((x & 0x80) >> 5); // N
-    if(x == 0) sreg |= SREG_Z; // Z
+    if(x == 0) sreg |= reg::bit::SREG::Z; // Z
     sreg = flag_s(sreg);       // S
     return sreg;
 }
@@ -251,16 +251,16 @@ ARDENS_FORCEINLINE static uint8_t flags_nzs(uint8_t sreg, uint32_t x)
 ARDENS_FORCEINLINE static uint8_t flags_nzs16(uint8_t sreg, uint32_t x)
 {
     sreg |= ((x & 0x8000) >> 13); // N
-    if(x == 0) sreg |= SREG_Z; // Z
+    if(x == 0) sreg |= reg::bit::SREG::Z; // Z
     sreg = flag_s(sreg);       // S
     return sreg;
 }
 
 ARDENS_FORCEINLINE static void set_flags_nzs(atmega32u4_t& cpu, uint32_t x)
 {
-    uint8_t sreg = cpu.sreg() & ~(SREG_N | SREG_Z | SREG_S);
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::N | reg::bit::SREG::Z | reg::bit::SREG::S);
     sreg = flags_nzs(sreg, x);
-    cpu.sreg() = sreg;
+    cpu.data[reg::addr::SREG] = sreg;
 }
 
 uint32_t instr_rjmp(atmega32u4_t& cpu, avr_instr_t i)
@@ -337,7 +337,7 @@ uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t i)
     uint16_t hi = cpu.pop();
     uint16_t lo = cpu.pop();
     cpu.pc = lo | (hi << 8);
-    cpu.sreg() |= SREG_I;
+    cpu.data[reg::addr::SREG] |= reg::bit::SREG::I;
     cpu.just_written = 0x5f;
     cpu.pop_stack_frame();
     return 4;
@@ -370,10 +370,10 @@ uint32_t instr_and(atmega32u4_t& cpu, avr_instr_t i)
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst & cpu.gpr(i.src);
     cpu.gpr(i.dst) = res;
-    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    if(res == 0) sreg |= SREG_Z;
-    if(res & 0x80) sreg |= (SREG_N | SREG_S);
-    cpu.sreg() = sreg;
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::V | reg::bit::SREG::N | reg::bit::SREG::Z | reg::bit::SREG::S);
+    if(res == 0) sreg |= reg::bit::SREG::Z;
+    if(res & 0x80) sreg |= (reg::bit::SREG::N | reg::bit::SREG::S);
+    cpu.data[reg::addr::SREG] = sreg;
     cpu.pc += 1;
     return 1;
 }
@@ -383,9 +383,9 @@ uint32_t instr_or(atmega32u4_t& cpu, avr_instr_t i)
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst | cpu.gpr(i.src);
     cpu.gpr(i.dst) = res;
-    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::V | reg::bit::SREG::N | reg::bit::SREG::Z | reg::bit::SREG::S);
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = sreg;
+    cpu.data[reg::addr::SREG] = sreg;
     cpu.pc += 1;
     return 1;
 }
@@ -395,10 +395,10 @@ uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t i)
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst ^ cpu.gpr(i.src);
     cpu.gpr(i.dst) = res;
-    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    if(res == 0) sreg |= SREG_Z;
-    if(res & 0x80) sreg |= (SREG_N | SREG_S);
-    cpu.sreg() = sreg;
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::V | reg::bit::SREG::N | reg::bit::SREG::Z | reg::bit::SREG::S);
+    if(res == 0) sreg |= reg::bit::SREG::Z;
+    if(res & 0x80) sreg |= (reg::bit::SREG::N | reg::bit::SREG::S);
+    cpu.data[reg::addr::SREG] = sreg;
     cpu.pc += 1;
     return 1;
 }
@@ -406,10 +406,10 @@ uint32_t instr_eor(atmega32u4_t& cpu, avr_instr_t i)
 uint32_t instr_clr(atmega32u4_t& cpu, avr_instr_t i)
 {
     cpu.gpr(i.dst) = 0;
-    uint8_t sreg = cpu.sreg();
+    uint8_t sreg = cpu.data[reg::addr::SREG];
     sreg &= ~0x1c;
     sreg |= 0x02;
-    cpu.sreg() = sreg;
+    cpu.data[reg::addr::SREG] = sreg;
     cpu.pc += 1;
     return 1;
 }
@@ -424,12 +424,12 @@ uint32_t instr_add(atmega32u4_t& cpu, avr_instr_t i)
     unsigned dst_xor_src = dst ^ src;
     unsigned hc = (dst | src) ^ (res & dst_xor_src);
     unsigned v = ~dst_xor_src & (dst ^ res);
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~reg::bit::SREG::HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 1;
     return 1;
@@ -439,19 +439,19 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t i)
 {
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
-    unsigned c = cpu.sreg() & 1;
+    unsigned c = cpu.data[reg::addr::SREG] & 1;
     unsigned res = (dst + src + c) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
     unsigned dst_xor_src = dst ^ src;
     unsigned hc = (dst | src) ^ (res & dst_xor_src);
     unsigned v = ~dst_xor_src & (dst ^ res);
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~reg::bit::SREG::HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 1;
     return 1;
@@ -459,7 +459,7 @@ uint32_t instr_adc(atmega32u4_t& cpu, avr_instr_t i)
 
 ARDENS_FORCEINLINE static void sub_flags(atmega32u4_t& cpu, unsigned res, unsigned dst, unsigned src)
 {
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~reg::bit::SREG::HSVNZC;
     unsigned res_xor_src = res ^ src;
     unsigned hc = (res | src) ^ (dst & res_xor_src);
     unsigned v = ~res_xor_src & (res ^ dst);
@@ -467,7 +467,7 @@ ARDENS_FORCEINLINE static void sub_flags(atmega32u4_t& cpu, unsigned res, unsign
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 }
 
 ARDENS_FORCEINLINE static void sub_imm(atmega32u4_t& cpu, unsigned rdst, unsigned imm, unsigned c)
@@ -488,23 +488,23 @@ uint32_t instr_sub(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_sbc(atmega32u4_t& cpu, avr_instr_t i)
 {
-    unsigned sreg = cpu.sreg();
+    unsigned sreg = cpu.data[reg::addr::SREG];
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
-    unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
+    unsigned res = (dst - src - (sreg & reg::bit::SREG::C)) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
     unsigned res_xor_src = res ^ src;
     unsigned hc = (res | src) ^ (dst & res_xor_src);
     unsigned v = ~res_xor_src & (res ^ dst);
-    unsigned z = ~sreg & SREG_Z;
-    sreg &= ~SREG_HSVNZC;
+    unsigned z = ~sreg & reg::bit::SREG::Z;
+    sreg &= ~reg::bit::SREG::HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     res |= z;
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 1;
     return 1;
@@ -532,22 +532,22 @@ uint32_t instr_cp(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_cpc(atmega32u4_t& cpu, avr_instr_t i)
 {
-    unsigned sreg = cpu.sreg();
+    unsigned sreg = cpu.data[reg::addr::SREG];
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = cpu.gpr(i.src);
-    unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
+    unsigned res = (dst - src - (sreg & reg::bit::SREG::C)) & 0xff;
 
     unsigned res_xor_src = res ^ src;
     unsigned hc = (res | src) ^ (dst & res_xor_src);
     unsigned v = ~res_xor_src & (res ^ dst);
-    unsigned z = ~sreg & SREG_Z;
-    sreg &= ~SREG_HSVNZC;
+    unsigned z = ~sreg & reg::bit::SREG::Z;
+    sreg &= ~reg::bit::SREG::HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     res |= z;
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 1;
     return 1;
@@ -630,7 +630,7 @@ uint32_t instr_lpm(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_brbs(atmega32u4_t& cpu, avr_instr_t i)
 {
-    if(cpu.sreg() & (1 << i.src))
+    if(cpu.data[reg::addr::SREG] & (1 << i.src))
     {
         cpu.pc += (int16_t)i.word + 1;
         return 2;
@@ -641,7 +641,7 @@ uint32_t instr_brbs(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_brbc(atmega32u4_t& cpu, avr_instr_t i)
 {
-    if(!(cpu.sreg() & (1 << i.src)))
+    if(!(cpu.data[reg::addr::SREG] & (1 << i.src)))
     {
         cpu.pc += (int16_t)i.word + 1;
         return 2;
@@ -899,23 +899,23 @@ uint32_t instr_subi(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_sbci(atmega32u4_t& cpu, avr_instr_t i)
 {
-    unsigned sreg = cpu.sreg();
+    unsigned sreg = cpu.data[reg::addr::SREG];
     unsigned dst = cpu.gpr(i.dst);
     unsigned src = i.src;
-    unsigned res = (dst - src - (sreg & SREG_C)) & 0xff;
+    unsigned res = (dst - src - (sreg & reg::bit::SREG::C)) & 0xff;
     cpu.gpr(i.dst) = (uint8_t)res;
 
     unsigned res_xor_src = res ^ src;
     unsigned hc = (res | src) ^ (dst & res_xor_src);
     unsigned v = ~res_xor_src & (res ^ dst);
-    unsigned z = ~sreg & SREG_Z;
-    sreg &= ~SREG_HSVNZC;
+    unsigned z = ~sreg & reg::bit::SREG::Z;
+    sreg &= ~reg::bit::SREG::HSVNZC;
     sreg |= (hc & 0x08) << 2;    // H flag
     sreg |= hc >> 7;             // C flag
     sreg |= (v & 0x80) >> 4;     // V flag
     res |= z;
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 1;
     return 1;
@@ -926,10 +926,10 @@ uint32_t instr_ori(atmega32u4_t& cpu, avr_instr_t i)
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst | i.src;
     cpu.gpr(i.dst) = res;
-    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    if(res == 0) sreg |= SREG_Z;
-    if(res & 0x80) sreg |= (SREG_N | SREG_S);
-    cpu.sreg() = sreg;
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::V | reg::bit::SREG::N | reg::bit::SREG::Z | reg::bit::SREG::S);
+    if(res == 0) sreg |= reg::bit::SREG::Z;
+    if(res & 0x80) sreg |= (reg::bit::SREG::N | reg::bit::SREG::S);
+    cpu.data[reg::addr::SREG] = sreg;
     cpu.pc += 1;
     return 1;
 }
@@ -939,10 +939,10 @@ uint32_t instr_andi(atmega32u4_t& cpu, avr_instr_t i)
     uint32_t dst = cpu.gpr(i.dst);
     uint32_t res = dst & i.src;
     cpu.gpr(i.dst) = res;
-    uint8_t sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    if(res == 0) sreg |= SREG_Z;
-    if(res & 0x80) sreg |= (SREG_N | SREG_S);
-    cpu.sreg() = sreg;
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::V | reg::bit::SREG::N | reg::bit::SREG::Z | reg::bit::SREG::S);
+    if(res == 0) sreg |= reg::bit::SREG::Z;
+    if(res & 0x80) sreg |= (reg::bit::SREG::N | reg::bit::SREG::S);
+    cpu.data[reg::addr::SREG] = sreg;
     cpu.pc += 1;
     return 1;
 }
@@ -955,20 +955,20 @@ uint32_t instr_adiw(atmega32u4_t& cpu, avr_instr_t i)
     cpu.gpr(i.dst + 0) = uint8_t(res >> 0);
     cpu.gpr(i.dst + 1) = uint8_t(res >> 8);
 
-    uint8_t sreg = cpu.sreg() & ~(SREG_Z | SREG_V | SREG_C | SREG_N | SREG_S);
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::Z | reg::bit::SREG::V | reg::bit::SREG::C | reg::bit::SREG::N | reg::bit::SREG::S);
 
-    if(res == 0) sreg |= SREG_Z;         // Z
+    if(res == 0) sreg |= reg::bit::SREG::Z;         // Z
     sreg |= (~dst & res & 0x8000) >> 12; // V
     sreg |= (~res & dst & 0x8000) >> 15; // C
     sreg |= (res & 0x8000) >> 13;        // N
     sreg = flag_s(sreg);                 // S
 
-    cpu.sreg() = sreg;
+    cpu.data[reg::addr::SREG] = sreg;
 
-    //set_flag(cpu, SREG_Z, res == 0);
-    //set_flag(cpu, SREG_V, ~dst & res & 0x8000);
-    //set_flag(cpu, SREG_C, ~res & dst & 0x8000);
-    //set_flag(cpu, SREG_N, res & 0x8000);
+    //set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    //set_flag(cpu, reg::bit::SREG::V, ~dst & res & 0x8000);
+    //set_flag(cpu, reg::bit::SREG::C, ~res & dst & 0x8000);
+    //set_flag(cpu, reg::bit::SREG::N, res & 0x8000);
     //set_flag_s(cpu);
 
     cpu.pc += 1;
@@ -984,22 +984,22 @@ uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t i)
     cpu.gpr(i.dst + 1) = uint8_t(res >> 8);
 
     // in the AVR instruction set manual (seemingly a typo):
-    //set_flag(cpu, SREG_V, res & ~dst & 0x8000);
+    //set_flag(cpu, reg::bit::SREG::V, res & ~dst & 0x8000);
 
-    uint8_t sreg = cpu.sreg() & ~(SREG_Z | SREG_V | SREG_C | SREG_N | SREG_S);
+    uint8_t sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::Z | reg::bit::SREG::V | reg::bit::SREG::C | reg::bit::SREG::N | reg::bit::SREG::S);
 
-    if(res == 0) sreg |= SREG_Z;         // Z
+    if(res == 0) sreg |= reg::bit::SREG::Z;         // Z
     sreg |= (dst & ~res & 0x8000) >> 12; // V
     sreg |= (res & ~dst & 0x8000) >> 15; // C
     sreg |= (res & 0x8000) >> 13;        // N
     sreg = flag_s(sreg);                 // S
 
-    cpu.sreg() = sreg;
+    cpu.data[reg::addr::SREG] = sreg;
 
-    //set_flag(cpu, SREG_Z, res == 0);
-    //set_flag(cpu, SREG_V, dst & ~res & 0x8000);
-    //set_flag(cpu, SREG_C, res & ~dst & 0x8000);
-    //set_flag(cpu, SREG_N, res & 0x8000);
+    //set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    //set_flag(cpu, reg::bit::SREG::V, dst & ~res & 0x8000);
+    //set_flag(cpu, reg::bit::SREG::C, res & ~dst & 0x8000);
+    //set_flag(cpu, reg::bit::SREG::N, res & 0x8000);
     //set_flag_s(cpu);
 
     cpu.pc += 1;
@@ -1009,7 +1009,7 @@ uint32_t instr_sbiw(atmega32u4_t& cpu, avr_instr_t i)
 uint32_t instr_bset(atmega32u4_t& cpu, avr_instr_t i)
 {
     // src: bit, dst: mask
-    cpu.sreg() |= i.dst;
+    cpu.data[reg::addr::SREG] |= i.dst;
     cpu.pc += 1;
     return 1;
 }
@@ -1017,7 +1017,7 @@ uint32_t instr_bset(atmega32u4_t& cpu, avr_instr_t i)
 uint32_t instr_bclr(atmega32u4_t& cpu, avr_instr_t i)
 {
     // src: bit, dst: mask
-    cpu.sreg() &= i.dst;
+    cpu.data[reg::addr::SREG] &= i.dst;
     cpu.pc += 1;
     return 1;
 }
@@ -1114,7 +1114,7 @@ uint32_t instr_sbrc(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_bld(atmega32u4_t& cpu, avr_instr_t i)
 {
-    if(cpu.sreg() & SREG_T)
+    if(cpu.data[reg::addr::SREG] & reg::bit::SREG::T)
         cpu.gpr(i.dst) |= i.src;
     else
         cpu.gpr(i.dst) &= ~i.src;
@@ -1124,7 +1124,7 @@ uint32_t instr_bld(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_bst(atmega32u4_t& cpu, avr_instr_t i)
 {
-    set_flag(cpu, SREG_T, cpu.gpr(i.dst) & i.src);
+    set_flag(cpu, reg::bit::SREG::T, cpu.gpr(i.dst) & i.src);
     cpu.pc += 1;
     return 1;
 }
@@ -1134,8 +1134,8 @@ uint32_t instr_com(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t src = cpu.gpr(i.dst);
     uint8_t res = ~src;
     cpu.gpr(i.dst) = res;
-    set_flag(cpu, SREG_V, 0);
-    set_flag(cpu, SREG_C, 1);
+    set_flag(cpu, reg::bit::SREG::V, 0);
+    set_flag(cpu, reg::bit::SREG::C, 1);
     set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
@@ -1147,9 +1147,9 @@ uint32_t instr_neg(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t res = uint8_t(-src);
     cpu.gpr(i.dst) = res;
 
-    set_flag(cpu, SREG_H, (res | src) & 0x8);
-    set_flag(cpu, SREG_V, res == 0x80);
-    set_flag(cpu, SREG_C, res != 0x00);
+    set_flag(cpu, reg::bit::SREG::H, (res | src) & 0x8);
+    set_flag(cpu, reg::bit::SREG::V, res == 0x80);
+    set_flag(cpu, reg::bit::SREG::C, res != 0x00);
     set_flags_nzs(cpu, res);
     
     cpu.pc += 1;
@@ -1170,7 +1170,7 @@ uint32_t instr_inc(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst + 1;
     cpu.gpr(i.dst) = res;
-    set_flag(cpu, SREG_V, res == 0x80);
+    set_flag(cpu, reg::bit::SREG::V, res == 0x80);
     set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
@@ -1181,7 +1181,7 @@ uint32_t instr_dec(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst - 1;
     cpu.gpr(i.dst) = res;
-    set_flag(cpu, SREG_V, dst == 0x80);
+    set_flag(cpu, reg::bit::SREG::V, dst == 0x80);
     set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
@@ -1192,8 +1192,8 @@ uint32_t instr_asr(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = (dst >> 1) | (dst & 0x80);
     cpu.gpr(i.dst) = res;
-    set_flag(cpu, SREG_C, dst & 0x1);
-    set_flag(cpu, SREG_V, (dst >> 7) ^ (dst & 1));
+    set_flag(cpu, reg::bit::SREG::C, dst & 0x1);
+    set_flag(cpu, reg::bit::SREG::V, (dst >> 7) ^ (dst & 1));
     set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
@@ -1204,11 +1204,11 @@ uint32_t instr_lsr(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = (dst >> 1);
     cpu.gpr(i.dst) = res;
-    set_flag(cpu, SREG_C, dst & 0x1);
-    set_flag(cpu, SREG_V, dst & 0x1);
-    set_flag(cpu, SREG_S, dst & 0x1);
-    set_flag(cpu, SREG_N, 0);
-    set_flag(cpu, SREG_Z, res == 0);
+    set_flag(cpu, reg::bit::SREG::C, dst & 0x1);
+    set_flag(cpu, reg::bit::SREG::V, dst & 0x1);
+    set_flag(cpu, reg::bit::SREG::S, dst & 0x1);
+    set_flag(cpu, reg::bit::SREG::N, 0);
+    set_flag(cpu, reg::bit::SREG::Z, res == 0);
     cpu.pc += 1;
     return 1;
 }
@@ -1217,11 +1217,11 @@ uint32_t instr_ror(atmega32u4_t& cpu, avr_instr_t i)
 {
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst >> 1;
-    if(cpu.sreg() & SREG_C)
+    if(cpu.data[reg::addr::SREG] & reg::bit::SREG::C)
         res |= 0x80;
     cpu.gpr(i.dst) = res;
-    set_flag(cpu, SREG_C, dst & 0x1);
-    set_flag(cpu, SREG_V, (res >> 7) ^ (dst & 0x1));
+    set_flag(cpu, reg::bit::SREG::C, dst & 0x1);
+    set_flag(cpu, reg::bit::SREG::V, (res >> 7) ^ (dst & 0x1));
     set_flags_nzs(cpu, res);
     cpu.pc += 1;
     return 1;
@@ -1229,7 +1229,7 @@ uint32_t instr_ror(atmega32u4_t& cpu, avr_instr_t i)
 
 uint32_t instr_sleep(atmega32u4_t& cpu, avr_instr_t i)
 {
-    if(cpu.smcr() & 0x1)
+    if(cpu.data[reg::addr::SMCR] & 0x1)
         cpu.active = false;
     cpu.pc += 1;
     return 1;
@@ -1242,8 +1242,8 @@ uint32_t instr_mul(atmega32u4_t& cpu, avr_instr_t i)
     uint16_t res = src * dst;
     cpu.gpr(0) = uint8_t(res >> 0);
     cpu.gpr(1) = uint8_t(res >> 8);
-    set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_C, res & 0x8000);
+    set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    set_flag(cpu, reg::bit::SREG::C, res & 0x8000);
     cpu.pc += 1;
     return 2;
 }
@@ -1255,8 +1255,8 @@ uint32_t instr_muls(atmega32u4_t& cpu, avr_instr_t i)
     int16_t res = src * dst;
     cpu.gpr(0) = uint8_t((uint16_t)res >> 0);
     cpu.gpr(1) = uint8_t((uint16_t)res >> 8);
-    set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_C, res & 0x8000);
+    set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    set_flag(cpu, reg::bit::SREG::C, res & 0x8000);
     cpu.pc += 1;
     return 2;
 }
@@ -1268,8 +1268,8 @@ uint32_t instr_mulsu(atmega32u4_t& cpu, avr_instr_t i)
     int16_t res = src * dst;
     cpu.gpr(0) = uint8_t((uint16_t)res >> 0);
     cpu.gpr(1) = uint8_t((uint16_t)res >> 8);
-    set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_C, res & 0x8000);
+    set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    set_flag(cpu, reg::bit::SREG::C, res & 0x8000);
     cpu.pc += 1;
     return 2;
 }
@@ -1281,8 +1281,8 @@ uint32_t instr_fmul(atmega32u4_t& cpu, avr_instr_t i)
     uint16_t res = src * dst;
     cpu.gpr(0) = uint8_t((uint16_t)res << 1);
     cpu.gpr(1) = uint8_t((uint16_t)res >> 7);
-    set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_C, res & 0x8000);
+    set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    set_flag(cpu, reg::bit::SREG::C, res & 0x8000);
     cpu.pc += 1;
     return 2;
 }
@@ -1294,8 +1294,8 @@ uint32_t instr_fmuls(atmega32u4_t& cpu, avr_instr_t i)
     int16_t res = src * dst;
     cpu.gpr(0) = uint8_t((uint16_t)res << 1);
     cpu.gpr(1) = uint8_t((uint16_t)res >> 7);
-    set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_C, res & 0x8000);
+    set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    set_flag(cpu, reg::bit::SREG::C, res & 0x8000);
     cpu.pc += 1;
     return 2;
 }
@@ -1307,8 +1307,8 @@ uint32_t instr_fmulsu(atmega32u4_t& cpu, avr_instr_t i)
     int16_t res = src * dst;
     cpu.gpr(0) = uint8_t((uint16_t)res << 1);
     cpu.gpr(1) = uint8_t((uint16_t)res >> 7);
-    set_flag(cpu, SREG_Z, res == 0);
-    set_flag(cpu, SREG_C, res & 0x8000);
+    set_flag(cpu, reg::bit::SREG::Z, res == 0);
+    set_flag(cpu, reg::bit::SREG::C, res & 0x8000);
     cpu.pc += 1;
     return 2;
 }
@@ -1326,10 +1326,10 @@ uint32_t instr_merged_dec_brne(atmega32u4_t& cpu, avr_instr_t i)
     uint8_t dst = cpu.gpr(i.dst);
     uint8_t res = dst - 1;
     cpu.gpr(i.dst) = res;
-    unsigned sreg = cpu.sreg() & ~(SREG_V | SREG_N | SREG_Z | SREG_S);
-    if(dst == 0x80) sreg |= SREG_V;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~(reg::bit::SREG::V | reg::bit::SREG::N | reg::bit::SREG::Z | reg::bit::SREG::S);
+    if(dst == 0x80) sreg |= reg::bit::SREG::V;
     sreg = flags_nzs(sreg, res);
-    cpu.sreg() = sreg;
+    cpu.data[reg::addr::SREG] = sreg;
 
     if(res != 0)
     {
@@ -1352,12 +1352,12 @@ uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t i)
     unsigned dst_xor_src = dst ^ src;
     unsigned hc = (dst | src) ^ (res & dst_xor_src);
     unsigned v = ~dst_xor_src & (dst ^ res);
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~reg::bit::SREG::HSVNZC;
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
     sreg |= (v & 0x8000) >> 12;  // V flag
     sreg = flags_nzs16(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 2;
     return 2;
@@ -1371,14 +1371,14 @@ uint32_t instr_merged_sub_sbc(atmega32u4_t& cpu, avr_instr_t i)
     cpu.gpr(i.dst + 0) = (uint8_t)(res >> 0);
     cpu.gpr(i.dst + 1) = (uint8_t)(res >> 8);
 
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~reg::bit::SREG::HSVNZC;
     unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
     unsigned v = (dst & ~src & ~res) | (~dst & src & res);
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
     sreg |= (v & 0x8000) >> 12;  // V flag
     sreg = flags_nzs16(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 2;
     return 2;
@@ -1390,14 +1390,14 @@ uint32_t instr_merged_cp_cpc(atmega32u4_t& cpu, avr_instr_t i)
     unsigned src = cpu.gpr(i.src) + cpu.gpr(i.src + 1) * 256;
     unsigned res = (dst - src) & 0xffff;
 
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~reg::bit::SREG::HSVNZC;
     unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
     unsigned v = (dst & ~src & ~res) | (~dst & src & res);
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
     sreg |= (v & 0x8000) >> 12;  // V flag
     sreg = flags_nzs16(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 2;
     return 2;
@@ -1411,14 +1411,14 @@ uint32_t instr_merged_subi_sbci(atmega32u4_t& cpu, avr_instr_t i)
     cpu.gpr(i.dst) = (uint8_t)(res >> 0);
     cpu.gpr(i.src) = (uint8_t)(res >> 8);
 
-    unsigned sreg = cpu.sreg() & ~SREG_HSVNZC;
+    unsigned sreg = cpu.data[reg::addr::SREG] & ~reg::bit::SREG::HSVNZC;
     unsigned hc = (~dst & src) | (src & res) | (res & ~dst);
     unsigned v = (dst & ~src & ~res) | (~dst & src & res);
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
     sreg |= (v & 0x8000) >> 12;  // V flag
     sreg = flags_nzs16(sreg, res);
-    cpu.sreg() = (uint8_t)sreg;
+    cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 2;
     return 2;
@@ -1431,3 +1431,4 @@ uint32_t instr_merged_delay(atmega32u4_t& cpu, avr_instr_t i)
 }
 
 }
+

@@ -7,13 +7,13 @@ void window_led(bool& open)
 	using namespace ImGui;
     if(!open) return;
 
-    SetNextWindowSize({ 200 * pixel_ratio, 200 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("LEDs", &open) && arduboy.cpu.decoded)
+    SetNextWindowSize({ 200 * app.pixel_ratio, 200 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+    if(Begin("LEDs", &open) && app.emulator->core_state.cpu.decoded)
     {
-        uint8_t tx = arduboy.cpu.led_tx();
-        uint8_t rx = arduboy.cpu.led_rx();
+        uint8_t tx = app.emulator->core_state.cpu.led_tx();
+        uint8_t rx = app.emulator->core_state.cpu.led_rx();
         uint8_t r, g, b;
-        arduboy.cpu.led_rgb(r, g, b);
+        app.emulator->core_state.cpu.led_rgb(r, g, b);
         auto* draw = GetWindowDrawList();
 
         auto size = CalcTextSize("   ");

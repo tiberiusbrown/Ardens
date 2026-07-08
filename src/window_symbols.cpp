@@ -11,8 +11,8 @@ void window_symbols(bool& open)
 {
     using namespace ImGui;
     if(!open) return;
-    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Symbols", &open) && arduboy.cpu.decoded && arduboy.elf)
+    SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+    if(Begin("Symbols", &open) && app.emulator->core_state.cpu.decoded && app.emulator->program_state.elf)
     {
         AlignTextToFramePadding();
         TextUnformatted("Show:");
@@ -39,16 +39,16 @@ void window_symbols(bool& open)
         flags |= ImGuiTableFlags_NoClip;
         if(BeginTable("##symbols", 1, flags, { -1, -1 }))
         {
-            for(uint16_t addr : arduboy.elf->text_symbols_sorted)
+            for(uint16_t addr : app.emulator->program_state.elf->text_symbols_sorted)
             {
-                auto const& sym = arduboy.elf->text_symbols[addr];
+                auto const& sym = app.emulator->program_state.elf->text_symbols[addr];
                 if(!show_objects && sym.object) continue;
                 if(!show_labels && sym.notype) continue;
                 if(!filter.PassFilter(sym.name.c_str())) continue;
                 TableNextRow();
                 TableSetColumnIndex(0);
                 if(Selectable(sym.name.c_str()))
-                    disassembly_scroll_addr = addr, scroll_addr_to_top = true;
+                    app.disassembly_scroll_addr = addr, app.scroll_addr_to_top = true;
             }
 
             EndTable();

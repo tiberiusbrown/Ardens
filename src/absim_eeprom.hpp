@@ -6,13 +6,14 @@ namespace absim
 void atmega32u4_t::eeprom_handle_st_eecr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x3f);
+    assert(ptr == reg::addr::EECR);
 
-    constexpr uint8_t EEMPE = (1 << 2);
-    constexpr uint8_t EEPE = (1 << 1);
-    constexpr uint8_t EERE = (1 << 0);
+    constexpr uint8_t EEMPE = reg::bit::EECR::EEMPE;
+    constexpr uint8_t EEPE = reg::bit::EECR::EEPE;
+    constexpr uint8_t EERE = reg::bit::EECR::EERE;
 
-    uint8_t eecr = cpu.data[0x3f];
+    auto& eecr = cpu.data[reg::addr::EECR];
+    auto& eedr = cpu.data[reg::addr::EEDR];
 
     if(x & EEMPE)
     {
@@ -22,8 +23,8 @@ void atmega32u4_t::eeprom_handle_st_eecr(
             cpu.cycle_count + cpu.eeprom_clear_eempe_cycles, PQ_EEPROM);
     }
 
-    uint16_t eearl = cpu.data[0x41];
-    uint16_t eearh = cpu.data[0x42];
+    uint16_t eearl = cpu.data[reg::addr::EEARL];
+    uint16_t eearh = cpu.data[reg::addr::EEARH];
     uint16_t addr = (eearl | (eearh << 8));
     if(addr >= 0x400)
         cpu.autobreak(AB_OOB_EEPROM);
@@ -36,7 +37,6 @@ void atmega32u4_t::eeprom_handle_st_eecr(
         else
         {
             uint8_t eepm = (x >> 4) & 0x3;
-            uint8_t eedr = cpu.data[0x40];
 
             if(eepm == 0)
             {
@@ -73,13 +73,13 @@ void atmega32u4_t::eeprom_handle_st_eecr(
     if(x & EERE)
     {
         x &= ~EERE;
-        cpu.data[0x40] = cpu.eeprom[addr];
+        eedr = cpu.eeprom[addr];
         cpu.wakeup_cycles = 4;
         cpu.active = false;
         cpu.eeprom_busy = false;
     }
 
-    cpu.data[0x3f] = x;
+    eecr = x;
 }
 
 ARDENS_FORCEINLINE void atmega32u4_t::update_eeprom()
@@ -90,13 +90,10 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_eeprom()
     uint32_t cycles = uint32_t(cycle_count - eeprom_prev_cycle);
     eeprom_prev_cycle = cycle_count;
 
-#define eecr data[0x3f]
-#define eedr data[0x40]
+    auto& eecr = data[reg::addr::EECR];
 
-    constexpr uint8_t EERIE = (1 << 3);
-    constexpr uint8_t EEMPE = (1 << 2);
-    constexpr uint8_t EEPE  = (1 << 1);
-    constexpr uint8_t EERE  = (1 << 0);
+    constexpr uint8_t EEMPE = reg::bit::EECR::EEMPE;
+    constexpr uint8_t EEPE  = reg::bit::EECR::EEPE;
 
     if(eeprom_clear_eempe_cycles != 0)
     {

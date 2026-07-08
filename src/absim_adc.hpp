@@ -7,13 +7,13 @@ namespace absim
 
 void atmega32u4_t::adc_handle_prr0(uint8_t x)
 {
-    constexpr uint8_t pradc = 1 << 0;
+    constexpr uint8_t pradc = reg::bit::PRR0::PRADC;
     if(x & pradc)
         adc_busy = false;
     else
     {
-        uint8_t adcsra = data[0x7a];
-        adc_busy = (adcsra & 0xc0) != 0;
+        uint8_t adcsra = data[reg::addr::ADCSRA];
+        adc_busy = (adcsra & (reg::bit::ADCSRA::ADEN | reg::bit::ADCSRA::ADSC)) != 0;
     }
     adc_schedule();
 }
@@ -21,13 +21,13 @@ void atmega32u4_t::adc_handle_prr0(uint8_t x)
 void atmega32u4_t::adc_st_handle_adcsra(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x7a);
-    constexpr uint8_t pradc = 1 << 0;
-    if(cpu.data[0x64] & pradc)
+    assert(ptr == reg::addr::ADCSRA);
+    constexpr uint8_t pradc = reg::bit::PRR0::PRADC;
+    if(cpu.data[reg::addr::PRR0] & pradc)
         return;
-    if(x & 0xc0)
+    if(x & (reg::bit::ADCSRA::ADEN | reg::bit::ADCSRA::ADSC))
         cpu.adc_busy = true;
-    cpu.data[0x7a] = x;
+    cpu.data[reg::addr::ADCSRA] = x;
     cpu.adc_schedule();
 }
 
@@ -35,7 +35,8 @@ void atmega32u4_t::adc_schedule()
 {
     if(adc_busy)
     {
-        uint32_t adps = ADCSRA() & 0x7;
+        uint32_t adps = data[reg::addr::ADCSRA] &
+            (reg::bit::ADCSRA::ADPS0 | reg::bit::ADCSRA::ADPS1 | reg::bit::ADCSRA::ADPS2);
         uint32_t prescaler = 1 << adps;
         if(prescaler <= 1)
             prescaler = 2;
@@ -56,8 +57,9 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_adc()
     uint32_t cycles = uint32_t(cycle_count - adc_prev_cycle);
     adc_prev_cycle = cycle_count;
 
-	uint8_t& adcsra = data[0x7a];
-	uint32_t adps  = adcsra & 0x7;
+	uint8_t& adcsra = data[reg::addr::ADCSRA];
+	uint32_t adps  = adcsra &
+        (reg::bit::ADCSRA::ADPS0 | reg::bit::ADCSRA::ADPS1 | reg::bit::ADCSRA::ADPS2);
 	uint32_t prescaler = 1 << adps;
 	if(prescaler <= 1)
 		prescaler = 2;
@@ -69,12 +71,16 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_adc()
         return;
     }
 
-	uint32_t adcsrb = data[0x7b];
-	uint32_t admux = data[0x7c];
+	uint32_t adcsrb = data[reg::addr::ADCSRB];
+	uint32_t admux = data[reg::addr::ADMUX];
 
-	uint32_t adts = adcsrb & 0xf;
-	uint32_t mux = (admux & 0x1f) | (adcsrb & 0x20);
-    uint32_t refs = admux >> 6;
+	uint32_t mux = (admux &
+        (reg::bit::ADMUX::MUX0 |
+        reg::bit::ADMUX::MUX1 |
+        reg::bit::ADMUX::MUX2 |
+        reg::bit::ADMUX::MUX3 |
+        reg::bit::ADMUX::MUX4)) |
+        (adcsrb & reg::bit::ADCSRB::MUX5);
 
 	for(uint32_t i = 0; i < tcycles; ++i)
 	{
@@ -82,7 +88,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_adc()
 			continue;
 		adc_cycle = 0;
 
-		constexpr uint8_t ADSC = 1 << 6;
+		constexpr uint8_t ADSC = reg::bit::ADCSRA::ADSC;
 		adcsra &= ~ADSC;
         
         int n = 41;
@@ -123,11 +129,11 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_adc()
 	uint32_t adc = adc_result;
 
 	// ADLAR
-	if(admux & 0x20)
+	if(admux & reg::bit::ADMUX::ADLAR)
 		adc <<= 6;
 
-	uint8_t& adcl = data[0x78];
-	uint8_t& adch = data[0x79];
+	uint8_t& adcl = data[reg::addr::ADCL];
+	uint8_t& adch = data[reg::addr::ADCH];
 	adcl = uint8_t(adc >> 0);
 	adch = uint8_t(adc >> 8);
 

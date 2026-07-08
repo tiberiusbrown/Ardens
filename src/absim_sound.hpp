@@ -5,17 +5,19 @@ namespace absim
 
 void atmega32u4_t::sound_st_handler_ddrc(atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    if(ptr == 0x27)
+    if(ptr == reg::addr::DDRC)
     {
         // DDRC
         uint32_t e = 0;
-        if(x & (1 << 6))
+        if(x & reg::bit::DDRC::DDC6)
             e |= (1 << 0);
-        if(x & (1 << 7))
+        if(x & reg::bit::DDRC::DDC7)
             e |= (1 << 1);
         cpu.sound_enabled = e;
     }
     cpu.data[ptr] = x;
+    if(ptr == reg::addr::DDRC)
+        cpu.data[reg::addr::PINC] = cpu.data[reg::addr::PORTC];
 }
     
 ARDENS_FORCEINLINE void atmega32u4_t::update_sound()
@@ -45,11 +47,11 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_sound()
     if(!sound_pwm)
     {
         x = 0;
-        uint8_t portc = data[0x28];
+        uint8_t portc = data[reg::addr::PINC];
         if(pins & (1 << 0))
-            x += (portc & (1 << 6)) ? SOUND_GAIN / 2 : -SOUND_GAIN / 2;
+            x += (portc & reg::bit::PINC::PINC6) ? SOUND_GAIN / 2 : -SOUND_GAIN / 2;
         if(pins & (1 << 1))
-            x += (portc & (1 << 7)) ? -SOUND_GAIN / 2 : SOUND_GAIN / 2;
+            x += (portc & reg::bit::PINC::PINC7) ? -SOUND_GAIN / 2 : SOUND_GAIN / 2;
     }
     for(uint32_t i = 0; i < samples; ++i)
     {

@@ -8,6 +8,9 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 
+#include <cstdio>
+#include <fstream>
+
 static ImGuiSettingsHandler settings_handler;
 
 settings_t settings;
@@ -30,6 +33,7 @@ static void settings_read_line(
     } while(0)
     
     ARDENS_BOOL_SETTING(open_display);
+    ARDENS_BOOL_SETTING(open_linked_secondary_arduboy);
     ARDENS_BOOL_SETTING(open_display_buffer);
     ARDENS_BOOL_SETTING(open_display_internals);
     ARDENS_BOOL_SETTING(open_simulation);
@@ -61,6 +65,7 @@ static void settings_read_line(
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
     ARDENS_BOOL_SETTING(nondeterminism);
     ARDENS_BOOL_SETTING(frame_based_cpu_usage);
+    ARDENS_BOOL_SETTING(usb_connected);
 
     ARDENS_BOOL_SETTING(ab.stack_overflow);
     ARDENS_BOOL_SETTING(ab.null_deref);
@@ -86,6 +91,9 @@ static void settings_read_line(
     ARDENS_INT_SETTING(recording_orientation, 0, 3);
     ARDENS_INT_SETTING(uiscale, 0, 6);
     ARDENS_INT_SETTING(volume, 0, 200);
+    ARDENS_INT_SETTING(window_width, 0, 100000);
+    ARDENS_INT_SETTING(window_height, 0, 100000);
+    ARDENS_BOOL_SETTING(window_maximized);
 
 #undef ARDENS_BOOL_SETTING
 #undef ARDENS_INT_SETTING
@@ -103,6 +111,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     buf->appendf(#n__ "=%d\n", settings.n__)
 
     ARDENS_BOOL_SETTING(open_display);
+    ARDENS_BOOL_SETTING(open_linked_secondary_arduboy);
     ARDENS_BOOL_SETTING(open_display_buffer);
     ARDENS_BOOL_SETTING(open_display_internals);
     ARDENS_BOOL_SETTING(open_simulation);
@@ -135,6 +144,7 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_BOOL_SETTING(recording_sameasdisplay);
     ARDENS_BOOL_SETTING(nondeterminism);
     ARDENS_BOOL_SETTING(frame_based_cpu_usage);
+    ARDENS_BOOL_SETTING(usb_connected);
 
     ARDENS_BOOL_SETTING(ab.stack_overflow);
     ARDENS_BOOL_SETTING(ab.null_deref);
@@ -159,6 +169,9 @@ static void settings_write_all(ImGuiContext* ctx, ImGuiSettingsHandler* handler,
     ARDENS_INT_SETTING(recording_orientation, 0, 3);
     ARDENS_INT_SETTING(uiscale, 0, 6);
     ARDENS_INT_SETTING(volume, 0, 200);
+    ARDENS_INT_SETTING(window_width, 0, 100000);
+    ARDENS_INT_SETTING(window_height, 0, 100000);
+    ARDENS_BOOL_SETTING(window_maximized);
 
 #undef ARDENS_BOOL_SETTING
 #undef ARDENS_INT_SETTING
@@ -188,12 +201,82 @@ void update_settings()
     ImGui::MarkIniSettingsDirty();
 }
 
+void update_window_settings(int width, int height, bool maximized)
+{
+    if(width < 0)
+        width = 0;
+    if(height < 0)
+        height = 0;
+    if(settings.window_width == width &&
+       settings.window_height == height &&
+       settings.window_maximized == maximized)
+        return;
+
+    settings.window_width = width;
+    settings.window_height = height;
+    settings.window_maximized = maximized;
+    ImGui::MarkIniSettingsDirty();
+}
+
+bool load_window_geometry_from_ini(
+    std::filesystem::path const& ini_path,
+    int& width,
+    int& height)
+{
+    std::ifstream f(ini_path);
+    if(!f)
+        return false;
+
+    bool in_settings = false;
+    bool have_width = false;
+    bool have_height = false;
+    int parsed_width = 0;
+    int parsed_height = 0;
+
+    std::string line;
+    while(std::getline(f, line))
+    {
+        if(!line.empty() && line.back() == '\r')
+            line.pop_back();
+
+        if(!line.empty() && line.front() == '[')
+        {
+            in_settings = (line == "[UserData][Settings]");
+            continue;
+        }
+
+        if(!in_settings)
+            continue;
+
+        int value = 0;
+        if(sscanf(line.c_str(), "window_width=%d", &value) == 1)
+        {
+            parsed_width = value;
+            have_width = true;
+        }
+        else if(sscanf(line.c_str(), "window_height=%d", &value) == 1)
+        {
+            parsed_height = value;
+            have_height = true;
+        }
+    }
+
+    if(have_width && have_height && parsed_width > 0 && parsed_height > 0)
+    {
+        width = parsed_width;
+        height = parsed_height;
+        return true;
+    }
+
+    return false;
+}
+
 void autoset_from_device_type()
 {
-    if(arduboy.device_type == "ArduboyFX")
+    if(app.emulator->program_state.device_type == "ArduboyFX")
         settings.fxport = FXPORT_D1;
-    if(arduboy.device_type == "ArduboyFXDevKit")
+    if(app.emulator->program_state.device_type == "ArduboyFXDevKit")
         settings.fxport = FXPORT_D2;
-    if(arduboy.device_type == "ArduboyMini")
+    if(app.emulator->program_state.device_type == "ArduboyMini")
         settings.fxport = FXPORT_E2;
 }

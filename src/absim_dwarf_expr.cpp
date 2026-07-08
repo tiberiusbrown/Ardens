@@ -34,14 +34,14 @@ static uint64_t regval(uint64_t i)
 {
     if(i < 31)
     {
-        uint64_t x = arduboy.cpu.data[size_t(i + 1)];
-        x = (x << 8) + arduboy.cpu.data[size_t(i)];
+        uint64_t x = app.emulator->core_state.cpu.data[size_t(i + 1)];
+        x = (x << 8) + app.emulator->core_state.cpu.data[size_t(i)];
         return x;
     }
     else if(i == 31)
-        return arduboy.cpu.data[size_t(i)];
+        return app.emulator->core_state.cpu.data[size_t(i)];
     else if(i == 32)
-        return arduboy.cpu.sp();
+        return app.emulator->core_state.cpu.sp();
     else
         return -1;
 }
@@ -68,7 +68,7 @@ dwarf_var_data dwarf_evaluate_location(
 
     expr_stack stack;
 
-    auto const& cpu = arduboy.cpu;
+    auto const& cpu = app.emulator->core_state.cpu;
 
     auto extractor = llvm::DataExtractor(loc,
         type.getDwarfUnit()->getContext().isLittleEndian(), 0);

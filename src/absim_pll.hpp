@@ -9,9 +9,9 @@ constexpr uint64_t PLL_LOCK_CYCLES = 16000000 * 3 / 1000;
 void atmega32u4_t::pll_handle_st_pllcsr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    assert(ptr == 0x49);
-    constexpr uint8_t PLOCK = 1 << 0;
-    constexpr uint8_t PLLE = 1 << 1;
+    assert(ptr == reg::addr::PLLCSR);
+    constexpr uint8_t PLOCK = reg::bit::PLLCSR::PLOCK;
+    constexpr uint8_t PLLE = reg::bit::PLLCSR::PLLE;
 
     cpu.pll_num12 = 0;
     if(!(x & PLLE))
@@ -25,7 +25,7 @@ void atmega32u4_t::pll_handle_st_pllcsr(
         cpu.pll_busy = true;
     }
 
-    uint8_t& csr = cpu.data[0x49];
+    uint8_t& csr = cpu.data[reg::addr::PLLCSR];
 
     // PLOCK is read only
     x &= ~PLOCK;
@@ -53,9 +53,9 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_pll()
     uint32_t cycles = uint32_t(cycle_count - pll_prev_cycle);
     pll_prev_cycle = cycle_count;
 
-    uint8_t& csr = data[0x49];
+    uint8_t& csr = data[reg::addr::PLLCSR];
 
-    constexpr uint8_t PLOCK = 1 << 0;
+    constexpr uint8_t PLOCK = reg::bit::PLLCSR::PLOCK;
 
     if((pll_lock_cycle += cycles) >= PLL_LOCK_CYCLES)
     {
@@ -63,7 +63,7 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_pll()
         pll_busy = false;
 
         // compute pll numerator
-        uint32_t frq = data[0x52];
+        uint32_t frq = data[reg::addr::PLLFRQ];
 
         uint32_t divider = frq & 0xf;
 

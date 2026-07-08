@@ -89,25 +89,25 @@ void window_source(bool& open)
 
     static uint16_t prev_pc = -1;
 
-    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
+    SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Source##SourceWindow", &open)
-        && arduboy.cpu.decoded && arduboy.elf && arduboy.paused)
+        && app.emulator->core_state.cpu.decoded && app.emulator->program_state.elf && app.emulator->debugger_state.paused)
     {
-        auto pc = arduboy.cpu.pc;
+        auto pc = app.emulator->core_state.cpu.pc;
 
 #ifdef ARDENS_LLVM
         init_texteditor();
-        auto& dwarf = *arduboy.elf->dwarf_ctx;
+        auto& dwarf = *app.emulator->program_state.elf->dwarf_ctx;
         //auto info = dwarf.getLineInfoForAddress(
         //    { uint64_t(pc) * 2 },
         //    { llvm::DILineInfoSpecifier::FileLineInfoKind::AbsoluteFilePath });
         auto info = get_line_info(dwarf, uint64_t(pc) * 2);
        
-        auto it = arduboy.elf->source_file_names.find(info.FileName);
-        if(it != arduboy.elf->source_file_names.end() &&
-            it->second >= 0 && it->second < (int)arduboy.elf->source_files.size())
+        auto it = app.emulator->program_state.elf->source_file_names.find(info.FileName);
+        if(it != app.emulator->program_state.elf->source_file_names.end() &&
+            it->second >= 0 && it->second < (int)app.emulator->program_state.elf->source_files.size())
         {
-            load_file_to_editor(arduboy.elf->source_files[it->second]);
+            load_file_to_editor(app.emulator->program_state.elf->source_files[it->second]);
             editor.Render(info.FileName.c_str());
             if(prev_pc != pc)
             {

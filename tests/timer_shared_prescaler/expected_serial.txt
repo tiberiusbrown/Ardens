@@ -1,0 +1,9 @@
+ARDENS_TIMER_SHARED_PRESCALER,1
+meta,f_cpu,16000000
+meta,gtccr_tsm_psrsync,129
+tsm_hold_release_div8,6,0,0,0,7,7,7,0
+staggered_start_div64,8,1,1,1,1,0,3,3,2,0
+psrsync_while_running,9,1,1,1,1,1,1,2,2,2,0
+mixed_taps_tsm,9,37,4,1,54,6,1,72,9,2,0
+prescaler_free_run,6,0,0,1,0,1,0,0
+END

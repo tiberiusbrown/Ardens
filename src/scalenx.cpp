@@ -8,8 +8,6 @@
 // used for scale4x first stage
 static uint8_t tmpbuf[128 * 64 * 2 * 2];
 
-int display_texture_zoom = -1;
-
 // palette handling
 void palette_rgba(int palette, uint8_t x, uint8_t y[4])
 {
@@ -93,17 +91,22 @@ int recording_filter_zoom()
     return z;
 }
 
-void recreate_display_texture()
+void recreate_display_texture(texture_t& texture, int& texture_zoom)
 {
     int z = display_filter_zoom();
-    if(z == display_texture_zoom)
+    if(z == texture_zoom)
         return;
 
-    display_texture_zoom = z;
+    texture_zoom = z;
 
-    platform_destroy_texture(display_texture);
+    platform_destroy_texture(texture);
 
-    display_texture = platform_create_texture(128 * z, 64 * z);
+    texture = platform_create_texture(128 * z, 64 * z);
+}
+
+void recreate_display_texture()
+{
+    recreate_display_texture(app.display_texture, app.display_texture_zoom);
 }
 
 #ifndef ARDENS_NO_SCALING
@@ -326,12 +329,21 @@ void scalenx(uint8_t* dst, uint8_t const* src, bool rgba)
         settings.display_palette);
 }
 
+void update_display_texture(texture_t texture, uint8_t const* src)
+{
+    int z = display_filter_zoom();
+    std::vector<uint8_t> pixels;
+    pixels.resize(128 * 64 * 4 * z * z);
+    scalenx(pixels.data(), src, true);
+    platform_update_texture(texture, pixels.data(), pixels.size());
+}
+
 
 uint8_t* recording_pixels(bool rgba)
 {
     static std::vector<uint8_t> pixels;
     static uint8_t tmp[128 * 64 * 4 * 4];
-    uint8_t const* src = arduboy.display.filtered_pixels.data();
+    uint8_t const* src = app.emulator->peripherals.display.filtered_pixels.data();
 
     int z = filter_zoom(settings.recording_filtering);
     int w = 128 * z;

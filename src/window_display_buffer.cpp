@@ -16,23 +16,23 @@ static int hex_value(char c)
 
 static void update_display_buffer_texture()
 {
-    if(display_buffer_addr < 0) return;
-    if(display_buffer_addr >= (int)arduboy.cpu.data.size()) return;
+    if(app.display_buffer_addr < 0) return;
+    if(app.display_buffer_addr >= (int)app.emulator->core_state.cpu.data.size()) return;
 
     static uint8_t pixels[128 * 64 * 4];
     uint8_t* bpixels = (uint8_t*)pixels;
 
-    display_buffer_w = std::min(display_buffer_w, 128);
-    display_buffer_h = std::min(display_buffer_h, 64);
-    for(int i = 0; i < display_buffer_h; ++i)
+    app.display_buffer_w = std::min(app.display_buffer_w, 128);
+    app.display_buffer_h = std::min(app.display_buffer_h, 64);
+    for(int i = 0; i < app.display_buffer_h; ++i)
     {
-        for(int j = 0; j < display_buffer_w; ++j)
+        for(int j = 0; j < app.display_buffer_w; ++j)
         {
-            size_t n = (size_t)display_buffer_addr + (i / 8) * display_buffer_w + j;
+            size_t n = (size_t)app.display_buffer_addr + (i / 8) * app.display_buffer_w + j;
             uint8_t pi = 128;
-            if(n < arduboy.cpu.data.size())
+            if(n < app.emulator->core_state.cpu.data.size())
             {
-                uint8_t d = arduboy.cpu.data[n];
+                uint8_t d = app.emulator->core_state.cpu.data[n];
                 pi = (d & (1 << (i % 8))) ? 255 : 0;
             }
             *bpixels++ = pi;
@@ -42,8 +42,8 @@ static void update_display_buffer_texture()
         }
     }
 
-    platform_update_texture(display_buffer_texture, pixels, sizeof(pixels));
-    platform_texture_scale_nearest(display_buffer_texture);
+    platform_update_texture(app.display_buffer_texture, pixels, sizeof(pixels));
+    platform_texture_scale_nearest(app.display_buffer_texture);
 }
 
 void window_display_buffer(bool& open)
@@ -51,8 +51,8 @@ void window_display_buffer(bool& open)
     using namespace ImGui;
     if(!open) return;
 
-    SetNextWindowSize({ 400 * pixel_ratio, 400 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Display Buffer (RAM)", &open) && arduboy.cpu.decoded)
+    SetNextWindowSize({ 400 * app.pixel_ratio, 400 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+    if(Begin("Display Buffer (RAM)", &open) && app.emulator->core_state.cpu.decoded)
     {
         AlignTextToFramePadding();
         TextUnformatted("Address: 0x");
@@ -71,51 +71,51 @@ void window_display_buffer(bool& open)
             char* b = addr_buf;
             while(*b != 0)
                 a = (a << 4) + hex_value(*b++);
-            if(a >= 0 && a < (int)arduboy.cpu.prog.size())
-                display_buffer_addr = a;
+            if(a >= 0 && a < (int)app.emulator->core_state.cpu.prog.size())
+                app.display_buffer_addr = a;
         }
-        if(arduboy.elf)
+        if(app.emulator->program_state.elf)
         {
-            if(display_buffer_addr < 0)
+            if(app.display_buffer_addr < 0)
             {
-                for(auto const& kv : arduboy.elf->data_symbols)
+                for(auto const& kv : app.emulator->program_state.elf->data_symbols)
                 {
                     if(kv.second.name != "Arduboy2Base::sBuffer") continue;
-                    display_buffer_addr = kv.first;
-                    snprintf(addr_buf, sizeof(addr_buf), "%x", (unsigned)display_buffer_addr);
+                    app.display_buffer_addr = kv.first;
+                    snprintf(addr_buf, sizeof(addr_buf), "%x", (unsigned)app.display_buffer_addr);
                 }
             }
             SameLine();
             SetNextItemWidth(GetContentRegionAvail().x);
             if(BeginCombo("##symbol", "Symbol...", ImGuiComboFlags_HeightLarge))
             {
-                for(uint16_t addr : arduboy.elf->data_symbols_sorted)
+                for(uint16_t addr : app.emulator->program_state.elf->data_symbols_sorted)
                 {
-                    auto const& sym = arduboy.elf->data_symbols[addr];
+                    auto const& sym = app.emulator->program_state.elf->data_symbols[addr];
                     if(sym.weak || sym.notype) continue;
                     if(Selectable(sym.name.c_str()))
                     {
-                        display_buffer_addr = addr;
+                        app.display_buffer_addr = addr;
                         snprintf(addr_buf, sizeof(addr_buf), "%x", (unsigned)addr);
                     }
                 }
                 EndCombo();
             }
         }
-        SliderInt("Width", &display_buffer_w, 1, 128);
-        SliderInt("Height", &display_buffer_h, 1, 64);
+        SliderInt("Width", &app.display_buffer_w, 1, 128);
+        SliderInt("Height", &app.display_buffer_h, 1, 64);
 
         update_display_buffer_texture();
 
         {
             auto t = GetContentRegionAvail();
-            float w = (float)display_buffer_w;
-            float h = (float)display_buffer_h;
-            while(w + display_buffer_w < t.x && h + display_buffer_h < t.y)
-                w += display_buffer_w, h += display_buffer_h;
-            float u = (float)display_buffer_w / 128;
-            float v = (float)display_buffer_h / 64;
-            Image(display_buffer_texture, { w, h }, { 0, 0 }, { u, v });
+            float w = (float)app.display_buffer_w;
+            float h = (float)app.display_buffer_h;
+            while(w + app.display_buffer_w < t.x && h + app.display_buffer_h < t.y)
+                w += app.display_buffer_w, h += app.display_buffer_h;
+            float u = (float)app.display_buffer_w / 128;
+            float v = (float)app.display_buffer_h / 64;
+            Image(app.display_buffer_texture, { w, h }, { 0, 0 }, { u, v });
         }
     }
     End();

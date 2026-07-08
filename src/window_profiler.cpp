@@ -9,22 +9,22 @@ static void hotspot_row(int i)
 {
     using namespace ImGui;
     auto const& h = settings.profiler_group_symbols ?
-        arduboy.profiler_hotspots_symbol[i] :
-        arduboy.profiler_hotspots[i];
-    uint16_t addr_begin = arduboy.cpu.disassembled_prog[h.begin].addr;
-    uint16_t addr_end   = arduboy.cpu.disassembled_prog[h.end].addr;
+        app.emulator->profiler_state.hotspots_symbol[i] :
+        app.emulator->profiler_state.hotspots[i];
+    uint16_t addr_begin = app.emulator->core_state.cpu.disassembled_prog[h.begin].addr;
+    uint16_t addr_end   = app.emulator->core_state.cpu.disassembled_prog[h.end].addr;
     TableSetColumnIndex(0);
     char b[16];
     auto pos = GetCursorPos();
     snprintf(b, sizeof(b), "##row%04x", i);
-    if(Selectable(b, profiler_selected_hotspot == i,
+    if(Selectable(b, app.profiler_selected_hotspot == i,
         ImGuiSelectableFlags_SpanAllColumns))
     {
-        if(profiler_selected_hotspot == i) profiler_selected_hotspot = -1;
+        if(app.profiler_selected_hotspot == i) app.profiler_selected_hotspot = -1;
         else
         {
-            disassembly_scroll_addr = (addr_begin + addr_end) / 2;
-            profiler_selected_hotspot = i;
+            app.disassembly_scroll_addr = (addr_begin + addr_end) / 2;
+            app.profiler_selected_hotspot = i;
             settings.open_disassembly = true;
             update_settings();
             SetWindowFocus("Disassembly");
@@ -36,12 +36,12 @@ static void hotspot_row(int i)
         Text("%12" PRIu64 "  ", h.count);
         SameLine();
     }
-    Text("%6.2f%%", double(h.count) * 100 / arduboy.cached_profiler_total_with_sleep);
+    Text("%6.2f%%", double(h.count) * 100 / app.emulator->profiler_state.cached_total_with_sleep);
     SameLine();
     Text("0x%04x-0x%04x", addr_begin, addr_end);
     
-    if(!arduboy.elf) return;
-    auto const* sym = arduboy.symbol_for_prog_addr(addr_begin);
+    if(!app.emulator->program_state.elf) return;
+    auto const* sym = app.emulator->symbol_for_prog_addr(addr_begin);
     if(!sym) return;
     SameLine();
     TextUnformatted(sym->name.c_str());
@@ -51,9 +51,9 @@ static void show_hotspots()
 {
     using namespace ImGui;
 
-    auto n = arduboy.num_hotspots;
+    auto n = app.emulator->profiler_state.num_hotspots;
     if(settings.profiler_group_symbols)
-        n = (uint32_t)arduboy.profiler_hotspots_symbol.size();
+        n = (uint32_t)app.emulator->profiler_state.hotspots_symbol.size();
     if(n <= 0) return;
 
     ImGuiTableFlags flags = 0;
@@ -64,8 +64,8 @@ static void show_hotspots()
     Separator();
     {
         float active_frac = float(
-            double(arduboy.cached_profiler_total) /
-            arduboy.cached_profiler_total_with_sleep);
+            double(app.emulator->profiler_state.cached_total) /
+            app.emulator->profiler_state.cached_total_with_sleep);
         char buf[32];
         snprintf(buf, sizeof(buf), "CPU Active: %.1f%%", active_frac * 100);
         ProgressBar(active_frac, ImVec2(-FLT_MIN, 0), buf);
@@ -94,39 +94,39 @@ void window_profiler(bool& open)
     using namespace ImGui;
     if(!open) return;
     
-    SetNextWindowSize({ 150 * pixel_ratio, 300 * pixel_ratio }, ImGuiCond_FirstUseEver);
-    if(Begin("Profiler", &open) && arduboy.cpu.decoded)
+    SetNextWindowSize({ 150 * app.pixel_ratio, 300 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
+    if(Begin("Profiler", &open) && app.emulator->core_state.cpu.decoded)
     {
-        if(arduboy.profiler_enabled)
+        if(app.emulator->profiler_state.enabled)
         {
             if(Button("Stop Profiling"))
             {
-                arduboy.profiler_enabled = false;
-                arduboy.cached_profiler_total = arduboy.profiler_total;
-                arduboy.cached_profiler_total_with_sleep = arduboy.profiler_total_with_sleep;
-                arduboy.profiler_build_hotspots();
+                app.emulator->profiler_state.enabled = false;
+                app.emulator->profiler_state.cached_total = app.emulator->profiler_state.total;
+                app.emulator->profiler_state.cached_total_with_sleep = app.emulator->profiler_state.total_with_sleep;
+                app.emulator->profiler_build_hotspots();
             }
         }
         else
         {
             if(Button("Start Profiling"))
             {
-                arduboy.profiler_reset();
-                arduboy.profiler_enabled = true;
+                app.emulator->profiler_reset();
+                app.emulator->profiler_state.enabled = true;
             }
         }
         SameLine();
         if(Checkbox("Cycle Counts", &settings.profiler_cycle_counts))
             update_settings();
         SameLine();
-        if(!arduboy.elf)
+        if(!app.emulator->program_state.elf)
         {
             BeginDisabled();
             settings.profiler_group_symbols = false;
         }
         if(Checkbox("Group by Symbol", &settings.profiler_group_symbols))
             update_settings();
-        if(!arduboy.elf) EndDisabled();
+        if(!app.emulator->program_state.elf) EndDisabled();
 
         show_hotspots();
     }
