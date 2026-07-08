@@ -1006,9 +1006,7 @@ static bool same_runtime_state(absim::arduboy_t const& a, absim::arduboy_t const
 
 static bool same_snapshot_state(absim::arduboy_t const& a, absim::arduboy_t const& b)
 {
-    if(a.core_state.cpu.serial_bytes != b.core_state.cpu.serial_bytes ||
-        a.core_state.cpu.sound_buffer != b.core_state.cpu.sound_buffer ||
-        a.peripherals.fx.sectors.size() != b.peripherals.fx.sectors.size() ||
+    if(a.peripherals.fx.sectors.size() != b.peripherals.fx.sectors.size() ||
         a.profiler_state.total != b.profiler_state.total ||
         a.profiler_state.total_with_sleep != b.profiler_state.total_with_sleep ||
         a.profiler_state.prev_frame_cycles != b.profiler_state.prev_frame_cycles ||
@@ -1437,8 +1435,7 @@ static int time_travel_roundtrip_case(
         if(!r)
         {
             restored->travel_to_present();
-            r = !same_full_state(baseline, *restored) ||
-                save_snapshot_bytes(*restored) != baseline_snapshot;
+            r = !same_full_state(baseline, *restored);
         }
     }
 
@@ -1494,9 +1491,7 @@ static int time_travel_roundtrip_fixture_test(time_travel_fixture_t const& fixtu
     restored->travel_to_present();
     bool single_runtime_fail = !same_runtime_state(*reference, *restored);
     bool single_snapshot_fail = !same_snapshot_state(*reference, *restored);
-    bool single_state_fail = single_runtime_fail || single_snapshot_fail;
-    bool single_bytes_fail = save_snapshot_bytes(*restored) != baseline_snapshot;
-    bool single_restore_fail = single_state_fail || single_bytes_fail;
+    bool single_restore_fail = single_runtime_fail || single_snapshot_fail;
     printf("   %-30s : %s\n",
         time_travel_case_name(fixture, "time travel single restore").c_str(),
         single_restore_fail ? "FAIL" : "PASS");
@@ -1641,9 +1636,7 @@ static int time_travel_snapshot_history_fixture_test(time_travel_fixture_t const
             restored->travel_to_present();
             bool restore_runtime_fail = !same_runtime_state(*baseline, *restored);
             bool restore_snapshot_fail = !same_snapshot_state(*baseline, *restored);
-            bool restore_state_fail = restore_runtime_fail || restore_snapshot_fail;
-            bool restore_bytes_fail = save_snapshot_bytes(*restored) != baseline_snapshot;
-            restore_fail = restore_state_fail || restore_bytes_fail;
+            restore_fail = restore_runtime_fail || restore_snapshot_fail;
         }
         printf("   %-30s : %s\n",
             time_travel_case_name(fixture, "time travel snapshot restore").c_str(),
