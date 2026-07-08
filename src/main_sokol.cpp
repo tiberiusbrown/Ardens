@@ -518,7 +518,7 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.frame_cb = app_frame;
     desc.cleanup_cb = app_cleanup;
 #ifdef __EMSCRIPTEN__
-    desc.html5_canvas_name = "canvas";
+    desc.html5.canvas_selector = "#canvas";
 #else
 #ifdef ARDENS_PLAYER
     desc.width = 512;
