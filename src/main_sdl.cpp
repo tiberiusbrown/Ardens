@@ -518,7 +518,7 @@ int main(int argc, char** argv)
     update_pixel_ratio();
     rescale_style();
     // Add the default ImGui font after our scaling values are in place.
-    ImGui::GetIO().Fonts->AddFontDefault();
+    ImGui::GetIO().Fonts->AddFontDefaultVector();
 
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);

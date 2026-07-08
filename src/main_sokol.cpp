@@ -40,10 +40,20 @@ static simgui_desc_t const SIMGUI_DESC = []() {
     return desc;
 }();
 
+// Shared by all platform-created display textures. The sampler lives for the
+// whole Sokol backend lifetime and is reclaimed by sg_shutdown().
 static sg_sampler DEFAULT_SAMPLER;
 static bool window_geometry_events_ready = false;
 
 static void register_sokol_platform_services();
+
+static void app_log(
+    const char* tag, uint32_t level, uint32_t item_id,
+    const char* msg, uint32_t line_nr, const char* filename, void* user_data)
+{
+    if(msg)
+        fmt::print(stderr, "[{}] {}:{}: {}\n", tag, filename ? filename : "<unknown>", line_nr, msg);
+};
 
 #ifndef __EMSCRIPTEN__
 static bool sokol_window_is_maximized()
@@ -144,6 +154,9 @@ static void app_init()
 
     {
         sg_desc desc{};
+#ifndef NDEBUG
+        desc.logger.func = app_log;
+#endif
         desc.environment = sglue_environment();
         sg_setup(&desc);
     }
@@ -189,7 +202,7 @@ static void app_init()
     update_pixel_ratio();
     rescale_style();
     // Add the default ImGui font after our scaling values are in place.
-    ImGui::GetIO().Fonts->AddFontDefault();
+    ImGui::GetIO().Fonts->AddFontDefaultVector();
 
     {
         sg_image_desc desc{};
@@ -320,16 +333,16 @@ static void app_cleanup()
 
 static void sokol_platform_destroy_texture(texture_t t)
 {
+    // Only the image/view pair is owned by the texture handle. The sampler is
+    // shared across all of these textures, so destroying it here would leave
+    // later draws with a dead binding.
     uint64_t const imtex_id = (uint64_t)(uintptr_t)t;
     sg_view const view = simgui_texture_view_from_imtextureid(imtex_id);
     sg_image const img = sg_query_view_image(view);
-    sg_sampler const smp = simgui_sampler_from_imtextureid(imtex_id);
     if(view.id != SG_INVALID_ID)
         sg_destroy_view(view);
     if(img.id != SG_INVALID_ID)
         sg_destroy_image(img);
-    if(smp.id != SG_INVALID_ID)
-        sg_destroy_sampler(smp);
 }
 
 static texture_t sokol_platform_create_texture(int w, int h)
@@ -524,6 +537,9 @@ sapp_desc sokol_main(int argc, char** argv)
     desc.event_cb = app_event;
     desc.frame_cb = app_frame;
     desc.cleanup_cb = app_cleanup;
+#ifndef NDEBUG
+    desc.logger.func = app_log;
+#endif
 #ifdef __EMSCRIPTEN__
     desc.html5.canvas_selector = "#canvas";
 #else
