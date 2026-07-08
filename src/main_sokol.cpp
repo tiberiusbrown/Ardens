@@ -150,8 +150,15 @@ static void app_init()
 
     {
         sg_sampler_desc desc{};
+#ifdef __EMSCRIPTEN__
+        // Web builds cannot flip sampler state per draw, so keep the shared
+        // display sampler nearest-filtered there.
+        desc.min_filter = SG_FILTER_NEAREST;
+        desc.mag_filter = SG_FILTER_NEAREST;
+#else
         desc.min_filter = SG_FILTER_LINEAR;
         desc.mag_filter = SG_FILTER_NEAREST;
+#endif
         desc.wrap_u = SG_WRAP_CLAMP_TO_EDGE;
         desc.wrap_v = SG_WRAP_CLAMP_TO_EDGE;
         DEFAULT_SAMPLER = sg_make_sampler(&desc);
