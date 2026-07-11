@@ -420,6 +420,8 @@ set(ARDENS_PLAYER_APP_DEPS
     )
 
 set(ARDENS_DEBUGGER_APP_SOURCES
+    src/headless.cpp
+    src/headless.hpp
     src/settings_modal.cpp
     src/modal_about.cpp
     src/view_debugger.cpp
@@ -540,6 +542,7 @@ if(ARDENS_DEBUGGER)
         ${ARDENS_DEBUGGER_APP_DEPS}
         )
     target_link_libraries(ardens_debugger_app PUBLIC ardensdebuggerlib)
+    target_compile_definitions(ardens_debugger_app PUBLIC ARDENS_DEBUGGER_APP)
     target_link_libraries(ardens_debugger_app PRIVATE ardens_platform)
     target_include_directories(ardens_debugger_app SYSTEM PUBLIC
         deps
