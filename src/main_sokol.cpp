@@ -1,6 +1,9 @@
 #ifdef ARDENS_PLATFORM_SOKOL
 
 #include "common.hpp"
+#ifdef ARDENS_DEBUGGER_APP
+#include "headless.hpp"
+#endif
 
 #include <fstream>
 #include <cstdio>
@@ -17,6 +20,12 @@
 #define SOKOL_METAL
 #elif defined(_WIN32)
 #define SOKOL_D3D11
+#ifdef ARDENS_DEBUGGER_APP
+// A console-subsystem executable is required for shells to wait for headless
+// runs and reliably redirect their stdout. The GUI still starts normally when
+// the headless argument is absent.
+#define SOKOL_WIN32_FORCE_MAIN
+#endif
 #else
 #define SOKOL_GLCORE
 #endif
@@ -517,6 +526,11 @@ static std::string g_title;
 
 sapp_desc sokol_main(int argc, char** argv)
 {
+#ifdef ARDENS_DEBUGGER_APP
+    int headless_exit_code = 0;
+    if(run_headless_if_requested(argc, argv, headless_exit_code))
+        std::exit(headless_exit_code);
+#endif
 #ifndef __EMSCRIPTEN__
     {
         sargs_desc d{};

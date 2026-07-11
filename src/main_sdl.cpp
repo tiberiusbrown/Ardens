@@ -50,6 +50,9 @@
 #endif
 
 #include "common.hpp"
+#ifdef ARDENS_DEBUGGER_APP
+#include "headless.hpp"
+#endif
 
 #ifdef __EMSCRIPTEN__
 constexpr uint32_t MAX_AUDIO_LATENCY_SAMPLES = 4096;
@@ -423,6 +426,11 @@ static void register_sdl_platform_services()
 
 int main(int argc, char** argv)
 {
+#ifdef ARDENS_DEBUGGER_APP
+    int headless_exit_code = 0;
+    if(run_headless_if_requested(argc, argv, headless_exit_code))
+        return headless_exit_code;
+#endif
 #ifdef ARDENS_PLAYER
     int width = 512, height = 256;
 #else

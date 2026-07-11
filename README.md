@@ -84,6 +84,16 @@ Ardens palette=highcontrast grid=normal current=true file=game.hex file=fxdata.b
 
 Any argument whose key is not a recognized parameter is treated as a file path. Use `save=path` to load a save file.
 
+The debugger can run without creating a window and write only emulated serial
+output to stdout. Pass the number of simulated milliseconds with `headless`:
+
+```text
+Ardens headless=5000 file=game.hex > serial.txt
+```
+
+The process exits after the requested simulated duration, or earlier if the
+program executes an AVR `break` instruction. Diagnostics are written to stderr.
+
 ## URL and CLI Parameters
 
 The web debugger, web player, and desktop applications share the same parameter parser. In URLs, append parameters after `?` and separate them with `&`. On desktop, pass them as command-line arguments.
@@ -107,6 +117,7 @@ The web debugger, web player, and desktop applications share the same parameter 
 | `usb`, `usb_connected` | Emulated USB bus connection state: boolean value. |
 | `touch` | Always show touch controls: boolean value. |
 | `size` | Desktop only: overrides the remembered window size, such as `800x400`. |
+| `headless` | Debugger only: simulate for this many milliseconds, stream serial output to stdout, then exit. |
 
 Boolean parameters accept `0`, `1`, `false`, `true`, `off`, `on`, `no`, and `yes`.
 
