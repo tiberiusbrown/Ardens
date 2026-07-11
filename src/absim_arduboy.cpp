@@ -1080,7 +1080,7 @@ void arduboy_t::profiler_build_hotspots()
     );
 }
 
-ARDENS_FORCEINLINE uint32_t arduboy_t::cycle()
+uint32_t arduboy_t::cycle()
 {
     assert(core_state.cpu.decoded);
 
