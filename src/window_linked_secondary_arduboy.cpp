@@ -1,17 +1,20 @@
 #include "imgui.h"
 #include "common.hpp"
 
-#include <array>
-
 void window_linked_secondary_arduboy(bool& open)
 {
     using namespace ImGui;
 
     if(!open)
     {
+        if(linked_secondary_arduboy_connected())
+            disconnect_linked_secondary_arduboy();
         app.linked_secondary_input_focus = false;
         return;
     }
+
+    if(!linked_secondary_arduboy_connected())
+        connect_linked_secondary_arduboy();
 
     SetNextWindowSize({ 400 * app.pixel_ratio, 240 * app.pixel_ratio }, ImGuiCond_FirstUseEver);
     if(Begin("Linked Secondary Arduboy", &open,
@@ -21,42 +24,24 @@ void window_linked_secondary_arduboy(bool& open)
         bool connected = linked_secondary_arduboy_connected();
         app.linked_secondary_input_focus =
             connected && IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows);
-        bool can_connect =
-            app.emulator->core_state.cpu.decoded &&
-            !app.emulator->program_state.prog_filedata.empty();
 
         if(connected)
         {
-            if(Button("Disconnect"))
-            {
-                disconnect_linked_secondary_arduboy();
-                app.linked_secondary_input_focus = false;
-            }
+            if(Button("Swap with Primary"))
+                swap_linked_secondary_arduboy();
             Separator();
 
-            if(linked_secondary_arduboy_connected())
-            {
-                recreate_display_texture(
-                    app.linked_secondary_display_texture,
-                    app.linked_secondary_display_texture_zoom);
+            recreate_display_texture(
+                app.linked_secondary_display_texture,
+                app.linked_secondary_display_texture_zoom);
 
-                update_display_texture(
-                    app.linked_secondary_display_texture,
-                    app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
+            update_display_texture(
+                app.linked_secondary_display_texture,
+                app.linked_secondary_arduboy->peripherals.display.filtered_pixels.data());
 
-                draw_display_texture(
-                    app.linked_secondary_display_texture,
-                    app.linked_secondary_display_texture_zoom);
-            }
-        }
-        else
-        {
-            if(!can_connect)
-                BeginDisabled();
-            if(Button("Connect Second Arduboy"))
-                connect_linked_secondary_arduboy();
-            if(!can_connect)
-                EndDisabled();
+            draw_display_texture(
+                app.linked_secondary_display_texture,
+                app.linked_secondary_display_texture_zoom);
         }
     }
     else
@@ -64,4 +49,7 @@ void window_linked_secondary_arduboy(bool& open)
         app.linked_secondary_input_focus = false;
     }
     End();
+
+    if(!open)
+        disconnect_linked_secondary_arduboy();
 }
