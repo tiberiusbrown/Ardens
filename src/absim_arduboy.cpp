@@ -672,7 +672,7 @@ void local_i2c_transaction_bridge_t::connect(std::vector<arduboy_t*> const& devi
         if(endpoint == BROADCAST_ENDPOINT)
             continue;
 
-        local_cpus[endpoint] = &device->core_state.cpu;
+        local_devices[endpoint] = device;
         device->core_state.cpu.attach_i2c_adapter(this, endpoint);
     }
     refresh_bus_lines();
@@ -720,7 +720,8 @@ void local_i2c_transaction_bridge_t::detach_endpoint(uint8_t endpoint)
 
     cpu->attach_i2c_adapter(nullptr, BROADCAST_ENDPOINT);
     cpu->set_twi_external_lines(false, false);
-    local_cpus[endpoint] = nullptr;
+    local_devices[endpoint] = nullptr;
+    local_pumped_cycles[endpoint] = 0;
 }
 
 bool local_i2c_transaction_bridge_t::endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle)
@@ -759,12 +760,21 @@ bool local_i2c_transaction_bridge_t::endpoint_needs_pump(uint8_t endpoint)
 
 void local_i2c_transaction_bridge_t::endpoint_pump_cycle(uint8_t endpoint)
 {
-    auto* cpu = local_cpu(endpoint);
-    if(!cpu)
+    auto* device = local_device(endpoint);
+    if(!device)
         return;
-    cpu->advance_cycle();
-    cpu->update_all();
-    cpu->sound_buffer.clear();
+
+    // Pump the whole device so SPI completions reach the display and flash.
+    // Advancing only the CPU drops peripheral transfers completed while the
+    // peer is servicing a link transaction.
+    bool no_merged = device->core_state.cpu.no_merged;
+    device->core_state.cpu.no_merged = true;
+    uint64_t before = device->core_state.cpu.cycle_count;
+    device->cycle();
+    local_pumped_cycles[endpoint] +=
+        device->core_state.cpu.cycle_count - before;
+    device->core_state.cpu.no_merged = no_merged;
+    device->core_state.cpu.sound_buffer.clear();
 }
 
 bool local_i2c_transaction_bridge_t::endpoint_claims_address(
@@ -806,11 +816,31 @@ void local_i2c_transaction_bridge_t::endpoint_stop(uint8_t endpoint)
         cpu->twi_slave_stop();
 }
 
-atmega32u4_t* local_i2c_transaction_bridge_t::local_cpu(uint8_t endpoint) const
+arduboy_t* local_i2c_transaction_bridge_t::local_device(uint8_t endpoint) const
 {
     if(endpoint >= MAX_ENDPOINTS)
         return nullptr;
-    return local_cpus[endpoint];
+    return local_devices[endpoint];
+}
+
+uint64_t local_i2c_transaction_bridge_t::take_pumped_cycles(
+    arduboy_t const* device)
+{
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(local_devices[i] != device)
+            continue;
+        uint64_t cycles = local_pumped_cycles[i];
+        local_pumped_cycles[i] = 0;
+        return cycles;
+    }
+    return 0;
+}
+
+atmega32u4_t* local_i2c_transaction_bridge_t::local_cpu(uint8_t endpoint) const
+{
+    auto* device = local_device(endpoint);
+    return device ? &device->core_state.cpu : nullptr;
 }
 
 static elf_data_symbol_t const* symbol_for_addr_helper(

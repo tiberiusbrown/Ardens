@@ -339,6 +339,49 @@ static std::string load_rom(absim::arduboy_t& a, char const* dir, char const* ga
     return a.load_file(game, f);
 }
 
+struct test_local_i2c_bridge_t : absim::local_i2c_transaction_bridge_t
+{
+    using absim::local_i2c_transaction_bridge_t::endpoint_pump_cycle;
+};
+
+static int i2c_peer_pump_preserves_spi_test()
+{
+    auto a = std::make_unique<absim::arduboy_t>();
+    auto b = std::make_unique<absim::arduboy_t>();
+    auto err = load_rom(*a, "instructions", "instructions.ino-arduboy-fx.hex");
+    err = err.empty() ?
+        load_rom(*b, "instructions", "instructions.ino-arduboy-fx.hex") : err;
+    if(!err.empty())
+    {
+        printf("   %-30s : FAIL\n", "i2c peer pump preserves spi");
+        return 1;
+    }
+    a->reset();
+    b->reset();
+
+    test_local_i2c_bridge_t bridge;
+    bridge.connect({ a.get(), b.get() });
+
+    auto& cpu = b->core_state.cpu;
+    auto& display = b->peripherals.display;
+    display.reset();
+    cpu.data[absim::reg::addr::PORTD] =
+        absim::reg::bit::PORTD::PORTD7 | // display out of reset
+        absim::reg::bit::PORTD::PORTD4;  // display data mode, CS low
+
+    cpu.spi_data_byte = 0x5a;
+    cpu.spi_busy = true;
+    cpu.spi_done_cycle = cpu.cycle_count + 1;
+    cpu.spi_transmit_zero_cycle = cpu.spi_done_cycle;
+    bridge.endpoint_pump_cycle(1);
+
+    bool pass = display.ram[0] == 0x5a && display.data_col == 1;
+    pass = pass && bridge.take_pumped_cycles(b.get()) > 0;
+    pass = pass && bridge.take_pumped_cycles(b.get()) == 0;
+    printf("   %-30s : %s\n", "i2c peer pump preserves spi", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
 static bool register_info_matches(
     uint8_t addr,
     char const* expected_name,
@@ -1578,6 +1621,7 @@ int main(int argc, char** argv)
     printf("\nTWI/link tests...\n");
     r |= twi_register_semantics_test();
     r |= i2c_bus_line_visibility_test();
+    r |= i2c_peer_pump_preserves_spi_test();
 
     printf("\nUSB tests...\n");
     r |= usb_direct_uedatx_fallback_test();

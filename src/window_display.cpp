@@ -55,15 +55,6 @@ void window_display(bool& open)
             ImGuiWindowFlags_NoScrollbar |
             ImGuiWindowFlags_NoScrollWithMouse))
         {
-            if(linked_secondary_arduboy_connected())
-            {
-                if(Button("Swap with Secondary"))
-                {
-                    swap_linked_secondary_arduboy();
-                }
-                Separator();
-            }
-
             draw_display_texture(app.display_texture, app.display_texture_zoom);
         }
         End();
