@@ -347,19 +347,23 @@ struct test_local_i2c_bridge_t : absim::local_i2c_transaction_bridge_t
 static int i2c_peer_pump_preserves_spi_test()
 {
     auto a = std::make_unique<absim::arduboy_t>();
+    auto b = std::make_unique<absim::arduboy_t>();
     auto err = load_rom(*a, "instructions", "instructions.ino-arduboy-fx.hex");
+    err = err.empty() ?
+        load_rom(*b, "instructions", "instructions.ino-arduboy-fx.hex") : err;
     if(!err.empty())
     {
         printf("   %-30s : FAIL\n", "i2c peer pump preserves spi");
         return 1;
     }
     a->reset();
+    b->reset();
 
     test_local_i2c_bridge_t bridge;
-    bridge.connect({ a.get() });
+    bridge.connect({ a.get(), b.get() });
 
-    auto& cpu = a->core_state.cpu;
-    auto& display = a->peripherals.display;
+    auto& cpu = b->core_state.cpu;
+    auto& display = b->peripherals.display;
     display.reset();
     cpu.data[absim::reg::addr::PORTD] =
         absim::reg::bit::PORTD::PORTD7 | // display out of reset
@@ -369,10 +373,11 @@ static int i2c_peer_pump_preserves_spi_test()
     cpu.spi_busy = true;
     cpu.spi_done_cycle = cpu.cycle_count + 1;
     cpu.spi_transmit_zero_cycle = cpu.spi_done_cycle;
-
-    bridge.endpoint_pump_cycle(0);
+    bridge.endpoint_pump_cycle(1);
 
     bool pass = display.ram[0] == 0x5a && display.data_col == 1;
+    pass = pass && bridge.take_pumped_cycles(b.get()) > 0;
+    pass = pass && bridge.take_pumped_cycles(b.get()) == 0;
     printf("   %-30s : %s\n", "i2c peer pump preserves spi", pass ? "PASS" : "FAIL");
     return pass ? 0 : 1;
 }

@@ -348,6 +348,7 @@ void apply_runtime_settings(absim::arduboy_t& a)
 void disconnect_linked_secondary_arduboy()
 {
     app.linked_secondary_input_focus = false;
+    app.linked_realtime_debt_ps = 0;
     app.linked_i2c_bridge.disconnect();
 
     platform_destroy_texture(app.linked_secondary_display_texture);
@@ -453,11 +454,41 @@ static void advance_linked_secondary()
     app.linked_secondary_arduboy->debugger_state.paused = prev_paused;
 }
 
+static void account_linked_pump_cycles()
+{
+    uint64_t cycles = app.linked_i2c_bridge.take_pumped_cycles(app.emulator.get());
+    app.linked_realtime_debt_ps += cycles * absim::arduboy_t::CYCLE_PS;
+    // Secondary pump cycles replace cycles it would otherwise run while
+    // catching up to the primary, so they are not additional wall-clock time.
+    app.linked_i2c_bridge.take_pumped_cycles(app.linked_secondary_arduboy.get());
+}
+
+static bool consume_linked_realtime_debt(uint64_t& ps)
+{
+    if(app.linked_realtime_debt_ps >= ps)
+    {
+        app.linked_realtime_debt_ps -= ps;
+        ps = 0;
+        return true;
+    }
+    ps -= app.linked_realtime_debt_ps;
+    app.linked_realtime_debt_ps = 0;
+    return false;
+}
+
 void advance_primary(uint64_t ps)
 {
     if(!app.linked_secondary_arduboy)
     {
         app.emulator->advance(ps);
+        return;
+    }
+
+    account_linked_pump_cycles();
+    if(consume_linked_realtime_debt(ps))
+    {
+        advance_linked_secondary();
+        account_linked_pump_cycles();
         return;
     }
 
@@ -474,10 +505,12 @@ void advance_primary(uint64_t ps)
         uint64_t cycles = app.emulator->core_state.cpu.cycle_count - before;
         advance_linked_secondary();
         app.linked_i2c_bridge.update_bus_lines();
+        account_linked_pump_cycles();
 
         if(cycles == 0 && chunk >= ps)
             break;
         ps -= chunk;
+        consume_linked_realtime_debt(ps);
     }
 }
 

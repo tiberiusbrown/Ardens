@@ -331,6 +331,7 @@ private:
 struct local_i2c_transaction_bridge_t : i2c_link_adapter_t
 {
     void connect(std::vector<arduboy_t*> const& devices);
+    uint64_t take_pumped_cycles(arduboy_t const* device);
 
 protected:
     void reset_transport() override;
@@ -339,6 +340,7 @@ protected:
 
 private:
     std::array<arduboy_t*, MAX_ENDPOINTS> local_devices{};
+    std::array<uint64_t, MAX_ENDPOINTS> local_pumped_cycles{};
     std::array<std::deque<i2c_message_t>, MAX_ENDPOINTS> queues;
 
     void detach_endpoint(uint8_t endpoint) override;
@@ -347,12 +349,12 @@ private:
         uint8_t endpoint, uint64_t sample_cycle, twi_wire_state_t& state) override;
     void endpoint_set_external_lines(
         uint8_t endpoint, bool scl_low, bool sda_low) override;
-    bool endpoint_needs_pump(uint8_t endpoint) override;
 
 protected:
     void endpoint_pump_cycle(uint8_t endpoint) override;
 
 private:
+    bool endpoint_needs_pump(uint8_t endpoint) override;
     bool endpoint_claims_address(
         uint8_t endpoint, uint8_t address, bool general_call) override;
     bool endpoint_can_address(

@@ -78,6 +78,7 @@ struct app_state_t
     std::unique_ptr<absim::arduboy_t> linked_secondary_arduboy;
     absim::local_i2c_transaction_bridge_t linked_i2c_bridge;
     int64_t linked_secondary_arduboy_cycle_offset{};
+    uint64_t linked_realtime_debt_ps{};
     bool linked_secondary_input_focus{};
 
     int display_texture_zoom = -1;

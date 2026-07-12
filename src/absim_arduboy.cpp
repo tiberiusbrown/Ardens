@@ -721,6 +721,7 @@ void local_i2c_transaction_bridge_t::detach_endpoint(uint8_t endpoint)
     cpu->attach_i2c_adapter(nullptr, BROADCAST_ENDPOINT);
     cpu->set_twi_external_lines(false, false);
     local_devices[endpoint] = nullptr;
+    local_pumped_cycles[endpoint] = 0;
 }
 
 bool local_i2c_transaction_bridge_t::endpoint_sample_cycle(uint8_t endpoint, uint64_t& cycle)
@@ -766,7 +767,13 @@ void local_i2c_transaction_bridge_t::endpoint_pump_cycle(uint8_t endpoint)
     // Pump the whole device so SPI completions reach the display and flash.
     // Advancing only the CPU drops peripheral transfers completed while the
     // peer is servicing a link transaction.
+    bool no_merged = device->core_state.cpu.no_merged;
+    device->core_state.cpu.no_merged = true;
+    uint64_t before = device->core_state.cpu.cycle_count;
     device->cycle();
+    local_pumped_cycles[endpoint] +=
+        device->core_state.cpu.cycle_count - before;
+    device->core_state.cpu.no_merged = no_merged;
     device->core_state.cpu.sound_buffer.clear();
 }
 
@@ -814,6 +821,20 @@ arduboy_t* local_i2c_transaction_bridge_t::local_device(uint8_t endpoint) const
     if(endpoint >= MAX_ENDPOINTS)
         return nullptr;
     return local_devices[endpoint];
+}
+
+uint64_t local_i2c_transaction_bridge_t::take_pumped_cycles(
+    arduboy_t const* device)
+{
+    for(uint8_t i = 0; i < num_endpoints; ++i)
+    {
+        if(local_devices[i] != device)
+            continue;
+        uint64_t cycles = local_pumped_cycles[i];
+        local_pumped_cycles[i] = 0;
+        return cycles;
+    }
+    return 0;
 }
 
 atmega32u4_t* local_i2c_transaction_bridge_t::local_cpu(uint8_t endpoint) const
