@@ -352,17 +352,13 @@ std::vector<uint8_t> i2c_link_adapter_t::route_address_targets(
     address_busy = false;
     for(uint8_t i = 0; i < num_endpoints; ++i)
     {
-        if(!endpoint_active(i))
+        if(i == endpoint || !endpoint_active(i))
             continue;
-        if(i != endpoint)
-            pump_endpoint(i);
+        pump_endpoint(i);
 
         bool claims = endpoint_claims_address(i, address, general_call);
         if(!general_call && claims)
             nonzero_claims++;
-
-        if(i == endpoint)
-            continue;
 
         if(endpoint_can_address(i, address, general_call))
             targets.push_back(i);

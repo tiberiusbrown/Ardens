@@ -382,6 +382,38 @@ static int i2c_peer_pump_preserves_spi_test()
     return pass ? 0 : 1;
 }
 
+static int i2c_controller_ignores_own_address_test()
+{
+    auto controller = std::make_unique<absim::arduboy_t>();
+    auto target = std::make_unique<absim::arduboy_t>();
+    controller->reset();
+    target->reset();
+
+    constexpr uint8_t address = 0x08;
+    constexpr uint8_t twcr =
+        absim::reg::bit::TWCR::TWEN |
+        absim::reg::bit::TWCR::TWEA;
+
+    // A previous target keeps its TWAR value after TWI is disabled. When that
+    // device later becomes controller, it must not respond to its own address.
+    for(auto* device : { controller.get(), target.get() })
+    {
+        auto& cpu = device->core_state.cpu;
+        cpu.data[absim::reg::addr::PRR0] &=
+            uint8_t(~absim::reg::bit::PRR0::PRTWI);
+        cpu.data[absim::reg::addr::TWAR] = uint8_t(address << 1);
+        cpu.data[absim::reg::addr::TWCR] = twcr;
+    }
+
+    absim::local_i2c_transaction_bridge_t bridge;
+    bridge.connect({ controller.get(), target.get() });
+    auto result = bridge.request_address_ack(0, address, false);
+
+    bool pass = !result.pending && result.ack;
+    printf("   %-30s : %s\n", "i2c controller own address", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+}
+
 static bool register_info_matches(
     uint8_t addr,
     char const* expected_name,
@@ -1621,6 +1653,7 @@ int main(int argc, char** argv)
     printf("\nTWI/link tests...\n");
     r |= twi_register_semantics_test();
     r |= i2c_bus_line_visibility_test();
+    r |= i2c_controller_ignores_own_address_test();
     r |= i2c_peer_pump_preserves_spi_test();
 
     printf("\nUSB tests...\n");
