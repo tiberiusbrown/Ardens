@@ -113,8 +113,7 @@ void atmega32u4_t::merge_instrs()
             i1.func == INSTR_ADC &&
             i0.dst + 1 == i1.dst &&
             i0.src + 1 == i1.src &&
-            i1.src != i0.dst &&
-            i1.dst != i0.src)
+            i1.src != i0.dst)
         {
             i0.func = INSTR_MERGED_ADD_ADC;
             continue;
@@ -124,8 +123,7 @@ void atmega32u4_t::merge_instrs()
             i1.func == INSTR_SBC &&
             i0.dst + 1 == i1.dst &&
             i0.src + 1 == i1.src &&
-            i1.src != i0.dst &&
-            i1.dst != i0.src)
+            i1.src != i0.dst)
         {
             i0.func = INSTR_MERGED_SUB_SBC;
             continue;
@@ -134,9 +132,7 @@ void atmega32u4_t::merge_instrs()
         if(i0.func == INSTR_CP &&
             i1.func == INSTR_CPC &&
             i0.dst + 1 == i1.dst &&
-            i0.src + 1 == i1.src &&
-            i1.src != i0.dst &&
-            i1.dst != i0.src)
+            i0.src + 1 == i1.src)
         {
             i0.func = INSTR_MERGED_CP_CPC;
             continue;
