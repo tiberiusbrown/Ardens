@@ -38,13 +38,12 @@ static uint32_t instr_is_delay(atmega32u4_t const& cpu, size_t n)
     {
         if(i.word == 0)
             return 2;
-        size_t nr = n + i.word + 1;
-        if(nr < cpu.decoded_prog.size() && cpu.decoded_prog[nr].func == INSTR_RET)
-            return 7;
+        break;
     }
     default:
         return 0;
     }
+    return 0;
 }
 
 void atmega32u4_t::merge_instrs()
@@ -113,7 +112,8 @@ void atmega32u4_t::merge_instrs()
         if(i0.func == INSTR_ADD &&
             i1.func == INSTR_ADC &&
             i0.dst + 1 == i1.dst &&
-            i0.src + 1 == i1.src)
+            i0.src + 1 == i1.src &&
+            i1.src != i0.dst)
         {
             i0.func = INSTR_MERGED_ADD_ADC;
             continue;
@@ -122,7 +122,8 @@ void atmega32u4_t::merge_instrs()
         if(i0.func == INSTR_SUB &&
             i1.func == INSTR_SBC &&
             i0.dst + 1 == i1.dst &&
-            i0.src + 1 == i1.src)
+            i0.src + 1 == i1.src &&
+            i1.src != i0.dst)
         {
             i0.func = INSTR_MERGED_SUB_SBC;
             continue;
@@ -138,7 +139,8 @@ void atmega32u4_t::merge_instrs()
         }
 
         if(i0.func == INSTR_SUBI &&
-            i1.func == INSTR_SBCI)
+            i1.func == INSTR_SBCI &&
+            i0.dst != i1.dst)
         {
             i0.func = INSTR_MERGED_SUBI_SBCI;
             i0.word = i0.src + i1.src * 256;
@@ -147,22 +149,27 @@ void atmega32u4_t::merge_instrs()
         }
 
         {
-            uint32_t d = 0;
-            uint32_t n = 0;
-            for(size_t m = n; n < 254 && m < decoded_prog.size(); ++n)
+            uint32_t delay_cycles = 0;
+            uint32_t delay_words = 0;
+
+            for(size_t m = n; delay_words < 254 && m < decoded_prog.size();)
             {
                 uint32_t t = instr_is_delay(*this, m);
-                if(t == 0) break;
-                if(d + t > MAX_INSTR_CYCLES)
+                if(t == 0 || delay_cycles + t > MAX_INSTR_CYCLES)
                     break;
-                d += t;
-                n += instr_is_two_words(decoded_prog[m]) ? 2 : 1;
+
+                uint32_t words =
+                    instr_is_two_words(decoded_prog[m]) ? 2u : 1u;
+
+                delay_cycles += t;
+                delay_words += words;
+                m += words;
             }
-            if(d > 1)
+            if(delay_cycles > 1)
             {
                 i0.func = INSTR_MERGED_DELAY;
-                i0.src = (uint8_t)n;
-                i0.word = (uint16_t)d;
+                i0.src = (uint8_t)delay_words;
+                i0.word = (uint16_t)delay_cycles;
             }
         }
     }
