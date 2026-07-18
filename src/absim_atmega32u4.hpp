@@ -527,7 +527,7 @@ ARDENS_FORCEINLINE uint32_t atmega32u4_t::advance_cycle()
                 auto instr_cycles = INSTR_MAP[i.func](*this, i);
                 assert(instr_cycles <= MAX_INSTR_CYCLES);
                 cycle_count += instr_cycles;
-                if(io_reg_accessed || should_autobreak())
+                if(!active || io_reg_accessed || should_autobreak())
                     break;
                 cycles_max -= instr_cycles;
             } while((int64_t)cycles_max > 0);

@@ -338,6 +338,7 @@ uint32_t instr_reti(atmega32u4_t& cpu, avr_instr_t i)
     uint16_t lo = cpu.pop();
     cpu.pc = lo | (hi << 8);
     cpu.data[reg::addr::SREG] |= reg::bit::SREG::I;
+    cpu.io_reg_accessed = true;
     cpu.just_written = 0x5f;
     cpu.pop_stack_frame();
     return 4;
@@ -1010,6 +1011,7 @@ uint32_t instr_bset(atmega32u4_t& cpu, avr_instr_t i)
 {
     // src: bit, dst: mask
     cpu.data[reg::addr::SREG] |= i.dst;
+    cpu.io_reg_accessed = true;
     cpu.pc += 1;
     return 1;
 }
@@ -1018,6 +1020,7 @@ uint32_t instr_bclr(atmega32u4_t& cpu, avr_instr_t i)
 {
     // src: bit, dst: mask
     cpu.data[reg::addr::SREG] &= i.dst;
+    cpu.io_reg_accessed = true;
     cpu.pc += 1;
     return 1;
 }
@@ -1356,7 +1359,7 @@ uint32_t instr_merged_add_adc(atmega32u4_t& cpu, avr_instr_t i)
     sreg |= (hc & 0x0800) >> 6;  // H flag
     sreg |= hc >> 15;            // C flag
     sreg |= (v & 0x8000) >> 12;  // V flag
-    sreg = flags_nzs16(sreg, res);
+    sreg = flags_nzs(sreg, uint8_t(res >> 8));
     cpu.data[reg::addr::SREG] = (uint8_t)sreg;
 
     cpu.pc += 2;
