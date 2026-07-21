@@ -670,9 +670,6 @@ if(ARDENS_LIBRETRO)
         ${ARDENS_SOURCES}
         ${MINIZ_SOURCES}
         )
-    set_target_properties(ardens_libretro_core PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
-        )
     target_compile_definitions(ardens_libretro_core PRIVATE
         MINIZ_NO_STDIO=1
         MINIZ_NO_TIME=1
