@@ -399,6 +399,7 @@ set(ARDENS_APP_ENTRY_SOURCES
     )
 
 set(ARDENS_PLAYER_APP_SOURCES
+    src/cli_args.hpp
     src/settings.hpp
     src/settings.cpp
     src/common.hpp
@@ -601,6 +602,8 @@ if(ARDENS_CYCLES)
 endif()
 
 if(NOT ARDENS_LIBRETRO)
+    add_executable(cli_args_tests tests/cli_args_tests.cpp)
+    target_include_directories(cli_args_tests PRIVATE src)
     add_executable(integration_tests
         .editorconfig
         tests/integration_tests.cpp

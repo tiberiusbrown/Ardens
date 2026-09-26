@@ -76,13 +76,23 @@ Ardens builds several related targets:
 
 ## Command Line Usage
 
-Desktop builds accept `key=value` parameters followed by one or more files:
+Desktop builds accept options as `key=value`, `--key value`, or `--key=value`,
+followed by one or more files. These forms can be mixed:
 
 ```text
 Ardens palette=highcontrast grid=normal current=true file=game.hex file=fxdata.bin
 ```
 
-Any argument whose key is not a recognized parameter is treated as a file path. Use `save=path` to load a save file.
+The same options using separate arguments:
+
+```text
+Ardens --palette highcontrast --grid normal --current true --file game.hex --file fxdata.bin
+```
+
+Any argument whose key is not a recognized parameter is treated as a file path.
+Positional file paths also work. Use `save=path` or `--save path` to load a save
+file, and quote paths containing spaces. Options require a value, except the
+bare `--screen-hash` flag.
 
 The debugger can run without creating a window and write only emulated serial
 output to stdout. Pass the number of simulated milliseconds with `headless`:
@@ -94,9 +104,43 @@ Ardens headless=5000 file=game.hex > serial.txt
 The process exits after the requested simulated duration, or earlier if the
 program executes an AVR `break` instruction. Diagnostics are written to stderr.
 
+Headless runs also accept two optional output flags:
+
+```bash
+Ardens --headless 5000 --profile-json profile.json file=game.elf
+```
+
+`--profile-json <path>` writes profiler totals, CPU usage, and ELF symbol cycle
+counts as compact single-line JSON to the specified file at the end of the run,
+overwriting an existing file. The output path is required. Programs without symbol
+data produce an empty `symbols` array. Profiling is enabled only when this flag is
+used. File errors are reported on stderr with a nonzero exit status.
+The equivalent option is `profile-json=profile.json`.
+
+```bash
+Ardens --headless 5000 --screen-hash file=game.elf
+```
+
+`--screen-hash` emits a deterministic 64-bit FNV-1a hash of the final 1024-byte
+display RAM as `screen-hash=` followed by 16 lowercase hexadecimal digits.
+It also accepts `screen-hash=true` or `--screen-hash true`; use `false` to disable
+the output.
+
+Both flags can be used together; JSON is written to the file and the screen hash
+is printed to stdout:
+
+```bash
+Ardens --headless 5000 --profile-json profile.json --screen-hash file=game.elf
+```
+
+Emulated serial output stays on stdout. The screen hash starts on a fresh line,
+even if the serial output did not end with a newline.
+
 ## URL and CLI Parameters
 
-The web debugger, web player, and desktop applications share the same parameter parser. In URLs, append parameters after `?` and separate them with `&`. On desktop, pass them as command-line arguments.
+The web debugger, web player, and desktop applications accept the same runtime
+parameters. In URLs, append parameters after `?` and separate them with `&`. On
+desktop, use any of the command-line option forms shown above.
 
 | Parameter | Values |
 | --- | --- |
@@ -177,18 +221,20 @@ Linux desktop builds require the usual C++/CMake toolchain plus graphics/audio d
 
 ## Tests and Benchmarks
 
-Build and run the integration tests:
+Build and run the integration and command-line parsing tests:
 
 ```sh
 cmake -B build-tests -DCMAKE_BUILD_TYPE=Release -DARDENS_LLVM=OFF -DARDENS_DEBUGGER=OFF -DARDENS_PLAYER=OFF -DARDENS_LIBRETRO=OFF
-cmake --build build-tests --config Release --target integration_tests
+cmake --build build-tests --config Release --target integration_tests cli_args_tests
 ./build-tests/integration_tests
+./build-tests/cli_args_tests
 ```
 
 On Windows, the executable is usually under the configuration directory:
 
 ```powershell
 .\build-tests\Release\integration_tests.exe
+.\build-tests\Release\cli_args_tests.exe
 ```
 
 Optional benchmark targets:
