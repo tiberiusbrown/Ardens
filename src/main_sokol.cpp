@@ -33,7 +33,8 @@
 #define SOKOL_IMPL
 #include "sokol/sokol_app.h"
 #ifndef __EMSCRIPTEN__
-#include "sokol/sokol_args.h"
+#include "cli_args.hpp"
+static std::vector<cli_arg_t> cli_args;
 #endif
 #include "sokol/sokol_audio.h"
 #include "sokol/sokol_gfx.h"
@@ -240,16 +241,16 @@ static void app_init()
     }
 
 #ifndef __EMSCRIPTEN__
-    for(int i = 0; i < sargs_num_args(); ++i)
+    for(auto const& argument : cli_args)
     {
-        char const* value = sargs_value_at(i);
-        if(!setparam(sargs_key_at(i), value))
+        char const* value = argument.value.c_str();
+        if(!setparam(argument.key.c_str(), value))
         {
 #if !defined(ARDENS_DIST)
             std::ifstream f(value, std::ios::in | std::ios::binary);
             if(f)
             {
-                bool save = !strcmp(sargs_key_at(i), "save");
+                bool save = argument.key == "save";
                 if(!save)
                     disconnect_linked_secondary_arduboy();
                 app.dropfile_err = app.emulator->load_file(value, f, save);
@@ -334,9 +335,6 @@ static void app_event(sapp_event const* e)
 static void app_cleanup()
 {
     shutdown();
-#ifndef __EMSCRIPTEN__
-    sargs_shutdown();
-#endif
     saudio_shutdown();
     simgui_shutdown();
     sg_shutdown();
@@ -526,18 +524,18 @@ static std::string g_title;
 
 sapp_desc sokol_main(int argc, char** argv)
 {
+#ifndef __EMSCRIPTEN__
+    std::string cli_error;
+    if(!parse_cli_args(argc, argv, cli_args, cli_error))
+    {
+        std::fprintf(stderr, "%s\n", cli_error.c_str());
+        std::exit(2);
+    }
 #ifdef ARDENS_DEBUGGER_APP
     int headless_exit_code = 0;
-    if(run_headless_if_requested(argc, argv, headless_exit_code))
+    if(run_headless_if_requested(cli_args, headless_exit_code))
         std::exit(headless_exit_code);
 #endif
-#ifndef __EMSCRIPTEN__
-    {
-        sargs_desc d{};
-        d.argc = argc;
-        d.argv = argv;
-        sargs_setup(&d);
-    }
     bool size_cli_override = false;
 #endif
 
@@ -575,10 +573,10 @@ sapp_desc sokol_main(int argc, char** argv)
 #endif
 
 #ifndef __EMSCRIPTEN__
-    for(int i = 0; i < sargs_num_args(); ++i)
+    for(auto const& argument : cli_args)
     {
-        char const* k = sargs_key_at(i);
-        char const* v = sargs_value_at(i);
+        char const* k = argument.key.c_str();
+        char const* v = argument.value.c_str();
         if(0 != strcmp(k, "size")) continue;
         char* end = nullptr;
         long const parsed_width = std::strtol(v, &end, 10);
