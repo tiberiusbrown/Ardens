@@ -276,7 +276,7 @@ namespace filewatch {
 
 		FolderInfo  _directory;
 
-		const std::uint32_t _listen_filters = IN_MODIFY | IN_CREATE | IN_DELETE;
+		const std::uint32_t _listen_filters = IN_MODIFY | IN_CREATE | IN_DELETE | IN_MOVED_TO;
 
 		const static std::size_t event_size = (sizeof(struct inotify_event));
 #endif // __unix__
@@ -387,6 +387,10 @@ namespace filewatch {
                   FSEventStreamInvalidate(_directory);
                   FSEventStreamRelease(_directory);
                   _directory = nullptr;
+                  if (_file_fd != -1) {
+                        close(_file_fd);
+                        _file_fd = -1;
+                  }
 #endif // FILEWATCH_PLATFORM_MAC
 		}
 
@@ -604,7 +608,7 @@ namespace filewatch {
 				}
 			}();
 
-			const auto watch = inotify_add_watch(folder, watch_path.c_str(), IN_MODIFY | IN_CREATE | IN_DELETE);
+			const auto watch = inotify_add_watch(folder, watch_path.c_str(), _listen_filters);
 			if (watch < 0) 
 			{
 				throw std::system_error(errno, std::system_category());
@@ -632,7 +636,11 @@ namespace filewatch {
 							const UnderpinningString changed_file{ event->name };
 							if (pass_filter(changed_file))
 							{
-								if (event->mask & IN_CREATE) 
+								if (event->mask & IN_MOVED_TO)
+								{
+									parsed_information.emplace_back(StringType{ changed_file }, Event::renamed_new);
+								}
+								else if (event->mask & IN_CREATE)
 								{
 									parsed_information.emplace_back(StringType{ changed_file }, Event::added);
 								}
@@ -995,56 +1003,53 @@ namespace filewatch {
                         Event event;
                   };
 
-                  int eventCount = 1;
-                  EventInfo eventInfos[2];
+                  const StringType watched_path = fullPathOf(_filename);
+                  struct stat path_stat = {};
+                  struct stat watched_stat = {};
+                  const bool path_exists =
+                        stat(watched_path.c_str(), &path_stat) == 0 &&
+                        S_ISREG(path_stat.st_mode);
+                  const bool watched_file_valid =
+                        _file_fd != -1 && fstat(_file_fd, &watched_stat) == 0;
+                  EventInfo eventInfo;
 
-                  if (fdIsRemoved(_file_fd)) {
-                        eventInfos[0].event = Event::removed;
-                        eventInfos[0].file = _filename;
+                  if (!path_exists) {
+                        if (_file_fd == -1) return;
+                        close(_file_fd);
+                        _file_fd = -1;
+                        eventInfo.event = Event::removed;
+                        eventInfo.file = _filename;
                   }
-                  else {
-                        StringType absPath = pathOfFd(_file_fd);
-                        PathParts split = splitPath(absPath);
+                  else if (!watched_file_valid ||
+                        watched_stat.st_dev != path_stat.st_dev ||
+                        watched_stat.st_ino != path_stat.st_ino) {
+                        const int replacement_fd = open(watched_path.c_str(), O_RDONLY);
+                        if (replacement_fd == -1) return;
 
-                        if (split.directory != _path) {
-                              eventInfos[0].event = Event::removed;
-                              eventInfos[0].file = _filename;
+                        struct stat replacement_stat = {};
+                        if (fstat(replacement_fd, &replacement_stat) != 0) {
+                              close(replacement_fd);
+                              return;
                         }
-                        else if (split.filename != _filename) {
-                              eventInfos[0].event = Event::renamed_old;
-                              eventInfos[0].file = std::move(_filename);
-                              eventInfos[1].event = Event::renamed_new;
-                              eventInfos[1].file = split.filename;
-                              eventCount = 2;
-                              _filename = std::move(split.filename);
-                        }
-                        else {
-                              struct stat stat;
-
-                              fstat(_file_fd, &stat);
-
-                              if (stat.st_mtimespec.tv_sec > _last_modification_time.tv_sec) {
-                                    eventInfos[0].event = Event::modified;
-                                    eventInfos[0].file = _filename;
-                                    _last_modification_time = stat.st_mtimespec;
-                              }
-                              else if (stat.st_mtimespec.tv_nsec > _last_modification_time.tv_nsec) {
-                                    eventInfos[0].event = Event::modified;
-                                    eventInfos[0].file = _filename;
-                                    _last_modification_time = stat.st_mtimespec;
-                              }
-                              else {
-                                    return;
-                              }
-                        }
+                        if (_file_fd != -1) close(_file_fd);
+                        _file_fd = replacement_fd;
+                        _last_modification_time = replacement_stat.st_mtimespec;
+                        eventInfo.event = Event::added;
+                        eventInfo.file = _filename;
                   }
+                  else if (path_stat.st_mtimespec.tv_sec > _last_modification_time.tv_sec ||
+                        (path_stat.st_mtimespec.tv_sec == _last_modification_time.tv_sec &&
+                         path_stat.st_mtimespec.tv_nsec > _last_modification_time.tv_nsec)) {
+                        _last_modification_time = path_stat.st_mtimespec;
+                        eventInfo.event = Event::modified;
+                        eventInfo.file = _filename;
+                  }
+                  else return;
 
                   {
                         std::lock_guard<std::mutex> lock(_callback_mutex);
-                        for (int i = 0; i < eventCount; i++) {
-                              _callback_information.push_back(
-                                    std::make_pair(eventInfos[i].file, eventInfos[i].event));
-                        }
+                        _callback_information.push_back(
+                              std::make_pair(eventInfo.file, eventInfo.event));
                   }
                   _cv.notify_all();
             }
@@ -1188,8 +1193,8 @@ namespace filewatch {
 
                   _watching_single_file = true;
                   _filename = std::move(split.filename);
-                  _file_fd = openFile(file);
-                  return openStreamForDirectory(split.directory);
+                  _file_fd = openFile(_filename);
+                  return openStreamForDirectory(_path);
             }
 
             FSEventStreamRef get_directory(const StringType& directory) {
