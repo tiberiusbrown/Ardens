@@ -8,8 +8,9 @@ void file_watch_check() {}
 
 #else
 
-#include <atomic>
+#include <chrono>
 #include <fstream>
+#include <mutex>
 
 #include <filewatch/FileWatch.hpp>
 
@@ -19,6 +20,9 @@ using Watch = filewatch::FileWatch<std::string>;
 
 static uint64_t ms_reload_hex = 0;
 static uint64_t ms_reload_bin = 0;
+static std::mutex reload_mutex;
+static bool load_hex = false;
+static bool load_bin = false;
 
 static std::unique_ptr<Watch> watch_hex;
 static std::unique_ptr<Watch> watch_bin;
@@ -26,23 +30,28 @@ static std::unique_ptr<Watch> watch_bin;
 static std::string fname_hex;
 static std::string fname_bin;
 
-std::atomic<bool> load_hex;
-std::atomic<bool> load_bin;
+static uint64_t monotonic_ms()
+{
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+}
 
 template<bool hex>
 static void watch_action(std::string const& path, filewatch::Event const e)
 {
     if(e != filewatch::Event::modified &&
-        e != filewatch::Event::added) return;
+        e != filewatch::Event::added &&
+        e != filewatch::Event::renamed_new) return;
+    std::lock_guard<std::mutex> lock(reload_mutex);
     if(hex)
     {
-        load_hex.store(true);
-        ms_reload_hex = app.ms_since_start + RELOAD_AFTER_MS;
+        ms_reload_hex = monotonic_ms() + RELOAD_AFTER_MS;
+        load_hex = true;
     }
     else
     {
-        load_bin.store(true);
-        ms_reload_bin = app.ms_since_start + RELOAD_AFTER_MS;
+        ms_reload_bin = monotonic_ms() + RELOAD_AFTER_MS;
+        load_bin = true;
     }
 }
 
@@ -74,28 +83,61 @@ void file_watch(std::string const& filename)
 
 void file_watch_clear()
 {
-    load_hex.store(false);
-    load_bin.store(false);
     watch_hex.reset();
     watch_bin.reset();
+    std::lock_guard<std::mutex> lock(reload_mutex);
+    load_hex = false;
+    load_bin = false;
 }
 
 void file_watch_check()
 {
-    if(app.ms_since_start >= ms_reload_hex && load_hex.exchange(false))
+    const uint64_t now = monotonic_ms();
+    bool reload_hex = false;
+    bool reload_bin = false;
+    {
+        std::lock_guard<std::mutex> lock(reload_mutex);
+        if(load_hex && now >= ms_reload_hex)
+        {
+            load_hex = false;
+            reload_hex = true;
+        }
+        if(load_bin && now >= ms_reload_bin)
+        {
+            load_bin = false;
+            reload_bin = true;
+        }
+    }
+    if(reload_hex)
     {
         std::ifstream f(fname_hex.c_str(), std::ios::in | std::ios::binary);
-        if(f.fail()) load_hex.store(true);
+        if(f.fail())
+        {
+            std::lock_guard<std::mutex> lock(reload_mutex);
+            if(!load_hex)
+            {
+                load_hex = true;
+                ms_reload_hex = monotonic_ms();
+            }
+        }
         else
         {
             disconnect_linked_secondary_arduboy();
             app.dropfile_err = app.emulator->load_file(fname_hex.c_str(), f);
         }
     }
-    if(app.ms_since_start >= ms_reload_bin && load_bin.exchange(false))
+    if(reload_bin)
     {
         std::ifstream f(fname_bin.c_str(), std::ios::in | std::ios::binary);
-        if(f.fail()) load_bin.store(true);
+        if(f.fail())
+        {
+            std::lock_guard<std::mutex> lock(reload_mutex);
+            if(!load_bin)
+            {
+                load_bin = true;
+                ms_reload_bin = monotonic_ms();
+            }
+        }
         else
         {
             disconnect_linked_secondary_arduboy();
