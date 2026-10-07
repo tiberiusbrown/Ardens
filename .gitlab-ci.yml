@@ -101,6 +101,10 @@ include:
   - project: 'libretro-infrastructure/ci-templates'
     file: '/emscripten-static-cmake.yml' 
 
+  # webOS (LGTV)
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/webos-cmake.yml'
+
 # Stages for building
 stages:
   - build-prepare
@@ -284,4 +288,10 @@ libretro-build-ngc:
 libretro-build-emscripten:
   extends:
     - .libretro-emscripten-static-cmake-retroarch-master
+    - .core-defs
+
+# webOS
+libretro-build-webos-armv7a:
+  extends:
+    - .libretro-webos-armv7a-cmake
     - .core-defs
