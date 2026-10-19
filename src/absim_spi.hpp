@@ -161,7 +161,9 @@ ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
     data[reg::addr::SPDR] = spi_datain_byte;
     spi_busy = false;
     spsr_read_after_transmit = false;
-    spi_transmit_zero_cycle = UINT64_MAX;
+    // Retain the completion boundary until the next transfer. PQ_SPI or a
+    // register read may complete this transfer before a same-cycle SPDR write
+    // checks whether it must transmit zero. spi_busy prevents relatching RX.
     spsr |= SPIF;
 }
 

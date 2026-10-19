@@ -1630,11 +1630,18 @@ static int time_travel_test()
     return r;
 }
 
+int spi_tests();
+
 int main(int argc, char** argv)
 {
+    if(argc == 2 && std::string(argv[1]) == "--spi")
+        return spi_tests();
+
     int r = 0;
     arduboy = std::make_unique<absim::arduboy_t>();
     arduboy->peripherals.display.enable_filter = true;
+
+    r |= spi_tests();
 
     printf("\nGrouped state tests...\n");
     r |= grouped_state_roundtrip_test();
