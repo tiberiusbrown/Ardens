@@ -87,8 +87,8 @@ nonzero MOSI byte. Slower dividers retain their previous timing. Other SPI
 modes have regression controls but were not measured on hardware here.
 
 Snapshots and savestates now serialize the delayed SPIF deadline and the
-independent acknowledgment state. The format version is **0.25.1**; older
-0.25.0 files are rejected as incompatible instead of loading incomplete state.
+independent acknowledgment state. The format version is **0.25.12**; older
+formats are rejected as incompatible instead of loading incomplete state.
 
 ## Regression validation
 
