@@ -1,0 +1,27 @@
+# Physical FX-C, user photographs supplied 2026-10-18 (local client date).
+# Probe HEX SHA256 daf84cdebcca65682a00694e4a884f8edb799604f57a7e4a3ff5880482a9febe
+# Header: 53 50 01 PAGE 00 00
+# ID BEFORE AFTER LATE ACCESS_RX LATE_RX (hex)
+00 81 01 81 FF FF
+01 81 81 81 FF FF
+02 81 01 01 FF FF
+03 81 41 C1 FF FF
+04 81 C1 C1 FF FF
+05 81 01 81 FF FF
+06 41 01 81 FF FF
+07 41 81 81 FF FF
+08 41 81 81 FF FF
+09 41 41 C1 FF FF
+0A 41 C1 C1 FF FF
+0B 41 81 81 FF FF
+0C 01 01 81 FF FF
+0D 01 81 81 FF FF
+0E 01 81 81 FF FF
+0F 01 41 C1 FF FF
+10 01 C1 C1 FF FF
+11 01 81 81 FF FF
+
+# Photographs (repository-relative user attachment paths; not committed):
+# .codex-remote-attachments/01a151f1-ff51-73a2-af77-ccbf238a42b1/0b287170-1f26-4071-a0e5-55a0f96d7c43/1-image-1792379868431.jpg
+# .codex-remote-attachments/01a151f1-ff51-73a2-af77-ccbf238a42b1/0b287170-1f26-4071-a0e5-55a0f96d7c43/2-image-1792379880505.jpg
+# .codex-remote-attachments/01a151f1-ff51-73a2-af77-ccbf238a42b1/0b287170-1f26-4071-a0e5-55a0f96d7c43/3-image-1792379891975.jpg

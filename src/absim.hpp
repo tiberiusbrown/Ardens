@@ -815,15 +815,16 @@ struct atmega32u4_t
     static void pll_handle_st_pllcsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);
 
     // SPI
-    bool spsr_read_after_transmit;
+    bool spsr_read_after_transmit; // pending SPIF acknowledgment
     bool spi_busy;
-    bool spi_busy_clear; // TODO: unused
-    bool spi_latch_read; // TODO: unused
-    bool spi_data_latched; // TODO: unused
+    bool spi_wcol_read; // pending WCOL acknowledgment
+    bool spi_fast_transfer; // F_CPU/2 timing captured when the transfer starts
+    bool spi_data_latched;
     uint8_t spi_data_byte;
     uint8_t spi_datain_byte;
     uint64_t spi_done_cycle;
-    uint64_t spi_transmit_zero_cycle; // retained after completion for same-cycle writes
+    uint64_t spi_transmit_zero_cycle; // retained boundary for same-cycle writes
+    uint64_t spi_flag_cycle; // delayed SPIF can overlap the next transfer
     uint32_t spi_clock_cycles;
     void update_spi();
     static void spi_handle_st_spcr_or_spsr(atmega32u4_t& cpu, uint16_t ptr, uint8_t x);

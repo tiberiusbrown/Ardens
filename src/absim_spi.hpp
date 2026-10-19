@@ -7,7 +7,12 @@ void atmega32u4_t::spi_handle_st_spcr_or_spsr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
     cpu.update_spi();
-    cpu.data[ptr] = x;
+    if(ptr == reg::addr::SPSR)
+        cpu.data[ptr] = (cpu.data[ptr] &
+            (reg::bit::SPSR::SPIF | reg::bit::SPSR::WCOL)) |
+            (x & reg::bit::SPSR::SPI2X);
+    else
+        cpu.data[ptr] = x;
     uint8_t spcr = cpu.data[reg::addr::SPCR];
     uint8_t spsr = cpu.data[reg::addr::SPSR];
     uint8_t n =
@@ -75,12 +80,26 @@ static uint8_t reverse_bits(uint8_t byte)
     return REVERSE[byte];
 }
 
+static void spi_access_spdr(atmega32u4_t& cpu)
+{
+    cpu.update_spi();
+    if(cpu.spsr_read_after_transmit)
+    {
+        cpu.spsr_read_after_transmit = false;
+        cpu.data[reg::addr::SPSR] &= ~reg::bit::SPSR::SPIF;
+    }
+    if(cpu.spi_wcol_read)
+    {
+        cpu.spi_wcol_read = false;
+        cpu.data[reg::addr::SPSR] &= ~reg::bit::SPSR::WCOL;
+    }
+}
+
 void atmega32u4_t::spi_handle_st_spdr(
     atmega32u4_t& cpu, uint16_t ptr, uint8_t x)
 {
-    cpu.update_spi();
+    spi_access_spdr(cpu);
     uint8_t& spsr = cpu.data[reg::addr::SPSR];
-    constexpr uint8_t SPIF = reg::bit::SPSR::SPIF;
     constexpr uint8_t WCOL = reg::bit::SPSR::WCOL;
 
     uint8_t spcr = cpu.data[reg::addr::SPCR];
@@ -95,24 +114,31 @@ void atmega32u4_t::spi_handle_st_spdr(
     if(!(spcr & MSTR) || cpu.spi_clock_cycles < 2)
         return;
 
-    if(cpu.spi_busy)
+    bool const boundary = cpu.spi_transmit_zero_cycle == cpu.cycle_count;
+    if(cpu.spi_busy || (boundary && cpu.spi_fast_transfer))
     {
         spsr |= WCOL;
         cpu.autobreak(AB_SPI_WCOL);
     }
-    else
+    if(!cpu.spi_busy)
     {
-        if(cpu.spi_transmit_zero_cycle == cpu.cycle_count)
+        if(boundary)
             cpu.spi_data_byte = 0;
         else
             cpu.spi_data_byte = spcr & DORD ? reverse_bits(x) : x;
 
-        spsr &= ~(SPIF | WCOL);
-        
-        cpu.spi_done_cycle = cpu.cycle_count + cpu.spi_clock_cycles * 8 + 1;
-        cpu.spi_transmit_zero_cycle = cpu.spi_done_cycle;
+        // FX-C measurements at F_CPU/2: RX at 16, a zero-byte transfer plus
+        // WCOL for an OUT at 17, and SPIF at 18. Keep the existing timing for
+        // the unmeasured slower clocks. The previous SPIF deadline survives
+        // a new transfer starting at 17.
+        cpu.spi_fast_transfer = cpu.spi_clock_cycles == 2;
+        cpu.spi_transmit_zero_cycle =
+            cpu.cycle_count + cpu.spi_clock_cycles * 8 + 1;
+        cpu.spi_done_cycle =
+            cpu.spi_transmit_zero_cycle - (cpu.spi_fast_transfer ? 1 : 0);
+        cpu.spi_data_latched = false;
         cpu.spi_busy = true;
-        cpu.peripheral_queue.schedule(cpu.spi_transmit_zero_cycle, PQ_SPI);
+        cpu.peripheral_queue.schedule(cpu.spi_done_cycle, PQ_SPI);
     }
 }
 
@@ -120,51 +146,55 @@ uint8_t atmega32u4_t::spi_handle_ld_spsr(atmega32u4_t& cpu, uint16_t ptr)
 {
     cpu.update_spi();
     auto r = cpu.data[reg::addr::SPSR];
-    if(!cpu.spi_busy && (r & reg::bit::SPSR::SPIF))
+    if(r & reg::bit::SPSR::SPIF)
         cpu.spsr_read_after_transmit = true;
+    if(r & reg::bit::SPSR::WCOL)
+        cpu.spi_wcol_read = true;
     return r;
 }
 
 uint8_t atmega32u4_t::spi_handle_ld_spdr(atmega32u4_t& cpu, uint16_t ptr)
 {
-    cpu.update_spi();
-    if(cpu.spsr_read_after_transmit)
-    {
-        cpu.spsr_read_after_transmit = false;
-        cpu.data[reg::addr::SPSR] &= ~(reg::bit::SPSR::SPIF | reg::bit::SPSR::WCOL);
-    }
+    spi_access_spdr(cpu);
     assert(ptr == reg::addr::SPDR);
     return cpu.data[reg::addr::SPDR];
 }
 
 ARDENS_FORCEINLINE void atmega32u4_t::update_spi()
 {
-    if(!spi_busy)
-        return;
-    if(cycle_count < spi_transmit_zero_cycle)
+    // Service a preceding transfer's delayed flag before finishing the current
+    // one. An SPSR read remains armed across either completion; only the flags
+    // it observed set are acknowledged by the subsequent SPDR access.
+    if(cycle_count >= spi_flag_cycle)
     {
-        peripheral_queue.schedule(spi_transmit_zero_cycle, PQ_SPI);
-        return;
+        data[reg::addr::SPSR] |= reg::bit::SPSR::SPIF;
+        spi_flag_cycle = UINT64_MAX;
     }
-
-    uint8_t  spcr = data[reg::addr::SPCR];
-    uint8_t& spsr = data[reg::addr::SPSR];
-
-    constexpr uint8_t SPE  = reg::bit::SPCR::SPE;
-    constexpr uint8_t DORD = reg::bit::SPCR::DORD;
-    constexpr uint8_t MSTR = reg::bit::SPCR::MSTR;
-
-    constexpr uint8_t SPIF = reg::bit::SPSR::SPIF;
-
-    assert(spi_clock_cycles >= 2);
-
-    data[reg::addr::SPDR] = spi_datain_byte;
-    spi_busy = false;
-    spsr_read_after_transmit = false;
-    // Retain the completion boundary until the next transfer. PQ_SPI or a
-    // register read may complete this transfer before a same-cycle SPDR write
-    // checks whether it must transmit zero. spi_busy prevents relatching RX.
-    spsr |= SPIF;
+    if(spi_busy)
+    {
+        uint64_t const receive_cycle =
+            spi_transmit_zero_cycle - (spi_fast_transfer ? 1 : 0);
+        if(!spi_data_latched && cycle_count >= receive_cycle)
+        {
+            data[reg::addr::SPDR] = spi_datain_byte;
+            spi_data_latched = true;
+        }
+        if(cycle_count >= spi_transmit_zero_cycle)
+        {
+            spi_busy = false;
+            spi_flag_cycle = spi_transmit_zero_cycle + (spi_fast_transfer ? 1 : 0);
+            if(cycle_count >= spi_flag_cycle)
+            {
+                data[reg::addr::SPSR] |= reg::bit::SPSR::SPIF;
+                spi_flag_cycle = UINT64_MAX;
+            }
+        }
+        else
+            peripheral_queue.schedule(
+                spi_data_latched ? spi_transmit_zero_cycle : receive_cycle, PQ_SPI);
+    }
+    if(spi_flag_cycle != UINT64_MAX)
+        peripheral_queue.schedule(spi_flag_cycle, PQ_SPI);
 }
 
 }

@@ -48,7 +48,7 @@ constexpr version_t VERSION_INFO =
     ARDENS_VERSION_PATCH
 };
 
-constexpr version_t SNAPSHOT_VERSION = { 0, 25, 0 };
+constexpr version_t SNAPSHOT_VERSION = { 0, 25, 1 };
 
 static std::string version_str(version_t const& v)
 {
@@ -255,13 +255,14 @@ static std::string serdes_savestate(Archive& ar, arduboy_t& a)
 
     ar(a.core_state.cpu.spsr_read_after_transmit);
     ar(a.core_state.cpu.spi_busy);
-    ar(a.core_state.cpu.spi_busy_clear);
-    ar(a.core_state.cpu.spi_latch_read);
+    ar(a.core_state.cpu.spi_wcol_read);
+    ar(a.core_state.cpu.spi_fast_transfer);
     ar(a.core_state.cpu.spi_data_latched);
     ar(a.core_state.cpu.spi_data_byte);
     ar(a.core_state.cpu.spi_datain_byte);
     ar(a.core_state.cpu.spi_done_cycle);
     ar(a.core_state.cpu.spi_transmit_zero_cycle);
+    ar(a.core_state.cpu.spi_flag_cycle);
     ar(a.core_state.cpu.spi_clock_cycles);
 
     ar(a.core_state.cpu.twi_prev_cycle);
