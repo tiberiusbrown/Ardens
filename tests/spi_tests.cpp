@@ -64,10 +64,17 @@ int result(char const* name, bool pass)
     return pass ? 0 : 1;
 }
 
+void update_spi_via_register(absim::atmega32u4_t& cpu)
+{
+    // Rewriting SPCR unchanged updates SPI without advancing time or clearing
+    // SPIF/WCOL. update_spi() itself is internal to the CPU implementation TU.
+    cpu.st(addr::SPCR, cpu.data[addr::SPCR]);
+}
+
 int register_boundaries()
 {
     int r = 0;
-    char const* orders[] = { "handler", "update", "SPSR", "SPDR", "SPSR/SPDR", "queue" };
+    char const* orders[] = { "handler", "SPCR", "SPSR", "SPDR", "SPSR/SPDR", "queue" };
     for(unsigned order = 0; order < 6; ++order)
     for(unsigned gap : { 16u, 17u, 18u, 41u })
     for(uint8_t requested : { uint8_t(0x96), uint8_t(0) })
@@ -77,13 +84,13 @@ int register_boundaries()
         cpu.st(addr::SPDR, 0x03);
         cpu.spi_datain_byte = 0x3c;
         cpu.cycle_count = start + gap;
-        if(order == 1) cpu.update_spi();
+        if(order == 1) update_spi_via_register(cpu);
         if(order == 2 || order == 4) (void)cpu.ld(addr::SPSR);
         if(order == 3 || order == 4) (void)cpu.ld(addr::SPDR);
         if(order == 5)
         {
             cpu.gpr(16) = requested;
-            cpu.advance_cycle(); // PQ_SPI completes before the OUT handler
+            a->cycle(); // PQ_SPI completes before the OUT handler
         }
         else
             cpu.st(addr::SPDR, requested);
@@ -340,7 +347,7 @@ int snapshot_and_reset()
         // Save before board delivery, after delivery but before CPU latching,
         // and after CPU latching. Land exactly on each boundary before saving.
         run(*a, execution::ordinary, phase == 0 ? start + 16 : start + 17);
-        if(phase == 2) cpu.update_spi();
+        if(phase == 2) update_spi_via_register(cpu);
         std::ostringstream saved;
         bool ok = a->save_snapshot(saved);
         auto b = std::make_unique<device_t>();
@@ -362,7 +369,7 @@ int snapshot_and_reset()
                 c.data[addr::SPDR] == 0x3c &&
                 c.spi_transmit_zero_cycle == start + 34;
             run(*d, mode, start + 35);
-            c.update_spi();
+            update_spi_via_register(c);
             ok &= !c.spi_busy && c.ld(addr::SPDR) == 0xa7 &&
                 d->peripherals.display.data_col == 2 &&
                 d->peripherals.display.ram[0] == 0x96 &&
