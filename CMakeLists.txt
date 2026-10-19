@@ -607,6 +607,7 @@ if(NOT ARDENS_LIBRETRO)
     add_executable(integration_tests
         .editorconfig
         tests/integration_tests.cpp
+        tests/spi_tests.cpp
         )
     target_link_libraries(integration_tests PRIVATE ardensdebuggerlib)
     target_compile_definitions(integration_tests PRIVATE

@@ -1,0 +1,20 @@
+# Physical FX-C, user photographs supplied 2026-10-18 (local client date).
+# Probe HEX SHA256 3a6bf77b4a912df911b31890c4ae2d5db44dfe4ba2f974aff1607415f09afc94
+# Header: 53 50 02 PAGE 00 00
+# ID FIRST_RX SECOND_RX THIRD_RX STATUS LATE_STATUS (hex)
+00 EF 40 18 01 01
+01 EF EF 40 C1 01
+02 EF 40 18 C1 01
+03 EF 40 18 81 01
+04 EF 40 18 81 01
+05 EF EF 40 01 81
+06 EF EF 40 81 01
+07 EF EF 40 81 01
+08 EF 40 18 C1 C1
+09 EF 40 18 81 81
+0A FF FF FF FF FF
+0B FF FF FF FF FF
+
+# Photographs (repository-relative user attachment paths; not committed):
+# .codex-remote-attachments/01a151f1-ff51-73a2-af77-ccbf238a42b1/1eb013d5-ad75-4ed5-9fa8-38c6e8ff61a3/1-image-1792380622519.jpg
+# .codex-remote-attachments/01a151f1-ff51-73a2-af77-ccbf238a42b1/1eb013d5-ad75-4ed5-9fa8-38c6e8ff61a3/2-image-1792380630018.jpg

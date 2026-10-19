@@ -196,14 +196,15 @@ void atmega32u4_t::soft_reset()
 
     spsr_read_after_transmit = false;
     spi_busy = false;
-    spi_busy_clear = false;
-    spi_latch_read = false;
+    spi_wcol_read = false;
+    spi_fast_transfer = false;
     spi_data_latched = false;
     spi_data_byte = 0;
     spi_datain_byte = 0;
     spi_clock_cycles = 4;
     spi_done_cycle = UINT64_MAX;
     spi_transmit_zero_cycle = UINT64_MAX;
+    spi_flag_cycle = UINT64_MAX;
 
     twi_adapter = nullptr;
     twi_adapter_endpoint = i2c_link_adapter_t::BROADCAST_ENDPOINT;

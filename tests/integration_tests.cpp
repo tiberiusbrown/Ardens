@@ -906,13 +906,14 @@ static bool same_cpu_state(absim::atmega32u4_t const& a, absim::atmega32u4_t con
         a.pll_busy == b.pll_busy &&
         a.spsr_read_after_transmit == b.spsr_read_after_transmit &&
         a.spi_busy == b.spi_busy &&
-        a.spi_busy_clear == b.spi_busy_clear &&
-        a.spi_latch_read == b.spi_latch_read &&
+        a.spi_wcol_read == b.spi_wcol_read &&
+        a.spi_fast_transfer == b.spi_fast_transfer &&
         a.spi_data_latched == b.spi_data_latched &&
         a.spi_data_byte == b.spi_data_byte &&
         a.spi_datain_byte == b.spi_datain_byte &&
         a.spi_done_cycle == b.spi_done_cycle &&
         a.spi_transmit_zero_cycle == b.spi_transmit_zero_cycle &&
+        a.spi_flag_cycle == b.spi_flag_cycle &&
         a.spi_clock_cycles == b.spi_clock_cycles &&
         a.twi_prev_cycle == b.twi_prev_cycle &&
         a.twi_done_cycle == b.twi_done_cycle &&
@@ -1630,11 +1631,18 @@ static int time_travel_test()
     return r;
 }
 
+int spi_tests();
+
 int main(int argc, char** argv)
 {
+    if(argc == 2 && std::string(argv[1]) == "--spi")
+        return spi_tests();
+
     int r = 0;
     arduboy = std::make_unique<absim::arduboy_t>();
     arduboy->peripherals.display.enable_filter = true;
+
+    r |= spi_tests();
 
     printf("\nGrouped state tests...\n");
     r |= grouped_state_roundtrip_test();
