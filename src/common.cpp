@@ -715,7 +715,7 @@ static bool parse_filter(char const* value, int& result)
     return true;
 }
 
-static bool parse_orientation(char const* value, int& result)
+bool parse_orientation(char const* value, int& result)
 {
     if(string_equals_ignore_case(value, "0") || string_equals_ignore_case(value, "normal"))
         result = 0;

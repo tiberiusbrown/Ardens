@@ -1529,6 +1529,7 @@ struct arduboy_program_state_t
     uint64_t game_hash{};
     std::string title;
     std::string device_type;
+    std::string orientation; // from .arduboy info.json; consumed by the app after load
     std::string prog_filename;
     std::vector<uint8_t> prog_filedata;
     std::vector<uint8_t> fxdata;

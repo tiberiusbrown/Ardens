@@ -1063,6 +1063,17 @@ static std::string load_arduboy(arduboy_t& a, std::istream& f)
         if(!err.empty()) return err;
     }
 
+    a.program_state.orientation.clear();
+    {
+        // optional display orientation: string ("cw", "180", ...) or integer (0-3, 90, 180, 270)
+        yyjson_val* ori = yyjson_obj_get(root, "orientation");
+        if(!ori) ori = yyjson_obj_get(root, "ori");
+        if(ori && yyjson_is_str(ori))
+            a.program_state.orientation = yyjson_get_str(ori);
+        else if(ori && yyjson_is_int(ori))
+            a.program_state.orientation = std::to_string(yyjson_get_int(ori));
+    }
+
     a.program_state.fxdata.clear();
     a.program_state.fxsave.clear();
     a.program_state.device_type.clear();
