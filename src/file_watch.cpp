@@ -124,6 +124,8 @@ void file_watch_check()
         {
             disconnect_linked_secondary_arduboy();
             app.dropfile_err = app.emulator->load_file(fname_hex.c_str(), f);
+            // keep the user's current rotation on hot reload
+            app.emulator->program_state.orientation.clear();
         }
     }
     if(reload_bin)

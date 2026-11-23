@@ -279,4 +279,17 @@ void autoset_from_device_type()
         settings.fxport = FXPORT_D2;
     if(app.emulator->program_state.device_type == "ArduboyMini")
         settings.fxport = FXPORT_E2;
+
+    // apply orientation requested by an .arduboy file's info.json (once per load)
+    auto& ori = app.emulator->program_state.orientation;
+    if(!ori.empty())
+    {
+        int parsed = 0;
+        if(parse_orientation(ori.c_str(), parsed))
+        {
+            settings.display_orientation = parsed;
+            update_settings();
+        }
+        ori.clear();
+    }
 }

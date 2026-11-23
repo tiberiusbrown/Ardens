@@ -131,6 +131,7 @@ void init_settings();
 void update_settings();
 void update_window_settings(int width, int height, bool maximized);
 void autoset_from_device_type();
+bool parse_orientation(char const* value, int& result);
 bool load_window_geometry_from_ini(
     std::filesystem::path const& ini_path,
     int& width,
