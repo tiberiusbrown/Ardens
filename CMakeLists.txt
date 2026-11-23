@@ -42,12 +42,10 @@ if(MSVC)
         /INCREMENTAL:NO                     # Disable incremental linking.
         $<$<NOT:$<CONFIG:DEBUG>>:/OPT:REF>  # Remove unreferenced functions and data.
         $<$<NOT:$<CONFIG:DEBUG>>:/OPT:ICF>  # Identical COMDAT folding.
-        $<$<NOT:$<CONFIG:DEBUG>>:/LTCG>     # Link-Time Code Generation.
         $<$<CONFIG:DEBUG>:/OPT:NOREF>       # No unreferenced data elimination.
         $<$<CONFIG:DEBUG>:/OPT:NOICF>       # No Identical COMDAT folding.
     )
     add_compile_options(
-        $<$<NOT:$<CONFIG:DEBUG>>:/GL>
         $<$<NOT:$<CONFIG:DEBUG>>:/Gy>
         $<$<NOT:$<CONFIG:DEBUG>>:/Gw>
         $<$<NOT:$<CONFIG:DEBUG>>:/GF>
@@ -168,11 +166,14 @@ if(ARDENS_LLVM)
 	endif()
 
     include(FetchContent)
+    find_package(Git REQUIRED)
 
 	message(STATUS "Fetching llvm-project")
 	FetchContent_Declare(
 		llvm-project
 		URL https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
+		PATCH_COMMAND "${CMAKE_COMMAND}" "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
+		    "-DLLVM_SOURCE_DIR=<SOURCE_DIR>" -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_llvm.cmake"
 		)
 
     if(MSVC)
@@ -740,6 +741,19 @@ foreach(f ${version_files})
 endforeach()
 
 if(MSVC)
+    # Enable LTCG only for targets defined here, so LLVM and its host tools
+    # never inherit these flags.
+    get_property(ardens_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(target IN LISTS ardens_targets)
+        get_target_property(target_type ${target} TYPE)
+        if(NOT target_type STREQUAL "INTERFACE_LIBRARY")
+            target_compile_options(${target} PRIVATE $<$<NOT:$<CONFIG:DEBUG>>:/GL>)
+        endif()
+        if(target_type STREQUAL "EXECUTABLE" OR target_type STREQUAL "SHARED_LIBRARY")
+            target_link_options(${target} PRIVATE $<$<NOT:$<CONFIG:DEBUG>>:/LTCG>)
+        endif()
+    endforeach()
+
     if(ARDENS_DEBUGGER)
         target_compile_options(Ardens PRIVATE /Zc:__cplusplus)
     endif()

@@ -64,13 +64,14 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
-        key: web-cache-llvm-host
+        key: web-cache-llvm-host-${{ hashFiles('cmake/patch_llvm.cmake', 'cmake/llvm-16-smallvector-cstdint.patch') }}
 
     - name: Build LLVM host
       if: steps.cache-llvm-host.outputs.cache-hit != 'true'
       run: |
         wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
         tar -xf llvm-project-16.0.0.src.tar.xz
+        cmake -DLLVM_SOURCE_DIR=llvm-project-16.0.0.src -P cmake/patch_llvm.cmake
         cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TARGETS_TO_BUILD=WebAssembly -DLLVM_ENABLE_PROJECTS="clang" -S llvm-project-16.0.0.src/llvm
         export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
@@ -330,13 +331,14 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
-        key: macos-arm64-cache-llvm-host
+        key: macos-arm64-cache-llvm-host-${{ hashFiles('cmake/patch_llvm.cmake', 'cmake/llvm-16-smallvector-cstdint.patch') }}
 
     - name: Build LLVM host
       if: steps.cache-llvm-host.outputs.cache-hit != 'true'
       run: |
         wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
         tar -xf llvm-project-16.0.0.src.tar.xz
+        cmake -DLLVM_SOURCE_DIR=llvm-project-16.0.0.src -P cmake/patch_llvm.cmake
         cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_ENABLE_PROJECTS="clang" -S llvm-project-16.0.0.src/llvm
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
