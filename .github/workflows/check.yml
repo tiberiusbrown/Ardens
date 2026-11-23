@@ -1,97 +1,100 @@
+
 name: 'Checks'
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
-  
-concurrency: 
+
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-    
+
 env:
   BUILD_TYPE: Release
 
 jobs:
 
   integration_tests:
-    
+
     name: Integration Tests
     runs-on: ubuntu-latest
-    
+
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-        
+
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DARDENS_LIB=1 -DARDENS_SDL=0 -DARDENS_LLVM=0 -DARDENS_DEBUGGER=0 -DARDENS_PLAYER=0 -DARDENS_LIBRETRO=0
-      
+
     - name: Build
       run: cmake --build ${{github.workspace}}/build -j --config Release --target integration_tests
-      
+
     - name: Run Tests
       run: ${{github.workspace}}/build/integration_tests
 
   check_web:
-  
+
     name: Build (Web)
     needs: [integration_tests]
     runs-on: ubuntu-latest
-  
+
     steps:
-        
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-  
+
     - name: Extract branch name
       shell: bash
       run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
       id: extract_branch
-        
+
     - name: Install prerequisites
       run: |
         sudo apt-get update
         sudo apt-get install -y libpulse-dev libgl1-mesa-dev
-  
+
     - name: Cache LLVM host
       id: cache-llvm-host
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
-        key: web-cache-llvm-host
-  
+        key: web-cache-llvm-host-${{ hashFiles('cmake/patch_llvm.cmake', 'cmake/llvm-16-smallvector-cstdint.patch') }}
+
     - name: Build LLVM host
       if: steps.cache-llvm-host.outputs.cache-hit != 'true'
       run: |
         wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
         tar -xf llvm-project-16.0.0.src.tar.xz
+        cmake -DLLVM_SOURCE_DIR=llvm-project-16.0.0.src -P cmake/patch_llvm.cmake
         cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TARGETS_TO_BUILD=WebAssembly -DLLVM_ENABLE_PROJECTS="clang" -S llvm-project-16.0.0.src/llvm
         export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- clang-tblgen
-      
+
     - name: Set up emsdk
       run: |
         git clone https://github.com/emscripten-core/emsdk.git ${{github.workspace}}/emsdk
         ${{github.workspace}}/emsdk/emsdk install 3.1.64
         ${{github.workspace}}/emsdk/emsdk activate 3.1.64
-  
+
     - name: Cache FetchContent
       id: cache-fetchcontent
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: web-cache-fetchcontent
-  
+
     - name: Configure (JS)
       run: |
         source ${{github.workspace}}/emsdk/emsdk_env.sh
         emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}  -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen -DARDENS_WEB_JS=1
-    
+
     - name: Build (JS)
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
@@ -99,7 +102,7 @@ jobs:
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensFlashcart
         mkdir ${{github.workspace}}/Ardens_web_js
-        
+
     - name: Create zip file (JS)
       run: |
         cp ${{github.workspace}}/build/Ardens.js ${{github.workspace}}/Ardens_web_js
@@ -114,12 +117,12 @@ jobs:
       with:
         name: build-artifact-web-js
         path: ${{github.workspace}}/Ardens_web_js.zip
-  
+
     - name: Configure (WASM)
       run: |
         source ${{github.workspace}}/emsdk/emsdk_env.sh
         emcmake cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen -DARDENS_WEB_JS=0
-    
+
     - name: Build (WASM)
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc)
@@ -127,7 +130,7 @@ jobs:
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensPlayer
         cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target ArdensFlashcart
         mkdir ${{github.workspace}}/Ardens_web_wasm
-        
+
     - name: Create zip file (WASM)
       run: |
         cp ${{github.workspace}}/build/Ardens.js ${{github.workspace}}/Ardens_web_wasm
@@ -144,13 +147,14 @@ jobs:
       with:
         name: build-artifact-web-wasm
         path: ${{github.workspace}}/Ardens_web_wasm.zip
-        
+
     - name: Pre-Deploy
       run: |
         cp ${{github.workspace}}/src/live_Ardens.html ${{github.workspace}}/Ardens_web_wasm/index.html
         cp ${{github.workspace}}/src/live_ArdensPlayer.html ${{github.workspace}}/Ardens_web_wasm/player.html
-        
+
     - name: Deploy to GitHub Pages
+      if: github.event_name != 'pull_request'
       uses: JamesIves/github-pages-deploy-action@v4
       with:
         clean: false
@@ -159,29 +163,29 @@ jobs:
         target-folder: staging/${{ steps.extract_branch.outputs.branch }}
 
   check_linux:
-  
+
     name: Build (Linux)
     needs: [integration_tests]
     runs-on: ubuntu-latest
-  
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-        
+
     - name: Install prerequisites
       run: |
         sudo apt-get update
         sudo apt-get install -y libfuse2
-  
+
     - name: Cache FetchContent
       id: cache-fetchcontent
       uses: actions/cache@v4
       with:
         path: _deps
         key: windows_x86-cache-fetchcontent
-    
+
     - name: HBB Build
       run: bash cmake/build_hbb.sh
 
@@ -192,27 +196,27 @@ jobs:
         path: "build/Ardens_linux_x64.zip"
 
   check_windows_x86:
-  
+
     name: Build (Windows x86)
     needs: [integration_tests]
     runs-on: windows-latest
-  
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-  
+
     - name: Cache FetchContent
       id: cache-fetchcontent
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: windows_x86-cache-fetchcontent
-  
+
     - name: Configure
       run: cmake -D CMAKE_SYSTEM_VERSION=10.0.26100.0 -B ${{github.workspace}}/build -A Win32 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        
+
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
@@ -229,29 +233,29 @@ jobs:
       with:
         name: build-artifact-windows-x86
         path: "Ardens_windows_x86.zip"
-  
+
   check_windows_x64:
-  
+
     name: Build (Windows x64)
     needs: [integration_tests]
     runs-on: windows-latest
-  
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-  
+
     - name: Cache FetchContent
       id: cache-fetchcontent
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: windows_x64-cache-fetchcontent
-  
+
     - name: Configure
       run: cmake -D CMAKE_SYSTEM_VERSION=10.0.26100.0 -B ${{github.workspace}}/build -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-  
+
     - name: Build
       run: |
         cmake --build ${{github.workspace}}/build -j --config ${{env.BUILD_TYPE}} --target Ardens
@@ -268,29 +272,29 @@ jobs:
       with:
         name: build-artifact-windows-x64
         path: "Ardens_windows_x64.zip"
-  
+
   check_macos_x64:
-  
+
     name: Build (MacOS x64)
     needs: [integration_tests]
     runs-on: macos-latest
-  
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-  
+
     - name: Cache FetchContent
       id: cache-fetchcontent
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: macos_x64-cache-fetchcontent
-  
+
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_OSX_ARCHITECTURES="x86_64"
-  
+
     - name: Build
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
@@ -309,46 +313,47 @@ jobs:
       with:
         name: build-artifact-macos-x64
         path: "Ardens_macos_x64.dmg"
-  
+
   check_macos_arm64:
-  
+
     name: Build (MacOS arm64)
     needs: [integration_tests]
     runs-on: macos-latest
-  
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-  
+
     - name: Cache LLVM host
       id: cache-llvm-host
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build_llvm
-        key: macos-arm64-cache-llvm-host
-  
+        key: macos-arm64-cache-llvm-host-${{ hashFiles('cmake/patch_llvm.cmake', 'cmake/llvm-16-smallvector-cstdint.patch') }}
+
     - name: Build LLVM host
       if: steps.cache-llvm-host.outputs.cache-hit != 'true'
       run: |
         wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-16.0.0/llvm-project-16.0.0.src.tar.xz
         tar -xf llvm-project-16.0.0.src.tar.xz
+        cmake -DLLVM_SOURCE_DIR=llvm-project-16.0.0.src -P cmake/patch_llvm.cmake
         cmake -B ${{github.workspace}}/build_llvm -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_ENABLE_PROJECTS="clang" -S llvm-project-16.0.0.src/llvm
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- llvm-tblgen
         cmake --build ${{github.workspace}}/build_llvm --config ${{env.BUILD_TYPE}} -- clang-tblgen
-  
+
     - name: Cache FetchContent
       id: cache-fetchcontent
       uses: actions/cache@v4
       with:
         path: ${{github.workspace}}/build/_deps
         key: macos_arm64-cache-fetchcontent
-  
+
     - name: Configure
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DLLVM_TABLEGEN=${{github.workspace}}/build_llvm/bin/llvm-tblgen -DCLANG_TABLEGEN=${{github.workspace}}/build_llvm/bin/clang-tblgen
-  
+
     - name: Build
       run: |
         export CMAKE_BUILD_PARALLEL_LEVEL=$(sysctl -n hw.logicalcpu)
